@@ -1,0 +1,36 @@
+div.upper {
+  margin: 0 auto;
+  text-align: center;
+  background-color: #FFFF00;
+  background: url('./assets/bg/upper.jpg') center 0 no-repeat;
+  height: 270px;
+}
+
+div.middle {
+  margin: 0 auto;
+  background-color: #00FF00;
+  background: url('./assets/bg/middle.jpg') center 0 no-repeat;
+  height: 270px;
+}
+
+div.lower {
+  margin: 0 auto;
+  background-color: #0000FF;
+  background: url('./assets/bg/lower.jpg') center 0 no-repeat;
+  height: 260px;
+}
+
+h1 {
+  font-family: Avenir, "Trebuchet MS", Tahoma, Arial, Verdana, sans-serif;
+  font-size: 35px;
+  color: #AE2835;
+  font-weight: bold;
+  margin: 0 auto;
+  text-align: center;
+  vertical-align: middle;
+  padding-top: 130px;
+  max-width: 700px;
+  height: 100px;
+  max-height: 100px;
+  overflow: hidden;
+}
