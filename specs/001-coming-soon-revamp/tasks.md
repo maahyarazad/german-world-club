@@ -72,16 +72,16 @@ Single-project frontend layout rooted at `src/`, with `tests/` at repository roo
 
 ### Tests for User Story 1
 
-- [ ] T020 [P] [US1] Create `tests/components/Hero.test.jsx`: asserts `brandName`, `tagline`, and `status` render, and that the hero contains the page's only `<h1>`
-- [ ] T021 [P] [US1] Create `tests/components/Offering.test.jsx`: asserts every `siteConfig.offerings` item renders its title and body, uses `<h2>` for the section and `<h3>` per item, and keys off `id` rather than array index
-- [ ] T022 [P] [US1] Create `tests/components/About.test.jsx`: asserts each `about` paragraph and `parentOrg` render under an `<h2>`
+- [X] T020 [P] [US1] Create `tests/components/Hero.test.jsx`: asserts `brandName`, `tagline`, and `status` render, and that the hero contains the page's only `<h1>`
+- [X] T021 [P] [US1] Create `tests/components/Offering.test.jsx`: asserts every `siteConfig.offerings` item renders its title and body, uses `<h2>` for the section and `<h3>` per item, and keys off `id` rather than array index
+- [X] T022 [P] [US1] Create `tests/components/About.test.jsx`: asserts each `about` paragraph and `parentOrg` render under an `<h2>`
 
 ### Implementation for User Story 1
 
-- [ ] T023 [P] [US1] Create `src/components/Hero.jsx` per contract `<Hero />`: full-viewport CSS **gradient** background (no raster image — LCP must be a text node), `<BrandMark>`, the page's only `<h1>` with `brandName`, the `tagline`, and an explicit pre-launch `status`. Must fit the first viewport at every width ≥ 320 px
-- [ ] T024 [P] [US1] Create `src/components/Offering.jsx` per contract `<Offering />`: maps `siteConfig.offerings` to a responsive grid — 1 column on mobile, 2–3 columns on wider viewports
-- [ ] T025 [P] [US1] Create `src/components/About.jsx` per contract `<About />`: renders `about` paragraphs and `parentOrg`, constrained to ~65ch so the text does not stretch at 2560 px
-- [ ] T026 [US1] Wire `Hero`, `Offering`, and `About` into the `<main>` shell in `src/App.jsx` (depends on T023, T024, T025)
+- [X] T023 [P] [US1] Create `src/components/Hero.jsx` per contract `<Hero />`: full-viewport CSS **gradient** background (no raster image — LCP must be a text node), `<BrandMark>`, the page's only `<h1>` with `brandName`, the `tagline`, and an explicit pre-launch `status`. Must fit the first viewport at every width ≥ 320 px
+- [X] T024 [P] [US1] Create `src/components/Offering.jsx` per contract `<Offering />`: maps `siteConfig.offerings` to a responsive grid — 1 column on mobile, 2–3 columns on wider viewports
+- [X] T025 [P] [US1] Create `src/components/About.jsx` per contract `<About />`: renders `about` paragraphs and `parentOrg`, constrained to ~65ch so the text does not stretch at 2560 px
+- [X] T026 [US1] Wire `Hero`, `Offering`, and `About` into the `<main>` shell in `src/App.jsx` (depends on T023, T024, T025)
 - [ ] T027 [US1] Verify responsive behaviour at 320 / 375 / 768 / 1024 / 1280 / 1920 / 2560 px per quickstart V2: no horizontal scrollbar, no clipped or overlapping text, grid reflows. Confirm `document.documentElement.scrollWidth <= document.documentElement.clientWidth` at every width
 
 **Checkpoint**: User Story 1 is fully functional and shippable on its own — this is the MVP
@@ -96,17 +96,17 @@ Single-project frontend layout rooted at `src/`, with `tests/` at repository roo
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Create `tests/lib/countdown.test.js` covering contract guarantees L1–L5: future date returns correct units, exact boundary (`now === launchDate`) returns `hasLaunched: true`, past date returns all zeros with no negative field, sub-minute remainder, leap-day span, and **unparseable input returns `hasLaunched: true` with zeroed units rather than `NaN`**
-- [ ] T029 [P] [US2] Create `tests/hooks/useCountdown.test.js` using `vi.useFakeTimers()` and `vi.setSystemTime()`, covering H1–H5: correct value on first render with no flash of zeros, value advances on tick, interval cleared on unmount, interval cleared once `hasLaunched` turns true, and interval restarts when `launchDate` changes
-- [ ] T030 [P] [US2] Create `tests/components/Countdown.test.jsx` covering N1–N3: digits render while counting, launch message replaces digits when `hasLaunched`, per-second digits carry `aria-hidden="true"`, and the visually-hidden summary updates only at day granularity
+- [X] T028 [P] [US2] Create `tests/lib/countdown.test.js` covering contract guarantees L1–L5: future date returns correct units, exact boundary (`now === launchDate`) returns `hasLaunched: true`, past date returns all zeros with no negative field, sub-minute remainder, leap-day span, and **unparseable input returns `hasLaunched: true` with zeroed units rather than `NaN`**
+- [X] T029 [P] [US2] Create `tests/hooks/useCountdown.test.js` using `vi.useFakeTimers()` and `vi.setSystemTime()`, covering H1–H5: correct value on first render with no flash of zeros, value advances on tick, interval cleared on unmount, interval cleared once `hasLaunched` turns true, and interval restarts when `launchDate` changes
+- [X] T030 [P] [US2] Create `tests/components/Countdown.test.jsx` covering N1–N3: digits render while counting, launch message replaces digits when `hasLaunched`, per-second digits carry `aria-hidden="true"`, and the visually-hidden summary updates only at day granularity
 
 ### Implementation for User Story 2
 
-- [ ] T031 [P] [US2] Create `src/lib/countdown.js` exporting the pure `getTimeRemaining(launchDate, now = Date.now())` returning `{ days, hours, minutes, seconds, hasLaunched, total }`. No timers, no React, no module state. Clamp all fields at 0 — never return a negative value (L1, L2, L3)
-- [ ] T032 [US2] Create `src/hooks/useCountdown.js` exporting `useCountdown(launchDate)` (depends on T031): computes the initial value synchronously so there is no flash of zeros, ticks on a 1000 ms interval, **recomputes from `Date.now()` every tick rather than decrementing a held counter** so background-tab throttling cannot desynchronise it, and clears the interval both on unmount and when `hasLaunched` becomes true
-- [ ] T033 [US2] Create `src/components/Countdown.jsx` (depends on T032) per contract N1–N5: renders days/hours/minutes/seconds with unit labels while counting and the launch message once launched; per-second digits are `aria-hidden` with a `VisuallyHidden` summary updating at day granularity; digits use tabular numerals so the layout does not jitter
-- [ ] T034 [US2] Wire `Countdown` into `src/App.jsx` between the offering and about sections (depends on T033)
-- [ ] T035 [US2] Add digit transition styling to `src/components/Countdown.jsx` (or a `@utility` block in `src/index.css` if the variant needs custom CSS), wrapped in `@media (prefers-reduced-motion: no-preference)` — the numbers themselves must always update, since they are information rather than decoration (FR-013, N4)
+- [X] T031 [P] [US2] Create `src/lib/countdown.js` exporting the pure `getTimeRemaining(launchDate, now = Date.now())` returning `{ days, hours, minutes, seconds, hasLaunched, total }`. No timers, no React, no module state. Clamp all fields at 0 — never return a negative value (L1, L2, L3)
+- [X] T032 [US2] Create `src/hooks/useCountdown.js` exporting `useCountdown(launchDate)` (depends on T031): computes the initial value synchronously so there is no flash of zeros, ticks on a 1000 ms interval, **recomputes from `Date.now()` every tick rather than decrementing a held counter** so background-tab throttling cannot desynchronise it, and clears the interval both on unmount and when `hasLaunched` becomes true
+- [X] T033 [US2] Create `src/components/Countdown.jsx` (depends on T032) per contract N1–N5: renders days/hours/minutes/seconds with unit labels while counting and the launch message once launched; per-second digits are `aria-hidden` with a `VisuallyHidden` summary updating at day granularity; digits use tabular numerals so the layout does not jitter
+- [X] T034 [US2] Wire `Countdown` into `src/App.jsx` between the offering and about sections (depends on T033)
+- [X] T035 [US2] Add digit transition styling to `src/components/Countdown.jsx` (or a `@utility` block in `src/index.css` if the variant needs custom CSS), wrapped in `@media (prefers-reduced-motion: no-preference)` — the numbers themselves must always update, since they are information rather than decoration (FR-013, N4)
 
 **Checkpoint**: User Stories 1 and 2 both work independently
 
@@ -120,13 +120,13 @@ Single-project frontend layout rooted at `src/`, with `tests/` at repository roo
 
 ### Tests for User Story 3
 
-- [ ] T036 [P] [US3] Create `tests/components/Contact.test.jsx` covering T1–T5: `mailto:` link renders unconditionally, **the social block is entirely absent when `socials` is `[]`** (no empty container, no placeholder), populated channels render with `target="_blank"` and `rel="noopener noreferrer"`, each link's accessible name is its `label` with the icon `aria-hidden`, and an unknown icon `id` falls back to the text label rather than a broken `<use>`
+- [X] T036 [P] [US3] Create `tests/components/Contact.test.jsx` covering T1–T5: `mailto:` link renders unconditionally, **the social block is entirely absent when `socials` is `[]`** (no empty container, no placeholder), populated channels render with `target="_blank"` and `rel="noopener noreferrer"`, each link's accessible name is its `label` with the icon `aria-hidden`, and an unknown icon `id` falls back to the text label rather than a broken `<use>`
 
 ### Implementation for User Story 3
 
-- [ ] T037 [P] [US3] Replace `public/icons.svg` with a sprite containing only channels the club actually operates (LinkedIn / Instagram / X), each as `<symbol id="{id}-icon">` matching `socials[].id`. **Remove the Vite starter symbols** — bluesky, discord, github, and documentation are dev-template cruft, not club channels
-- [ ] T038 [US3] Create `src/components/Contact.jsx` per contract T1–T5: renders the `mailto:` route from `siteConfig.contactEmail` unconditionally, and renders the social list **only when `socials.length > 0`**, referencing sprite symbols via `<use>` (depends on T037)
-- [ ] T039 [US3] Wire `Contact` into the `<footer>` landmark in `src/App.jsx` (depends on T038)
+- [X] T037 [P] [US3] Replace `public/icons.svg` with a sprite containing only channels the club actually operates (LinkedIn / Instagram / X), each as `<symbol id="{id}-icon">` matching `socials[].id`. **Remove the Vite starter symbols** — bluesky, discord, github, and documentation are dev-template cruft, not club channels
+- [X] T038 [US3] Create `src/components/Contact.jsx` per contract T1–T5: renders the `mailto:` route from `siteConfig.contactEmail` unconditionally, and renders the social list **only when `socials.length > 0`**, referencing sprite symbols via `<use>` (depends on T037)
+- [X] T039 [US3] Wire `Contact` into the `<footer>` landmark in `src/App.jsx` (depends on T038)
 - [ ] T040 [US3] Verify keyboard access per quickstart V6: tab from the top of the page, confirm every interactive element is reachable in visual order with a **visible** focus indicator and no focus trap
 
 **Checkpoint**: All three user stories are independently functional

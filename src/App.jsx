@@ -1,4 +1,8 @@
-import VisuallyHidden from './components/VisuallyHidden.jsx'
+import About from './components/About.jsx'
+import Contact from './components/Contact.jsx'
+import Countdown from './components/Countdown.jsx'
+import Hero from './components/Hero.jsx'
+import Offering from './components/Offering.jsx'
 
 function App() {
   return (
@@ -11,10 +15,15 @@ function App() {
       </a>
 
       <main id="main">
-        <VisuallyHidden as="h1">Experts Circle</VisuallyHidden>
+        <Hero />
+        <Offering />
+        <Countdown />
+        <About />
       </main>
 
-      <footer />
+      <footer>
+        <Contact />
+      </footer>
     </>
   )
 }
