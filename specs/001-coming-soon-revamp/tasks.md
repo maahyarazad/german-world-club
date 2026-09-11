@@ -29,15 +29,15 @@ Single-project frontend layout rooted at `src/`, with `tests/` at repository roo
 
 **Purpose**: Toolchain and safety net before any source changes
 
-- [ ] T001 Initialise version control at repository root: run `git init`, confirm `.gitignore` covers `node_modules` and `dist`, then `git add -A && git commit -m "baseline: legacy placeholder page"` — **this repo is not currently under version control and Phase 2 deletes image assets permanently**
-- [ ] T002 Install styling dependencies: `npm install tailwindcss@^4.3.3 @tailwindcss/vite@^4.3.3`
-- [ ] T003 Install test dependencies: `npm install -D vitest@^4 @testing-library/react@^17 @testing-library/jest-dom jsdom vitest-axe`
-- [ ] T004 Register the Tailwind plugin in `vite.config.js`: import `tailwindcss from '@tailwindcss/vite'` and add `tailwindcss()` to the `plugins` array alongside the existing `react()` — do NOT create `tailwind.config.js` or a PostCSS config (Tailwind v4 is CSS-first, per research R3)
-- [ ] T005 Add the Vitest `test` block to `vite.config.js`: `environment: 'jsdom'`, `globals: true`, `setupFiles: './tests/setup.js'`, `css: true`
-- [ ] T006 [P] Create `tests/setup.js` importing `@testing-library/jest-dom/vitest` and registering `vitest-axe/extend-expect`
-- [ ] T007 [P] Add `"test": "vitest run"` and `"test:watch": "vitest"` scripts to `package.json`
-- [ ] T008 [P] Extend `eslint.config.js` with a second config block for `tests/**/*.{js,jsx}` that adds `globals.vitest` to `languageOptions.globals`
-- [ ] T009 Verify the toolchain: `npm run dev` starts clean, `npm test` runs with zero tests found (not an error), `npm run lint` passes
+- [X] T001 Initialise version control at repository root: run `git init`, confirm `.gitignore` covers `node_modules` and `dist`, then `git add -A && git commit -m "baseline: legacy placeholder page"` — **this repo is not currently under version control and Phase 2 deletes image assets permanently**
+- [X] T002 Install styling dependencies: `npm install tailwindcss@^4.3.3 @tailwindcss/vite@^4.3.3`
+- [X] T003 Install test dependencies: `npm install -D vitest@^4 @testing-library/react@^17 @testing-library/jest-dom jsdom vitest-axe`
+- [X] T004 Register the Tailwind plugin in `vite.config.js`: import `tailwindcss from '@tailwindcss/vite'` and add `tailwindcss()` to the `plugins` array alongside the existing `react()` — do NOT create `tailwind.config.js` or a PostCSS config (Tailwind v4 is CSS-first, per research R3)
+- [X] T005 Add the Vitest `test` block to `vite.config.js`: `environment: 'jsdom'`, `globals: true`, `setupFiles: './tests/setup.js'`, `css: true`
+- [X] T006 [P] Create `tests/setup.js` importing `@testing-library/jest-dom/vitest` and registering `vitest-axe/extend-expect`
+- [X] T007 [P] Add `"test": "vitest run"` and `"test:watch": "vitest"` scripts to `package.json`
+- [X] T008 [P] Extend `eslint.config.js` with a second config block for `tests/**/*.{js,jsx}` that adds `globals.vitest` to `languageOptions.globals`
+- [X] T009 Verify the toolchain: `npm run dev` starts clean, `npm test` runs with zero tests found (not an error), `npm run lint` passes
 
 **Checkpoint**: Tailwind compiles, Vitest runs, baseline committed
 
@@ -49,16 +49,16 @@ Single-project frontend layout rooted at `src/`, with `tests/` at repository roo
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T010 [P] Rewrite `src/index.css`: replace the entire file with `@import "tailwindcss";` followed by an `@theme` block defining the brand tokens from research R4 — `--color-brand-maroon: #750A04`, `--color-brand-red: #AE2835`, `--color-brand-crimson: #CC0033`, `--color-brand-gold: #C9A227`, `--color-brand-cream: #FFF8F0`, `--color-brand-blush: #F5D0D0`, `--color-brand-ink: #1A0B0A`. **Delete the `body { overflow: hidden }` rule and the `body-bg.jpg` background** — that rule is what makes the page unscrollable
-- [ ] T011 [P] Create `src/config/site.js` per [contracts/site-config.md](./contracts/site-config.md): export a frozen `siteConfig` with `brandName`, `parentOrg`, `tagline`, `status`, `launchDate` (ISO 8601 **with explicit `+04:00` offset**), `description`, `offerings` (3–4 items with unique `id`), `about` (1–3 paragraphs), `contactEmail`, and `socials: []`. Support `VITE_LAUNCH_DATE` override with a fallback that never yields an unparseable date (guarantee C3). Mark every club-owned value with a `// PLACEHOLDER — club to supply` comment; invent no real email or URL (guarantee C6)
-- [ ] T012 [P] Create `tests/config/site.test.js` asserting contract guarantees C1–C6: object is frozen, `new Date(launchDate)` is valid, `Array.isArray(socials)`, `offerings` ids unique, no field contains an invented address
-- [ ] T013 [P] Create `src/components/VisuallyHidden.jsx`: renders screen-reader-only text using clip-based hiding (never `display:none`, which removes it from the accessibility tree); accepts an `as` prop and `children`
-- [ ] T014 [P] Create `src/components/BrandMark.jsx`: inline SVG "EC" monogram using `currentColor` and the brand tokens, `role="img"` with an accessible name of `siteConfig.brandName`, accepting `size` and `className` props. **This is a documented placeholder** — the repo contains no official logo (research R7, plan open item 2)
-- [ ] T015 Rewrite `src/App.jsx` as a layout shell: remove the `import './App.css'` line and the three legacy `div.upper/.middle/.lower` bands, render a single `<main>` landmark plus a `<footer>` landmark with section placeholders in the order hero → offering → countdown → about → contact
-- [ ] T016 Delete legacy files after T015 removes their last reference: `src/App.css`, `src/assets/bg/` (all four JPEGs), `src/assets/hero.png`, `src/assets/react.svg`, `src/assets/vite.svg`. Leave `sample-html.html` untouched — it is the preserved reference copy
-- [ ] T017 [P] Update `index.html` per contract D1–D6: keep `lang="en"`, **add the missing `<meta name="viewport" content="width=device-width, initial-scale=1">`** (the current file has none, which alone breaks mobile rendering), replace the bare-domain `<title>` with a brand title, and add `<meta name="description">`, Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`), `twitter:card`, and `<meta name="theme-color" content="#750A04">`
-- [ ] T018 [P] Replace `public/favicon.svg` with a brand-coloured mark derived from the `BrandMark` geometry — the current file is the Vite starter logo in `#863bff`
-- [ ] T019 Verify the foundation: `npm run dev` renders an empty but scrollable page with no console errors, no broken asset imports, and no Vite template imagery anywhere
+- [X] T010 [P] Rewrite `src/index.css`: replace the entire file with `@import "tailwindcss";` followed by an `@theme` block defining the brand tokens from research R4 — `--color-brand-maroon: #750A04`, `--color-brand-red: #AE2835`, `--color-brand-crimson: #CC0033`, `--color-brand-gold: #C9A227`, `--color-brand-cream: #FFF8F0`, `--color-brand-blush: #F5D0D0`, `--color-brand-ink: #1A0B0A`. **Delete the `body { overflow: hidden }` rule and the `body-bg.jpg` background** — that rule is what makes the page unscrollable
+- [X] T011 [P] Create `src/config/site.js` per [contracts/site-config.md](./contracts/site-config.md): export a frozen `siteConfig` with `brandName`, `parentOrg`, `tagline`, `status`, `launchDate` (ISO 8601 **with explicit `+04:00` offset**), `description`, `offerings` (3–4 items with unique `id`), `about` (1–3 paragraphs), `contactEmail`, and `socials: []`. Support `VITE_LAUNCH_DATE` override with a fallback that never yields an unparseable date (guarantee C3). Mark every club-owned value with a `// PLACEHOLDER — club to supply` comment; invent no real email or URL (guarantee C6)
+- [X] T012 [P] Create `tests/config/site.test.js` asserting contract guarantees C1–C6: object is frozen, `new Date(launchDate)` is valid, `Array.isArray(socials)`, `offerings` ids unique, no field contains an invented address
+- [X] T013 [P] Create `src/components/VisuallyHidden.jsx`: renders screen-reader-only text using clip-based hiding (never `display:none`, which removes it from the accessibility tree); accepts an `as` prop and `children`
+- [X] T014 [P] Create `src/components/BrandMark.jsx`: inline SVG "EC" monogram using `currentColor` and the brand tokens, `role="img"` with an accessible name of `siteConfig.brandName`, accepting `size` and `className` props. **This is a documented placeholder** — the repo contains no official logo (research R7, plan open item 2)
+- [X] T015 Rewrite `src/App.jsx` as a layout shell: remove the `import './App.css'` line and the three legacy `div.upper/.middle/.lower` bands, render a single `<main>` landmark plus a `<footer>` landmark with section placeholders in the order hero → offering → countdown → about → contact
+- [X] T016 Delete legacy files after T015 removes their last reference: `src/App.css`, `src/assets/bg/` (all four JPEGs), `src/assets/hero.png`, `src/assets/react.svg`, `src/assets/vite.svg`. Leave `sample-html.html` untouched — it is the preserved reference copy
+- [X] T017 [P] Update `index.html` per contract D1–D6: keep `lang="en"`, **add the missing `<meta name="viewport" content="width=device-width, initial-scale=1">`** (the current file has none, which alone breaks mobile rendering), replace the bare-domain `<title>` with a brand title, and add `<meta name="description">`, Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`), `twitter:card`, and `<meta name="theme-color" content="#750A04">`
+- [X] T018 [P] Replace `public/favicon.svg` with a brand-coloured mark derived from the `BrandMark` geometry — the current file is the Vite starter logo in `#863bff`
+- [X] T019 Verify the foundation: `npm run dev` renders an empty but scrollable page with no console errors, no broken asset imports, and no Vite template imagery anywhere
 
 **Checkpoint**: Design tokens live, config readable, legacy layout gone — user stories can now begin in parallel
 
