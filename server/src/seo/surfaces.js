@@ -1,0 +1,86 @@
+/**
+ * The §10.1 crawl-posture table — the single source driving three things:
+ * route postures, the generated robots.txt, and the X-Robots-Tag header.
+ *
+ * Held in code rather than in the database because it is a design decision
+ * reviewed in a pull request, not an operational setting, and because a startup
+ * gate depends on it.
+ *
+ * §10.1: "Every surface declares its crawl posture. Nothing is left
+ * undeclared." Adding a gated surface here disallows it in robots.txt by
+ * construction, rather than by remembering to edit a static file.
+ */
+
+/** @typedef {{ name: string, prefixes: string[], public: boolean, indexed: boolean, why: string }} Surface */
+
+/** @type {Surface[]} */
+export const SURFACES = Object.freeze([
+  // --- Public and indexed ---------------------------------------------------
+  { name: 'landing', prefixes: ['/'], public: true, indexed: true, why: 'First point of contact for all audiences' },
+  { name: 'magazine', prefixes: ['/magazine', '/news'], public: true, indexed: true, why: 'Primary organic-traffic driver' },
+  { name: 'partners', prefixes: ['/partners'], public: true, indexed: true, why: 'Monetized — sponsors pay for this visibility' },
+  { name: 'outlets', prefixes: ['/outlets'], public: true, indexed: true, why: 'Monetized — local-business presence per branch' },
+  { name: 'events-public', prefixes: ['/events'], public: true, indexed: true, why: 'Drives awareness and partner/press interest' },
+  { name: 'recaps', prefixes: ['/recaps'], public: true, indexed: true, why: 'Credibility content; galleries need alt text' },
+  { name: 'institutional', prefixes: ['/committees', '/about', '/legal', '/imprint'], public: true, indexed: true, why: 'Institutional credibility' },
+  { name: 'crawl-control', prefixes: ['/robots.txt', '/sitemap.xml'], public: true, indexed: false, why: 'Directives themselves are not content' },
+  { name: 'media-delivery', prefixes: ['/media'], public: true, indexed: false, why: 'Derivatives are referenced by pages, not indexed as pages' },
+  { name: 'health', prefixes: ['/health'], public: true, indexed: false, why: 'Operational endpoint' },
+
+  // --- Gated, never indexed ------------------------------------------------
+  { name: 'portal', prefixes: ['/portal'], public: false, indexed: false, why: 'Member PII — gated' },
+  { name: 'threads', prefixes: ['/threads'], public: false, indexed: false, why: 'Member-only discussion; invite-only club' },
+  { name: 'messages', prefixes: ['/messages'], public: false, indexed: false, why: 'Private correspondence' },
+  { name: 'marketplace', prefixes: ['/marketplace'], public: false, indexed: false, why: 'Member-only classifieds' },
+  { name: 'checkout', prefixes: ['/checkout', '/register'], public: false, indexed: false, why: 'Transactional, member-only' },
+  { name: 'invitations', prefixes: ['/invite'], public: false, indexed: false, why: 'One-time tokens; must never be crawled' },
+  { name: 'admin', prefixes: ['/admin'], public: false, indexed: false, why: 'Back-office' },
+  { name: 'auth', prefixes: ['/auth'], public: false, indexed: false, why: 'Credential endpoints' },
+  { name: 'api', prefixes: ['/api'], public: false, indexed: false, why: 'Machine interface' },
+])
+
+const GATED_DEFAULT = Object.freeze({
+  name: 'unknown',
+  public: false,
+  indexed: false,
+  why: 'Undeclared surfaces are treated as gated — silence must never widen exposure',
+})
+
+/**
+ * Every prefix a crawler must be told to stay out of (FR-024).
+ *
+ * Only *gated* surfaces are disallowed. `Disallow` and `noindex` do different
+ * jobs: Disallow stops the fetch, noindex stops the listing. Public-but-not-
+ * indexed surfaces (robots.txt, the sitemap, media derivatives) must stay
+ * fetchable — disallowing `/media` would stop a crawler retrieving the images
+ * public pages reference, which would harm the very partner visibility §10
+ * exists to protect. Those surfaces carry `X-Robots-Tag: noindex` instead.
+ */
+export const disallowedPrefixes = () =>
+  SURFACES.filter((s) => !s.public && s.prefixes[0] !== '/').flatMap((s) => s.prefixes)
+
+/**
+ * Resolve the posture for a request.
+ *
+ * The route's own declaration wins when it is explicit, because that is what
+ * the startup gate verifies. The URL table is the fallback, and an unmatched
+ * URL resolves to *gated* — erring toward less exposure, never more.
+ */
+export function postureFor(authConfig, url = '/') {
+  const path = String(url).split('?')[0]
+
+  const matched = SURFACES
+    .filter((s) => s.prefixes.some((p) => (p === '/' ? path === '/' : path === p || path.startsWith(`${p}/`))))
+    // Longest prefix wins, so '/events/x/register' does not match '/events'.
+    .sort((a, b) => Math.max(...b.prefixes.map((p) => p.length)) - Math.max(...a.prefixes.map((p) => p.length)))[0]
+
+  if (authConfig?.audience === 'public') {
+    return { ...(matched ?? { ...GATED_DEFAULT, public: true }), public: true, indexed: matched ? matched.indexed : false }
+  }
+  if (authConfig?.audience === 'member' || authConfig?.audience === 'staff') {
+    return { ...(matched ?? GATED_DEFAULT), public: false, indexed: false }
+  }
+  return matched ?? GATED_DEFAULT
+}
+
+export const surfaceByName = (name) => SURFACES.find((s) => s.name === name)

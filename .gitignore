@@ -30,3 +30,8 @@ dist-ssr
 
 # Test coverage
 coverage/
+
+# Server
+server/.env
+server/coverage/
+server/var/

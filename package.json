@@ -1,17 +1,17 @@
 {
-  "name": "my-app",
+  "name": "gwc-platform",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "private": true,
+  "description": "German World Club platform — one API serving member web, mobile, and staff admin",
   "type": "module",
-  "dependencies": {
-    "@fastify/static": "^10.1.3",
-    "fastify": "^5.12.3"
+  "license": "ISC",
+  "workspaces": [
+    "server",
+    "client",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   }
 }
