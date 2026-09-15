@@ -1,24 +1,42 @@
-# German Emirates Club — Business Description
+# German World Club — Business Description
 
 This document describes the **business logic and behavior** of the existing application, independent of implementation technology, so the same system can be rebuilt on a different stack while preserving how it actually works for members, staff, and partners.
-
-It was produced by scanning the current PHP codebase and its supporting Node.js API layer. It intentionally excludes the two React/Node.js admin applications (`admin/gec-node-admin` and `admin/gec-app-cms`), which are newer front-ends being built on top of this same business logic — they are not the source of truth for behavior, this legacy system is.
-
-> Note on scope: the API layer (`api/dev|prod|staging`) turned out to be a Node.js/Express service rather than PHP, and `admin/gec-events/` is a small PHP mini-app (kept in scope). Both are included below because they implement real business rules of the same product, even though `api/*` isn't PHP.
 
 ---
 
 ## 1. What the product is
 
-**German Emirates Club (GEC)** is an invite-only social/networking club for German-speaking expatriates in the UAE, plus:
-- A **companion mobile app** (backed by the Node.js API), tied into the same member data as the website.
+**German World Club (GWC)** is an invite-only social/networking club for German-speaking expatriates in the UAE, plus:
+- A **companion mobile app**, tied into the same member data as the website.
 - A **partner/sponsor discount network** monetized through paid partner listings and member benefit redemption.
 - A **staff back-office** for running memberships, events, billing, content moderation, and communications.
 
-There are effectively three "faces" of the same domain model:
-1. **Classic website + member portal** (PHP, session/cookie based, German-first).
-2. **Mobile app API** (Node.js, JWT + OTP based).
-3. **Staff admin console** (PHP, AJAX fragment-based, role/permission gated).
+### 1.1 Three faces of one domain model
+
+All three surfaces below are clients of a **single backend and a single database**. They differ in audience and presentation, never in business rules — a rule enforced in one face must be enforced identically in the others, since the legacy system's most persistent defects came from web and mobile implementing the same rule twice and drifting apart.
+
+1. **Member web app + public site** — German-first. Serves both the gated member portal (profile, contacts, Threads, messaging, marketplace, event registration) and the public, indexable surface (landing pages, magazine, partner listings, public event pages).
+2. **Mobile app** — the companion app for members, covering profile, offers/redemption, event RSVP, push notifications, Threads, and real-time messaging.
+3. **Staff admin console** — role/permission gated back-office (see §11), used to run memberships, events, billing, partners, moderation, and communications.
+
+### 1.2 Target technology stack
+
+| Layer | Technology | Role |
+|---|---|---|
+| Backend API | **Fastify** (Node.js) | One API serving all three faces — web, mobile, and admin |
+| Database | **PostgreSQL** | Single relational store for the whole domain model (§2) |
+| Real-time transport | **WebSocket** (served by Fastify) | Member-to-member messaging, delivery/read state, live notifications (§7) |
+| Web frontend | **React + Vite** | Member portal, public site, and staff admin console |
+| Mobile app | **React Native** | Native iOS and Android from one codebase |
+
+**Constraints this stack has to satisfy:**
+
+- **The public surface cannot be client-rendered only.** §10.2 requires public pages to deliver real content in the initial HTML response. A plain client-side React/Vite bundle does not meet this, so public pages (landing, magazine, partner listings, public event pages) require server-side rendering or build-time pre-rendering. The gated portal and admin console are never indexed (§10.1) and may remain client-rendered.
+- **One rule set, three clients.** Authentication *mechanism* legitimately differs per face (cookie/session for web, token + OTP for mobile — §6.2), but entitlement, pricing, capacity, quota, and moderation rules are computed server-side in the Fastify API so no client can diverge from them.
+- **Relational integrity is load-bearing.** Invitation quotas, event capacity across sources, membership-card validity windows, and redemption counters are all correctness-critical under concurrency and belong in PostgreSQL constraints and transactions rather than in application-level checks.
+- **Real-time is additive, not authoritative.** WebSocket delivery is how messages arrive promptly; the message itself is persisted first, so a dropped socket never loses a message (§7).
+
+> **Legacy note:** the behavior documented in the rest of this file was derived from the previous implementation — a PHP website and staff console alongside a Node.js mobile API. That system is the **source of truth for behavior only**, not for architecture; the stack above replaces it. Legacy implementation practices are explicitly *not* carried forward — notably the unsalted MD5 password hashing of the old PHP layer, which was never an intended business rule and must be replaced with a modern password hashing algorithm.
 
 ---
 
@@ -36,6 +54,7 @@ There are effectively three "faces" of the same domain model:
 | Thread Post | Member public post in a Threads-style feed | author, text/media, reply-to (nesting), like count, repost, moderation flags |
 | Real-Time Message | A message exchanged member-to-member over a live WebSocket connection | conversation id, sender, body, delivery/read state, timestamp |
 | Magazine Article / News | Editorial/partner content | category, publish window |
+| SEO Metadata | Search/share presentation attached to any public content record (partner, article, event, page) | url slug, SEO title, meta description, share image, indexable flag, last-modified |
 | Committee | A club sub-organization | members |
 | Support Ticket / Spam Report | Trust & safety records | reporter, reported content, staff resolution |
 | Newsletter / Mass Message | Bulk communication to members | schedule, recipients, open/sent counters |
@@ -90,6 +109,7 @@ There are effectively three "faces" of the same domain model:
 - **Event state machine** (admin-controlled): Not opened → Open (sub-phases: early/standard/late, computed automatically) → Closed (manual) → Review (post-event recap published, only allowed after the event date has passed).
 - After an event, staff publish a **recap** (text + photo gallery) and can generate printable attendance/guest lists with headcounts, payment status, and amounts for on-site check-in.
 - A parallel, simplified mobile-app event flow exists ("attend" / "cancel" / "attend with guests") for RSVP-only use cases without the full billing engine.
+- **Public visibility**: an event has a public, indexable description page (title, date, venue, and what it is) that is separate from the member-only registration and checkout flow — see §10.1. Its published availability must track the event's real registration state so that what search engines and share previews advertise matches what a visitor actually finds.
 
 ---
 
@@ -102,6 +122,7 @@ There are effectively three "faces" of the same domain model:
   1. A user requests a coupon code for a specific partner offer; the system issues (or reuses) a code composed of a category prefix and a sequence number.
   2. At redemption time (merchant-facing), the code is validated against a **merchant terminal PIN**, daily redemption counters (global and per-category) are checked, a redemption transaction is logged with a generated reference number, the user's offer is marked consumed, and the offer's remaining availability count is decremented.
 - This effectively implements a lightweight coupon/voucher ledger with anti-abuse counters, separate from the membership-card discount mechanism used for events.
+- **Search visibility is part of what the partner buys.** Partner and outlet pages are public and indexable, carry staff-editable SEO metadata and local-business structured data (address, geo, hours, discount), and their indexing status follows the listing contract — a lapsed contract must stop being advertised for indexing. See §10.4–§10.5 and §10.8.
 
 ---
 
@@ -158,13 +179,87 @@ The mobile app is a single-tenant application for German World Club members, tie
 
 ## 10. Search engine optimization (SEO)
 
-- **Public, unauthenticated pages** — the coming-soon/landing page, magazine articles/news, partner listing pages, and public event pages — must be crawlable and indexable: server-rendered (or pre-rendered) HTML rather than client-only rendering, so content is present on first load without requiring JavaScript execution.
-- Each public page needs **unique, content-derived metadata**: `<title>`, meta description, canonical URL, and Open Graph/Twitter card tags (title, description, image) for link-preview rendering when shared.
-- **Structured data (JSON-LD)** should be emitted where applicable — `Organization`/`LocalBusiness` for partner pages, `Event` for public event pages, `Article` for magazine/news content — to support rich results.
-- A **sitemap.xml** (auto-generated, kept in sync as content is published/unpublished/expired) and a **robots.txt** must exist; gated/member-only areas (portal, marketplace, Threads, messaging) are excluded from indexing (`noindex` / disallow).
-- URLs for public content should be **human-readable and stable** (slug-based, not internal numeric IDs), since existing indexed URLs represent SEO equity that should be preserved or 301-redirected during the rebuild.
-- Partner and magazine content editors should be able to set/override the SEO title, description, and share image per item — this is already an implicit staff need (paid partner listings depend on being found) and should be made an explicit, first-class field on those content types rather than derived automatically.
-- Performance is an SEO factor as well as a UX one: public pages should meet reasonable Core Web Vitals targets (fast initial paint, minimal layout shift) since this affects both ranking and paid-partner visibility, which the business monetizes.
+SEO is treated as an **application-wide capability, not a marketing add-on**. Membership growth is invite-only and deliberately not driven by search — but two parts of the business depend directly on being found: the **paid partner network** (sponsors buy listings whose value is visibility) and **public editorial/event content**, which is how prospective members, partners, and press discover the club in the first place. Every surface of the application must therefore make an explicit, deliberate decision about whether it is public and indexable or gated and excluded — silence is not an acceptable default in either direction.
+
+### 10.1 Indexability by surface
+
+Every surface declares its crawl posture. Nothing is left undeclared.
+
+| Surface | Public | Indexed | Rationale |
+|---|---|---|---|
+| Landing / coming-soon / marketing pages | Yes | Yes | First point of contact for all audiences |
+| Magazine articles & news | Yes | Yes | Primary organic-traffic driver |
+| Partner listing & outlet pages | Yes | Yes | **Monetized** — sponsors pay for this visibility |
+| Public event pages (pre-event) | Yes | Yes | Drives awareness and partner/press interest |
+| Event recaps & photo galleries | Yes | Yes (text) | Credibility content; galleries need alt text |
+| Committee / about / legal pages | Yes | Yes | Institutional credibility |
+| Member portal (profile, contacts, settings) | No | **Never** | Member PII — gated |
+| Threads feed & posts | No | **Never** | Member-only discussion; invite-only club |
+| Real-time messaging | No | **Never** | Private correspondence |
+| Marketplace listings | No | **Never** | Member-only classifieds |
+| Event registration & checkout | No | **Never** | Transactional, member-only |
+| Invitation / registration-code links | No | **Never** | One-time tokens; must never be crawled |
+| Staff admin console | No | **Never** | Back-office |
+
+- Gated areas must be excluded by **both** access control and crawl directives — an authenticated redirect alone is not sufficient, because URL shapes leak through referrers and shared links.
+- Member-only content must never be partially rendered to unauthenticated visitors "for SEO value." Doing so would contradict the invite-only model that defines the club.
+
+### 10.2 Rendering requirement
+
+- Public pages must deliver their **meaningful content in the initial HTML response**, without requiring client-side JavaScript execution. Whether this is achieved by server-side rendering or build-time pre-rendering is an implementation choice; the business requirement is that a crawler, a link-preview bot, or a visitor with a slow connection receives real content on first load.
+- This is a genuine constraint, not a preference: social/link-preview crawlers and most non-Google crawlers do not execute JavaScript at all, so a client-only rendering strategy silently costs the club its share links and its partner visibility.
+
+### 10.3 Per-page metadata
+
+- Every public page carries **unique, content-derived metadata**: page title, meta description, canonical URL, and social preview tags (Open Graph and Twitter card — title, description, image with dimensions and alt text).
+- Metadata must derive from a **single source of truth** shared with the page content. Hand-maintained metadata that duplicates on-page copy drifts and is a recurring defect source.
+- Titles and descriptions must be unique per page; duplicated boilerplate across partner or article pages suppresses all of them.
+
+### 10.4 Structured data
+
+Machine-readable structured data is emitted where the content type supports it, so listings qualify for rich results:
+
+- **Organization** for the club itself, on every public page.
+- **LocalBusiness** for partner listings and each branch/outlet — with address, geo coordinates (already captured for events/outlets), opening hours, and the member discount where expressible.
+- **Event** for public event pages — date, location, and availability, kept consistent with the event's real registration state.
+- **Article** for magazine and news content — headline, author, publish and modified dates.
+- **BreadcrumbList** for nested content.
+
+Structured data must reflect actual system state; publishing an `Event` as available after registration has closed, or a partner as active after their contract lapsed, is both an SEO penalty and a factual misstatement to members.
+
+### 10.5 Crawl control and sitemaps
+
+- A **sitemap** is generated from live content state, not hand-maintained — entries appear when content is published and disappear when it is unpublished, expires, or (for partners) when the listing contract lapses past its grace period.
+- Sitemap entries carry last-modified timestamps drawn from the content's real modification date.
+- A **robots directive file** declares crawl permissions and points at the sitemap; all gated areas in §10.1 are disallowed.
+- **Expired partner listings** are a specific case: when a contract lapses, the page must stop being advertised for indexing, but the business decision of whether to return "gone", redirect to the partner category, or keep a non-indexed page must be made deliberately rather than by accident.
+
+### 10.6 URLs, canonicalisation, and status-code correctness
+
+- Public URLs are **human-readable and slug-based**, never bare internal numeric IDs.
+- URLs are **stable**. Existing indexed URLs from the legacy system represent accumulated SEO equity; the rebuild must preserve them or permanently redirect (301) old paths to their new equivalents. Silently dropping the legacy URL set would forfeit the club's existing search presence.
+- Exactly **one canonical origin** is served (a single host and scheme); all other variants permanently redirect to it.
+- **A URL that does not exist must return a "not found" status, never a success status carrying fallback content.** A catch-all that answers every unknown path with the homepage at HTTP 200 creates unlimited duplicate indexable URLs and is a real, easily-introduced defect in single-page application delivery — it must be explicitly prevented and regression-tested.
+
+### 10.7 Language and regional targeting
+
+- The club is German-first and serves German-speaking expatriates in the UAE, with English as a secondary audience. Where a page exists in more than one language, each version must declare its language and cross-reference its alternates, so search engines serve the right variant rather than treating the translations as duplicates.
+- Regional relevance (UAE / Germany) is reinforced through structured data address and geo information rather than through separate country sites.
+
+### 10.8 Staff-managed SEO fields
+
+- Partner and editorial content records carry **first-class, staff-editable SEO fields** — SEO title, meta description, social share image, and URL slug — overriding the values otherwise derived from the content.
+- These sit inside the existing five-flag permission matrix (§11) like any other content attribute, so SEO editing is a grantable staff privilege rather than a developer task.
+- Because partner visibility is a **paid deliverable**, staff need to see and adjust how a partner's page presents in search and in shared links without engineering involvement.
+
+### 10.9 Performance as an SEO factor
+
+- Public pages must meet reasonable Core Web Vitals targets (fast initial paint, responsiveness, minimal layout shift). Performance affects both ranking and conversion, and therefore directly affects the visibility the club has sold to its partners.
+- Images — event galleries, partner logos, article headers — are the dominant weight on public pages and must be served in appropriate sizes and formats with explicit dimensions, since unsized images are the most common cause of layout shift.
+
+### 10.10 Measurability
+
+- SEO requirements are verifiable, not aspirational: indexability posture per surface, presence and uniqueness of metadata, validity of structured data, correct status codes for missing pages, and Core Web Vitals thresholds should all be checked automatically as part of the delivery pipeline, the same way accessibility and functional behaviour are.
 
 ---
 
@@ -173,6 +268,7 @@ The mobile app is a single-tenant application for German World Club members, tie
 - Staff accounts have two special flags — **admin** (department admin) and **superadmin** (full bypass of all checks) — plus, for every other admin module, a **five-flag permission matrix**: read, write, edit, delete, status(enable/disable). This is finer-grained than a typical single "role" system and should be preserved as-is.
 - Business rule: lower-privileged staff can never edit or remove admin/superadmin accounts or their permissions; only a superadmin can manage other admins.
 - Staff can: manage members (search, lock/unlock, end membership, edit privileges, assign as partner contact/committee member/thread moderator, leave internal notes), manage events end-to-end (create, price, monitor registrations, send reminders, publish recaps, export attendance), manage partners and their contracts, manage membership card orders through their fulfillment pipeline, manage committees, review invitations and content moderation queues, and configure system-wide settings (invitation quotas, inactivity thresholds, mail throttling, tax rate).
+- Staff editing any public content record (partner, article, event, marketing page) can also manage its **SEO metadata** — slug, SEO title, meta description, share image, and indexable flag — governed by the same five-flag permission matrix as the record itself (§10.8).
 - Scheduled jobs (cron) are themselves admin-managed entities: each can be enabled/disabled/deleted, and every run is logged (start, end, outcome) for auditability.
 
 ---
@@ -188,19 +284,11 @@ The mobile app is a single-tenant application for German World Club members, tie
 7. **Single active session** — logging in from a new device/session invalidates the previous one (both classic web and mobile).
 8. **Self-throttled bulk communication** — all bulk email/SMS/push sending caps batch sizes and paces sends to protect deliverability.
 9. **Per-module, five-flag staff permissions** with an admin/superadmin bypass tier — not a simple role enum.
-10. **Multi-tenant reuse** — the mobile backend serves two differently-branded programs (GEC and IFZA Rewards) from one shared data model and rule set, differentiated only by a tenant id and template selection.
+10. **Explicit crawl posture per surface** — every surface is deliberately declared public/indexable or gated/never-indexed; member data, Threads, messaging, marketplace, and invitation links are never indexed, and member-only content is never partially exposed to earn search visibility.
+11. **Public content is rendered, not assembled client-side** — public pages must deliver real content in the initial response, because link-preview and non-Google crawlers do not execute JavaScript, and partner visibility is a sold deliverable.
+12. **URL stability is an asset** — legacy indexed URLs carry accumulated SEO equity; the rebuild preserves them or permanently redirects them, and serves exactly one canonical origin.
+13. **Missing means missing** — a URL that does not exist returns a not-found status, never a success response carrying fallback content (the single-page-app soft-404 trap).
+14. **Published state must match real state** — structured data and share previews (event availability, partner active status) are generated from live system state, never from stale or optimistic copies.
+15. **One rule set across three clients** — web, mobile, and admin are presentation layers over one Fastify API; entitlement, pricing, capacity, quota, and moderation rules are computed server-side and never reimplemented per client.
 
----
 
-## 13. Known technical debt to modernize (not to replicate as "business logic")
-
-- Legacy password hashing is unsalted MD5 in the PHP/website layer — must be replaced with a modern hashing algorithm in the rebuild; this was never an intended business rule.
-- Payment gateway integration in the mobile API is currently a stub/placeholder — no live gateway is wired up there yet (the website/admin flows do use a real hosted payment page).
-- The mobile API has a legacy v1, a newer partially-migrated v2, and a separate older PHP `v2/api/` login script for the classic website — these represent migration history, not distinct business requirements. The rebuild should implement one clean version of each capability listed above.
-
----
-
-## 14. Explicitly out of scope for this document
-
-- `admin/gec-node-admin` and `admin/gec-app-cms` — newer React/Node front-ends over this same business logic; not analyzed as a source of behavior.
-- Static marketing/legal pages (careers listings, legal policy pages, campaign landing microsites, app-download pages) — these carry no server-side business logic beyond simple lead-capture forms noted above.
