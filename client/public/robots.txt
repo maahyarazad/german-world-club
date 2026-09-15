@@ -1,0 +1,5 @@
+# expertscircle.german-emirates-club.com
+User-agent: *
+Allow: /
+
+Sitemap: https://expertscircle.german-emirates-club.com/sitemap.xml
