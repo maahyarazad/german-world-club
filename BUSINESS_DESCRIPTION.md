@@ -11,13 +11,13 @@ It was produced by scanning the current PHP codebase and its supporting Node.js 
 ## 1. What the product is
 
 **German Emirates Club (GEC)** is an invite-only social/networking club for German-speaking expatriates in the UAE, plus:
-- A **companion mobile app** (backed by the Node.js API) that also serves a second, differently-branded tenant: **"IFZA Rewards"** — a card-holder discount/rewards program. Both apps share the same backend, distinguished by an `app_id`.
+- A **companion mobile app** (backed by the Node.js API), tied into the same member data as the website.
 - A **partner/sponsor discount network** monetized through paid partner listings and member benefit redemption.
 - A **staff back-office** for running memberships, events, billing, content moderation, and communications.
 
 There are effectively three "faces" of the same domain model:
 1. **Classic website + member portal** (PHP, session/cookie based, German-first).
-2. **Mobile app API** (Node.js, JWT + OTP based, serves GEC and IFZA Rewards tenants).
+2. **Mobile app API** (Node.js, JWT + OTP based).
 3. **Staff admin console** (PHP, AJAX fragment-based, role/permission gated).
 
 ---
@@ -27,14 +27,14 @@ There are effectively three "faces" of the same domain model:
 | Entity | Represents | Key attributes |
 |---|---|---|
 | Member | A club member (person) | name, salutation, contact info, birthday, nationality, employment/company/industry, interests, privacy settings |
-| Membership Card (`usr_membership`) | A paid subscription tier tied to a member | package (1/2/3), purchase date, duration, payment method, paid/shipped/active flags |
 | Invitation | The only path to becoming a member | inviter, invitee email/name, registration code, accepted/blocked/pending state |
 | Event | A club social event | title, description, location (geocoded), capacity, price tiers by registration timing, registration window |
 | Event Registration | A member's (and guests') sign-up for an event | guest count, kids/babies count, payment method, paid flag, invoice token |
 | Partner | A sponsoring business offering member discounts | category, discount %, contract start/duration, branches ("outlets"), staff contact |
 | Offer / Redemption (mobile app) | A partner discount coupon a mobile-app user can redeem | issued code, redemption counter, redemption transaction log |
 | Marketplace Listing | Member classified ad | type (vehicle / real estate / job / general), offer vs. request mode, photos |
-| Forum Thread/Post | Member discussion content | category, moderation flags, subscriptions |
+| Thread Post | Member public post in a Threads-style feed | author, text/media, reply-to (nesting), like count, repost, moderation flags |
+| Real-Time Message | A message exchanged member-to-member over a live WebSocket connection | conversation id, sender, body, delivery/read state, timestamp |
 | Magazine Article / News | Editorial/partner content | category, publish window |
 | Committee | A club sub-organization | members |
 | Support Ticket / Spam Report | Trust & safety records | reporter, reported content, staff resolution |
@@ -97,7 +97,7 @@ There are effectively three "faces" of the same domain model:
 
 - Partners are businesses offering member discounts, each with a **paid listing contract** (start date + duration in years, with a grace period) that determines whether the listing is currently "active" and shown to members.
 - Partners can have multiple branch locations ("outlets") linked to one parent listing, and a designated staff/member contact person.
-- Partner names in free-text content (forum, marketplace, magazine) are automatically hyperlinked back to the partner's page.
+- Partner names in free-text content (threads, marketplace, magazine) are automatically hyperlinked back to the partner's page.
 - **Mobile-app offer redemption** (a more structured, POS-facing flow than the website's static discount display):
   1. A user requests a coupon code for a specific partner offer; the system issues (or reuses) a code composed of a category prefix and a sequence number.
   2. At redemption time (merchant-facing), the code is validated against a **merchant terminal PIN**, daily redemption counters (global and per-category) are checked, a redemption transaction is logged with a generated reference number, the user's offer is marked consumed, and the offer's remaining availability count is decremented.
@@ -105,17 +105,15 @@ There are effectively three "faces" of the same domain model:
 
 ---
 
-## 6. Multi-tenant mobile app (rewards program)
+## 6. Mobile app
 
-The mobile API serves **two branded tenants** from one backend, distinguished by `app_id`:
-1. **German Emirates Club member app** — ties into the same member data as the website.
-2. **IFZA Rewards** — a separate card-holder rewards program (different sender email, hotline, and card/partner-ID identity fields), reusing the identical registration/approval/offer-redemption business logic.
+The mobile app is a single-tenant application for German World Club members, tied into the same member data as the website.
 
-Email templates and language (German vs. English) are selected per tenant/member.
-
-### 6.1 Access approval workflow (card verification)
-- A new mobile-app user registers, then must **submit a photo of their membership or ID card** as proof of eligibility.
-- Staff review the submission and approve or deny access (with a reason on denial); approval/denial triggers a bilingual email.
+### 6.1 Onboarding & verification workflow
+- A new mobile-app user registers by providing their **full name**, **mobile number**, **birthday**, and **location**, then verifies their mobile number.
+- The user then **verifies their email address**.
+- After verification, the user is shown a **"waiting for approval"** screen.
+- Staff review the submission and approve or deny access (with a reason on denial); approval/denial triggers an email notification.
 - "Demo"/sample accounts bypass this approval automatically, for testing/demo purposes.
 - Changing the device a user logs in from **invalidates prior approval**, forcing re-submission/re-approval — approval is tied to a specific device.
 
@@ -125,26 +123,26 @@ Email templates and language (German vs. English) are selected per tenant/member
 - A newer (in-progress) authentication redesign replaces this with a standard short-lived access token + longer-lived refresh token pair, but implements the same OTP/approval rules underneath.
 
 ### 6.3 Push notifications
-- Users register a push token; staff can broadcast notifications to all opted-in users of a tenant, with a separate "test recipients" list for pre-launch testing of notification content.
+- Users register a push token; staff can broadcast notifications to all opted-in users, with a separate "test recipients" list for pre-launch testing of notification content.
 
 ---
 
 ## 7. Member-to-member social features
 
 - **Contacts**: bidirectional relationships with confirmed/unconfirmed/bookmarked states.
-- **Internal messaging**: a private in-app inbox separate from real email, used for both system notifications (welcome messages, birthday greetings) and member-to-member messages.
-- **Forum**: categorized discussion threads with per-category moderator/administrator rights (assignable per member), thread subscriptions (email notification on reply), and read/unread tracking.
+- **Real-time messaging**: member-to-member conversations delivered live over a persistent **WebSocket connection**, replacing the old poll-on-refresh internal inbox. Covers 1:1 (and optionally group) conversations, live delivery/typing/read-receipt state, and offline members receive the message on reconnect plus a push/email notification. System notifications (welcome messages, birthday greetings) continue to ride the same conversation/notification channel.
+- **Threads**: a public, member-facing post feed modeled on a Threads-style experience (short posts, nested replies, likes, reposts, and a chronological/algorithmic feed) — **replaces the old category-based Forum**. There are no forum categories or per-category moderators; instead, posts and replies are moderated globally by staff (see Trust & safety) and members can follow one another to shape their feed. Threads support @mentions, media attachments, and a "reply" thread view (nested conversation), mirroring the interaction model of threads.com.
 - **Marketplace (classifieds)**: member-posted listings in three structured categories — vehicles (with ~40 feature checkboxes), real estate (rent/sale, rooms, size), and jobs (location, department, seniority) — each listing is either an "offer" or a "request," supports multiple photos, and a configurable contact method. Posting requires an explicit per-member permission flag and acceptance of terms.
-- **Privacy controls**: granular per-member settings control visibility of contact list, business info, activity, and birthday (and at what precision), plus per-notification-type opt-in/opt-out (new message, new contact, invite accepted, marketplace inquiry, comment reply).
+- **Privacy controls**: granular per-member settings control visibility of contact list, business info, activity, and birthday (and at what precision), plus per-notification-type opt-in/opt-out (new message, new contact, invite accepted, marketplace inquiry, thread reply/mention).
 - **Birthdays**: a daily job congratulates the member and notifies their confirmed contacts (if the member opted to share it), with an advance flag one week before.
 
 ---
 
 ## 8. Trust & safety / content moderation
 
-- Members can report abusive content (currently wired for private messages); staff review and can delete reported content.
+- Members can report abusive content — covers both real-time messages and Threads posts/replies; staff review and can delete reported content.
 - Support tickets are raised by members (or generated automatically when staff bulk-email members) and organized into staff-defined categories/mailboxes.
-- Forum moderation rights (delete, edit, close, move) are assignable per member per category.
+- Thread moderation rights (delete, hide, pin) are staff-assignable per member (global, not per-category, since Threads has no categories).
 - Bounce handling: incoming mail is monitored for delivery failures; after repeated bounces (5+) for the same address, that member's email is marked invalid and further mail is suppressed.
 
 ---
@@ -158,16 +156,28 @@ Email templates and language (German vs. English) are selected per tenant/member
 
 ---
 
-## 10. Staff administration & permissions
+## 10. Search engine optimization (SEO)
+
+- **Public, unauthenticated pages** — the coming-soon/landing page, magazine articles/news, partner listing pages, and public event pages — must be crawlable and indexable: server-rendered (or pre-rendered) HTML rather than client-only rendering, so content is present on first load without requiring JavaScript execution.
+- Each public page needs **unique, content-derived metadata**: `<title>`, meta description, canonical URL, and Open Graph/Twitter card tags (title, description, image) for link-preview rendering when shared.
+- **Structured data (JSON-LD)** should be emitted where applicable — `Organization`/`LocalBusiness` for partner pages, `Event` for public event pages, `Article` for magazine/news content — to support rich results.
+- A **sitemap.xml** (auto-generated, kept in sync as content is published/unpublished/expired) and a **robots.txt** must exist; gated/member-only areas (portal, marketplace, Threads, messaging) are excluded from indexing (`noindex` / disallow).
+- URLs for public content should be **human-readable and stable** (slug-based, not internal numeric IDs), since existing indexed URLs represent SEO equity that should be preserved or 301-redirected during the rebuild.
+- Partner and magazine content editors should be able to set/override the SEO title, description, and share image per item — this is already an implicit staff need (paid partner listings depend on being found) and should be made an explicit, first-class field on those content types rather than derived automatically.
+- Performance is an SEO factor as well as a UX one: public pages should meet reasonable Core Web Vitals targets (fast initial paint, minimal layout shift) since this affects both ranking and paid-partner visibility, which the business monetizes.
+
+---
+
+## 11. Staff administration & permissions
 
 - Staff accounts have two special flags — **admin** (department admin) and **superadmin** (full bypass of all checks) — plus, for every other admin module, a **five-flag permission matrix**: read, write, edit, delete, status(enable/disable). This is finer-grained than a typical single "role" system and should be preserved as-is.
 - Business rule: lower-privileged staff can never edit or remove admin/superadmin accounts or their permissions; only a superadmin can manage other admins.
-- Staff can: manage members (search, lock/unlock, end membership, edit privileges, assign as partner contact/committee member/forum moderator, leave internal notes), manage events end-to-end (create, price, monitor registrations, send reminders, publish recaps, export attendance), manage partners and their contracts, manage membership card orders through their fulfillment pipeline, manage committees, review invitations and content moderation queues, and configure system-wide settings (invitation quotas, inactivity thresholds, mail throttling, tax rate).
+- Staff can: manage members (search, lock/unlock, end membership, edit privileges, assign as partner contact/committee member/thread moderator, leave internal notes), manage events end-to-end (create, price, monitor registrations, send reminders, publish recaps, export attendance), manage partners and their contracts, manage membership card orders through their fulfillment pipeline, manage committees, review invitations and content moderation queues, and configure system-wide settings (invitation quotas, inactivity thresholds, mail throttling, tax rate).
 - Scheduled jobs (cron) are themselves admin-managed entities: each can be enabled/disabled/deleted, and every run is logged (start, end, outcome) for auditability.
 
 ---
 
-## 11. Cross-cutting business rules to preserve
+## 12. Cross-cutting business rules to preserve
 
 1. **Invite-only growth** — no public registration; invitation quotas and cooldowns gate growth and prevent spam.
 2. **Membership-tier discounting is entitlement-driven** — a member's active card package (not a coupon) automatically discounts event pricing (30% / 100%).
@@ -182,7 +192,7 @@ Email templates and language (German vs. English) are selected per tenant/member
 
 ---
 
-## 12. Known technical debt to modernize (not to replicate as "business logic")
+## 13. Known technical debt to modernize (not to replicate as "business logic")
 
 - Legacy password hashing is unsalted MD5 in the PHP/website layer — must be replaced with a modern hashing algorithm in the rebuild; this was never an intended business rule.
 - Payment gateway integration in the mobile API is currently a stub/placeholder — no live gateway is wired up there yet (the website/admin flows do use a real hosted payment page).
@@ -190,7 +200,7 @@ Email templates and language (German vs. English) are selected per tenant/member
 
 ---
 
-## 13. Explicitly out of scope for this document
+## 14. Explicitly out of scope for this document
 
 - `admin/gec-node-admin` and `admin/gec-app-cms` — newer React/Node front-ends over this same business logic; not analyzed as a source of behavior.
 - Static marketing/legal pages (careers listings, legal policy pages, campaign landing microsites, app-download pages) — these carry no server-side business logic beyond simple lead-capture forms noted above.
