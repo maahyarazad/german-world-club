@@ -66,6 +66,15 @@ const ROUTE_CLASSES = [
   // The generated OpenAPI document. Staff-gated rather than public: the shape
   // of the admin API is not something an invite-only club publishes.
   { name: 'openapi document', url: '/admin/openapi.json', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  // The docs UI renders that same document, so it carries the same posture —
+  // including the static bundle, which is the route @fastify/swagger-ui's own
+  // `uiHooks` would have left unauthenticated (see 15-openapi.js).
+  { name: 'docs page', url: '/admin/docs/', probe: '/admin/docs/', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  { name: 'docs index redirect', url: '/admin/docs/static/index.html', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  { name: 'docs initializer', url: '/admin/docs/static/swagger-initializer.js', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  { name: 'docs document', url: '/admin/docs/json', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  { name: 'docs document (yaml)', url: '/admin/docs/yaml', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  { name: 'docs bundle', url: '/admin/docs/static/*', probe: '/admin/docs/static/swagger-ui.css', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // Institutional pages are one route class served at several declared slugs.

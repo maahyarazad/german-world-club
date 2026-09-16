@@ -26,6 +26,11 @@ export const SURFACES = Object.freeze([
   { name: 'crawl-control', prefixes: ['/robots.txt', '/sitemap.xml'], public: true, indexed: false, why: 'Directives themselves are not content' },
   { name: 'media-delivery', prefixes: ['/media'], public: true, indexed: false, why: 'Derivatives are referenced by pages, not indexed as pages' },
   { name: 'health', prefixes: ['/health'], public: true, indexed: false, why: 'Operational endpoint' },
+  // Registered only when NODE_ENV=development, so on a deployed origin this row
+  // describes a surface that does not exist. It is declared anyway: §10.1 asks
+  // for a posture per surface, not per surface that happens to be mounted, and
+  // a developer reading the table should find the answer rather than the gap.
+  { name: 'dev-docs', prefixes: ['/swagger-ui'], public: true, indexed: false, why: 'Development-only API explorer; never mounted outside development' },
 
   // --- Gated, never indexed ------------------------------------------------
   { name: 'portal', prefixes: ['/portal'], public: false, indexed: false, why: 'Member PII — gated' },

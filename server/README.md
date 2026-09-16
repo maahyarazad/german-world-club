@@ -138,6 +138,60 @@ it — registered last, the document comes out empty.
 
 ---
 
+## The API reference
+
+`GET /admin/docs` renders the OpenAPI document as a browsable Swagger UI.
+`GET /admin/openapi.json` is the same document as JSON.
+
+**Both require a staff session holding `settings.read`.** Neither is public,
+and that is a deliberate posture rather than an oversight: the document
+describes the whole gated surface of an invite-only club, so publishing it
+publishes the shape of the admin API to anyone who finds the URL. `/admin` is
+already classified gated-and-never-indexed in `src/seo/surfaces.js`, which is
+what gives the docs their `X-Robots-Tag: noindex, nofollow`, their
+`Cache-Control: private, no-store`, and their `Disallow` line in `robots.txt`
+without a second declaration anyone could forget to make.
+
+Two things about it will look odd in a diff, and both are load-bearing:
+
+- **The docs get their own Content-Security-Policy.** `@fastify/swagger-ui`
+  installs an `onSend` hook, confined to its own scope, that replaces helmet's
+  global policy for these routes. It is *not* a relaxation to `unsafe-inline`:
+  the bundle externalises its scripts, so the policy it sets still requires
+  `script-src 'self'`. It differs from the global policy only in allowing the
+  bundle's stylesheet and `validator.swagger.io` as an image source. The global
+  policy is untouched, and a test asserts a public route still gets the strict
+  one.
+- **The rate-limit bucket is attached as an explicit hook, not via
+  `config.rateLimit`.** `@fastify/rate-limit` reads that config in its own
+  `onRoute` hook, which is registered at the root long before the docs scope
+  exists — so it runs first, reads a config not yet written, and builds no
+  limiter at all. Silently: the route answers normally with no `RateLimit-*`
+  headers and no counting. See the comment in `src/plugins/15-openapi.js`.
+
+### The development copy
+
+`GET /swagger-ui` is the same UI with no authentication at all — and it exists
+only when `NODE_ENV=development`. On a laptop the gated mount costs a staff
+account, a grant and a token before you can read your own API, and the argument
+above is about a public origin serving real members, which a development
+process is not.
+
+The exemption is the *registration*, not a check inside a handler: outside
+development those routes are never added to the router, so an unauthenticated
+request gets a 404 from the ordinary not-found handler rather than a refusal
+that confirms the surface exists. `test` and `production` both take that path,
+and a test asserts it for every route in the subtree, the static bundle
+included. The mount still declares `{ audience: 'public' }` for the gate, is
+still counted against the IP-keyed `public-read` bucket, and still carries
+`X-Robots-Tag: noindex` — a URL that leaks out of a dev machine through a
+referrer should not become a search result.
+
+If you need the document in CI without a staff session, generate it from the
+built app rather than loosening the route or setting `NODE_ENV=development`.
+
+---
+
 ## Shutdown
 
 `SIGTERM` runs, in this order: fail readiness, wait one probe interval, stop

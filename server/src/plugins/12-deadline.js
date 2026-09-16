@@ -79,10 +79,28 @@ export default fp(
 
       const original = route.handler
       route.handler = function deadlineBounded(request, reply) {
+        const result = original.call(this, request, reply)
+
+        /**
+         * A handler that returns no thenable has already handed the reply off,
+         * and must be handed straight back.
+         *
+         * Wrapping it in a promise is not transparent: Fastify treats a
+         * returned thenable as an async handler, and `wrap-thenable` answers a
+         * fulfilment of `undefined` by calling `reply.send(undefined)` itself
+         * as soon as the promise settles — which is *before* a synchronous
+         * handler that sends on a later tick has sent anything. @fastify/static
+         * is exactly that shape: its handler returns undefined and streams the
+         * file once `send` has stat'd it, so racing it produced an empty 200
+         * with no content-type and a blank swagger-ui. There is nothing to race
+         * either way: a value that is already settled cannot overrun a budget.
+         */
+        if (typeof result?.then !== 'function') return result
+
         const budget = request.deadlineMs ?? ROUTE_BUDGETS[routeClass].deadlineMs
 
         return Promise.race([
-          Promise.resolve(original.call(this, request, reply)),
+          result,
           new Promise((_resolve, reject) => {
             const signal = request.deadlineSignal
             if (!signal) return
