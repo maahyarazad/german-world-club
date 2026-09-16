@@ -1,4 +1,9 @@
 import sharp from 'sharp'
+import { spawn } from 'node:child_process'
+import ffmpegPath from 'ffmpeg-static'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { buildApp } from '../../src/app.js'
 import { createFixtureContentSource } from '../../src/public/content.js'
 import { createMemoryDriver } from '../../src/media/storage.js'
@@ -238,3 +243,36 @@ export async function photographWithGps() {
   // SOI, then the APP1 segment, then the rest of the original file.
   return Buffer.concat([base.subarray(0, 2), app1, base.subarray(2)])
 }
+
+/**
+ * A real, short MP4, produced by ffmpeg's own test pattern generator.
+ *
+ * Synthesising one by hand is not an option here: the pipeline probes it with
+ * ffmpeg and then transcodes it, so the fixture has to be a file ffmpeg
+ * genuinely accepts. Two seconds at 320x240 keeps the transcode to a second or
+ * so while still exercising the whole path.
+ */
+export async function shortVideo({ seconds = 2, width = 320, height = 240 } = {}) {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gwc-fixture-video-'))
+  const output = path.join(dir, 'fixture.mp4')
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(
+        ffmpegPath,
+        [
+          '-y', '-f', 'lavfi', '-i', `testsrc=size=${width}x${height}:rate=10`,
+          '-t', String(seconds), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', output,
+        ],
+        { stdio: 'ignore' },
+      )
+      child.on('error', reject)
+      child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`))))
+    })
+    return await readFile(output)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}
+
+/** Whether ffmpeg is usable here, so the video suites can skip loudly. */
+export const hasFfmpeg = Boolean(ffmpegPath)

@@ -36,6 +36,7 @@ import sitemap from './seo/sitemap.js'
 import seoStaffRoutes from './seo/staff-routes.js'
 import authRoutes from './auth/routes.js'
 import mediaRoutes from './media/routes.js'
+import mediaWorker from './media/worker.js'
 import publicRoutes from './public/routes.js'
 import { COOKIES } from '@gwc/contracts/auth'
 import { createDbContentSource } from './public/content.js'
@@ -220,6 +221,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   await app.register(sitemap)
   await app.register(authRoutes)
   await app.register(mediaRoutes)
+  await app.register(mediaWorker)
   await app.register(seoStaffRoutes)
   await app.register(publicRoutes)
 

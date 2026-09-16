@@ -18,11 +18,47 @@ export function renderSections(sections = []) {
     .join('\n')
 }
 
+/**
+ * The delivered image (FR-060, SC-018, §10.9).
+ *
+ * Two things are load-bearing and both are easy to drop:
+ *
+ *  - **Explicit `width`/`height`.** They reserve the box before any bytes
+ *    arrive. §10.9 names unsized images as the most common cause of layout
+ *    shift, and layout shift is scored on exactly the public pages whose
+ *    ranking the club sells.
+ *  - **A `srcset` across the breakpoints.** Without it a phone downloads the
+ *    1600 px variant to display it at 360 px, which is most of the weight the
+ *    media pipeline exists to remove.
+ *
+ * The `<img>` inside `<picture>` is not a fallback for "no JavaScript" — it is
+ * the element that actually renders, and the one carrying the dimensions and
+ * the alt text. A `<picture>` with no `<img>` displays nothing at all.
+ */
 export function renderShareImage(image) {
   if (!image) return ''
-  // Explicit width/height reserve the box before the bytes arrive — §10.9 names
-  // unsized images as the most common cause of layout shift.
-  return `<img src="${escape(image.url)}" width="${escape(image.width)}" height="${escape(image.height)}" alt="${escape(image.alt)}" loading="lazy">`
+
+  const dimensions =
+    `width="${escape(image.width)}" height="${escape(image.height)}"`
+  const img =
+    `<img src="${escape(image.url)}" ${dimensions} alt="${escape(image.alt)}" loading="lazy" decoding="async">`
+
+  // A record whose asset has no recorded variants — a fixture, or an image
+  // predating the pipeline — still renders, just without the size choice.
+  if (!image.sources?.length) return img
+
+  const sources = image.sources
+    .map(
+      (s) =>
+        `<source type="${escape(s.type)}" srcset="${escape(s.srcset)}" ` +
+        // Below the `small` breakpoint the picture spans the viewport; above it
+        // the layout caps it. Without `sizes` the browser assumes 100vw and
+        // picks a larger variant than it needs on a desktop.
+        `sizes="(max-width: 640px) 100vw, 800px">`,
+    )
+    .join('\n')
+
+  return `<picture>\n${sources}\n${img}\n</picture>`
 }
 
 export function renderAddress(address) {

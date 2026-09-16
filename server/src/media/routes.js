@@ -4,7 +4,7 @@ import multipart from '@fastify/multipart'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import {
   assetSchema, deliveryLookupParamSchema, assetIdParamSchema, deleteResultSchema,
-  altSchema, DELIVERY_CACHE_CONTROL,
+  altSchema, DELIVERY_CACHE_CONTROL, VARIANTS, FORMATS,
 } from '@gwc/contracts/media'
 
 import { withTransaction, query } from '../db/query.js'
@@ -406,6 +406,19 @@ export default fp(
       async (request, reply) => {
         const { checksum, variant, ext } = request.params
         const format = ext === 'jpg' ? 'jpeg' : ext
+
+        /**
+         * Checked against the known sets before the query runs.
+         *
+         * `variant` and `format` are PostgreSQL enums, so a URL naming
+         * something outside them — `/original.jpg`, or anything a scanner
+         * invents — would fail the cast and surface as a 500. That is both a
+         * misleading answer and a free way to generate server errors. A name
+         * that cannot address a variant addresses nothing, which is a 404.
+         */
+        if (!VARIANTS.includes(variant) || !FORMATS.includes(format)) {
+          throw forbidden(PROBLEMS.NOT_FOUND, 'No such variant.')
+        }
 
         const { rows } = await query(
           app.pg,

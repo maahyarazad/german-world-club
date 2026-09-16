@@ -294,10 +294,10 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 - [X] T136 [P] [US3] Write `/server/tests/media/derivatives.test.js` asserting every breakpoint exists with recorded dimensions and bytes, and that a 300 px source produces **no upscaled** variant (FR-056, FR-061)
 - [X] T137 [P] [US3] Write `/server/tests/media/formats.test.js` asserting WebP is primary, PNG is the fallback only for sources with alpha, and JPEG otherwise (FR-057)
 - [X] T138 [P] [US3] Write `/server/tests/media/compression.test.js` asserting a 2 MB source photograph yields `medium` ≤ 60 KB and `thumb` ≤ 8 KB (SC-019)
-- [ ] T139 [P] [US3] Write `/server/tests/media/video-async.test.js` asserting upload returns 202 `processing`, derivatives and poster appear, and a failed job sets `failed` with a reason rather than leaving a stuck `processing` row (FR-058, FR-059)
-- [ ] T140 [P] [US3] Write `/server/tests/media/no-original-served.test.js` asserting no public page or API response references a stored original's URL (SC-018, FR-060)
+- [X] T139 [P] [US3] Write `/server/tests/media/video-async.test.js` asserting upload returns 202 `processing`, derivatives and poster appear, and a failed job sets `failed` with a reason rather than leaving a stuck `processing` row (FR-058, FR-059)
+- [X] T140 [P] [US3] Write `/server/tests/media/no-original-served.test.js` asserting no public page or API response references a stored original's URL (SC-018, FR-060)
 - [X] T141 [P] [US3] Write `/server/tests/media/immutability.test.js` asserting a variant URL is byte-identical across fetches and carries `immutable` plus `nosniff` (FR-062)
-- [ ] T142 [P] [US3] Write `/server/tests/media/quota-and-breaker.test.js` asserting the per-account stored-byte quota and `upload` bucket both refuse, and that with the generator failing **zero** assets are recorded `ready` (FR-063)
+- [X] T142 [P] [US3] Write `/server/tests/media/quota-and-breaker.test.js` asserting the per-account stored-byte quota and `upload` bucket both refuse, and that with the generator failing **zero** assets are recorded `ready` (FR-063)
 - [X] T143 [P] [US3] Write `/server/tests/media/dedupe.test.js` asserting two byte-identical uploads store one copy and that deleting one leaves the other's bytes intact
 
 ### Storage and validation
@@ -322,7 +322,7 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 - [X] T155 [US3] Add `GET /media/:id` and `DELETE /media/:id` to `/server/src/media/routes.js`, gated by ownership or module flag, removing stored bytes only when no other asset shares the checksum
 - [X] T156 [US3] Add `GET /media/:checksum/:variant.:ext` to `/server/src/media/routes.js` with `Cache-Control: public, max-age=31536000, immutable`, `Content-Disposition: inline`, and `X-Content-Type-Options: nosniff` (FR-062)
 - [X] T157 [US3] Add the `upload` bucket (30/hour per account, fail-closed) to `/server/src/config/rate-limits.js` and enforce the per-account stored-byte quota through `/server/src/db/counters.js` (FR-063)
-- [ ] T158 [US3] Switch `/server/src/public/templates/layout.js` and the per-type templates to `<picture>` with a `srcset` across the breakpoints and explicit `width`/`height`, so the browser picks the smallest sufficient variant and reserves the box before bytes arrive (FR-060, SC-018)
+- [X] T158 [US3] Switch `/server/src/public/templates/layout.js` and the per-type templates to `<picture>` with a `srcset` across the breakpoints and explicit `width`/`height`, so the browser picks the smallest sufficient variant and reserves the box before bytes arrive (FR-060, SC-018)
 
 **Checkpoint**: a 2 MB photograph uploads and returns every variant URL with recorded dimensions; a phone-width layout receives tens of kilobytes; a mismatched extension and a decompression bomb are both refused; a GPS-bearing photograph stores with no location metadata. Validate with quickstart **M1–M8**.
 

@@ -154,5 +154,47 @@ export function shareImageFromVariants(variants, alt) {
     width: preferred.width,
     height: preferred.height,
     alt,
+    // Carried along so the page can render a <picture> across every breakpoint
+    // (FR-060, SC-018). `og:image` still uses the single `url` above: preview
+    // bots do not negotiate, and handing one a srcset gets it no image at all.
+    sources: sourcesFromVariants(variants),
   }
+}
+
+/** The extension a format is served under, mirroring media/storage.js. */
+const EXTENSION = Object.freeze({ webp: 'webp', png: 'png', jpeg: 'jpg', webm: 'webm' })
+
+/**
+ * Group an asset's variants into one `<source>` per format, widest last.
+ *
+ * The browser takes the first `<source>` whose type it supports, so WebP must
+ * come before the fallback — the ordering is the format preference, there is no
+ * other mechanism expressing it.
+ *
+ * Only the image breakpoints are included: `poster` and `video` are not
+ * alternative sizes of the same still, and putting them in a srcset would offer
+ * the browser a choice it cannot render.
+ */
+export function sourcesFromVariants(variants = []) {
+  const IMAGE_VARIANTS = ['thumb', 'small', 'medium', 'large']
+  const byFormat = new Map()
+
+  for (const v of variants) {
+    if (!IMAGE_VARIANTS.includes(v.variant)) continue
+    if (!byFormat.has(v.format)) byFormat.set(v.format, [])
+    byFormat.get(v.format).push(v)
+  }
+
+  const order = ['webp', 'png', 'jpeg']
+  return [...byFormat.entries()]
+    .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
+    .map(([format, list]) => ({
+      format,
+      type: format === 'jpeg' ? 'image/jpeg' : `image/${format}`,
+      srcset: list
+        .slice()
+        .sort((a, b) => a.width - b.width)
+        .map((v) => `/media/${v.checksumHex}/${v.variant}.${EXTENSION[v.format] ?? v.format} ${v.width}w`)
+        .join(', '),
+    }))
 }

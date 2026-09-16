@@ -59,8 +59,14 @@ function runFfmpeg(args, { timeoutMs, binary = ffmpegPath }) {
         return reject(err)
       }
       if (code !== 0) {
+        // The message is the last few lines, which is what a human wants; the
+        // full output rides along on the error because the probe below reads
+        // its answer from it. ffmpeg reports stream metadata and *then* exits
+        // non-zero when given no output file, so discarding stderr on failure
+        // would throw away the very thing being asked for.
         const err = new Error(`ffmpeg exited ${code}: ${stderr.trim().split('\n').slice(-3).join(' ')}`)
         err.code = 'FFMPEG_FAILED'
+        err.stderr = stderr
         return reject(err)
       }
       resolve({ stderr })
@@ -83,7 +89,7 @@ export async function probeVideo(buffer, { timeoutMs = 10_000, binary = ffmpegPa
     // ffmpeg with no output prints the stream metadata to stderr and exits
     // non-zero; that is the documented way to probe without shipping ffprobe.
     const { stderr } = await runFfmpeg(['-i', input], { timeoutMs, binary }).catch((err) => ({
-      stderr: err.message,
+      stderr: err.stderr ?? err.message ?? '',
     }))
 
     const size = /,\s(\d{2,5})x(\d{2,5})[\s,]/.exec(stderr)
