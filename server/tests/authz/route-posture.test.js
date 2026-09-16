@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../../src/app.js'
+import { z } from 'zod'
 import { validateAuthConfig } from '../../src/plugins/11-rbac.js'
 
 /**
@@ -8,11 +9,22 @@ import { validateAuthConfig } from '../../src/plugins/11-rbac.js'
  *
  * Constitution Principle II: "An undeclared posture MUST fail startup or fail
  * the build — never default to permissive or restrictive."
+ *
+ * The same gate also enforces Principle VI's half of the declaration: a route
+ * must say what it sends back, either through `schema.response` or — for the
+ * handful that do not send JSON — through `config.produces`. Both halves are
+ * affirmative acts that appear in a diff.
  */
+
+/** A minimal, fully-declared route: posture and response shape. */
+const DECLARED = {
+  config: { auth: { audience: 'public' } },
+  schema: { response: { 200: z.object({ ok: z.boolean() }) } },
+}
 describe('route posture gate (SC-001)', () => {
   it('starts when every route declares a posture', async () => {
     const app = await buildApp()
-    app.get('/declared', { config: { auth: { audience: 'public' } } }, async () => ({ ok: true }))
+    app.get('/declared', DECLARED, async () => ({ ok: true }))
     await expect(app.ready()).resolves.toBeTruthy()
     await app.close()
   })
@@ -20,7 +32,7 @@ describe('route posture gate (SC-001)', () => {
   it('FAILS STARTUP on a route with no config.auth', async () => {
     const app = await buildApp()
     app.get('/undeclared', async () => ({ ok: true }))
-    await expect(app.ready()).rejects.toThrow(/without a valid access posture/)
+    await expect(app.ready()).rejects.toThrow(/no config\.auth declared/)
     await app.close().catch(() => {})
   })
 
@@ -35,20 +47,20 @@ describe('route posture gate (SC-001)', () => {
     const app = await buildApp()
     app.get('/one', async () => ({}))
     app.get('/two', async () => ({}))
-    await expect(app.ready()).rejects.toThrow(/2 route\(s\) registered without/)
+    await expect(app.ready()).rejects.toThrow(/2 route\(s\) have an incomplete declaration/)
     await app.close().catch(() => {})
   })
 
   it('rejects a staff route that names an unknown module', async () => {
     const app = await buildApp()
-    app.get('/admin/x', { config: { auth: { audience: 'staff', module: 'nonsense', flag: 'read' } } }, async () => ({}))
+    app.get('/admin/x', { ...DECLARED, config: { auth: { audience: 'staff', module: 'nonsense', flag: 'read' } } }, async () => ({ ok: true }))
     await expect(app.ready()).rejects.toThrow(/known module/)
     await app.close().catch(() => {})
   })
 
   it('exposes the real route table for the authorization matrix test', async () => {
     const app = await buildApp()
-    app.get('/declared', { config: { auth: { audience: 'public' } } }, async () => ({}))
+    app.get('/declared', DECLARED, async () => ({ ok: true }))
     await app.ready()
     const postures = app.routePostures()
     expect(postures.some((r) => r.url === '/declared')).toBe(true)

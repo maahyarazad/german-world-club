@@ -1,4 +1,5 @@
 import fp from 'fastify-plugin'
+import { z } from 'zod'
 import { isCurrent } from '../db/migrate.js'
 
 /**
@@ -20,15 +21,39 @@ export default fp(
     })
     app.decorate('isDraining', () => draining)
 
+    const livenessSchema = z.object({ status: z.literal('ok'), pid: z.number().int() })
+
+    const readinessSchema = z.object({
+      status: z.enum(['ready', 'not-ready']),
+      draining: z.boolean(),
+      dependencies: z.object({
+        database: z.object({ ok: z.boolean(), error: z.string().optional() }),
+        redis: z.object({ ok: z.boolean(), error: z.string().optional(), skipped: z.string().optional() }),
+        migrations: z.object({ ok: z.boolean(), pending: z.array(z.string()).optional() }),
+        circuits: z.record(z.string(), z.string()),
+        shedding: z.boolean(),
+      }),
+    })
+
     app.get(
       '/health/live',
-      { config: { auth: { audience: 'public' }, budget: 'health' }, logLevel: 'warn' },
+      {
+        config: { auth: { audience: 'public' }, budget: 'health' },
+        logLevel: 'warn',
+        schema: { response: { 200: livenessSchema } },
+      },
       async () => ({ status: 'ok', pid: process.pid }),
     )
 
     app.get(
       '/health/ready',
-      { config: { auth: { audience: 'public' }, budget: 'health' }, logLevel: 'warn' },
+      {
+        config: { auth: { audience: 'public' }, budget: 'health' },
+        logLevel: 'warn',
+        // Both outcomes are described: an operator reading 503 needs the same
+        // dependency detail as one reading 200, and more urgently.
+        schema: { response: { 200: readinessSchema, 503: readinessSchema } },
+      },
       async (request, reply) => {
         const [db, redis, migrations] = await Promise.all([
           app.dbHealthy(),

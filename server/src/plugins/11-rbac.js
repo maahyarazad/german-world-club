@@ -74,6 +74,39 @@ export default fp(
     })
 
     /**
+     * Does this route declare what it sends back? (FR-049, T197.)
+     *
+     * Constitution Principle VI: nothing leaves the server in a shape the
+     * server did not choose. A route with no response schema serializes
+     * whatever the handler happens to return, which is how an internal column
+     * — a password hash, a token, an internal id — reaches a client because
+     * someone added `SELECT *`. The schema is also what generates the OpenAPI
+     * document, so a route without one is invisible to every consumer.
+     *
+     * HEAD is exempt: Fastify derives it from the GET, and it sends no body.
+     * `schema.hide` marks a route whose own shape is defined elsewhere — the
+     * OpenAPI document itself is the only such case.
+     */
+    const declaresResponse = (route) => {
+      const methods = [].concat(route.method)
+      if (methods.every((m) => m === 'HEAD' || m === 'OPTIONS')) return true
+      if (route.schema?.hide) return true
+      if (route.config?.file) return true // a static asset is bytes, not a document
+      /**
+       * A route that does not send JSON declares what it does send.
+       *
+       * robots.txt is text, the sitemap is XML, a media variant is bytes — a
+       * Zod response schema describes none of them. `config.produces` is the
+       * affirmative declaration that replaces one, so the exemption appears in
+       * a diff exactly like `{ audience: 'public' }` does, rather than being a
+       * silent hole in the gate.
+       */
+      if (route.config?.produces) return true
+      const response = route.schema?.response
+      return Boolean(response && Object.keys(response).length > 0)
+    }
+
+    /**
      * `staticFile` carries @fastify/static's own marker for the per-file routes
      * it generates from the static root. The posture of those is declared once,
      * for the whole scope, in app.js; surfacing the marker lets the matrix test
@@ -95,7 +128,13 @@ export default fp(
     // The gate. Runs after every plugin has registered its routes.
     app.addHook('onReady', async () => {
       const offenders = routes
-        .map((route) => ({ route, problems: validateAuthConfig(route.config?.auth) }))
+        .map((route) => ({
+          route,
+          problems: [
+            ...validateAuthConfig(route.config?.auth),
+            ...(declaresResponse(route) ? [] : ['no explicit response schema declared']),
+          ],
+        }))
         .filter(({ problems }) => problems.length > 0)
 
       if (offenders.length === 0) return
@@ -112,11 +151,15 @@ export default fp(
           `  ${[...methods].join(',').padEnd(10)} ${url}\n      ${problems.join('\n      ')}`,
       )
       throw new Error(
-        `FATAL: ${byUrl.size} route(s) registered without a valid access posture:\n` +
+        `FATAL: ${byUrl.size} route(s) have an incomplete declaration:\n` +
           `${lines.join('\n')}\n\n` +
-          `Declare config.auth on each. Use { auth: { audience: 'public' } } for a\n` +
-          `deliberately public route — making a route public is an affirmative act\n` +
-          `that shows up in a diff (Constitution Principle II).`,
+          `Every route declares two things, and both are affirmative acts that show\n` +
+          `up in a diff rather than defaults nobody chose:\n` +
+          `  • config.auth — use { audience: 'public' } to make a route public\n` +
+          `    (Constitution Principle II)\n` +
+          `  • schema.response — what the route sends back. For a route that does\n` +
+          `    not send JSON, declare config.produces ('text/plain', 'application/xml',\n` +
+          `    'binary') instead (Constitution Principle VI).`,
       )
     })
 

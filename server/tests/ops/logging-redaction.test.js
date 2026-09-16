@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
 import { REDACT_PATHS, loggerOptions } from '../../src/plugins/01-logging.js'
 import { buildApp } from '../../src/app.js'
@@ -22,7 +23,10 @@ describe('log redaction (SC-016)', () => {
         stream: { write: (s) => lines.push(s) },
       },
     })
-    app.post('/probe', { config: { auth: { audience: 'public' } } }, async (request) => {
+    app.post('/probe', {
+      config: { auth: { audience: 'public' } },
+      schema: { response: { 200: z.object({ ok: z.boolean() }) } },
+    }, async (request) => {
       request.log.info({ body: request.body }, 'probe')
       return { ok: true }
     })

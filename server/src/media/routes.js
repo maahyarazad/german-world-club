@@ -400,7 +400,14 @@ export default fp(
         // marks /media public-but-not-indexed, so a crawler may fetch the images
         // a partner page references without the images themselves being indexed
         // as pages (seo/surfaces.js).
-        config: { auth: { audience: 'public' }, budget: 'public-page', rateLimit: app.bucket('public-read') },
+        config: {
+          auth: { audience: 'public' },
+          // Bytes, not a document: an image variant has no JSON shape a Zod
+          // response schema could describe.
+          produces: 'binary',
+          budget: 'public-page',
+          rateLimit: app.bucket('public-read'),
+        },
         schema: { params: deliveryLookupParamSchema },
       },
       async (request, reply) => {

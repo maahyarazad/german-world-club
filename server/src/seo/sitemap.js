@@ -86,7 +86,7 @@ export default fp(
     app.get(
       '/sitemap.xml',
       {
-        config: { auth: { audience: 'public' }, budget: 'sitemap', rateLimit: app.bucket('public-read') },
+        config: { auth: { audience: 'public' }, produces: 'application/xml', budget: 'sitemap', rateLimit: app.bucket('public-read') },
       },
       async (request, reply) => {
         if (!cache || Date.now() - cache.at > 3_600_000) {

@@ -21,7 +21,7 @@ export default fp(
     app.get(
       '/robots.txt',
       {
-        config: { auth: { audience: 'public' }, budget: 'public-page', rateLimit: app.bucket('public-read') },
+        config: { auth: { audience: 'public' }, produces: 'text/plain', budget: 'public-page', rateLimit: app.bucket('public-read') },
       },
       async (request, reply) =>
         reply

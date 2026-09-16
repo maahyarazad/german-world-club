@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.js'
 
@@ -12,10 +13,16 @@ import { buildApp } from '../../src/app.js'
 let app
 beforeAll(async () => {
   app = await buildApp()
-  app.get('/boom', { config: { auth: { audience: 'public' } } }, async () => {
+  app.get('/boom', {
+    config: { auth: { audience: 'public' } },
+    schema: { response: { 200: z.object({ ok: z.boolean() }) } },
+  }, async () => {
     throw new Error('internal detail that must not reach the client: SELECT * FROM members')
   })
-  app.get('/teapot', { config: { auth: { audience: 'public' } } }, async (req, reply) => {
+  app.get('/teapot', {
+    config: { auth: { audience: 'public' } },
+    schema: { response: { 200: z.object({ ok: z.boolean() }) } },
+  }, async (req, reply) => {
     return reply.code(409).send({ ok: false })
   })
   await app.ready()
