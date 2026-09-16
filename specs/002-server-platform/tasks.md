@@ -145,9 +145,9 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 - [X] T058 [P] [US1] Write `/server/tests/auth/refresh-rotation.test.js` asserting rotation on every refresh and that a **replayed** token terminates the whole lineage, writes an audit record, and returns 401 (FR-005)
 - [X] T059 [P] [US1] Write `/server/tests/auth/status-gates.test.js` asserting Locked, Inactive, and Ex-member accounts are each refused with their §3.2 remedy and that **no token is issued** in any case (FR-010)
 - [X] T060 [P] [US1] Write `/server/tests/auth/passwords.test.js` asserting argon2id verification, and that a legacy MD5 value is **never** accepted (FR-014)
-- [ ] T061 [P] [US1] Write `/server/tests/auth/otp.test.js` asserting the 5-attempt ceiling invalidates the challenge, the 5-minute expiry, and that a `deviceId` mismatch returns `invalid-otp` rather than a distinct error (FR-012)
-- [ ] T062 [P] [US1] Write `/server/tests/auth/device-approval.test.js` asserting a new device has no approval and routes to re-approval, since the primary key includes `device_id` (§12.6)
-- [ ] T063 [P] [US1] Write `/server/tests/auth/non-enumeration.test.js` asserting unknown-email and wrong-password responses are identical in body and status, and that the dummy-hash verification path **executes** for an unknown account (assert via a spy or counter, not elapsed wall-clock time, which is too flaky for CI); record the timing comparison as a separate benchmark with a stated tolerance
+- [X] T061 [P] [US1] Write `/server/tests/auth/otp.test.js` asserting the 5-attempt ceiling invalidates the challenge, the 5-minute expiry, and that a `deviceId` mismatch returns `invalid-otp` rather than a distinct error (FR-012)
+- [X] T062 [P] [US1] Write `/server/tests/auth/device-approval.test.js` asserting a new device has no approval and routes to re-approval, since the primary key includes `device_id` (§12.6)
+- [X] T063 [P] [US1] Write `/server/tests/auth/non-enumeration.test.js` asserting unknown-email and wrong-password responses are identical in body and status, and that the dummy-hash verification path **executes** for an unknown account (assert via a spy or counter, not elapsed wall-clock time, which is too flaky for CI); record the timing comparison as a separate benchmark with a stated tolerance
 - [X] T064 [P] [US1] Write `/server/tests/auth/csrf.test.js` asserting a cookie-bearing state-changing request without a valid CSRF token is refused, and that bearer clients are exempt
 
 ### Schema
@@ -187,7 +187,7 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 - [X] T086 [US1] Add the `sign-in-ip` and `sign-in-account` buckets to `/server/src/config/rate-limits.js`, both fail-closed and both checked — either alone leaves a real attack open (SC-013)
 - [X] T087 [P] [US1] Add the `otp-send` (keyed on **phone number**, since each send costs money), `otp-verify`, `password-reset`, and `refresh` buckets to `/server/src/config/rate-limits.js`
-- [ ] T088 [P] [US1] Write `/server/tests/resilience/rate-limit-credentials.test.js` asserting refusal in **both** directions — many addresses against one account, one address against many accounts — each with `Retry-After` (SC-013)
+- [X] T088 [P] [US1] Write `/server/tests/resilience/rate-limit-credentials.test.js` asserting refusal in **both** directions — many addresses against one account, one address against many accounts — each with `Retry-After` (SC-013)
 
 ### Endpoints
 
@@ -202,9 +202,9 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 - [X] T095 [US1] Create `/server/src/seo/staff-routes.js` exposing gated edit endpoints for `seo_metadata` fields, requiring the flag on **both** the `seo` module and the record's own module (FR-020, FR-021)
 - [X] T096 [US1] Add automatic 301 registration to `/server/src/seo/staff-routes.js`: a slug change writes the old slug into `legacy_redirects`, so accumulated search equity is not silently discarded (§12.12)
-- [ ] T097 [P] [US1] Write `/server/tests/seo/staff-edit.test.js` asserting the dual-permission requirement and that a slug change creates the 301 record
+- [X] T097 [P] [US1] Write `/server/tests/seo/staff-edit.test.js` asserting the dual-permission requirement and that a slug change creates the 301 record
 - [X] T098 [US1] Add the gated-surface response hook to `/server/src/plugins/02-security-headers.js` setting `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow` on every non-public surface (FR-025)
-- [ ] T099 [P] [US1] Write `/server/tests/seo/crawl-posture-gated.test.js` asserting every gated surface in the §10.1 table is both access-refused **and** marked non-indexable (SC-008, gated half)
+- [X] T099 [P] [US1] Write `/server/tests/seo/crawl-posture-gated.test.js` asserting every gated surface in the §10.1 table is both access-refused **and** marked non-indexable (SC-008, gated half)
 
 **Checkpoint**: each principal kind reaches exactly its declared route set; a revoked permission is refused on the next request; a second sign-in terminates the first; a replayed refresh kills the lineage; a suspended member cannot sign in. Validate with quickstart **C1–C8**.
 
