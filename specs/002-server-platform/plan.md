@@ -281,6 +281,39 @@ Run every suite in `server/tests`, then the cross-cutting checks: a crawl of the
 | 18 | **Object storage is a new operational dependency** | Media unavailable if it is | Behind a driver interface with a local-disk implementation for development; generation is fail-closed, so an outage refuses uploads rather than recording half-ready assets |
 | 14 | **Expired-partner disposition is a business decision** | A wrong default either discards inbound links a paying partner earned, or keeps advertising a lapsed listing | Defaults to retained-but-non-indexed, which honours both concerns, and is recorded as a configured choice the club can change — which is what §10.5 asks for. **Owner: the club.** |
 
+### Open-item review at implementation close (T204)
+
+Every row above, re-checked against the delivered code. Three categories:
+**Closed** (the mechanism exists and is exercised), **Accepted** (a deliberate
+residual risk, documented rather than hidden), and **Owner: the club** (needs a
+decision or data from outside engineering before public cutover).
+
+| # | Status | Evidence / what remains |
+|---|---|---|
+| 1 | **Closed** | `wildcard: false` plus `globIgnore`, real `setNotFoundHandler`, 64-path regression corpus — `tests/seo/soft-404.test.js` |
+| 2 | **Closed** | `requestTimeout`, `connectionTimeout`, `keepAliveTimeout` all set from validated env in `app.js`; budget rule asserted at startup |
+| 3 | **Accepted** | The ≤10-minute window is real and bounded. `sid` denylist checked per request; authorization is never read from the token, so permission changes bypass the window entirely |
+| 4 | **Closed (mechanism)** · **Owner: the club (value)** | `TRUST_PROXY` is Zod-validated and production boot fails if unset; `server/README.md` documents both directions of error. The hop count itself is a deployment input |
+| 5 | **Owner: the club** | `legacy_redirects` ships with automatic 301 registration on slug change (`seo/staff-routes.js`). The table is empty: populating it is data entry, and it must happen **before public cutover** or accumulated search equity is lost |
+| 6 | **Partially closed** · **Owner: the club** | **SMS is now selected: SMSGlobal**, wired through `integrations/sms.js` with MAC auth. Payments, mail and geocoding remain interfaces with stubs — resilience behaviour is fully testable, and swapping a provider touches one file. Breaker thresholds still need re-tuning against real latency |
+| 7 | **Closed** | Per-bucket `skipOnError` set explicitly on every bucket and asserted at startup; Redis sits behind its own 250 ms breaker (`app.withRedis`) |
+| 8 | **Closed** | The constitution was ratified at 1.0.0 before implementation. Its six principles are enforced by four startup gates, not by review |
+| 9 | **Accepted** | Justified per dependency in Complexity Tracking. Push notifications were added **without** `firebase-admin` or `expo-server-sdk` — both transports run on `undici`, which was already present |
+| 10 | **Owner: the club** | The forced-reset path is implemented and tested (`credentialState`, `tests/auth/passwords.test.js`); an unsalted MD5 is never verified. The **communications plan** is outstanding |
+| 11 | **Closed** | Resolved in favour of SEO and asserted: `tests/resilience/crawler-budget.test.js` walks every public route as Googlebot across repeated passes and sees zero 429s, with a counter-assertion that the limiter is genuinely running |
+| 12 | **Closed** | The workspace conversion landed as one mechanical commit; `client/` untouched |
+| 13 | **Closed** | `logController` used from the start; no deprecated option in the codebase |
+| 14 | **Owner: the club** | Defaults to retained-but-non-indexed, recorded as a configured choice |
+| 15 | **Closed** | Every layer implemented and separately tested: streamed cap, magic-byte typing, allowlist, pre-decode pixel bound plus `limitInputPixels`, EXIF/GPS stripping, SVG refused outright, `nosniff` on delivery |
+| 16 | **Closed** | Images synchronous, video queued and reporting `processing`; dimensions probed synchronously either way. A failed transcode records `failed` **with a reason** — a stuck `processing` row is refused by the database constraint as well as by the worker |
+| 17 | **Closed** | Direct `spawn` with a hard `SIGKILL` at the budget; `fluent-ffmpeg` not used. Pinned via `ffmpeg-static` |
+| 18 | **Closed** | Driver interface with local-disk and S3 implementations; generation is fail-closed, so an outage refuses uploads rather than recording half-ready assets |
+
+**Nothing is unowned.** The four items still open (5, 6, 10, 14) each name the
+club as owner and each has its mechanism already shipped, so closing them is a
+decision or a data-entry task rather than development work. Items 5 and 10 are
+the two that **must** be settled before public cutover.
+
 ## Complexity Tracking
 
 The Constitution Check passes vacuously, so nothing is *required* to be justified here. One item is recorded anyway, because a self-imposed gate flagged it.
