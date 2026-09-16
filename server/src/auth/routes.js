@@ -83,7 +83,10 @@ export default fp(
     // alone is defeated by a botnet spraying one account; per-account alone
     // lets one address enumerate the member base and is itself an
     // account-lockout weapon.
-    const limitSignInAccount = app.rateLimit({
+    // `rateLimitIndependent`, not `rateLimit`: the route already spends the
+    // per-address bucket at onRequest, and a plain second limiter would see the
+    // library's once-per-request marker and never count. See 07-rate-limit.js.
+    const limitSignInAccount = app.rateLimitIndependent({
       ...app.bucket('sign-in-account'),
       keyGenerator: (request) => `sign-in-account:${String(request.body?.email ?? '').toLowerCase()}`,
     })

@@ -58,18 +58,35 @@ export default fp(
       // Never throttle a verified crawler — see FR-041.
       allowList: (request) => isAllowlistedCrawler(request),
       keyGenerator: (request) => keyForBucket(request.routeOptions?.config?.rateLimit?.bucket, request),
-      errorResponseBuilder: (request, context) => ({
-        type: PROBLEMS.RATE_LIMITED.type,
-        title: PROBLEMS.RATE_LIMITED.title,
-        status: 429,
-        detail: `Rate limit exceeded. Retry after ${Math.ceil(context.ttl / 1000)}s.`,
-        instance: request.url.split('?')[0],
-        requestId: request.id,
-      }),
+      /**
+       * @fastify/rate-limit *throws* whatever this returns, so the value has to
+       * be an error our own handler recognises — a bare problem+json object has
+       * no `statusCode`, and 14-error-handler.js would classify it as an
+       * internal fault and answer 429-as-500.
+       *
+       * `context.statusCode` rather than a hardcoded 429: the plugin uses 403
+       * when a key crosses the ban threshold, and reporting that as 429 would
+       * tell a banned client to simply retry later.
+       */
+      errorResponseBuilder: (request, context) => {
+        const retryAfterSeconds = Math.ceil(context.ttl / 1000)
+        const error = new Error(`Rate limit exceeded. Retry after ${retryAfterSeconds}s.`)
+        error.statusCode = context.statusCode
+        error.problem = context.ban
+          ? { ...PROBLEMS.RATE_LIMITED, title: 'Temporarily banned', status: context.statusCode }
+          : PROBLEMS.RATE_LIMITED
+        error.safeDetail = error.message
+        return error
+      },
+      /**
+       * These keys are matched against the *draft-spec* header names because
+       * `enableDraftSpec` is on. Spelling them `x-ratelimit-*` here silently
+       * emits no headers at all, which FR-042 requires.
+       */
       addHeaders: {
-        'x-ratelimit-limit': true,
-        'x-ratelimit-remaining': true,
-        'x-ratelimit-reset': true,
+        'ratelimit-limit': true,
+        'ratelimit-remaining': true,
+        'ratelimit-reset': true,
         'retry-after': true,
       },
       enableDraftSpec: true,
@@ -87,6 +104,34 @@ export default fp(
       const b = BUCKETS[name]
       if (!b) throw new Error(`Unknown rate-limit bucket: ${name}`)
       return { bucket: name, max: b.max, timeWindow: b.timeWindow, skipOnError: b.skipOnError }
+    })
+
+    /**
+     * A limiter that counts even when another limiter already ran (SC-013).
+     *
+     * @fastify/rate-limit marks each request with a private "already ran"
+     * symbol and every limiter derived from one registration shares it, so the
+     * *second* bucket on a route silently returns without counting. For most
+     * routes that guard is a convenience. On sign-in it is a security defect:
+     * the spec requires the per-address AND the per-account bucket to be
+     * checked, because either alone leaves a real attack open — per-address is
+     * defeated by a botnet, per-account lets one host enumerate the member base
+     * and lock any member out at will.
+     *
+     * Clearing the marker before delegating restores the declared behaviour.
+     * The symbol is found by its description rather than reached for through
+     * plugin internals, and a miss is non-fatal: the limiter still runs, it
+     * just reverts to the library's once-per-request behaviour.
+     */
+    const RAN_MARKER = 'fastify.request.rateLimitRan'
+    app.decorate('rateLimitIndependent', (options) => {
+      const limiter = app.rateLimit(options)
+      return async function independentRateLimit(request, reply) {
+        for (const marker of Object.getOwnPropertySymbols(request)) {
+          if (marker.description === RAN_MARKER) request[marker] = false
+        }
+        return limiter(request, reply)
+      }
     })
   },
   { name: 'rate-limit', dependencies: ['redis'] },
