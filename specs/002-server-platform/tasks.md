@@ -288,17 +288,17 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 ### Tests for User Story 3
 
-- [ ] T133 [P] [US3] Write `/server/tests/media/validation.test.js` asserting a JPEG named `.png` is typed from its bytes and a mismatched extension is refused (SC-021, FR-052)
-- [ ] T134 [P] [US3] Write `/server/tests/media/bomb.test.js` asserting a small file declaring an extreme pixel count is refused **before** decode, not after memory is consumed (FR-053)
-- [ ] T135 [P] [US3] Write `/server/tests/media/metadata-strip.test.js` asserting a GPS-bearing photograph yields an original and derivatives with zero location metadata (SC-020, FR-054)
-- [ ] T136 [P] [US3] Write `/server/tests/media/derivatives.test.js` asserting every breakpoint exists with recorded dimensions and bytes, and that a 300 px source produces **no upscaled** variant (FR-056, FR-061)
-- [ ] T137 [P] [US3] Write `/server/tests/media/formats.test.js` asserting WebP is primary, PNG is the fallback only for sources with alpha, and JPEG otherwise (FR-057)
-- [ ] T138 [P] [US3] Write `/server/tests/media/compression.test.js` asserting a 2 MB source photograph yields `medium` ≤ 60 KB and `thumb` ≤ 8 KB (SC-019)
+- [X] T133 [P] [US3] Write `/server/tests/media/validation.test.js` asserting a JPEG named `.png` is typed from its bytes and a mismatched extension is refused (SC-021, FR-052)
+- [X] T134 [P] [US3] Write `/server/tests/media/bomb.test.js` asserting a small file declaring an extreme pixel count is refused **before** decode, not after memory is consumed (FR-053)
+- [X] T135 [P] [US3] Write `/server/tests/media/metadata-strip.test.js` asserting a GPS-bearing photograph yields an original and derivatives with zero location metadata (SC-020, FR-054)
+- [X] T136 [P] [US3] Write `/server/tests/media/derivatives.test.js` asserting every breakpoint exists with recorded dimensions and bytes, and that a 300 px source produces **no upscaled** variant (FR-056, FR-061)
+- [X] T137 [P] [US3] Write `/server/tests/media/formats.test.js` asserting WebP is primary, PNG is the fallback only for sources with alpha, and JPEG otherwise (FR-057)
+- [X] T138 [P] [US3] Write `/server/tests/media/compression.test.js` asserting a 2 MB source photograph yields `medium` ≤ 60 KB and `thumb` ≤ 8 KB (SC-019)
 - [ ] T139 [P] [US3] Write `/server/tests/media/video-async.test.js` asserting upload returns 202 `processing`, derivatives and poster appear, and a failed job sets `failed` with a reason rather than leaving a stuck `processing` row (FR-058, FR-059)
 - [ ] T140 [P] [US3] Write `/server/tests/media/no-original-served.test.js` asserting no public page or API response references a stored original's URL (SC-018, FR-060)
-- [ ] T141 [P] [US3] Write `/server/tests/media/immutability.test.js` asserting a variant URL is byte-identical across fetches and carries `immutable` plus `nosniff` (FR-062)
+- [X] T141 [P] [US3] Write `/server/tests/media/immutability.test.js` asserting a variant URL is byte-identical across fetches and carries `immutable` plus `nosniff` (FR-062)
 - [ ] T142 [P] [US3] Write `/server/tests/media/quota-and-breaker.test.js` asserting the per-account stored-byte quota and `upload` bucket both refuse, and that with the generator failing **zero** assets are recorded `ready` (FR-063)
-- [ ] T143 [P] [US3] Write `/server/tests/media/dedupe.test.js` asserting two byte-identical uploads store one copy and that deleting one leaves the other's bytes intact
+- [X] T143 [P] [US3] Write `/server/tests/media/dedupe.test.js` asserting two byte-identical uploads store one copy and that deleting one leaves the other's bytes intact
 
 ### Storage and validation
 

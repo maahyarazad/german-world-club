@@ -34,6 +34,27 @@ export function keyForBucket(bucketName, request) {
   }
 }
 
+/**
+ * Which lifecycle hook a bucket's limiter must run on.
+ *
+ * Only the `ip` dimension can be keyed at `onRequest`: the address is known
+ * from the socket. Every other dimension reads something that does not exist
+ * that early — `request.principal` is set by the authentication hook, and
+ * `request.body` has not been parsed — so an account-dimension bucket evaluated
+ * at `onRequest` silently falls back to the address and stops being an account
+ * limit at all. Behind a corporate NAT or a mobile carrier that means every
+ * member shares one bucket, and a per-account ceiling that reads as enforced is
+ * not enforced.
+ *
+ * The cost is that an unauthenticated flood on those routes is refused slightly
+ * later, after body parsing. That is the right trade: the routes carrying these
+ * buckets are already authenticated ones, and a limit that does not measure
+ * what it claims to measure is worse than a slightly more expensive refusal.
+ * Credential endpoints keep an `ip` bucket at `onRequest` as well, so the cheap
+ * refusal still exists where an unauthenticated flood is actually expected.
+ */
+export const hookFor = (dimension) => (dimension === 'ip' ? 'onRequest' : 'preHandler')
+
 /** A verified crawler is never throttled (FR-041, SC-014). */
 export function isAllowlistedCrawler(request) {
   const ua = request.headers['user-agent'] ?? ''
@@ -103,7 +124,13 @@ export default fp(
     app.decorate('bucket', (name) => {
       const b = BUCKETS[name]
       if (!b) throw new Error(`Unknown rate-limit bucket: ${name}`)
-      return { bucket: name, max: b.max, timeWindow: b.timeWindow, skipOnError: b.skipOnError }
+      return {
+        bucket: name,
+        max: b.max,
+        timeWindow: b.timeWindow,
+        skipOnError: b.skipOnError,
+        hook: hookFor(b.dimension),
+      }
     })
 
     /**

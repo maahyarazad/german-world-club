@@ -33,6 +33,23 @@ const MIME_FOR_FORMAT = Object.freeze({
   webp: 'image/webp', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webm: 'video/webm',
 })
 
+/**
+ * Variants are always read in the same order.
+ *
+ * Without an ORDER BY, PostgreSQL returns rows in physical order, which differs
+ * between a freshly-inserted asset and one read back on the dedupe path. That
+ * would make the `variants` array in an API response non-deterministic for the
+ * same asset — which breaks a client building a stable `srcset`, and makes any
+ * cached or compared response spuriously different. Width ascending, then
+ * format, so the primary encoding leads at each size.
+ */
+const VARIANTS_IN_ORDER =
+  'SELECT * FROM asset_variants WHERE asset_id = $1 ORDER BY width, format'
+
+/** The same ordering, for rows built in memory rather than read back. */
+const sortVariants = (rows) =>
+  [...rows].sort((a, b) => a.width - b.width || String(a.format).localeCompare(String(b.format)))
+
 /** The public URL for one variant. Content-addressed, hence immutable. */
 export const urlForVariant = (checksumHex, variant, format) =>
   `/media/${checksumHex}/${variant}.${extensionFor(format)}`
@@ -182,7 +199,7 @@ export default fp(
         )
         if (existing.length > 0) {
           const { rows: existingVariants } = await client.query(
-            'SELECT * FROM asset_variants WHERE asset_id = $1',
+            VARIANTS_IN_ORDER,
             [existing[0].id],
           )
           return { asset: existing[0], variants: existingVariants, deduped: true }
@@ -222,7 +239,9 @@ export default fp(
           rows.push(v[0])
         }
 
-        return { asset: inserted[0], variants: rows }
+        // Sorted to match VARIANTS_IN_ORDER, so the 201 from a first upload and
+        // the 201 from the dedupe path describe the same asset identically.
+        return { asset: inserted[0], variants: sortVariants(rows) }
       })
 
       return reply.code(201).send(toResponse(asset, variants))
@@ -276,7 +295,7 @@ export default fp(
       }
 
       const { rows: variants } = await query(
-        app.pg, 'SELECT * FROM asset_variants WHERE asset_id = $1', [asset.id],
+        app.pg, VARIANTS_IN_ORDER, [asset.id],
       )
       return reply.code(202).send(toResponse(asset, variants))
     }
@@ -297,7 +316,7 @@ export default fp(
         if (rows.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such asset.')
 
         const { rows: variants } = await query(
-          app.pg, 'SELECT * FROM asset_variants WHERE asset_id = $1 ORDER BY width', [rows[0].id],
+          app.pg, VARIANTS_IN_ORDER, [rows[0].id],
           { signal: request.deadlineSignal },
         )
         // `state` and `failure_reason` are both included so a client polling a
