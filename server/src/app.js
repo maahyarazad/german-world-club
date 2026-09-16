@@ -49,6 +49,18 @@ function staticRoot() {
 }
 
 /**
+ * Paths this server generates itself, excluded from the static file sweep.
+ *
+ * `wildcard: false` registers one route per file found on disk, so a stale or
+ * future client build that still ships a robots.txt or sitemap.xml would
+ * collide with the generated route and crash startup with "Method 'GET'
+ * already declared". Excluding them at registration time — rather than
+ * deleting the files — keeps the "one source" rule in seo/robots.js true no
+ * matter what lands in the build output.
+ */
+const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
+
+/**
  * Builds the Fastify instance. Deliberately does NOT call listen() — that is
  * server.js's job. This split is what makes the whole test strategy work:
  * every suite drives a built instance through `fastify.inject()`, in-process,
@@ -179,6 +191,7 @@ export async function buildApp({ env = loadEnv(), contentSource, ...overrides } 
     await scope.register(fastifyStatic, {
       root: staticRoot(),
       wildcard: false,
+      globIgnore: SERVER_GENERATED_PATHS,
       index: false,
       cacheControl: true,
       maxAge: '1h',

@@ -73,11 +73,24 @@ export default fp(
       routes.push(route)
     })
 
-    /** @returns {Array<{method: string, url: string, auth: object}>} */
+    /**
+     * `staticFile` carries @fastify/static's own marker for the per-file routes
+     * it generates from the static root. The posture of those is declared once,
+     * for the whole scope, in app.js; surfacing the marker lets the matrix test
+     * separate them from routes a developer hand-wrote without guessing from
+     * the file extension, which changes with every client build.
+     *
+     * @returns {Array<{method: string, url: string, auth: object, staticFile: boolean}>}
+     */
     const registry = () =>
       routes
         .filter((r) => validateAuthConfig(r.config?.auth).length === 0)
-        .map((r) => ({ method: r.method, url: r.url, auth: r.config.auth }))
+        .map((r) => ({
+          method: r.method,
+          url: r.url,
+          auth: r.config.auth,
+          staticFile: typeof r.config?.file === 'string',
+        }))
 
     // The gate. Runs after every plugin has registered its routes.
     app.addHook('onReady', async () => {

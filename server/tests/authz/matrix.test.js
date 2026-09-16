@@ -82,12 +82,14 @@ describe('the declared matrix', () => {
     const covered = new Set(ROUTE_CLASSES.map((r) => `${r.method} ${r.url}`))
     const uncovered = app
       .routePostures()
+      // @fastify/static registers one route per file in the static root, and
+      // which files exist changes with every client build. Their posture is
+      // declared once for the whole scope (see app.js), so they are excluded
+      // by that marker rather than by guessing at file extensions.
+      .filter((r) => !r.staticFile)
       .flatMap((r) => [].concat(r.method).map((m) => `${m} ${r.url}`))
       // HEAD is registered automatically alongside every GET.
       .filter((k) => !k.startsWith('HEAD '))
-      // @fastify/static registers one route per file in the static root; the
-      // scope declares their posture in one place (see app.js).
-      .filter((k) => !/\.(svg|png|ico|txt|json|webmanifest)$/.test(k) || k.endsWith('/robots.txt'))
       .filter((k) => !covered.has(k))
 
     expect(uncovered).toEqual([])
@@ -147,14 +149,29 @@ describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', ()
 
   const permitted = (status) => status < 401 || status === 404 || status === 409 || status === 422
 
+  /**
+   * A fresh credential per probe.
+   *
+   * Some route classes in the sweep are destructive to the credential itself —
+   * sign-out revokes the session — so reusing one bearer across the loop would
+   * make every route after it fail on a revoked session rather than on its own
+   * posture. Re-minting keeps each row of the matrix an independent assertion.
+   */
+  const sweep = async (account, routes, assert) => {
+    for (const route of routes) {
+      const headers = await bearerFor(app, account)
+      await assert(route, await call(route, headers))
+    }
+  }
+
   it('admits a member to member routes and refuses every staff route', async () => {
-    const headers = await bearerFor(app, { accountId: member.id, accountKind: 'member' })
-    for (const route of ROUTE_CLASSES.filter((r) => r.audience === 'member')) {
-      expect(permitted(await call(route, headers)), `member should reach ${route.name}`).toBe(true)
-    }
-    for (const route of ROUTE_CLASSES.filter((r) => r.audience === 'staff')) {
-      expect(await call(route, headers), `member must not reach ${route.name}`).toBe(403)
-    }
+    const account = { accountId: member.id, accountKind: 'member' }
+    await sweep(account, ROUTE_CLASSES.filter((r) => r.audience === 'member'), (route, status) => {
+      expect(permitted(status), `member should reach ${route.name}`).toBe(true)
+    })
+    await sweep(account, ROUTE_CLASSES.filter((r) => r.audience === 'staff'), (route, status) => {
+      expect(status, `member must not reach ${route.name}`).toBe(403)
+    })
   })
 
   it('admits a department admin only where the module flag is granted', async () => {
@@ -166,12 +183,12 @@ describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', ()
   })
 
   it('admits a superadmin everywhere, with no module row at all (FR-008)', async () => {
-    const headers = await bearerFor(app, { accountId: superadmin.id, accountKind: 'admin' })
     const { rows } = await app.pg.query('SELECT count(*)::int AS n FROM admin_permissions WHERE admin_user_id = $1', [superadmin.id])
     expect(rows[0].n).toBe(0)
-    for (const route of ROUTE_CLASSES.filter((r) => r.audience === 'staff')) {
-      expect(permitted(await call(route, headers)), `superadmin should reach ${route.name}`).toBe(true)
-    }
+    const account = { accountId: superadmin.id, accountKind: 'admin' }
+    await sweep(account, ROUTE_CLASSES.filter((r) => r.audience === 'staff'), (route, status) => {
+      expect(permitted(status), `superadmin should reach ${route.name}`).toBe(true)
+    })
   })
 
   it('refuses a department admin whose grant is the WRONG flag on the right module', async () => {

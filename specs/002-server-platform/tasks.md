@@ -136,74 +136,74 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 > Write these first and confirm they fail before implementing.
 
-- [ ] T052 [P] [US1] Write `/server/tests/auth/claims.test.js` asserting the access-token claim key set is **exactly** `sub, sid, aud, typ, jti, iat, exp` — no permissions, no membership tier, no email (FR-006, FR-013)
-- [ ] T053 [P] [US1] Write `/server/tests/authz/matrix.test.js` as a **data table**, one row per route class × principal kind, asserting zero permitted combinations outside the declared matrix (SC-002)
-- [ ] T054 [P] [US1] Write `/server/tests/authz/object-guards.test.js` asserting a department admin holding **all five flags** on `admins` is still refused when the target row is an admin or superadmin (FR-009)
-- [ ] T055 [P] [US1] Write `/server/tests/authz/revocation.test.js` asserting a permission revoked by a superadmin is refused on the target's **very next** request, with no re-login and no wait for token expiry (SC-003)
-- [ ] T056 [P] [US1] Write `/server/tests/authz/audience.test.js` asserting a member token on a staff route fails at token verification, before any handler runs (FR-003)
-- [ ] T057 [P] [US1] Write `/server/tests/auth/sessions.test.js` asserting a second sign-in revokes the first session as `superseded`, and that two concurrent sign-ins resolve deterministically through the partial unique index (FR-004)
-- [ ] T058 [P] [US1] Write `/server/tests/auth/refresh-rotation.test.js` asserting rotation on every refresh and that a **replayed** token terminates the whole lineage, writes an audit record, and returns 401 (FR-005)
-- [ ] T059 [P] [US1] Write `/server/tests/auth/status-gates.test.js` asserting Locked, Inactive, and Ex-member accounts are each refused with their §3.2 remedy and that **no token is issued** in any case (FR-010)
-- [ ] T060 [P] [US1] Write `/server/tests/auth/passwords.test.js` asserting argon2id verification, and that a legacy MD5 value is **never** accepted (FR-014)
+- [X] T052 [P] [US1] Write `/server/tests/auth/claims.test.js` asserting the access-token claim key set is **exactly** `sub, sid, aud, typ, jti, iat, exp` — no permissions, no membership tier, no email (FR-006, FR-013)
+- [X] T053 [P] [US1] Write `/server/tests/authz/matrix.test.js` as a **data table**, one row per route class × principal kind, asserting zero permitted combinations outside the declared matrix (SC-002)
+- [X] T054 [P] [US1] Write `/server/tests/authz/object-guards.test.js` asserting a department admin holding **all five flags** on `admins` is still refused when the target row is an admin or superadmin (FR-009)
+- [X] T055 [P] [US1] Write `/server/tests/authz/revocation.test.js` asserting a permission revoked by a superadmin is refused on the target's **very next** request, with no re-login and no wait for token expiry (SC-003)
+- [X] T056 [P] [US1] Write `/server/tests/authz/audience.test.js` asserting a member token on a staff route fails at token verification, before any handler runs (FR-003)
+- [X] T057 [P] [US1] Write `/server/tests/auth/sessions.test.js` asserting a second sign-in revokes the first session as `superseded`, and that two concurrent sign-ins resolve deterministically through the partial unique index (FR-004)
+- [X] T058 [P] [US1] Write `/server/tests/auth/refresh-rotation.test.js` asserting rotation on every refresh and that a **replayed** token terminates the whole lineage, writes an audit record, and returns 401 (FR-005)
+- [X] T059 [P] [US1] Write `/server/tests/auth/status-gates.test.js` asserting Locked, Inactive, and Ex-member accounts are each refused with their §3.2 remedy and that **no token is issued** in any case (FR-010)
+- [X] T060 [P] [US1] Write `/server/tests/auth/passwords.test.js` asserting argon2id verification, and that a legacy MD5 value is **never** accepted (FR-014)
 - [ ] T061 [P] [US1] Write `/server/tests/auth/otp.test.js` asserting the 5-attempt ceiling invalidates the challenge, the 5-minute expiry, and that a `deviceId` mismatch returns `invalid-otp` rather than a distinct error (FR-012)
 - [ ] T062 [P] [US1] Write `/server/tests/auth/device-approval.test.js` asserting a new device has no approval and routes to re-approval, since the primary key includes `device_id` (§12.6)
 - [ ] T063 [P] [US1] Write `/server/tests/auth/non-enumeration.test.js` asserting unknown-email and wrong-password responses are identical in body and status, and that the dummy-hash verification path **executes** for an unknown account (assert via a spy or counter, not elapsed wall-clock time, which is too flaky for CI); record the timing comparison as a separate benchmark with a stated tolerance
-- [ ] T064 [P] [US1] Write `/server/tests/auth/csrf.test.js` asserting a cookie-bearing state-changing request without a valid CSRF token is refused, and that bearer clients are exempt
+- [X] T064 [P] [US1] Write `/server/tests/auth/csrf.test.js` asserting a cookie-bearing state-changing request without a valid CSRF token is refused, and that bearer clients are exempt
 
 ### Schema
 
-- [ ] T065 [P] [US1] Create `/server/migrations/005_members.sql` with the identity and status columns from [data-model.md §1](./data-model.md) — **including `mobile` and `mobile_verified_at`**, without which FR-012's out-of-band code has nowhere to go — plus the `password_reset_tokens` table, plus a `BEFORE DELETE` trigger that raises, since §12.4 forbids member deletion and a trigger makes the rule survive an ad-hoc query
-- [ ] T066 [P] [US1] Create `/server/migrations/006_admin_users_and_permissions.sql` with the five-flag matrix keyed `(admin_user_id, module)` and a trigger enforcing that **at least one active superadmin** always exists
-- [ ] T067 [US1] Create `/server/migrations/007_sessions_and_refresh_tokens.sql` including the partial unique index `one_active_session_per_account ON sessions (account_id, account_kind) WHERE revoked_at IS NULL` — this constraint *is* FR-004
-- [ ] T068 [P] [US1] Create `/server/migrations/008_otp_and_device_approvals.sql` with hashed OTP codes and `device_approvals` keyed `(member_id, device_id)`
+- [X] T065 [P] [US1] Create `/server/migrations/005_members.sql` with the identity and status columns from [data-model.md §1](./data-model.md) — **including `mobile` and `mobile_verified_at`**, without which FR-012's out-of-band code has nowhere to go — plus the `password_reset_tokens` table, plus a `BEFORE DELETE` trigger that raises, since §12.4 forbids member deletion and a trigger makes the rule survive an ad-hoc query
+- [X] T066 [P] [US1] Create `/server/migrations/006_admin_users_and_permissions.sql` with the five-flag matrix keyed `(admin_user_id, module)` and a trigger enforcing that **at least one active superadmin** always exists
+- [X] T067 [US1] Create `/server/migrations/007_sessions_and_refresh_tokens.sql` including the partial unique index `one_active_session_per_account ON sessions (account_id, account_kind) WHERE revoked_at IS NULL` — this constraint *is* FR-004
+- [X] T068 [P] [US1] Create `/server/migrations/008_otp_and_device_approvals.sql` with hashed OTP codes and `device_approvals` keyed `(member_id, device_id)`
 
 ### Shared contracts
 
-- [ ] T069 [P] [US1] Create `/packages/contracts/src/auth.js` with the Zod request and response schemas for every endpoint in [auth-api.md](./contracts/auth-api.md)
+- [X] T069 [P] [US1] Create `/packages/contracts/src/auth.js` with the Zod request and response schemas for every endpoint in [auth-api.md](./contracts/auth-api.md)
 
 ### Credential handling
 
-- [ ] T070 [P] [US1] Create `/server/src/auth/passwords.js` with argon2id hashing at the OWASP baseline (19 MiB, 2 iterations, parallelism 1) and a dummy-hash verification path so a missing account costs the same time as a wrong password
-- [ ] T071 [US1] Add the legacy forced-reset path to `/server/src/auth/passwords.js`: a `NULL` hash or `password_reset_required` refuses sign-in and returns the reset outcome — unsalted MD5 is treated as already public and never verified (FR-014)
-- [ ] T072 [P] [US1] Create `/server/src/auth/tokens.js` minting EdDSA access tokens with the exact documented claim set and generating opaque 256-bit refresh tokens, storing **only** their SHA-256 hash
-- [ ] T073 [US1] Create `/server/src/auth/sessions.js` implementing single-active-session sign-in as one transaction (revoke active → insert new → issue refresh → audit → update `last_login_at`), handling the unique-index violation deterministically
-- [ ] T074 [US1] Add refresh rotation and reuse detection to `/server/src/auth/sessions.js` per the table in [data-model.md §3](./data-model.md): a consumed token revokes the session as `token_reuse` and deletes the lineage
-- [ ] T075 [US1] Add the Redis `sid` denylist to `/server/src/auth/sessions.js` (`SETEX denylist:sid:<id> 600 1` on revocation) so entries expire with the access-token lifetime and the set stays small
-- [ ] T076 [P] [US1] Create `/server/src/auth/otp.js` issuing hashed 4-digit codes bound to `device_id`, with the attempt ceiling and 5-minute expiry that are what actually make a 4-digit code safe
+- [X] T070 [P] [US1] Create `/server/src/auth/passwords.js` with argon2id hashing at the OWASP baseline (19 MiB, 2 iterations, parallelism 1) and a dummy-hash verification path so a missing account costs the same time as a wrong password
+- [X] T071 [US1] Add the legacy forced-reset path to `/server/src/auth/passwords.js`: a `NULL` hash or `password_reset_required` refuses sign-in and returns the reset outcome — unsalted MD5 is treated as already public and never verified (FR-014)
+- [X] T072 [P] [US1] Create `/server/src/auth/tokens.js` minting EdDSA access tokens with the exact documented claim set and generating opaque 256-bit refresh tokens, storing **only** their SHA-256 hash
+- [X] T073 [US1] Create `/server/src/auth/sessions.js` implementing single-active-session sign-in as one transaction (revoke active → insert new → issue refresh → audit → update `last_login_at`), handling the unique-index violation deterministically
+- [X] T074 [US1] Add refresh rotation and reuse detection to `/server/src/auth/sessions.js` per the table in [data-model.md §3](./data-model.md): a consumed token revokes the session as `token_reuse` and deletes the lineage
+- [X] T075 [US1] Add the Redis `sid` denylist to `/server/src/auth/sessions.js` (`SETEX denylist:sid:<id> 600 1` on revocation) so entries expire with the access-token lifetime and the set stays small
+- [X] T076 [P] [US1] Create `/server/src/auth/otp.js` issuing hashed 4-digit codes bound to `device_id`, with the attempt ceiling and 5-minute expiry that are what actually make a 4-digit code safe
 
 ### Authentication and authorization plumbing
 
-- [ ] T077 [US1] Create `/server/src/plugins/09-jwt.js` registering `@fastify/jwt` with EdDSA verification reading from **either** the `gwc_at` cookie or an `Authorization` header, with 30 s clock-skew leeway — one verification path for both faces
-- [ ] T078 [US1] Create `/server/src/plugins/10-auth.js` resolving `request.principal` from the token, verifying `aud` against the route's declared audience, and checking the `sid` denylist on every request
-- [ ] T079 [US1] Register `@fastify/cookie` and `@fastify/csrf-protection` in `/server/src/app.js`, with `SameSite=Lax` on the access cookie and `SameSite=Strict` scoped to `/auth/refresh` on the refresh cookie
-- [ ] T080 [P] [US1] Register `@fastify/cors` in `/server/src/app.js` with an explicit origin allowlist, never `*` on a credentialed route
-- [ ] T081 [US1] Create `/server/src/authz/permissions.js` resolving the permission snapshot with a 30 s TTL **and explicit invalidation** on any write to `admin_permissions` or to an account's `is_active`/`is_admin`/`is_superadmin` — invalidation is the mechanism, the TTL only a backstop (FR-006)
-- [ ] T082 [US1] Create `/server/src/authz/require-permission.js` as the Layer 1 `preHandler`: superadmin bypass, then the declared module flag, with an audit write on denial (FR-007, FR-008, FR-015)
-- [ ] T083 [US1] Create `/server/src/authz/object-guards.js` with `guardAdminTarget` enforcing FR-009 **inside the handler's transaction**, after the target row is loaded — a concurrent promotion must not slip between check and write
-- [ ] T084 [US1] Add the remaining object guards to `/server/src/authz/object-guards.js` per [rbac-model.md §5](./contracts/rbac-model.md): self-demotion, last-superadmin, member soft-delete, member-owned content
-- [ ] T085 [US1] Add the member-side gates to `/server/src/plugins/10-auth.js`: status, email confirmed, device approved, and per-member permission flags (FR-010, FR-011, FR-012)
+- [X] T077 [US1] Create `/server/src/plugins/09-jwt.js` registering `@fastify/jwt` with EdDSA verification reading from **either** the `gwc_at` cookie or an `Authorization` header, with 30 s clock-skew leeway — one verification path for both faces
+- [X] T078 [US1] Create `/server/src/plugins/10-auth.js` resolving `request.principal` from the token, verifying `aud` against the route's declared audience, and checking the `sid` denylist on every request
+- [X] T079 [US1] Register `@fastify/cookie` and `@fastify/csrf-protection` in `/server/src/app.js`, with `SameSite=Lax` on the access cookie and `SameSite=Strict` scoped to `/auth/refresh` on the refresh cookie
+- [X] T080 [P] [US1] Register `@fastify/cors` in `/server/src/app.js` with an explicit origin allowlist, never `*` on a credentialed route
+- [X] T081 [US1] Create `/server/src/authz/permissions.js` resolving the permission snapshot with a 30 s TTL **and explicit invalidation** on any write to `admin_permissions` or to an account's `is_active`/`is_admin`/`is_superadmin` — invalidation is the mechanism, the TTL only a backstop (FR-006)
+- [X] T082 [US1] Create `/server/src/authz/require-permission.js` as the Layer 1 `preHandler`: superadmin bypass, then the declared module flag, with an audit write on denial (FR-007, FR-008, FR-015)
+- [X] T083 [US1] Create `/server/src/authz/object-guards.js` with `guardAdminTarget` enforcing FR-009 **inside the handler's transaction**, after the target row is loaded — a concurrent promotion must not slip between check and write
+- [X] T084 [US1] Add the remaining object guards to `/server/src/authz/object-guards.js` per [rbac-model.md §5](./contracts/rbac-model.md): self-demotion, last-superadmin, member soft-delete, member-owned content
+- [X] T085 [US1] Add the member-side gates to `/server/src/plugins/10-auth.js`: status, email confirmed, device approved, and per-member permission flags (FR-010, FR-011, FR-012)
 
 ### Credential abuse limits (US3 slice, required here)
 
-- [ ] T086 [US1] Add the `sign-in-ip` and `sign-in-account` buckets to `/server/src/config/rate-limits.js`, both fail-closed and both checked — either alone leaves a real attack open (SC-013)
-- [ ] T087 [P] [US1] Add the `otp-send` (keyed on **phone number**, since each send costs money), `otp-verify`, `password-reset`, and `refresh` buckets to `/server/src/config/rate-limits.js`
+- [X] T086 [US1] Add the `sign-in-ip` and `sign-in-account` buckets to `/server/src/config/rate-limits.js`, both fail-closed and both checked — either alone leaves a real attack open (SC-013)
+- [X] T087 [P] [US1] Add the `otp-send` (keyed on **phone number**, since each send costs money), `otp-verify`, `password-reset`, and `refresh` buckets to `/server/src/config/rate-limits.js`
 - [ ] T088 [P] [US1] Write `/server/tests/resilience/rate-limit-credentials.test.js` asserting refusal in **both** directions — many addresses against one account, one address against many accounts — each with `Retry-After` (SC-013)
 
 ### Endpoints
 
-- [ ] T089 [US1] Create `/server/src/auth/routes.js` with `POST /auth/sign-in` returning the seven documented outcomes, masking `sentTo`, and issuing no token on any status gate
-- [ ] T090 [US1] Add `POST /auth/verify-otp` and `POST /auth/otp/resend` to `/server/src/auth/routes.js`
-- [ ] T091 [US1] Add `POST /auth/refresh` and `POST /auth/sign-out` to `/server/src/auth/routes.js`, with sign-out **idempotent** so a client retry after a network failure does not see an error
-- [ ] T092 [US1] Add `GET /auth/me` to `/server/src/auth/routes.js` returning capabilities from the snapshot and `entitlement: null` from a `resolveEntitlement()` stub — no membership-card table is in scope, so the point-of-use contract is fixed here and the card feature supplies the query — with `Cache-Control: private, no-store`
-- [ ] T093 [US1] Add `POST /auth/password-reset/request` and `/confirm` to `/server/src/auth/routes.js`, always returning 202 regardless of account existence, and revoking **all** sessions on confirm
-- [ ] T094 [US1] Declare `config.auth` **and an explicit Zod response schema** on every route in `/server/src/auth/routes.js`, and backfill `/server/src/ops/health.js`, so the T041 startup gate passes — Constitution Principle VI requires the response schema before the route ships, not in a later phase
+- [X] T089 [US1] Create `/server/src/auth/routes.js` with `POST /auth/sign-in` returning the seven documented outcomes, masking `sentTo`, and issuing no token on any status gate
+- [X] T090 [US1] Add `POST /auth/verify-otp` and `POST /auth/otp/resend` to `/server/src/auth/routes.js`
+- [X] T091 [US1] Add `POST /auth/refresh` and `POST /auth/sign-out` to `/server/src/auth/routes.js`, with sign-out **idempotent** so a client retry after a network failure does not see an error
+- [X] T092 [US1] Add `GET /auth/me` to `/server/src/auth/routes.js` returning capabilities from the snapshot and `entitlement: null` from a `resolveEntitlement()` stub — no membership-card table is in scope, so the point-of-use contract is fixed here and the card feature supplies the query — with `Cache-Control: private, no-store`
+- [X] T093 [US1] Add `POST /auth/password-reset/request` and `/confirm` to `/server/src/auth/routes.js`, always returning 202 regardless of account existence, and revoking **all** sessions on confirm
+- [X] T094 [US1] Declare `config.auth` **and an explicit Zod response schema** on every route in `/server/src/auth/routes.js`, and backfill `/server/src/ops/health.js`, so the T041 startup gate passes — Constitution Principle VI requires the response schema before the route ships, not in a later phase
 
 ### Integration with US2
 
-- [ ] T095 [US1] Create `/server/src/seo/staff-routes.js` exposing gated edit endpoints for `seo_metadata` fields, requiring the flag on **both** the `seo` module and the record's own module (FR-020, FR-021)
-- [ ] T096 [US1] Add automatic 301 registration to `/server/src/seo/staff-routes.js`: a slug change writes the old slug into `legacy_redirects`, so accumulated search equity is not silently discarded (§12.12)
+- [X] T095 [US1] Create `/server/src/seo/staff-routes.js` exposing gated edit endpoints for `seo_metadata` fields, requiring the flag on **both** the `seo` module and the record's own module (FR-020, FR-021)
+- [X] T096 [US1] Add automatic 301 registration to `/server/src/seo/staff-routes.js`: a slug change writes the old slug into `legacy_redirects`, so accumulated search equity is not silently discarded (§12.12)
 - [ ] T097 [P] [US1] Write `/server/tests/seo/staff-edit.test.js` asserting the dual-permission requirement and that a slug change creates the 301 record
-- [ ] T098 [US1] Add the gated-surface response hook to `/server/src/plugins/02-security-headers.js` setting `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow` on every non-public surface (FR-025)
+- [X] T098 [US1] Add the gated-surface response hook to `/server/src/plugins/02-security-headers.js` setting `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow` on every non-public surface (FR-025)
 - [ ] T099 [P] [US1] Write `/server/tests/seo/crawl-posture-gated.test.js` asserting every gated surface in the §10.1 table is both access-refused **and** marked non-indexable (SC-008, gated half)
 
 **Checkpoint**: each principal kind reaches exactly its declared route set; a revoked permission is refused on the next request; a second sign-in terminates the first; a replayed refresh kills the lineage; a suspended member cannot sign in. Validate with quickstart **C1–C8**.

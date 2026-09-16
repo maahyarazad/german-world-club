@@ -26,7 +26,13 @@ export async function resetAuthTables(pool) {
   await pool.query(`
     TRUNCATE refresh_tokens, sessions, otp_challenges, device_approvals,
              admin_permissions, password_reset_tokens, audit_log RESTART IDENTITY CASCADE`)
+  // admin_users guards the last active superadmin (§11). A suite that made one
+  // *is* the last one in a clean test database, so tearing it down trips the
+  // trigger. Suspend it for the teardown only — the rule stays armed for every
+  // assertion, which is where it has to hold.
+  await pool.query(`ALTER TABLE admin_users DISABLE TRIGGER admin_users_superadmin_guard`)
   await pool.query('DELETE FROM admin_users WHERE email LIKE $1', ['%@test.invalid'])
+  await pool.query(`ALTER TABLE admin_users ENABLE TRIGGER admin_users_superadmin_guard`)
   // members refuses DELETE by design (§12.4), so test members are disabled
   // rather than removed — which is itself a useful reminder of the rule.
   await pool.query(`ALTER TABLE members DISABLE TRIGGER members_refuse_delete`)
@@ -110,6 +116,15 @@ export async function signIn(app, email, password = PASSWORD, extra = {}) {
 
 /** A bearer header for a freshly-minted token on a real session. */
 export async function bearerFor(app, { accountId, accountKind }) {
+  // One active session per account (FR-004) is enforced by a partial unique
+  // index, so minting a second bearer for the same account has to supersede the
+  // first — exactly as a real second sign-in would. Without this a suite that
+  // calls bearerFor twice fails on the constraint rather than on its assertion.
+  await app.pg.query(
+    `UPDATE sessions SET revoked_at = now(), revoked_reason = 'superseded'
+      WHERE account_id = $1 AND account_kind = $2 AND revoked_at IS NULL`,
+    [accountId, accountKind],
+  )
   const { rows } = await app.pg.query(
     `INSERT INTO sessions (account_id, account_kind) VALUES ($1, $2) RETURNING id`,
     [accountId, accountKind],
