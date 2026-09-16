@@ -64,6 +64,22 @@ const schema = z
     MEDIA_S3_REGION: z.string().default('us-east-1'),
     MEDIA_S3_ACCESS_KEY_ID: z.string().optional(),
     MEDIA_S3_SECRET_ACCESS_KEY: z.string().optional(),
+
+    // --- SMSGlobal (OTP delivery, §6.2) ---------------------------------
+    // Absent, OTP sends are logged and refused rather than silently skipped:
+    // a second factor that quietly does not send is not a second factor.
+    SMSGLOBAL_API_KEY: z.string().optional(),
+    SMSGLOBAL_API_SECRET: z.string().optional(),
+    SMSGLOBAL_ORIGIN: z.string().default('GWC'),
+
+    // --- Push notifications ---------------------------------------------
+    // Expo needs no server credential unless the project enables enhanced
+    // security. FCM needs a service account; the private key is a secret and
+    // is read from the environment, never from a JSON file in the repo.
+    EXPO_ACCESS_TOKEN: z.string().optional(),
+    FCM_PROJECT_ID: z.string().optional(),
+    FCM_CLIENT_EMAIL: z.string().optional(),
+    FCM_PRIVATE_KEY: z.string().optional(),
   })
   // Production has no safe default for the three settings that must agree with
   // infrastructure. Boot fails rather than guessing (plan.md Risk 4).

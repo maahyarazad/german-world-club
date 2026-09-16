@@ -38,6 +38,7 @@ import seoStaffRoutes from './seo/staff-routes.js'
 import authRoutes from './auth/routes.js'
 import mediaRoutes from './media/routes.js'
 import mediaWorker from './media/worker.js'
+import pushRoutes from './push/routes.js'
 import publicRoutes from './public/routes.js'
 import { COOKIES } from '@gwc/contracts/auth'
 import { createDbContentSource } from './public/content.js'
@@ -46,7 +47,7 @@ import { createStorage } from './media/storage.js'
 import { createInlineQueue } from './media/queue.js'
 import { closeDispatchers } from './integrations/http-client.js'
 import { createPaymentsClient } from './integrations/payments.js'
-import { createSmsClient } from './integrations/sms.js'
+import { createSmsClient, smsUnavailable } from './integrations/sms.js'
 import { createMailClient } from './integrations/mail.js'
 import { createGeocodingClient } from './integrations/geocoding.js'
 
@@ -204,13 +205,48 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
    */
   app.decorate('integrations', integrations ?? {
     payments: createPaymentsClient(),
-    sms: createSmsClient(),
+    sms: createSmsClient({
+      apiKey: env.SMSGLOBAL_API_KEY,
+      apiSecret: env.SMSGLOBAL_API_SECRET,
+      origin: env.SMSGLOBAL_ORIGIN,
+    }),
     mail: createMailClient(),
     geocoding: createGeocodingClient(),
   })
 
   app.addHook('onClose', async () => {
     await closeDispatchers()
+  })
+
+  /**
+   * OTP delivery (FR-012, §6.2).
+   *
+   * `auth/routes.js` calls this after minting a challenge. It was previously
+   * optional-chained against nothing at all, so codes were generated and never
+   * sent — the challenge was real, the SMS was not.
+   *
+   * Runs under the SMS breaker with its declared fallback: refuse and tell the
+   * member to retry. Waving sign-in through when the provider is down would
+   * turn a supplier outage into an authentication bypass, which is why this
+   * throws rather than resolving quietly.
+   */
+  app.decorate('sendOtp', async ({ mobile, code }, { signal } = {}) => {
+    if (!app.integrations.sms.configured) {
+      // Loud rather than silent. A second factor that does not send is not a
+      // second factor, and in development this is the line that says so.
+      app.log.error({ mobile: `••••${String(mobile).slice(-4)}` }, 'SMSGlobal is not configured — no code was sent')
+      throw smsUnavailable()
+    }
+
+    try {
+      return await app.breakers.sms.run((s) => app.integrations.sms.sendCode({ mobile, code }, { signal: s ?? signal }))
+    } catch (err) {
+      // A 4xx from the provider (an unusable number) is already a business
+      // outcome and passes through; anything else becomes the declared refusal.
+      if (err.statusCode >= 400 && err.statusCode < 500) throw err
+      app.log.error({ err }, 'OTP delivery failed')
+      throw smsUnavailable()
+    }
   })
 
   /**
@@ -245,6 +281,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   await app.register(authRoutes)
   await app.register(mediaRoutes)
   await app.register(mediaWorker)
+  await app.register(pushRoutes)
   await app.register(seoStaffRoutes)
   await app.register(publicRoutes)
 

@@ -52,6 +52,17 @@ const ROUTE_CLASSES = [
   { name: 'media upload', url: '/media', method: 'POST', audience: 'member' },
   { name: 'media read', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'media delete', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  // Push: devices belong to the member holding them; broadcasting to every
+  // member's phone is the `mass_messages` privilege by another transport.
+  { name: 'push register device', url: '/push/devices', method: 'POST', audience: 'member' },
+  { name: 'push list devices', url: '/push/devices', method: 'GET', audience: 'member' },
+  { name: 'push delete device', url: '/push/devices/:id', probe: `/push/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  { name: 'push broadcast', url: '/push/campaigns', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'write' },
+  { name: 'push preview', url: '/push/campaigns/preview', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'write' },
+  { name: 'push history', url: '/push/campaigns', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
+  { name: 'push test list', url: '/push/test-recipients', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
+  { name: 'push test add', url: '/push/test-recipients', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'edit' },
+  { name: 'push test remove', url: '/push/test-recipients/:id', probe: `/push/test-recipients/${randomUUID()}`, method: 'DELETE', audience: 'staff', module: 'mass_messages', flag: 'edit' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // Institutional pages are one route class served at several declared slugs.

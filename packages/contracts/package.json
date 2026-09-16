@@ -9,7 +9,8 @@
     "./permissions": "./src/permissions.js",
     "./auth": "./src/auth.js",
     "./seo": "./src/seo.js",
-    "./media": "./src/media.js"
+    "./media": "./src/media.js",
+    "./push": "./src/push.js"
   },
   "dependencies": {
     "zod": "^4.6.5"
