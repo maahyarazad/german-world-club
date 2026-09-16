@@ -1,4 +1,7 @@
-import PgBoss from 'pg-boss'
+// pg-boss 12 is an ES module exporting `PgBoss` as a *named* export; there is
+// no default. A default import fails at load time, and because the suites run
+// against the inline queue below, nothing would catch it before boot.
+import { PgBoss } from 'pg-boss'
 
 /**
  * The work queue for video derivatives (T149).

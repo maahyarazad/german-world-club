@@ -340,7 +340,7 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 - [ ] T159 [P] [US4] Write `/server/tests/resilience/timeouts.test.js` asserting a request against a hung stub completes within 110% of its declared budget and that the underlying query is **cancelled**, not merely abandoned (SC-009)
 - [ ] T160 [P] [US4] Write `/server/tests/resilience/isolation.test.js` asserting that with the payment stub hung, p99 for routes not touching it stays within 20% of baseline (SC-010)
-- [ ] T161 [P] [US4] Write `/server/tests/resilience/breaker.test.js` asserting closed → open at threshold, **zero** calls reaching the dependency while open, and a single half-open probe closing it on success (SC-011)
+- [X] T161 [P] [US4] Write `/server/tests/resilience/breaker.test.js` asserting closed → open at threshold, **zero** calls reaching the dependency while open, and a single half-open probe closing it on success (SC-011)
 - [ ] T162 [P] [US4] Write `/server/tests/resilience/breaker-errorfilter.test.js` asserting 20 consecutive `CARD_DECLINED` responses leave the payment circuit **closed** — without this, a busy evening of legitimate declines takes payments down for everyone (SC-012)
 - [ ] T163 [P] [US4] Write `/server/tests/resilience/crawler-budget.test.js` asserting a normal-rate crawl over every public route sees **zero** 429s (SC-014)
 - [ ] T164 [P] [US4] Write `/server/tests/resilience/trust-proxy.test.js` asserting limits key on the forwarded address at the configured hop depth and that a forged extra hop does not bypass the limit (FR-040)
