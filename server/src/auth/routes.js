@@ -5,7 +5,7 @@ import {
   verifyOtpRequestSchema, resendOtpRequestSchema, resendOtpResponseSchema,
   refreshRequestSchema, tokenPairResponseSchema,
   passwordResetRequestSchema, passwordResetConfirmSchema, passwordResetAcceptedSchema,
-  meResponseSchema, principalSchema,
+  meResponseSchema,
   COOKIES, ACCESS_TOKEN_TTL_SECONDS, REFRESH_TTL_DAYS,
   OTP_TTL_SECONDS, OTP_RESEND_COOLDOWN_SECONDS, PASSWORD_RESET_TTL_SECONDS,
 } from '@gwc/contracts/auth'

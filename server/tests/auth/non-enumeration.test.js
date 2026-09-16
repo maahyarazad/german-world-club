@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { buildAuthApp, createMember, resetAuthTables, signIn, PASSWORD } from '../helpers/auth.js'
+import { buildAuthApp, createMember, resetAuthTables, signIn } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
 import { stats } from '../../src/auth/passwords.js'
 

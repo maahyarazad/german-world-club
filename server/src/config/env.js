@@ -56,6 +56,14 @@ const schema = z
     MEDIA_LOCAL_PATH: z.string().default('./var/media'),
     MEDIA_MAX_BYTES: int(26214400),
     MEDIA_MAX_PIXELS: int(50000000),
+    // The per-account stored-byte quota (FR-063). A business quota, so it is
+    // enforced through the transactional counter primitive, never the limiter.
+    MEDIA_ACCOUNT_QUOTA_BYTES: int(1073741824),
+    MEDIA_S3_BUCKET: z.string().optional(),
+    MEDIA_S3_ENDPOINT: z.string().url().optional(),
+    MEDIA_S3_REGION: z.string().default('us-east-1'),
+    MEDIA_S3_ACCESS_KEY_ID: z.string().optional(),
+    MEDIA_S3_SECRET_ACCESS_KEY: z.string().optional(),
   })
   // Production has no safe default for the three settings that must agree with
   // infrastructure. Boot fails rather than guessing (plan.md Risk 4).

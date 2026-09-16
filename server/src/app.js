@@ -28,16 +28,20 @@ import jwtPlugin from './plugins/09-jwt.js'
 import authPlugin from './plugins/10-auth.js'
 import rbac from './plugins/11-rbac.js'
 import deadline from './plugins/12-deadline.js'
+import breakers from './plugins/13-breakers.js'
 import errorHandler from './plugins/14-error-handler.js'
 import health from './ops/health.js'
 import robots from './seo/robots.js'
 import sitemap from './seo/sitemap.js'
 import seoStaffRoutes from './seo/staff-routes.js'
 import authRoutes from './auth/routes.js'
+import mediaRoutes from './media/routes.js'
 import publicRoutes from './public/routes.js'
 import { COOKIES } from '@gwc/contracts/auth'
 import { createDbContentSource } from './public/content.js'
 import { createAuditWriter } from './ops/audit.js'
+import { createStorage } from './media/storage.js'
+import { createInlineQueue } from './media/queue.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
@@ -75,7 +79,7 @@ const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
  * rendering and OG-tag assertions are about the resolver and the templates
  * rather than about SQL.
  */
-export async function buildApp({ env = loadEnv(), contentSource, ...overrides } = {}) {
+export async function buildApp({ env = loadEnv(), contentSource, storage, jobQueue, ...overrides } = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled
     // request would be held open indefinitely. Layers 1 and 2 of
@@ -119,6 +123,7 @@ export async function buildApp({ env = loadEnv(), contentSource, ...overrides } 
   await app.register(rateLimit, { env })
   await app.register(rbac)
   await app.register(deadline)
+  await app.register(breakers)
 
   /**
    * Cookies, CSRF and CORS — the browser half of the credential model (§6.2).
@@ -173,6 +178,18 @@ export async function buildApp({ env = loadEnv(), contentSource, ...overrides } 
   app.decorate('audit', createAuditWriter(app.pg))
 
   /**
+   * Media storage and the video work queue.
+   *
+   * Both are seams the suites inject through, for the same reason
+   * `contentSource` is: derivative and delivery assertions should be about the
+   * pipeline and the routes, not about whether an object store is reachable.
+   * The inline queue is the default when no PostgreSQL-backed queue is
+   * configured, so a single-host install still transcodes.
+   */
+  app.decorate('mediaStorage', storage ?? createStorage(env))
+  app.decorate('jobQueue', jobQueue ?? createInlineQueue())
+
+  /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves
    * only files that actually exist — one route per file — instead of answering
    * every unmatched path. With the catch-all gone, `setNotFoundHandler`
@@ -202,6 +219,7 @@ export async function buildApp({ env = loadEnv(), contentSource, ...overrides } 
   await app.register(robots)
   await app.register(sitemap)
   await app.register(authRoutes)
+  await app.register(mediaRoutes)
   await app.register(seoStaffRoutes)
   await app.register(publicRoutes)
 

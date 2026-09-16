@@ -185,7 +185,10 @@ export async function rotateRefreshToken(pool, presentedPlaintext, { face = 'web
  * success, because a client retrying after a network failure must not see an
  * error (auth-api.md, `POST /auth/sign-out`).
  */
-export async function revokeSession(pool, sessionId, reason, { signal } = {}) {
+// NOTE: the caller's deadline signal is accepted and currently unused —
+// `withTransaction` has no signal path yet. T178 propagates it into every `pg`
+// query; until then the parameter is dropped rather than silently promised.
+export async function revokeSession(pool, sessionId, reason) {
   await withTransaction(pool, async (client) => {
     await client.query(
       `UPDATE sessions SET revoked_at = now(), revoked_reason = $2

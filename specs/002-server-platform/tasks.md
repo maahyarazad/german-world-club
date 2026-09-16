@@ -302,26 +302,26 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 ### Storage and validation
 
-- [ ] T144 [US3] Create `/server/src/media/storage.js` with an S3-compatible driver and a local-disk driver behind one interface, keyed by content hash so identical bytes store once
-- [ ] T145 [US3] Create `/server/src/media/validate.js` applying the ordered checks from [media-pipeline.md §4](./contracts/media-pipeline.md): streamed 25 MB cap, `file-type` magic-byte inspection, MIME allowlist, and a **pre-decode** dimension bound backed by `sharp`'s `limitInputPixels`
-- [ ] T146 [US3] Refuse SVG outright in `/server/src/media/validate.js` — an SVG can carry script, so storing and serving one from the club's origin is a stored-XSS primitive
-- [ ] T147 [P] [US3] Create `/server/src/media/strip-metadata.js` removing EXIF, XMP, and ICC data — GPS coordinates in a member's photograph are a direct §10.1 PII concern (FR-054)
+- [X] T144 [US3] Create `/server/src/media/storage.js` with an S3-compatible driver and a local-disk driver behind one interface, keyed by content hash so identical bytes store once
+- [X] T145 [US3] Create `/server/src/media/validate.js` applying the ordered checks from [media-pipeline.md §4](./contracts/media-pipeline.md): streamed 25 MB cap, `file-type` magic-byte inspection, MIME allowlist, and a **pre-decode** dimension bound backed by `sharp`'s `limitInputPixels`
+- [X] T146 [US3] Refuse SVG outright in `/server/src/media/validate.js` — an SVG can carry script, so storing and serving one from the club's origin is a stored-XSS primitive
+- [X] T147 [P] [US3] Create `/server/src/media/strip-metadata.js` removing EXIF, XMP, and ICC data — GPS coordinates in a member's photograph are a direct §10.1 PII concern (FR-054)
 
 ### Derivative generation
 
-- [ ] T148 [US3] Create `/server/src/media/derive-image.js` producing `thumb` 160 / `small` 400 / `medium` 800 / `large` 1600 px via `sharp`, aspect preserved, **never upscaled**, WebP primary with PNG for alpha sources and JPEG otherwise (FR-056, FR-057)
-- [ ] T149 [P] [US3] Create `/server/src/media/queue.js` registering the `pg-boss` work queue for video derivatives — event-triggered work, distinct from `croner`'s time-triggered scheduling in US5
-- [ ] T150 [US3] Create `/server/src/media/derive-video.js` spawning `ffmpeg` directly via `node:child_process` with a hard kill at its budget, producing WebM plus a WebP poster frame — not `fluent-ffmpeg`, whose latest release is unmaintained (FR-058)
-- [ ] T151 [US3] Add the media policy to `/server/src/config/breakers.js` and `/server/src/plugins/13-breakers.js` (creating them if this phase runs before US4): 6 s image, 300 s video job, **fail closed** so no asset is recorded `ready` on failure (FR-063)
-- [ ] T152 [US3] Create `/server/src/db/counters.js` providing the transactional counter primitive — reserve against a bounded counter under a row lock inside the caller's transaction — which FR-043 requires and every later quota feature builds on
+- [X] T148 [US3] Create `/server/src/media/derive-image.js` producing `thumb` 160 / `small` 400 / `medium` 800 / `large` 1600 px via `sharp`, aspect preserved, **never upscaled**, WebP primary with PNG for alpha sources and JPEG otherwise (FR-056, FR-057)
+- [X] T149 [P] [US3] Create `/server/src/media/queue.js` registering the `pg-boss` work queue for video derivatives — event-triggered work, distinct from `croner`'s time-triggered scheduling in US5
+- [X] T150 [US3] Create `/server/src/media/derive-video.js` spawning `ffmpeg` directly via `node:child_process` with a hard kill at its budget, producing WebM plus a WebP poster frame — not `fluent-ffmpeg`, whose latest release is unmaintained (FR-058)
+- [X] T151 [US3] Add the media policy to `/server/src/config/breakers.js` and `/server/src/plugins/13-breakers.js` (creating them if this phase runs before US4): 6 s image, 300 s video job, **fail closed** so no asset is recorded `ready` on failure (FR-063)
+- [X] T152 [US3] Create `/server/src/db/counters.js` providing the transactional counter primitive — reserve against a bounded counter under a row lock inside the caller's transaction — which FR-043 requires and every later quota feature builds on
 
 ### Endpoints and delivery
 
-- [ ] T153 [US3] Create `/packages/contracts/src/media.js` with the Zod request and response schemas from [media-pipeline.md](./contracts/media-pipeline.md), including the explicit response schema Principle VI requires
-- [ ] T154 [US3] Create `/server/src/media/routes.js` with `POST /media` under an 8 s `media-upload` budget, returning **201 with every variant URL** for images and **202 `processing`** for video, and probing intrinsic dimensions synchronously in both cases (FR-055, FR-059)
-- [ ] T155 [US3] Add `GET /media/:id` and `DELETE /media/:id` to `/server/src/media/routes.js`, gated by ownership or module flag, removing stored bytes only when no other asset shares the checksum
-- [ ] T156 [US3] Add `GET /media/:checksum/:variant.:ext` to `/server/src/media/routes.js` with `Cache-Control: public, max-age=31536000, immutable`, `Content-Disposition: inline`, and `X-Content-Type-Options: nosniff` (FR-062)
-- [ ] T157 [US3] Add the `upload` bucket (30/hour per account, fail-closed) to `/server/src/config/rate-limits.js` and enforce the per-account stored-byte quota through `/server/src/db/counters.js` (FR-063)
+- [X] T153 [US3] Create `/packages/contracts/src/media.js` with the Zod request and response schemas from [media-pipeline.md](./contracts/media-pipeline.md), including the explicit response schema Principle VI requires
+- [X] T154 [US3] Create `/server/src/media/routes.js` with `POST /media` under an 8 s `media-upload` budget, returning **201 with every variant URL** for images and **202 `processing`** for video, and probing intrinsic dimensions synchronously in both cases (FR-055, FR-059)
+- [X] T155 [US3] Add `GET /media/:id` and `DELETE /media/:id` to `/server/src/media/routes.js`, gated by ownership or module flag, removing stored bytes only when no other asset shares the checksum
+- [X] T156 [US3] Add `GET /media/:checksum/:variant.:ext` to `/server/src/media/routes.js` with `Cache-Control: public, max-age=31536000, immutable`, `Content-Disposition: inline`, and `X-Content-Type-Options: nosniff` (FR-062)
+- [X] T157 [US3] Add the `upload` bucket (30/hour per account, fail-closed) to `/server/src/config/rate-limits.js` and enforce the per-account stored-byte quota through `/server/src/db/counters.js` (FR-063)
 - [ ] T158 [US3] Switch `/server/src/public/templates/layout.js` and the per-type templates to `<picture>` with a `srcset` across the breakpoints and explicit `width`/`height`, so the browser picks the smallest sufficient variant and reserves the box before bytes arrive (FR-060, SC-018)
 
 **Checkpoint**: a 2 MB photograph uploads and returns every variant URL with recorded dimensions; a phone-width layout receives tens of kilobytes; a mismatched extension and a decompression bomb are both refused; a GPS-bearing photograph stores with no location metadata. Validate with quickstart **M1–M8**.

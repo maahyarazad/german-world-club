@@ -46,6 +46,12 @@ const ROUTE_CLASSES = [
   { name: 'member sign-out', url: '/auth/sign-out', method: 'POST', audience: 'member' },
   { name: 'staff profile', url: '/auth/staff/me', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'staff sign-out', url: '/auth/staff/sign-out', method: 'POST', audience: 'staff', module: 'settings', flag: 'read' },
+  // Media delivery is public — a crawler must be able to fetch the images a
+  // partner page references — while ingest and management are member-gated.
+  { name: 'media variant', url: '/media/:checksum/:variant.:ext', probe: '/media/deadbeef/medium.webp', method: 'GET', audience: 'public' },
+  { name: 'media upload', url: '/media', method: 'POST', audience: 'member' },
+  { name: 'media read', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'media delete', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // Institutional pages are one route class served at several declared slugs.
@@ -147,7 +153,17 @@ describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', ()
     return response.statusCode
   }
 
-  const permitted = (status) => status < 401 || status === 404 || status === 409 || status === 422
+  /**
+   * "Reached the handler", not "succeeded".
+   *
+   * This suite is about the authorization matrix, so anything that is the
+   * handler's own answer counts as reached: 404 for a probe id that does not
+   * exist, 409/422 for a business rule, 406/415 for a content type the route
+   * declines (the upload route wants multipart and these probes send JSON).
+   * Only 401 and 403 mean the principal was turned away, which is what the
+   * matrix is actually asserting about.
+   */
+  const permitted = (status) => ![401, 403].includes(status) && status < 500
 
   /**
    * A fresh credential per probe.
