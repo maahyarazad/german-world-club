@@ -29,22 +29,49 @@ export async function query(pool, sql, params = [], { signal } = {}) {
   }
 }
 
-/** Run `fn` inside a transaction, rolling back on any throw. */
-export async function withTransaction(pool, fn) {
+/**
+ * Run `fn` inside a transaction, rolling back on any throw.
+ *
+ * `signal` is the caller's deadline (FR-034). When it aborts, the connection is
+ * destroyed, which is what actually cancels the statement PostgreSQL is running
+ * — rolling back afterwards would first have to wait for that statement to
+ * finish, which is precisely the thing that has gone wrong.
+ *
+ * The transaction is checked once before it opens and again on abort, rather
+ * than around every statement inside `fn`: a handler that has already run out
+ * of time should not start a transaction, and one that runs out mid-way is
+ * interrupted rather than politely asked to stop.
+ */
+export async function withTransaction(pool, fn, { signal } = {}) {
+  if (signal?.aborted) throw signal.reason ?? new Error('aborted')
+
   const client = await pool.connect()
+  let aborted = false
+  const onAbort = () => {
+    aborted = true
+    // Destroying the connection cancels the in-flight statement. The server
+    // rolls the transaction back when the connection drops, so no explicit
+    // ROLLBACK is possible or needed.
+    client.release(new Error('transaction aborted by deadline'))
+  }
+  signal?.addEventListener('abort', onAbort, { once: true })
+
   try {
     await client.query('BEGIN')
     const result = await fn(client)
     await client.query('COMMIT')
     return result
   } catch (err) {
-    try {
-      await client.query('ROLLBACK')
-    } catch {
-      // The connection is already unusable; the original error is what matters.
+    if (!aborted) {
+      try {
+        await client.query('ROLLBACK')
+      } catch {
+        // The connection is already unusable; the original error is what matters.
+      }
     }
     throw err
   } finally {
-    client.release()
+    signal?.removeEventListener('abort', onAbort)
+    if (!aborted) client.release()
   }
 }

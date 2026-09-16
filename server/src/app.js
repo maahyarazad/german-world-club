@@ -24,6 +24,7 @@ import legacyRedirects from './plugins/04-legacy-redirects.js'
 import db from './plugins/05-db.js'
 import redis from './plugins/06-redis.js'
 import rateLimit from './plugins/07-rate-limit.js'
+import pressure from './plugins/08-under-pressure.js'
 import jwtPlugin from './plugins/09-jwt.js'
 import authPlugin from './plugins/10-auth.js'
 import rbac from './plugins/11-rbac.js'
@@ -43,6 +44,11 @@ import { createDbContentSource } from './public/content.js'
 import { createAuditWriter } from './ops/audit.js'
 import { createStorage } from './media/storage.js'
 import { createInlineQueue } from './media/queue.js'
+import { closeDispatchers } from './integrations/http-client.js'
+import { createPaymentsClient } from './integrations/payments.js'
+import { createSmsClient } from './integrations/sms.js'
+import { createMailClient } from './integrations/mail.js'
+import { createGeocodingClient } from './integrations/geocoding.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
@@ -80,7 +86,7 @@ const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
  * rendering and OG-tag assertions are about the resolver and the templates
  * rather than about SQL.
  */
-export async function buildApp({ env = loadEnv(), contentSource, storage, jobQueue, ...overrides } = {}) {
+export async function buildApp({ env = loadEnv(), contentSource, storage, jobQueue, integrations, ...overrides } = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled
     // request would be held open indefinitely. Layers 1 and 2 of
@@ -122,6 +128,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   await app.register(db, { env })
   await app.register(redis, { env })
   await app.register(rateLimit, { env })
+  await app.register(pressure)
   await app.register(rbac)
   await app.register(deadline)
   await app.register(breakers)
@@ -189,6 +196,22 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
    */
   app.decorate('mediaStorage', storage ?? createStorage(env))
   app.decorate('jobQueue', jobQueue ?? createInlineQueue())
+
+  /**
+   * Outbound dependencies, each behind its own breaker and its own `undici`
+   * dispatcher. Injectable as a whole, so a resilience suite can drive a hung
+   * or failing dependency without a network.
+   */
+  app.decorate('integrations', integrations ?? {
+    payments: createPaymentsClient(),
+    sms: createSmsClient(),
+    mail: createMailClient(),
+    geocoding: createGeocodingClient(),
+  })
+
+  app.addHook('onClose', async () => {
+    await closeDispatchers()
+  })
 
   /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves

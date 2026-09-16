@@ -350,30 +350,30 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 ### Outbound dependency isolation
 
-- [ ] T168 [US4] Create `/server/src/integrations/http-client.js` configuring an `undici` dispatcher per dependency with its own `headersTimeout` and `bodyTimeout` (timeout layer 4)
-- [ ] T169 [US4] Create **or extend** `/server/src/config/breakers.js` (the media phase creates it if that phase runs first) holding the per-dependency policy table from [resilience.md §2](./contracts/resilience.md), with a startup check that **every dependency declares a fallback** (FR-037)
-- [ ] T170 [US4] Add the shared `errorFilter` to `/server/src/config/breakers.js` excluding all 4xx and `CARD_DECLINED` from the failure count — a business rejection is not a dependency failure (FR-036)
-- [ ] T171 [US4] Create **or extend** `/server/src/plugins/13-breakers.js` instantiating one `opossum` breaker per dependency and exposing them on the instance
-- [ ] T172 [P] [US4] Create `/server/src/integrations/payments.js` with its stub, **fail-closed**: no fallback may let checkout proceed, or the club hands out cards and event seats for free (FR-037)
-- [ ] T173 [US4] Add the deterministic idempotency reference to `/server/src/integrations/payments.js` so a retry after recovery reuses the same invoice rather than generating a second (FR-038, §12.5)
-- [ ] T174 [P] [US4] Create `/server/src/integrations/sms.js` with its stub and a refuse-with-retry-later fallback
-- [ ] T175 [P] [US4] Create `/server/src/integrations/mail.js` with its stub and an enqueue-for-later fallback keyed by message id
-- [ ] T176 [P] [US4] Create `/server/src/integrations/geocoding.js` with its stub and a save-without-coordinates fallback
-- [ ] T177 [US4] Wrap the Redis client in `/server/src/plugins/06-redis.js` in a 250 ms breaker, since the limiter's own dependency must not become the outage
+- [X] T168 [US4] Create `/server/src/integrations/http-client.js` configuring an `undici` dispatcher per dependency with its own `headersTimeout` and `bodyTimeout` (timeout layer 4)
+- [X] T169 [US4] Create **or extend** `/server/src/config/breakers.js` (the media phase creates it if that phase runs first) holding the per-dependency policy table from [resilience.md §2](./contracts/resilience.md), with a startup check that **every dependency declares a fallback** (FR-037)
+- [X] T170 [US4] Add the shared `errorFilter` to `/server/src/config/breakers.js` excluding all 4xx and `CARD_DECLINED` from the failure count — a business rejection is not a dependency failure (FR-036)
+- [X] T171 [US4] Create **or extend** `/server/src/plugins/13-breakers.js` instantiating one `opossum` breaker per dependency and exposing them on the instance
+- [X] T172 [P] [US4] Create `/server/src/integrations/payments.js` with its stub, **fail-closed**: no fallback may let checkout proceed, or the club hands out cards and event seats for free (FR-037)
+- [X] T173 [US4] Add the deterministic idempotency reference to `/server/src/integrations/payments.js` so a retry after recovery reuses the same invoice rather than generating a second (FR-038, §12.5)
+- [X] T174 [P] [US4] Create `/server/src/integrations/sms.js` with its stub and a refuse-with-retry-later fallback
+- [X] T175 [P] [US4] Create `/server/src/integrations/mail.js` with its stub and an enqueue-for-later fallback keyed by message id
+- [X] T176 [P] [US4] Create `/server/src/integrations/geocoding.js` with its stub and a save-without-coordinates fallback
+- [X] T177 [US4] Wrap the Redis client in `/server/src/plugins/06-redis.js` in a 250 ms breaker, since the limiter's own dependency must not become the outage
 
 ### Deadline propagation
 
-- [ ] T178 [US4] Propagate `request.signal` from `/server/src/plugins/12-deadline.js` into every `pg` query and `undici` request, so expiry cancels real work
-- [ ] T179 [US4] Apply the per-route-class deadlines from `/server/src/config/budgets.js` to every registered route, returning 503 `request-deadline-exceeded` on expiry (FR-032)
-- [ ] T180 [P] [US4] Add an `onTimeout` hook in `/server/src/plugins/12-deadline.js` recording a metric only — the socket is already hung up, so it cannot respond
+- [X] T178 [US4] Propagate `request.signal` from `/server/src/plugins/12-deadline.js` into every `pg` query and `undici` request, so expiry cancels real work
+- [X] T179 [US4] Apply the per-route-class deadlines from `/server/src/config/budgets.js` to every registered route, returning 503 `request-deadline-exceeded` on expiry (FR-032)
+- [X] T180 [P] [US4] Add an `onTimeout` hook in `/server/src/plugins/12-deadline.js` recording a metric only — the socket is already hung up, so it cannot respond
 
 ### Remaining limits and self-protection
 
-- [ ] T181 [US4] Add the `member-api`, `admin-api`, and `write-heavy` buckets to `/server/src/config/rate-limits.js` with their documented `skipOnError` values
-- [ ] T182 [US4] Configure `trustProxy` in `/server/src/app.js` from the validated hop count — never `true`, which would let a client forge `X-Forwarded-For` and bypass every limit (FR-040, Risk 4)
-- [ ] T183 [US4] Add `RateLimit-*` and `Retry-After` headers to refusals in `/server/src/plugins/07-rate-limit.js`, returning the problem+json envelope (FR-042)
-- [ ] T184 [US4] Create `/server/src/plugins/08-under-pressure.js` registering `@fastify/under-pressure` with event-loop and heap thresholds, exempting the health routes, and backing readiness (FR-045)
-- [ ] T185 [US4] Add `close-with-grace` to `/server/src/server.js` in the documented order: fail readiness **first**, then stop accepting, then drain 15 s, then close the pool and Redis (FR-046)
+- [X] T181 [US4] Add the `member-api`, `admin-api`, and `write-heavy` buckets to `/server/src/config/rate-limits.js` with their documented `skipOnError` values
+- [X] T182 [US4] Configure `trustProxy` in `/server/src/app.js` from the validated hop count — never `true`, which would let a client forge `X-Forwarded-For` and bypass every limit (FR-040, Risk 4)
+- [X] T183 [US4] Add `RateLimit-*` and `Retry-After` headers to refusals in `/server/src/plugins/07-rate-limit.js`, returning the problem+json envelope (FR-042)
+- [X] T184 [US4] Create `/server/src/plugins/08-under-pressure.js` registering `@fastify/under-pressure` with event-loop and heap thresholds, exempting the health routes, and backing readiness (FR-045)
+- [X] T185 [US4] Add `close-with-grace` to `/server/src/server.js` in the documented order: fail readiness **first**, then stop accepting, then drain 15 s, then close the pool and Redis (FR-046)
 
 **Checkpoint**: an induced hang is contained within budget without moving unrelated p99; the breaker opens, probes and recovers; a declined payment leaves it closed; a normal crawl sees zero 429s; SIGTERM drops nothing. Validate with quickstart **D1–D9**.
 
