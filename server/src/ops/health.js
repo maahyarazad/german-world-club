@@ -36,7 +36,25 @@ export default fp(
           isCurrent(app.pg),
         ])
 
-        const dependencies = { database: db, redis, migrations }
+        /**
+         * Each dependency by name (FR-050), so a failure needs no log dive.
+         *
+         * `circuits` and `shedding` are reported but do NOT make the instance
+         * unready, and the distinction is deliberate. An open circuit means one
+         * dependency is unwell; the instance is still serving every route that
+         * does not touch it, and marking it unready would remove working
+         * capacity from the pool at exactly the wrong moment. Shedding is the
+         * same: a process under pressure needs less traffic, not none, and an
+         * unready instance gets restarted rather than relieved.
+         */
+        const dependencies = {
+          database: db,
+          redis,
+          migrations,
+          circuits: app.circuitStates?.() ?? {},
+          shedding: app.underPressure?.()?.shedding ?? false,
+        }
+
         // Readiness must fail as soon as draining begins, BEFORE the drain
         // itself — otherwise the load balancer keeps routing work into a
         // process that has stopped accepting it (FR-046).

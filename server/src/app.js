@@ -31,7 +31,10 @@ import rbac from './plugins/11-rbac.js'
 import deadline from './plugins/12-deadline.js'
 import breakers from './plugins/13-breakers.js'
 import errorHandler from './plugins/14-error-handler.js'
+import openapi from './plugins/15-openapi.js'
 import health from './ops/health.js'
+import metrics from './ops/metrics.js'
+import jobs from './ops/jobs.js'
 import robots from './seo/robots.js'
 import sitemap from './seo/sitemap.js'
 import seoStaffRoutes from './seo/staff-routes.js'
@@ -42,7 +45,7 @@ import pushRoutes from './push/routes.js'
 import publicRoutes from './public/routes.js'
 import { COOKIES } from '@gwc/contracts/auth'
 import { createDbContentSource } from './public/content.js'
-import { createAuditWriter } from './ops/audit.js'
+import { createAuditWriter, createAuditReader } from './ops/audit.js'
 import { createStorage } from './media/storage.js'
 import { createInlineQueue } from './media/queue.js'
 import { closeDispatchers } from './integrations/http-client.js'
@@ -121,6 +124,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   app.setSerializerCompiler(serializerCompiler)
 
   await app.register(sensible)
+  await app.register(metrics)
   await app.register(requestContext)
   await app.register(errorHandler)
   await app.register(securityHeaders)
@@ -185,6 +189,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
 
   app.decorate('contentSource', contentSource ?? createDbContentSource(app.pg))
   app.decorate('audit', createAuditWriter(app.pg))
+  app.decorate('auditLog', createAuditReader(app.pg))
 
   /**
    * Media storage and the video work queue.
@@ -275,7 +280,15 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
     })
   })
 
+  /**
+   * Before every route plugin: @fastify/swagger collects the route table
+   * through an onRoute hook, and a Fastify onRoute hook only fires for routes
+   * registered after it. Registered last, the document comes out empty.
+   */
+  await app.register(openapi)
+
   await app.register(health)
+  await app.register(jobs)
   await app.register(robots)
   await app.register(sitemap)
   await app.register(authRoutes)

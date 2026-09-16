@@ -90,6 +90,10 @@ export default fp(
        * tell a banned client to simply retry later.
        */
       errorResponseBuilder: (request, context) => {
+        // Counted per bucket: a spike on `sign-in-ip` is an attack, the same
+        // spike on `public-read` is a crawl the allowlist is missing — and the
+        // second one costs the club search visibility (FR-050).
+        app.metrics?.rateLimited?.(request.routeOptions?.config?.rateLimit?.bucket)
         const retryAfterSeconds = Math.ceil(context.ttl / 1000)
         const error = new Error(`Rate limit exceeded. Retry after ${retryAfterSeconds}s.`)
         error.statusCode = context.statusCode

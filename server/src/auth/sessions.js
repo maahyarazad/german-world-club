@@ -49,6 +49,24 @@ export function createDenylist(redis) {
         }
         return true
       },
+      /**
+       * Drop expired entries (FR-051's denylist sweep).
+       *
+       * Only the in-memory fallback needs this: Redis expires its own keys
+       * through SETEX. Without it a long-running single-process deployment
+       * accumulates one entry per revoked session forever, since `has` only
+       * evicts a key somebody happens to ask about again.
+       */
+      async prune(now = Date.now()) {
+        let removed = 0
+        for (const [sid, until] of local) {
+          if (until < now) {
+            local.delete(sid)
+            removed += 1
+          }
+        }
+        return removed
+      },
     }
   }
   return {
@@ -57,6 +75,10 @@ export function createDenylist(redis) {
     },
     async has(sid) {
       return (await redis.exists(denylistKey(sid))) === 1
+    },
+    // Redis expires these itself through SETEX, so there is nothing to sweep.
+    async prune() {
+      return 0
     },
   }
 }

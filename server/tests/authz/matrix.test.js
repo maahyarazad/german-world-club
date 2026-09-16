@@ -63,6 +63,9 @@ const ROUTE_CLASSES = [
   { name: 'push test list', url: '/push/test-recipients', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
   { name: 'push test add', url: '/push/test-recipients', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'edit' },
   { name: 'push test remove', url: '/push/test-recipients/:id', probe: `/push/test-recipients/${randomUUID()}`, method: 'DELETE', audience: 'staff', module: 'mass_messages', flag: 'edit' },
+  // The generated OpenAPI document. Staff-gated rather than public: the shape
+  // of the admin API is not something an invite-only club publishes.
+  { name: 'openapi document', url: '/admin/openapi.json', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // Institutional pages are one route class served at several declared slugs.

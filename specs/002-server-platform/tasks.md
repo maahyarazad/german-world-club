@@ -394,13 +394,13 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 ### Implementation
 
-- [ ] T190 [P] [US5] Create `/server/migrations/010_job_definitions_and_runs.sql` per [data-model.md §5](./data-model.md)
-- [ ] T191 [US5] Extend `/server/src/ops/audit.js` with the query helpers staff need — by principal, by target, by required permission, by time window
-- [ ] T192 [US5] Create `/server/src/ops/jobs.js` scheduling with `croner`, honouring `job_definitions.enabled`, and writing a `job_runs` row for every run including failures (FR-051)
-- [ ] T193 [P] [US5] Add the platform jobs to `/server/src/ops/jobs.js`: expired-session cleanup, orphan-session pruning (`sessions.account_id` is polymorphic with no FK, so an orphan is representable), OTP challenge cleanup, denylist pruning, sitemap cache invalidation
-- [ ] T194 [US5] Add metrics emission to `/server/src/ops/metrics.js` for circuit-state transitions, rate-limit refusals per bucket, and timeouts per route class
-- [ ] T195 [US5] Extend `/server/src/ops/health.js` so readiness reports each dependency individually, including migration currency and shedding state (FR-050)
-- [ ] T196 [US5] Register `@fastify/swagger` in `/server/src/app.js` and `fastify-type-provider-zod` so OpenAPI is generated from the shared Zod schemas rather than maintained as a third, separately-wrong description
+- [X] T190 [P] [US5] Create `/server/migrations/010_job_definitions_and_runs.sql` per [data-model.md §5](./data-model.md)
+- [X] T191 [US5] Extend `/server/src/ops/audit.js` with the query helpers staff need — by principal, by target, by required permission, by time window
+- [X] T192 [US5] Create `/server/src/ops/jobs.js` scheduling with `croner`, honouring `job_definitions.enabled`, and writing a `job_runs` row for every run including failures (FR-051)
+- [X] T193 [P] [US5] Add the platform jobs to `/server/src/ops/jobs.js`: expired-session cleanup, orphan-session pruning (`sessions.account_id` is polymorphic with no FK, so an orphan is representable), OTP challenge cleanup, denylist pruning, sitemap cache invalidation
+- [X] T194 [US5] Add metrics emission to `/server/src/ops/metrics.js` for circuit-state transitions, rate-limit refusals per bucket, and timeouts per route class
+- [X] T195 [US5] Extend `/server/src/ops/health.js` so readiness reports each dependency individually, including migration currency and shedding state (FR-050)
+- [X] T196 [US5] Register `@fastify/swagger` in `/server/src/app.js` and `fastify-type-provider-zod` so OpenAPI is generated from the shared Zod schemas rather than maintained as a third, separately-wrong description
 - [ ] T197 [P] [US5] Audit that every registered route in `/server/src/` has an explicit Zod response schema and fail the build on any that does not — the schemas ship with their own stories (T094, T127, T153); this task is the gate that stops a later route skipping one
 
 **Checkpoint**: a failure at each layer produces a correlated, redacted trail; denials are queryable from the audit table; job runs record start, end, and outcome. Validate with quickstart **Phase E**.
