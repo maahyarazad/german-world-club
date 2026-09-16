@@ -411,10 +411,10 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 - [ ] T198 Run every quickstart scenario in `/specs/002-server-platform/quickstart.md` A1 through F and confirm each of SC-001 to SC-017 has a passing named test
 - [ ] T199 [P] Run `npm run -w server test:coverage` and close gaps on `/server/src/authz/` and `/server/src/seo/build-page-meta.js`, the two highest-consequence modules
-- [ ] T200 [P] Add `/server/src/scripts/verify-seo.js` crawling the generated sitemap for metadata uniqueness, status codes, and structured-data validity (§10.10)
+- [X] T200 [P] Add `/server/src/scripts/verify-seo.js` crawling the generated sitemap for metadata uniqueness, status codes, and structured-data validity (§10.10)
 - [ ] T201 [P] Add `/server/src/scripts/verify-cwv.js` measuring Core Web Vitals against a production build of the public pages (SC-017)
-- [ ] T202 [P] Write `/server/README.md` documenting the three deployment preconditions — `TRUST_PROXY`, `CANONICAL_ORIGIN`, `KEEP_ALIVE_TIMEOUT` versus the proxy idle timeout — and why none has a safe default
-- [ ] T203 [P] Update `/CLAUDE.md` (or create it) with the workspace layout and the plugin-ordering rule, so the numbering is not undone by a later change
+- [X] T202 [P] Write `/server/README.md` documenting the three deployment preconditions — `TRUST_PROXY`, `CANONICAL_ORIGIN`, `KEEP_ALIVE_TIMEOUT` versus the proxy idle timeout — and why none has a safe default
+- [X] T203 [P] Update `/CLAUDE.md` (or create it) with the workspace layout and the plugin-ordering rule, so the numbering is not undone by a later change
 - [ ] T204 Review every open item in `/specs/002-server-platform/plan.md` "Risks & Open Items" and confirm each is either resolved or has a named owner
 - [ ] T205 Run `/speckit-analyze` to cross-check `/specs/002-server-platform/spec.md`, `plan.md`, and `tasks.md` for drift before implementation begins
 

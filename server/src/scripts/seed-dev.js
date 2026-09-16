@@ -36,17 +36,34 @@ try {
     )
   }
 
-  await pool.query(
-    `INSERT INTO seo_metadata (record_type, record_id, slug, seo_title, meta_description,
-                               share_image_id, indexable, language, published)
-     VALUES ('page', gen_random_uuid(), 'willkommen', 'Willkommen beim German World Club',
-             'Ein privates Netzwerk deutschsprachiger Expatriates in den VAE.',
-             $1, true, 'de', true)
-     ON CONFLICT (record_type, slug) DO NOTHING`,
-    [assetId],
-  )
+  /**
+   * The slug must be one the server actually serves.
+   *
+   * `page` records are rendered only at the declared institutional slugs
+   * (`INSTITUTIONAL_SLUGS` in public/routes.js) — everything else is a real
+   * 404, by design. Seeding `willkommen` produced a published, indexable
+   * record at a path that answered 404: invisible in the sitemap, because
+   * `shouldInclude` correctly refuses to list a URL that does not resolve, and
+   * therefore a developer running seed:dev saw no content at all.
+   */
+  const seeded = []
+  for (const [slug, title, description] of [
+    ['about', 'Über den German World Club',
+      'Ein privates Netzwerk deutschsprachiger Expatriates in den Vereinigten Arabischen Emiraten.'],
+    ['imprint', 'Impressum',
+      'Angaben gemäß den rechtlichen Anforderungen der Vereinigten Arabischen Emirate.'],
+  ]) {
+    const { rowCount } = await pool.query(
+      `INSERT INTO seo_metadata (record_type, record_id, slug, seo_title, meta_description,
+                                 share_image_id, indexable, language, published)
+       VALUES ('page', gen_random_uuid(), $2, $3, $4, $1, true, 'de', true)
+       ON CONFLICT (record_type, slug) DO NOTHING`,
+      [assetId, slug, title, description],
+    )
+    if (rowCount > 0) seeded.push(slug)
+  }
 
-  console.log('seed: 1 asset with 4 variants, 1 published SEO record')
+  console.log(`seed: 1 asset with 4 variants, ${seeded.length} published page(s): ${seeded.join(', ') || 'none (already present)'}`)
 } finally {
   await pool.end()
 }
