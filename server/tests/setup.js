@@ -3,9 +3,13 @@
 process.env.NODE_ENV ??= 'test'
 process.env.LOG_LEVEL ??= 'silent'
 process.env.DATABASE_URL ??= 'postgres://localhost:5432/gwc_test'
-process.env.REDIS_URL ??= 'redis://localhost:6379'
-process.env.CANONICAL_ORIGIN ??= 'http://localhost:3000'
+process.env.CANONICAL_ORIGIN ??= 'http://localhost'
 process.env.TRUST_PROXY ??= '0'
+
+// REDIS_URL is deliberately NOT defaulted. Unset, the redis plugin degrades to
+// a per-process rate-limit store, which is equivalent in a single-process test
+// run — so the suite exercises real limiter behaviour without requiring a
+// second service. Set REDIS_URL to run the same suites against Redis.
 
 // Deterministic Ed25519 test keypair. Generated for tests only — never used by
 // any deployed environment, which reads its keys from the validated env.

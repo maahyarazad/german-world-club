@@ -220,57 +220,57 @@ npm workspace per [plan.md](./plan.md) "Structure Decision":
 
 ### Tests for User Story 2
 
-- [ ] T100 [P] [US2] Create `/server/tests/fixtures/bad-paths.js` with ≥50 known-bad paths: `/nonsense`, `/wp-login.php`, `/.env`, `/index.php`, `/partners/deleted`, plus casing, trailing-slash, and query-string variants
-- [ ] T101 [P] [US2] Write `/server/tests/seo/soft-404.test.js` asserting **every** fixture path returns 404 and that the SPA shell is never served as a fallback (SC-004)
-- [ ] T102 [P] [US2] Write `/server/tests/seo/rendering.test.js` asserting every public route class returns its meaningful content in the raw response body with no JavaScript executed (SC-005)
-- [ ] T103 [P] [US2] Write `/server/tests/seo/build-page-meta.test.js` covering staff-override precedence, HTML escaping of a name containing a quote, required image dimensions and alt, single site-name suffix, and stricter-wins robots resolution
-- [ ] T104 [P] [US2] Write `/server/tests/seo/uniqueness.test.js` asserting zero duplicate titles, descriptions, or canonical URLs across every URL in the generated sitemap (SC-006)
-- [ ] T105 [P] [US2] Write `/server/tests/seo/structured-data.test.js` asserting each JSON-LD document validates and that `Event.offers.availability` **flips when registration closes** and a lapsed partner stops emitting `LocalBusiness` (SC-007)
-- [ ] T106 [P] [US2] Write `/server/tests/seo/sitemap.test.js` asserting a partner lapsing past its grace period disappears with **no staff action**, and that `lastmod` is the record's real `updated_at` (SC-008)
-- [ ] T107 [P] [US2] Write `/server/tests/seo/canonical.test.js` asserting non-canonical host and scheme variants 301 to the canonical origin, and that legacy table entries 301 correctly
-- [ ] T108 [P] [US2] Write `/server/tests/seo/og-tags.test.js` asserting the full OG and Twitter tag set is present with absolute URLs and explicit image dimensions
-- [ ] T109 [P] [US2] Write `/server/tests/seo/hreflang.test.js` asserting alternates are **reciprocal** and `x-default` points at the German version — a one-directional `hreflang` is ignored and the translations then compete as duplicates
+- [X] T100 [P] [US2] Create `/server/tests/fixtures/bad-paths.js` with ≥50 known-bad paths: `/nonsense`, `/wp-login.php`, `/.env`, `/index.php`, `/partners/deleted`, plus casing, trailing-slash, and query-string variants
+- [X] T101 [P] [US2] Write `/server/tests/seo/soft-404.test.js` asserting **every** fixture path returns 404 and that the SPA shell is never served as a fallback (SC-004)
+- [X] T102 [P] [US2] Write `/server/tests/seo/rendering.test.js` asserting every public route class returns its meaningful content in the raw response body with no JavaScript executed (SC-005)
+- [X] T103 [P] [US2] Write `/server/tests/seo/build-page-meta.test.js` covering staff-override precedence, HTML escaping of a name containing a quote, required image dimensions and alt, single site-name suffix, and stricter-wins robots resolution
+- [X] T104 [P] [US2] Write `/server/tests/seo/uniqueness.test.js` asserting zero duplicate titles, descriptions, or canonical URLs across every URL in the generated sitemap (SC-006)
+- [X] T105 [P] [US2] Write `/server/tests/seo/structured-data.test.js` asserting each JSON-LD document validates and that `Event.offers.availability` **flips when registration closes** and a lapsed partner stops emitting `LocalBusiness` (SC-007)
+- [X] T106 [P] [US2] Write `/server/tests/seo/sitemap.test.js` asserting a partner lapsing past its grace period disappears with **no staff action**, and that `lastmod` is the record's real `updated_at` (SC-008)
+- [X] T107 [P] [US2] Write `/server/tests/seo/canonical.test.js` asserting non-canonical host and scheme variants 301 to the canonical origin, and that legacy table entries 301 correctly
+- [X] T108 [P] [US2] Write `/server/tests/seo/og-tags.test.js` asserting the full OG and Twitter tag set is present with absolute URLs and explicit image dimensions
+- [X] T109 [P] [US2] Write `/server/tests/seo/hreflang.test.js` asserting alternates are **reciprocal** and `x-default` points at the German version — a one-directional `hreflang` is ignored and the translations then compete as duplicates
 
 ### Schema and shared contracts
 
-- [ ] T110 [P] [US2] Create `/server/migrations/009_legacy_redirects.sql` with `legacy_path` as the primary key and a `status` column allowing 301 or 410
-- [ ] T111 [P] [US2] Create `/packages/contracts/src/seo.js` exporting the `PageMeta` shape and the structured-data document shapes
+- [X] T110 [P] [US2] Create `/server/migrations/009_legacy_redirects.sql` with `legacy_path` as the primary key and a `status` column allowing 301 or 410
+- [X] T111 [P] [US2] Create `/packages/contracts/src/seo.js` exporting the `PageMeta` shape and the structured-data document shapes
 
 ### The metadata resolver
 
 - [X] T112 [US2] Create `/server/src/seo/surfaces.js` as the **single** encoding of the §10.1 table — the one source driving route postures, `robots.txt`, and the `X-Robots-Tag` header
-- [ ] T113 [US2] Create `/server/src/seo/build-page-meta.js` as a **pure** function returning the full `PageMeta` from [seo-delivery.md §1](./contracts/seo-delivery.md)
-- [ ] T114 [US2] Add the internal rules to `/server/src/seo/build-page-meta.js`: staff-override precedence, absolutisation against the canonical origin, required image dimensions and alt, word-boundary description truncation, single site-name suffix, HTML escaping, stricter-wins robots, and selection of the `large` WebP variant from `asset_variants` for `og:image` (preview bots expect roughly 1200×630)
-- [ ] T115 [US2] Create `/server/src/seo/structured-data.js` emitting `Organization`, `LocalBusiness`, `Event`, `Article`, and `BreadcrumbList` — **computed per request from live state**, never cached, because §10.4 makes a stale copy a factual misstatement to members
+- [X] T113 [US2] Create `/server/src/seo/build-page-meta.js` as a **pure** function returning the full `PageMeta` from [seo-delivery.md §1](./contracts/seo-delivery.md)
+- [X] T114 [US2] Add the internal rules to `/server/src/seo/build-page-meta.js`: staff-override precedence, absolutisation against the canonical origin, required image dimensions and alt, word-boundary description truncation, single site-name suffix, HTML escaping, stricter-wins robots, and selection of the `large` WebP variant from `asset_variants` for `og:image` (preview bots expect roughly 1200×630)
+- [X] T115 [US2] Create `/server/src/seo/structured-data.js` emitting `Organization`, `LocalBusiness`, `Event`, `Article`, and `BreadcrumbList` — **computed per request from live state**, never cached, because §10.4 makes a stale copy a factual misstatement to members
 
 ### Crawl control
 
-- [ ] T116 [US2] Create `/server/src/seo/sitemap.js` generating `GET /sitemap.xml` from the live inclusion predicate (published ∧ indexable ∧ surface-indexed ∧ partner-in-contract), with real `lastmod`, cached 1 h and invalidated on publish
-- [ ] T117 [P] [US2] Create `/server/src/seo/robots.js` generating `GET /robots.txt` **from `surfaces.js`**, so a new gated surface is disallowed by construction rather than by remembering to edit a static file
-- [ ] T118 [P] [US2] Delete `/client/public/robots.txt` and `/client/public/sitemap.xml`, now superseded — leaving them would create a second, silently diverging source
+- [X] T116 [US2] Create `/server/src/seo/sitemap.js` generating `GET /sitemap.xml` from the live inclusion predicate (published ∧ indexable ∧ surface-indexed ∧ partner-in-contract), with real `lastmod`, cached 1 h and invalidated on publish
+- [X] T117 [P] [US2] Create `/server/src/seo/robots.js` generating `GET /robots.txt` **from `surfaces.js`**, so a new gated surface is disallowed by construction rather than by remembering to edit a static file
+- [X] T118 [P] [US2] Delete `/client/public/robots.txt` and `/client/public/sitemap.xml`, now superseded — leaving them would create a second, silently diverging source
 
 ### Status-code correctness — the headline fix
 
-- [ ] T119 [US2] Register `@fastify/static` in `/server/src/app.js` with **`wildcard: false`** so it serves only files that exist
-- [ ] T120 [US2] Add `setNotFoundHandler` to `/server/src/plugins/14-error-handler.js` returning a real **404** — a rendered `noindex` page for HTML, problem+json for API — replacing the `reply.sendFile('index.html')` catch-all that returned HTTP 200 for every unknown path (FR-017, §12.13)
-- [ ] T121 [US2] Create `/server/src/plugins/03-canonical-origin.js` as an `onRequest` hook 301ing any non-canonical host, scheme, casing, or trailing-slash variant **before routing** (FR-028)
-- [ ] T122 [US2] Create `/server/src/plugins/04-legacy-redirects.js` serving table-driven 301s from `legacy_redirects` — mechanism and tests ship now, the table is populated when the club supplies its inventory (plan.md Risk 5)
+- [X] T119 [US2] Register `@fastify/static` in `/server/src/app.js` with **`wildcard: false`** so it serves only files that exist
+- [X] T120 [US2] Add `setNotFoundHandler` to `/server/src/plugins/14-error-handler.js` returning a real **404** — a rendered `noindex` page for HTML, problem+json for API — replacing the `reply.sendFile('index.html')` catch-all that returned HTTP 200 for every unknown path (FR-017, §12.13)
+- [X] T121 [US2] Create `/server/src/plugins/03-canonical-origin.js` as an `onRequest` hook 301ing any non-canonical host, scheme, casing, or trailing-slash variant **before routing** (FR-028)
+- [X] T122 [US2] Create `/server/src/plugins/04-legacy-redirects.js` serving table-driven 301s from `legacy_redirects` — mechanism and tests ship now, the table is populated when the club supplies its inventory (plan.md Risk 5)
 
 ### Public rendering
 
-- [ ] T123 [US2] Create `/server/src/public/templates/layout.js` rendering `<html lang>`, the full head from a `PageMeta`, JSON-LD blocks, and reciprocal `hreflang` alternates, with **escaped** interpolation throughout
-- [ ] T124 [P] [US2] Create `/server/src/public/templates/partner.js` and `outlet.js` rendering listing content with address, hours, and discount
-- [ ] T125 [P] [US2] Create `/server/src/public/templates/event.js` rendering title, date, venue and description, kept separate from the member-only registration flow (§4)
-- [ ] T126 [P] [US2] Create `/server/src/public/templates/article.js` and `legal.js`
-- [ ] T127 [US2] Create `/server/src/public/routes.js` registering the six public route classes, each resolving its record, calling `buildPageMeta`, rendering its template, and declaring `{ audience: 'public' }` and an explicit response schema (Principle VI)
-- [ ] T128 [US2] Serve the feature-001 coming-soon page through `/server/src/public/routes.js` at `/`, whose pre-rendered boot shell already satisfies FR-016
-- [ ] T129 [US2] Return a real 404 from `/server/src/public/routes.js` when a slug resolves to no record, and the configured disposition for a lapsed partner — default retained-but-non-indexed (FR-031)
+- [X] T123 [US2] Create `/server/src/public/templates/layout.js` rendering `<html lang>`, the full head from a `PageMeta`, JSON-LD blocks, and reciprocal `hreflang` alternates, with **escaped** interpolation throughout
+- [X] T124 [P] [US2] Create `/server/src/public/templates/partner.js` and `outlet.js` rendering listing content with address, hours, and discount
+- [X] T125 [P] [US2] Create `/server/src/public/templates/event.js` rendering title, date, venue and description, kept separate from the member-only registration flow (§4)
+- [X] T126 [P] [US2] Create `/server/src/public/templates/article.js` and `legal.js`
+- [X] T127 [US2] Create `/server/src/public/routes.js` registering the six public route classes, each resolving its record, calling `buildPageMeta`, rendering its template, and declaring `{ audience: 'public' }` and an explicit response schema (Principle VI)
+- [X] T128 [US2] Serve the feature-001 coming-soon page through `/server/src/public/routes.js` at `/`, whose pre-rendered boot shell already satisfies FR-016
+- [X] T129 [US2] Return a real 404 from `/server/src/public/routes.js` when a slug resolves to no record, and the configured disposition for a lapsed partner — default retained-but-non-indexed (FR-031)
 
 ### Performance and caching
 
-- [ ] T130 [P] [US2] Register `@fastify/etag` and `@fastify/compress` in `/server/src/app.js`
-- [ ] T131 [US2] Add per-surface `Cache-Control` in `/server/src/public/routes.js` and `Vary: Accept-Encoding, Accept-Language` — `Vary` on language is load-bearing, or a shared cache serves the German page to an English request
-- [ ] T132 [P] [US2] Add the `public-read` bucket (generous, fail-open, verified-crawler allowlist) to `/server/src/config/rate-limits.js` — a 429 to a crawler would undermine the partner visibility the club sells
+- [X] T130 [P] [US2] Register `@fastify/etag` and `@fastify/compress` in `/server/src/app.js`
+- [X] T131 [US2] Add per-surface `Cache-Control` in `/server/src/public/routes.js` and `Vary: Accept-Encoding, Accept-Language` — `Vary` on language is load-bearing, or a shared cache serves the German page to an English request
+- [X] T132 [P] [US2] Add the `public-read` bucket (generous, fail-open, verified-crawler allowlist) to `/server/src/config/rate-limits.js` — a 429 to a crawler would undermine the partner visibility the club sells
 
 **Checkpoint**: public pages return real content with JavaScript disabled, share previews render from HTML alone, unknown URLs 404, and the sitemap tracks live publication state. Validate with quickstart **B1–B8**.
 

@@ -20,8 +20,14 @@ import { MODULES, FLAGS, AUDIENCES } from '@gwc/contracts/permissions'
  * (requirePermission, object guards) is US1 and plugs into `config.auth`.
  */
 
-/** Routes Fastify creates itself, which carry no application posture. */
-const INTERNAL = new Set(['/*', ''])
+/**
+ * Routes the framework creates itself, which carry no application posture.
+ *
+ * `OPTIONS *` is @fastify/cors's preflight responder: a protocol handshake that
+ * reveals nothing and reaches no handler. Exempting it is not a hole in the
+ * gate — a preflight has no body, no credential and no effect.
+ */
+const INTERNAL = new Set(['/*', '', '*'])
 
 /** @returns {string[]} problems, empty when the declaration is valid */
 export function validateAuthConfig(auth) {
@@ -48,24 +54,37 @@ export function validateAuthConfig(auth) {
 
 export default fp(
   async function rbac(app) {
-    /** @type {Array<{route: object, problems: string[]}>} */
-    const offenders = []
-    /** @type {Array<{method: string, url: string, auth: object}>} */
-    const registry = []
+    /**
+     * Routes are *recorded* here and *judged* at onReady.
+     *
+     * Deferring the judgement is what makes the gate order-independent: an
+     * encapsulated scope may declare a posture for routes a third-party plugin
+     * registers on its behalf (@fastify/static's per-file routes, say) through
+     * its own `onRoute` hook, which Fastify runs after this one. Judging here
+     * would read the config before that hook had written it and reject a route
+     * that is, in fact, declared.
+     *
+     * @type {object[]}
+     */
+    const routes = []
 
     app.addHook('onRoute', (route) => {
       if (INTERNAL.has(route.url)) return
-      const auth = route.config?.auth
-      const problems = validateAuthConfig(auth)
-      if (problems.length > 0) {
-        offenders.push({ route, problems })
-        return
-      }
-      registry.push({ method: route.method, url: route.url, auth })
+      routes.push(route)
     })
+
+    /** @returns {Array<{method: string, url: string, auth: object}>} */
+    const registry = () =>
+      routes
+        .filter((r) => validateAuthConfig(r.config?.auth).length === 0)
+        .map((r) => ({ method: r.method, url: r.url, auth: r.config.auth }))
 
     // The gate. Runs after every plugin has registered its routes.
     app.addHook('onReady', async () => {
+      const offenders = routes
+        .map((route) => ({ route, problems: validateAuthConfig(route.config?.auth) }))
+        .filter(({ problems }) => problems.length > 0)
+
       if (offenders.length === 0) return
       // Fastify registers HEAD alongside every GET, so group by URL: a
       // developer should see one line per route they actually wrote.
@@ -90,7 +109,7 @@ export default fp(
 
     // Exposed so the authorization-matrix test can enumerate the real route
     // table rather than a hand-maintained copy of it.
-    app.decorate('routePostures', () => [...registry])
+    app.decorate('routePostures', registry)
   },
   { name: 'rbac-registry' },
 )

@@ -67,7 +67,9 @@ export const disallowedPrefixes = () =>
  * URL resolves to *gated* — erring toward less exposure, never more.
  */
 export function postureFor(authConfig, url = '/') {
-  const path = String(url).split('?')[0]
+  // Case-folded, because a surface's posture cannot depend on how a crawler or
+  // an attacker happened to spell the path: `/ADMIN` is the admin surface.
+  const path = String(url).split('?')[0].toLowerCase()
 
   const matched = SURFACES
     .filter((s) => s.prefixes.some((p) => (p === '/' ? path === '/' : path === p || path.startsWith(`${p}/`))))

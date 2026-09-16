@@ -1,0 +1,119 @@
+import { randomUUID } from 'node:crypto'
+import { buildApp } from '../../src/app.js'
+import { createFixtureContentSource } from '../../src/public/content.js'
+import { hashPassword } from '../../src/auth/passwords.js'
+import { MODULES, FLAGS } from '@gwc/contracts/permissions'
+
+/**
+ * Shared scaffolding for the authorization suites.
+ *
+ * The app is built through the same `buildApp` seam every other suite uses, so
+ * these tests exercise the real plugin chain — the posture gate, the deadline
+ * signal, the audit writer — rather than a hand-assembled subset that could
+ * drift from what actually boots.
+ */
+
+export const PASSWORD = 'correct-horse-battery'
+
+export async function buildAuthApp() {
+  const app = await buildApp({ contentSource: createFixtureContentSource([]) })
+  await app.ready()
+  return app
+}
+
+/** Truncate everything these suites write, in dependency order. */
+export async function resetAuthTables(pool) {
+  await pool.query(`
+    TRUNCATE refresh_tokens, sessions, otp_challenges, device_approvals,
+             admin_permissions, password_reset_tokens, audit_log RESTART IDENTITY CASCADE`)
+  await pool.query('DELETE FROM admin_users WHERE email LIKE $1', ['%@test.invalid'])
+  // members refuses DELETE by design (§12.4), so test members are disabled
+  // rather than removed — which is itself a useful reminder of the rule.
+  await pool.query(`ALTER TABLE members DISABLE TRIGGER members_refuse_delete`)
+  await pool.query('DELETE FROM members WHERE email LIKE $1', ['%@test.invalid'])
+  await pool.query(`ALTER TABLE members ENABLE TRIGGER members_refuse_delete`)
+}
+
+export async function createMember(pool, {
+  email = `member-${randomUUID()}@test.invalid`,
+  password = PASSWORD,
+  status = 'active',
+  emailConfirmed = true,
+  mobile = null,
+  mobileVerified = false,
+  passwordResetRequired = false,
+  passwordHash,
+  permissions = {},
+  displayName = 'Test Member',
+} = {}) {
+  const hash = passwordHash !== undefined ? passwordHash : await hashPassword(password)
+  const { rows } = await pool.query(
+    `INSERT INTO members (email, password_hash, password_reset_required, status,
+                          email_confirmed_at, mobile, mobile_verified_at, permissions, display_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id, email`,
+    [
+      email, hash, passwordResetRequired, status,
+      emailConfirmed ? new Date() : null,
+      mobile, mobileVerified ? new Date() : null,
+      JSON.stringify(permissions), displayName,
+    ],
+  )
+  return { ...rows[0], password }
+}
+
+export async function createAdmin(pool, {
+  email = `admin-${randomUUID()}@test.invalid`,
+  password = PASSWORD,
+  isAdmin = true,
+  isSuperadmin = false,
+  isActive = true,
+  displayName = 'Test Admin',
+  grants = {},
+} = {}) {
+  const hash = await hashPassword(password)
+  const { rows } = await pool.query(
+    `INSERT INTO admin_users (email, password_hash, is_admin, is_superadmin, is_active, display_name)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email`,
+    [email, hash, isAdmin, isSuperadmin, isActive, displayName],
+  )
+  const admin = rows[0]
+  for (const [module, flags] of Object.entries(grants)) {
+    await grant(pool, admin.id, module, flags)
+  }
+  return { ...admin, password }
+}
+
+/** Grant a set of flags on one module. `true` means all five. */
+export async function grant(pool, adminId, module, flags) {
+  const set = flags === true ? Object.fromEntries(FLAGS.map((f) => [f, true])) : flags
+  await pool.query(
+    `INSERT INTO admin_permissions (admin_user_id, module, can_read, can_write, can_edit, can_delete, can_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (admin_user_id, module) DO UPDATE
+       SET can_read = EXCLUDED.can_read, can_write = EXCLUDED.can_write,
+           can_edit = EXCLUDED.can_edit, can_delete = EXCLUDED.can_delete,
+           can_status = EXCLUDED.can_status, updated_at = now()`,
+    [adminId, module, !!set.read, !!set.write, !!set.edit, !!set.delete, !!set.status],
+  )
+}
+
+export const ALL_MODULES = MODULES
+
+/** Sign in through the real endpoint and return whatever the client would hold. */
+export async function signIn(app, email, password = PASSWORD, extra = {}) {
+  const response = await app.inject({
+    method: 'POST', url: '/auth/sign-in', payload: { email, password, ...extra },
+  })
+  return { statusCode: response.statusCode, body: response.json(), cookies: response.cookies, response }
+}
+
+/** A bearer header for a freshly-minted token on a real session. */
+export async function bearerFor(app, { accountId, accountKind }) {
+  const { rows } = await app.pg.query(
+    `INSERT INTO sessions (account_id, account_kind) VALUES ($1, $2) RETURNING id`,
+    [accountId, accountKind],
+  )
+  const { token } = app.mintAccessToken({ accountId, sessionId: rows[0].id, audience: accountKind })
+  return { authorization: `Bearer ${token}`, sessionId: rows[0].id }
+}

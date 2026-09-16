@@ -39,6 +39,13 @@ const schema = z
 
     // Deployment preconditions — see the production refinement below.
     CANONICAL_ORIGIN: z.string().url().optional(),
+    // Comma-separated allowlist for the mobile app and any separately-hosted
+    // client. An allowlist rather than a wildcard, because these routes carry
+    // credentials (http-conventions.md §3).
+    CORS_ORIGINS: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : undefined)),
     TRUST_PROXY: trustProxy.optional(),
     KEEP_ALIVE_TIMEOUT_MS: int(72000),
 

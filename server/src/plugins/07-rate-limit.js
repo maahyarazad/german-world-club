@@ -57,7 +57,7 @@ export default fp(
       redis,
       // Never throttle a verified crawler — see FR-041.
       allowList: (request) => isAllowlistedCrawler(request),
-      keyGenerator: (request) => keyForBucket(request.routeOptions?.config?.rateLimit, request),
+      keyGenerator: (request) => keyForBucket(request.routeOptions?.config?.rateLimit?.bucket, request),
       errorResponseBuilder: (request, context) => ({
         type: PROBLEMS.RATE_LIMITED.type,
         title: PROBLEMS.RATE_LIMITED.title,
@@ -75,11 +75,18 @@ export default fp(
       enableDraftSpec: true,
     })
 
-    /** Per-route bucket config, for use as `...app.bucket('sign-in-ip')`. */
+    /**
+     * Per-route bucket options, for use as
+     * `config: { auth, budget, rateLimit: app.bucket('sign-in-ip') }`.
+     *
+     * The bucket's name travels with the options so the shared `keyGenerator`
+     * can pick the right dimension — a route declares *which* bucket, never
+     * how the key is built, so one bucket cannot be keyed two ways.
+     */
     app.decorate('bucket', (name) => {
       const b = BUCKETS[name]
       if (!b) throw new Error(`Unknown rate-limit bucket: ${name}`)
-      return { max: b.max, timeWindow: b.timeWindow, skipOnError: b.skipOnError }
+      return { bucket: name, max: b.max, timeWindow: b.timeWindow, skipOnError: b.skipOnError }
     })
   },
   { name: 'rate-limit', dependencies: ['redis'] },
