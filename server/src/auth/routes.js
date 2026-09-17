@@ -9,6 +9,8 @@ import {
   COOKIES, ACCESS_TOKEN_TTL_SECONDS, REFRESH_TTL_DAYS,
   OTP_TTL_SECONDS, OTP_RESEND_COOLDOWN_SECONDS, PASSWORD_RESET_TTL_SECONDS,
 } from '@gwc/contracts/auth'
+import { sessionResponseSchema } from '@gwc/contracts/capabilities'
+import { FLAGS, MODULES } from '@gwc/contracts/permissions'
 import { z } from 'zod'
 
 import { query, withTransaction } from '../db/query.js'
@@ -71,6 +73,38 @@ function clearAuthCookies(reply) {
  * query rather than a new rule. A cached tier column is exactly how a lapsed
  * card would keep granting free events.
  */
+/**
+ * Only the modules where at least one flag is true.
+ *
+ * Absence is denial everywhere else in this system, and it has to mean the same
+ * thing here. Sending nineteen all-false objects would say nothing while
+ * inviting a client to render a sidebar entry for every module in existence —
+ * which is exactly the drift the capability contract exists to prevent.
+ *
+ * A superadmin bypasses the module matrix at enforcement time (the absence of
+ * the check, not a wildcard grant), so their snapshot is reported as every flag
+ * on every module. The console needs the effective answer, not the stored one.
+ */
+function grantedModules(snapshot) {
+  const allFlags = () => Object.fromEntries(FLAGS.map((flag) => [flag, true]))
+
+  // A superadmin holds no rows at all — the bypass is the *absence* of the
+  // check, not a wildcard grant — so reading their stored matrix would answer
+  // "nothing" for the one account that may do everything. The console needs
+  // the effective answer.
+  if (snapshot.isSuperadmin) {
+    return Object.fromEntries(MODULES.map((module) => [module, allFlags()]))
+  }
+
+  const granted = {}
+  for (const [module, grant] of Object.entries(snapshot.modules ?? {})) {
+    if (FLAGS.some((flag) => grant?.[flag] === true)) {
+      granted[module] = Object.fromEntries(FLAGS.map((flag) => [flag, grant?.[flag] === true]))
+    }
+  }
+  return granted
+}
+
 export async function resolveEntitlement() {
   return null
 }
@@ -489,6 +523,44 @@ export default fp(
         schema: { response: { 200: meResponseSchema } },
       },
       meHandler,
+    )
+
+    /**
+     * GET /auth/session — the capability snapshot the console boots from.
+     *
+     * Declared `anyStaff` rather than gated on a module, because a staff member
+     * must be able to read their own grants without already holding one.
+     * `/auth/staff/me` is the staff *profile* route and keeps its
+     * `settings.read` posture verbatim; this is a second route, not a
+     * relaxation of that one. See specs/003-web-console/research.md R3.
+     *
+     * Everything here is resolved at request time from server-held state. None
+     * of it is a token claim, so a grant revoked a second ago is already gone
+     * from this response (Constitution Principle II).
+     */
+    app.get(
+      '/auth/session',
+      {
+        config: { auth: { audience: 'staff', anyStaff: true }, budget: 'member-read' },
+        onRequest: app.guard,
+        schema: { response: { 200: sessionResponseSchema } },
+      },
+      async (request, reply) => {
+        reply.header('cache-control', NO_STORE)
+        const principal = request.principal
+        const snapshot =
+          request.permissions ??
+          (await app.permissions.resolve(principal.id, { signal: request.deadlineSignal }))
+
+        return reply.send({
+          kind: 'staff',
+          id: principal.id,
+          displayName: snapshot.displayName ?? null,
+          isSuperadmin: snapshot.isSuperadmin,
+          modules: grantedModules(snapshot),
+          available: app.availableModules(),
+        })
+      },
     )
 
     app.get(

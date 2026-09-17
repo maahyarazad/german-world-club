@@ -11,7 +11,24 @@
  * construction, rather than by remembering to edit a static file.
  */
 
-/** @typedef {{ name: string, prefixes: string[], public: boolean, indexed: boolean, why: string }} Surface */
+/**
+ * `shell` marks a gated surface whose *prefix* serves an empty client
+ * application shell rather than refusing.
+ *
+ * Every other gated surface answers 401/403/404 at every path under it, and the
+ * crawl-posture suite asserts exactly that. A client-routed console cannot: the
+ * browser must receive a document before any JavaScript can ask who the visitor
+ * is. The document it receives contains no member content, no capability data
+ * and no principal — everything real arrives later, over authenticated requests
+ * the server re-checks.
+ *
+ * So this is not an exemption from the gated rule; it is the one shape the rule
+ * did not previously have a word for. Marking it here, rather than special-
+ * casing it in a test, keeps the table the single source it claims to be — and
+ * a surface that sets `shell` is held to a *stricter* assertion in
+ * tests/seo/crawl-posture-gated.test.js: its shell must be provably empty.
+ */
+/** @typedef {{ name: string, prefixes: string[], public: boolean, indexed: boolean, why: string, shell?: boolean }} Surface */
 
 /** @type {Surface[]} */
 export const SURFACES = Object.freeze([
@@ -40,6 +57,12 @@ export const SURFACES = Object.freeze([
   { name: 'checkout', prefixes: ['/checkout', '/register'], public: false, indexed: false, why: 'Transactional, member-only' },
   { name: 'invitations', prefixes: ['/invite'], public: false, indexed: false, why: 'One-time tokens; must never be crawled' },
   { name: 'admin', prefixes: ['/admin'], public: false, indexed: false, why: 'Back-office' },
+  // The web console (feature 003). Its shell is served by a public route —
+  // an empty application shell carrying no member content — but the surface
+  // itself is gated, so it is declared gated here. That is what puts it in
+  // robots.txt's Disallow list and what makes postureFor answer `indexed:
+  // false`, which is what stamps X-Robots-Tag on every console response.
+  { name: 'console', prefixes: ['/konsole'], public: false, indexed: false, shell: true, why: 'Gated console for members, staff, merchants and partners' },
   { name: 'auth', prefixes: ['/auth'], public: false, indexed: false, why: 'Credential endpoints' },
   { name: 'api', prefixes: ['/api'], public: false, indexed: false, why: 'Machine interface' },
 ])

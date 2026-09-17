@@ -53,7 +53,10 @@ describe('the soft-404 is gone (SC-004)', () => {
     for (const path of ['/nonsense', '/wp-login.php', '/partners/deleted-partner']) {
       const response = await follow(path)
       expect(response.body).not.toContain('id="root"')
-      expect(response.body).not.toContain('Experts Circle')
+      // A phrase only the real landing page carries. If a 404 ever returns
+      // this, the server is serving the landing page as a fallback — a soft
+      // 404, which Principle III forbids and which costs the club indexing.
+      expect(response.body).not.toContain('Ein globales Vertrauensnetz')
     }
   })
 

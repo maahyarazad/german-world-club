@@ -43,6 +43,29 @@ changes behaviour. `15-openapi.js` in particular must register **before** the
 route plugins: `@fastify/swagger` collects routes through an `onRoute` hook,
 and a Fastify `onRoute` hook only fires for routes registered after it.
 
+**A third-party plugin's routes are still your routes.** A plugin that
+registers routes of its own — `@fastify/swagger-ui`, `@fastify/static` —
+declares no posture for them, so a bare registration does not produce an
+unguarded route, it produces a server that will not boot. Register it inside an
+encapsulated scope and declare the posture once for the whole subtree with a
+scope-level `onRoute` hook; `11-rbac.js` defers its judgement to `onReady`
+precisely so that hook has run. Enforce with a scope-level `onRequest` hook
+rather than the plugin's own hook option: swagger-ui's `uiHooks` are not passed
+to the `@fastify/static` registration serving its bundle, so using them would
+have gated the page and left the assets open. Watch for config that another
+plugin reads at `onRoute` time — a `config.rateLimit` stamped by a scope hook
+arrives after `@fastify/rate-limit` has already looked, and builds no limiter
+at all without saying so.
+
+**An environment-only route is a registration, not a check.** `/swagger-ui` is
+the unauthenticated API reference, and it exists only when
+`NODE_ENV=development` because the whole `app.register` is inside the `if` —
+not because a handler asks what environment it is in. Outside development there
+is no route, so there is no posture to get wrong and no refusal confirming the
+surface exists; the test for it asserts `404` rather than `401`. The gated
+`/admin/docs` mount is unchanged in every environment, which is the point:
+production behaviour never depends on reading a conditional correctly.
+
 **Four gates refuse to boot**, rather than letting a defect through to review:
 
 - a route with no `config.auth`

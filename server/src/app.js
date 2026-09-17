@@ -7,7 +7,7 @@ import cookie from '@fastify/cookie'
 import csrf from '@fastify/csrf-protection'
 import cors from '@fastify/cors'
 import { ulid } from 'ulid'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatorCompiler, serializerCompiler } from 'fastify-type-provider-zod'
@@ -61,6 +61,27 @@ const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
 function staticRoot() {
   const dist = path.join(CLIENT_DIR, 'dist')
   return existsSync(dist) ? dist : path.join(CLIENT_DIR, 'public')
+}
+
+/** Where the console's route prefix starts. Declared once; used three times. */
+const CONSOLE_PREFIX = '/konsole'
+
+/**
+ * The console's application shell, read once at boot.
+ *
+ * A second Vite entry (client/konsole.html) rather than index.html: the public
+ * page is English and indexed, the console is German and never indexed, and
+ * one document cannot be both.
+ *
+ * Read eagerly so a missing build is a startup-time fact rather than a
+ * per-request stat. When there is no build — a fresh checkout, or the API
+ * running while the client is served by Vite's own dev server — the fallback
+ * below is not registered at all, which is the honest outcome: no route is
+ * better than a route that answers 200 with nothing in it.
+ */
+function consoleShell() {
+  const built = path.join(CLIENT_DIR, 'dist', 'konsole.html')
+  return existsSync(built) ? readFileSync(built, 'utf8') : null
 }
 
 /**
@@ -279,6 +300,55 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
       maxAge: '1h',
     })
   })
+
+  /**
+   * The console's SPA fallback — deliberately narrow.
+   *
+   * `wildcard: false` above is load-bearing: it is what makes an unmatched path
+   * a real 404 rather than a 200 carrying the wrong page (Principle III). A
+   * client-routed console needs the opposite behaviour, so this restores it for
+   * exactly one prefix and nowhere else. `/gibt-es-nicht` still 404s;
+   * `/konsole/admin/seo/irgendwas` gets the shell and lets the router decide.
+   *
+   * Declared `audience: 'public'` because that is what it is: the shell carries
+   * no member content, no capability data and no principal identity — every one
+   * of those arrives later, over an authenticated request the server re-checks.
+   * Publishing an empty shell is not a disclosure; publishing anything else
+   * here would be (Principle VI).
+   *
+   * It is still a *gated surface*. seo/surfaces.js declares `/konsole` gated
+   * and never indexed, which is what puts it in robots.txt's Disallow list and
+   * stamps X-Robots-Tag on these responses via 02-security-headers.js.
+   */
+  const shell = consoleShell()
+  if (shell) {
+    await app.register(async (scope) => {
+      scope.addHook('onRoute', (route) => {
+        route.config = {
+          ...route.config,
+          auth: { audience: 'public' },
+          budget: 'public-page',
+          // A document, not a JSON body — there is no response schema to
+          // declare, so the produces gate is satisfied affirmatively instead.
+          produces: 'text/html',
+        }
+      })
+
+      const sendShell = async (request, reply) =>
+        reply
+          .type('text/html; charset=utf-8')
+          // `private, no-store`, the same rule every other gated surface
+          // follows. The shell is identical for everyone and would be safe to
+          // cache, but it is the entry point to a gated surface, and having one
+          // response under /konsole that caches differently from the rest is
+          // how an exception becomes a precedent. It is 2KB, once per session.
+          .header('cache-control', 'private, no-store')
+          .send(shell)
+
+      scope.get(CONSOLE_PREFIX, sendShell)
+      scope.get(`${CONSOLE_PREFIX}/*`, sendShell)
+    })
+  }
 
   /**
    * Before every route plugin: @fastify/swagger collects the route table

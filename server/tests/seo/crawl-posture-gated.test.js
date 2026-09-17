@@ -24,7 +24,14 @@ const GATED = SURFACES.filter((s) => !s.public)
 
 /** A probe under each declared prefix, plus the prefix itself. */
 const probes = GATED.flatMap((surface) =>
-  surface.prefixes.map((prefix) => ({ surface: surface.name, prefix, url: `${prefix}/probe` })),
+  surface.prefixes.map((prefix) => ({
+    surface: surface.name,
+    prefix,
+    url: `${prefix}/probe`,
+    // A gated surface whose prefix serves an empty client shell rather than
+    // refusing. See the typedef in src/seo/surfaces.js.
+    shell: surface.shell === true,
+  })),
 )
 
 describe('the §10.1 table declares every gated surface non-indexable', () => {
@@ -85,7 +92,10 @@ describe('robots.txt disallows every gated prefix (FR-024)', () => {
 })
 
 describe('every gated surface is refused AND marked non-indexable (SC-008)', () => {
-  it.each(probes.map((p) => [`${p.surface} ${p.url}`, p]))('%s', async (_name, probe) => {
+  const refusing = probes.filter((p) => !p.shell)
+  const shells = probes.filter((p) => p.shell)
+
+  it.each(refusing.map((p) => [`${p.surface} ${p.url}`, p]))('%s', async (_name, probe) => {
     const response = await app.inject({ method: 'GET', url: probe.url })
 
     // Refused: never a 200. A 404 is a legitimate refusal for a gated surface
@@ -97,6 +107,43 @@ describe('every gated surface is refused AND marked non-indexable (SC-008)', () 
     // listed on the strength of the error page alone.
     expect(response.headers['x-robots-tag'], `${probe.url} must be noindex`).toMatch(/noindex/)
     expect(response.headers['x-robots-tag']).toMatch(/nofollow/)
+  })
+
+  /**
+   * A `shell` surface answers 200 by design — a client-routed console must hand
+   * the browser a document before any JavaScript can ask who the visitor is.
+   *
+   * That makes it the one gated surface this file cannot check by status code,
+   * so it is checked by *content* instead, and more strictly: the document must
+   * be provably empty of anything a refusal would have protected. If a future
+   * change inlines a principal or a capability set into the shell to save a
+   * round trip, the public declaration on that route becomes a disclosure and
+   * this is what catches it (Principle VI).
+   */
+  it.each(shells.map((p) => [`${p.surface} ${p.url}`, p]))('%s serves an empty shell', async (_name, probe) => {
+    const response = await app.inject({ method: 'GET', url: probe.url })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['content-type']).toMatch(/text\/html/)
+
+    // Still never indexed, exactly like every other gated surface.
+    expect(response.headers['x-robots-tag']).toMatch(/noindex/)
+    expect(response.headers['x-robots-tag']).toMatch(/nofollow/)
+
+    // Nothing a refusal would have protected.
+    expect(response.body).not.toMatch(/@/)
+    expect(response.body).not.toMatch(/isSuperadmin|displayName|"modules"/)
+    expect(response.body).not.toMatch(/\b(members|marketplace_moderation|mass_messages)\b/)
+
+    // Counter-assertion: the body is real, so the assertions above pass because
+    // the shell is clean rather than because there is nothing to scan.
+    expect(response.body.length).toBeGreaterThan(200)
+  })
+
+  it('has at most one shell surface — the exception must not spread', () => {
+    // Every additional shell surface is another prefix this file can no longer
+    // check by status code. One is a considered trade; three would be a habit.
+    expect(SURFACES.filter((s) => s.shell).map((s) => s.name)).toEqual(['console'])
   })
 
   it('never caches a gated response in a shared cache', async () => {

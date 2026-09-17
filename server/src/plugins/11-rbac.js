@@ -39,15 +39,46 @@ export function validateAuthConfig(auth) {
     problems.push(`audience must be one of ${AUDIENCES.join(' | ')}, got ${JSON.stringify(auth.audience)}`)
   }
   if (auth.audience === 'staff') {
-    if (!MODULES.includes(auth.module)) {
-      problems.push(`staff routes must declare a known module, got ${JSON.stringify(auth.module)}`)
-    }
-    if (!FLAGS.includes(auth.flag)) {
-      problems.push(`staff routes must declare one of ${FLAGS.join(' | ')}, got ${JSON.stringify(auth.flag)}`)
+    /**
+     * The one staff route that has no module: the capability endpoint.
+     *
+     * Knowing what you may do is not a privilege on the settings module —
+     * reading how the system is configured is, and those are different things.
+     * Gating the capability snapshot on `settings.read` meant a staff member
+     * holding `seo.read` and nothing else could not fetch their own grants, so
+     * the console could render no navigation for them at all.
+     *
+     * The exemption is affirmative and must appear in a diff, exactly as
+     * `{ audience: 'public' }` does. Silence still fails: omitting module and
+     * flag *without* saying `anyStaff: true` is the same declaration error it
+     * has always been. That is the whole distinction — this widens what a route
+     * may say, never what it may leave unsaid.
+     */
+    if (auth.anyStaff === true) {
+      if (auth.module !== undefined || auth.flag !== undefined) {
+        // Two postures on one route and no way to tell which governs.
+        problems.push('anyStaff routes must not also declare a module or flag')
+      }
+    } else {
+      if (auth.anyStaff !== undefined) {
+        // `anyStaff: false` is not a declaration, it is an omission spelled out.
+        problems.push('anyStaff must be true when present, or absent entirely')
+      }
+      if (!MODULES.includes(auth.module)) {
+        problems.push(`staff routes must declare a known module, got ${JSON.stringify(auth.module)}`)
+      }
+      if (!FLAGS.includes(auth.flag)) {
+        problems.push(`staff routes must declare one of ${FLAGS.join(' | ')}, got ${JSON.stringify(auth.flag)}`)
+      }
     }
   }
   if (auth.audience !== 'staff' && (auth.module || auth.flag)) {
     problems.push('module/flag are only meaningful on a staff route')
+  }
+  if (auth.audience !== 'staff' && auth.anyStaff !== undefined) {
+    // A public route reachable by "any staff" is a contradiction; a member
+    // route carrying it would read as staff-gated to anyone skimming.
+    problems.push('anyStaff is only meaningful on a staff route')
   }
   return problems
 }
@@ -166,6 +197,27 @@ export default fp(
     // Exposed so the authorization-matrix test can enumerate the real route
     // table rather than a hand-maintained copy of it.
     app.decorate('routePostures', registry)
+
+    /**
+     * Which permission modules the server can actually serve.
+     *
+     * The matrix declares nineteen; the API serves a handful. The console has
+     * to tell those apart — SC-001 requires a module to be either working or
+     * visibly marked "noch nicht verfügbar", never a dead sidebar link.
+     *
+     * Derived from the routes that actually registered, so it cannot drift: a
+     * module appears here the moment its first route declares it, and
+     * disappears if that route is removed. A hard-coded list in the client
+     * would have been correct on the day it was written and wrong thereafter.
+     */
+    app.decorate('availableModules', () => {
+      const modules = new Set()
+      for (const route of routes) {
+        const module = route.config?.auth?.module
+        if (module && MODULES.includes(module)) modules.add(module)
+      }
+      return [...modules].sort()
+    })
   },
   { name: 'rbac-registry' },
 )

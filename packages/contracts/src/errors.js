@@ -7,7 +7,11 @@
  * (Constitution Principle I).
  */
 
-const BASE = 'https://german-emirates-club.com/problems'
+// The problem-type namespace. These URIs are identifiers, not fetchable pages,
+// but they are the stable key every client branches on — so the club's own
+// domain is the right namespace and it must be the CURRENT one. Renamed from
+// german-emirates-club.com when the platform settled on German World Club.
+const BASE = 'https://german-world-club.com/problems'
 
 /** @type {Record<string, {type: string, title: string, status: number}>} */
 export const PROBLEMS = {

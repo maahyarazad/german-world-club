@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   GWC console design tokens.
+
+   Every value here was sampled from the twelve mockup pages embedded in
+   German_World_Club_Digital_Plattform.docx — see
+   specs/003-web-console/research.md R1 for the pixel-share evidence and
+   specs/003-web-console/contracts/design-tokens.md for the contract.
+
+   The document's own styling is Office defaults (Calibri/Cambria, the stock
+   4F81BD accent ramp) and carries none of the brand. Reading it would have
+   produced the wrong palette entirely; the artwork is the authoritative source.
+
+   This file is the ONLY place a colour is defined. client/scripts/check-tokens.mjs
+   fails the build on a hex literal or Tailwind arbitrary colour anywhere under
+   client/src/console, client/src/components/ui or client/src/auth.
+--------------------------------------------------------------------------- */
+@theme {
+  /* --- Brand ------------------------------------------------------------ */
+  --color-navy: #0a2457;
+  --color-navy-2: #1e4c7c;
+
+  /* Gold. Read the rule below before using either of these. */
+  --color-accent: #d49626;
+  /* #9A6106, not the document's own #A96B08.
+     The source document uses #A96B08 wherever gold carries text, but computed
+     against white that is 4.38:1 — below the 4.5:1 AA floor FR-011 requires,
+     and 4.10:1 on the gold tint it most often sits on. This is the smallest
+     darkening of the same hue that clears both (5.14:1 on white, 4.82:1 on the
+     tint). tests/a11y/console-components.test.jsx computes every pairing from
+     this file, so a revert would fail the build rather than ship quietly. */
+  --color-accent-fg: #9a6106;
+
+  /* --- Chrome and ground ------------------------------------------------ */
+  --color-ink: #171b20;
+  --color-ink-2: #303841;
+  --color-ground: #f7f8fa;
+  --color-surface: #ffffff;
+
+  /* --- Text ------------------------------------------------------------- */
+  --color-text: #171b20;
+  --color-text-muted: #626a73;
+  --color-text-on-dark: #ffffff;
+  --color-text-on-dark-muted: #9aa3ad;
+
+  /* --- Lines ------------------------------------------------------------ */
+  --color-hairline: #d9dee4;
+  --color-hairline-2: #e6e9ed;
+
+  /* --- Status tints -----------------------------------------------------
+     Background only. Each is paired with a darker -fg for the label, because
+     a pill must never carry its meaning in colour alone — every StatusPill
+     also renders its word (freigegeben, in Prüfung, Rückfrage).
+  ---------------------------------------------------------------------- */
+  --color-tint-gold: #fff7e4;
+  --color-tint-info: #eaf2fc;
+  --color-tint-success: #eaf7ef;
+  --color-tint-danger: #fdecec;
+
+  --color-tint-gold-fg: #8a5806;
+  --color-tint-info-fg: #14427a;
+  --color-tint-success-fg: #1d6b3a;
+  --color-tint-danger-fg: #9b1c1c;
+
+  /* --- Type -------------------------------------------------------------
+     NEEDS CLARIFICATION: the brand typeface is not named anywhere in the
+     source document, and the mockups are rasterised so it cannot be recovered
+     from them. One token, so the answer costs one line rather than a sweep.
+     See research.md R2.
+  ---------------------------------------------------------------------- */
+  --font-sans: "GWC Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* --- Radius ----------------------------------------------------------- */
+  --radius-card: 0.5rem;
+  --radius-pill: 999px;
+}
+
+/* ---------------------------------------------------------------------------
+   The gold rule.
+
+   The design document is explicit: "GWC-Logo unverändert, Gold nur als
+   gezielter Marken- und Aktionsakzent." Gold is 1.0% of mockup pixels against
+   navy's 3.2%.
+
+   Structurally enforced rather than reviewed: there is no gold surface token
+   and no gold body-text token. Gold reaches the page only as --color-accent
+   (the 4px active-nav rule, the 3px header rule, an accent button) and
+   --color-accent-fg (a label on --color-tint-gold).
+
+   --color-accent is 2.4:1 on white and MUST NOT carry text there. It is
+   7.0:1 on --color-ink, which is the one place it may.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+}
+
+/* The console is one theme, not a light/dark pair. The #171B20 sidebar is a
+   component surface — every mockup shows it against light content, and no
+   mockup shows a dark content area. See research.md R8. */

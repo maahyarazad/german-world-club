@@ -46,6 +46,23 @@ export function makeRequirePermission(app) {
       throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This staff account is not active.')
     }
 
+    /**
+     * An `anyStaff` route has no module to check.
+     *
+     * The account still had to authenticate as staff and still had to pass the
+     * active-account check above — this is not an unguarded route, it is a
+     * route whose posture is "any authenticated staff principal". The
+     * capability endpoint is the case it exists for: a staff member must be
+     * able to read their own grants without already holding one.
+     *
+     * Placed after the active check and before the superadmin bypass so the
+     * ordering reads the same for every staff route.
+     */
+    if (auth.anyStaff === true) {
+      request.permissions = snapshot
+      return
+    }
+
     // FR-008: a superadmin bypasses the module matrix entirely. Not a wildcard
     // grant — the absence of the check.
     if (snapshot.isSuperadmin) {

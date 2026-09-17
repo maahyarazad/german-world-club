@@ -45,6 +45,11 @@ const ROUTE_CLASSES = [
   { name: 'member profile', url: '/auth/me', method: 'GET', audience: 'member' },
   { name: 'member sign-out', url: '/auth/sign-out', method: 'POST', audience: 'member' },
   { name: 'staff profile', url: '/auth/staff/me', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  // The capability snapshot the console boots from. Staff-gated, but with no
+  // module: knowing what you may do is not a privilege on the settings module.
+  // The `anyStaff` exemption is affirmative and the posture gate refuses a
+  // staff route that merely omits module and flag — see 11-rbac.js.
+  { name: 'capability snapshot', url: '/auth/session', method: 'GET', audience: 'staff', anyStaff: true },
   { name: 'staff sign-out', url: '/auth/staff/sign-out', method: 'POST', audience: 'staff', module: 'settings', flag: 'read' },
   // Media delivery is public — a crawler must be able to fetch the images a
   // partner page references — while ingest and management are member-gated.
@@ -77,6 +82,13 @@ const ROUTE_CLASSES = [
   { name: 'docs bundle', url: '/admin/docs/static/*', probe: '/admin/docs/static/swagger-ui.css', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
+  // The console's SPA shell. Public because it IS public: an empty application
+  // shell with no member content, no capability data and no principal in it.
+  // The surface it opens is gated — seo/surfaces.js declares /konsole gated and
+  // never indexed — but the shell itself discloses nothing, which is what
+  // tests/console/spa-fallback.test.js asserts directly.
+  { name: 'console shell', url: '/konsole', method: 'GET', audience: 'public' },
+  { name: 'console deep link', url: '/konsole/*', probe: '/konsole/admin/seo', method: 'GET', audience: 'public' },
   // Institutional pages are one route class served at several declared slugs.
   ...INSTITUTIONAL_SLUGS.map((slug) => ({
     name: `institutional /${slug}`, url: `/${slug}`, method: 'GET', audience: 'public',
@@ -96,8 +108,17 @@ describe('the declared matrix', () => {
       expect(found, `${route.method} ${route.url} is not registered`).toBeDefined()
       expect(found.auth.audience).toBe(route.audience)
       if (route.audience === 'staff') {
-        expect(found.auth.module).toBe(route.module)
-        expect(found.auth.flag).toBe(route.flag)
+        if (route.anyStaff) {
+          // A module-less staff route must say so affirmatively and must not
+          // also carry a module — two postures on one route would leave no way
+          // to tell which governs.
+          expect(found.auth.anyStaff).toBe(true)
+          expect(found.auth.module).toBeUndefined()
+          expect(found.auth.flag).toBeUndefined()
+        } else {
+          expect(found.auth.module).toBe(route.module)
+          expect(found.auth.flag).toBe(route.flag)
+        }
       }
     }
   })
@@ -127,9 +148,34 @@ describe('the declared matrix', () => {
   it('declares only known modules and flags on staff routes', () => {
     for (const route of app.routePostures()) {
       if (route.auth.audience !== 'staff') continue
+      // A module-less staff route is permitted ONLY against an affirmative
+      // `anyStaff: true`. Silence is still a declaration error, so this branch
+      // widens what a route may say without widening what it may leave unsaid.
+      if (route.auth.anyStaff === true) {
+        expect(route.auth.module, `${route.method} ${route.url}`).toBeUndefined()
+        expect(route.auth.flag, `${route.method} ${route.url}`).toBeUndefined()
+        continue
+      }
       expect(MODULES).toContain(route.auth.module)
       expect(FLAGS).toContain(route.auth.flag)
     }
+  })
+
+  /**
+   * The exemption must stay rare and must stay deliberate.
+   *
+   * There is exactly one route that genuinely has no module — the capability
+   * snapshot — and if that number starts growing, `anyStaff` has become the
+   * easy way past the gate rather than the narrow answer to one problem.
+   */
+  it('uses the anyStaff exemption on exactly one route', () => {
+    const exempt = app
+      .routePostures()
+      .filter((r) => r.auth.anyStaff === true)
+      .flatMap((r) => [].concat(r.method).map((m) => `${m} ${r.url}`))
+      .filter((k) => !k.startsWith('HEAD '))
+
+    expect(exempt).toEqual(['GET /auth/session'])
   })
 })
 

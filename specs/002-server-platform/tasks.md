@@ -531,3 +531,216 @@ Complete Setup + Foundational together — it is shared infrastructure and the g
 - Tests marked [P] are separate files with no shared fixtures; run them together.
 - Commit after each task or logical group. Stop at any checkpoint to validate a story independently.
 - The constitution is still an unfilled template. `/speckit-constitution` before starting is worth the ten minutes — this is the first feature handling credentials, PII, and payment paths.
+
+---
+
+## Phase 9: Swagger UI — a browsable API reference for staff (Priority: P5, extends US5)
+
+**Added by**: `/speckit-tasks add Fastify Swagger to Server` (2026-09-16)
+
+**Context — read before starting**: `@fastify/swagger` itself is **already done**
+(T196, `/server/src/plugins/15-openapi.js`). The document is generated from the
+shared Zod schemas, every route is tagged and annotated from the `config.auth`
+posture it already declares, and the JSON is served from staff-gated
+`GET /admin/openapi.json`. What T196 deliberately did **not** register is the
+human-readable UI, and its comment says why: an unauthenticated explorer on the
+public origin would publish the entire shape of the admin surface of an
+invite-only club.
+
+This phase adds that UI **without** reversing the decision: the UI is gated
+behind the same `settings.read` posture as the JSON it renders. Nothing in this
+phase makes an API description publicly reachable.
+
+**Goal**: A staff member with `settings.read` can open a browsable, searchable
+reference of every endpoint — with its auth posture, request shape, response
+shapes and problem types — instead of reading Zod schemas in the source tree.
+
+**Independent Test**: Sign in as staff holding `settings.read`, open `/admin/docs`
+in a browser, and confirm the operation list renders, an endpoint expands to show
+its Zod-derived request and response schemas, and the security requirement shown
+matches that route's `config.auth`. Then sign in as a member (no `settings.read`)
+and confirm `/admin/docs` and every asset under it answer `403` problem+json —
+not a login page, not an empty shell that loads and then fails to fetch.
+
+### Why this is more than `app.register(swaggerUi)`
+
+Four things in this codebase actively reject the default registration. Each has
+a task below.
+
+| Obstacle | Where it bites |
+|---|---|
+| The two boot gates | swagger-ui registers `/docs`, `/docs/json`, `/docs/yaml`, `/docs/static/*` and a trailing-slash redirect, none carrying `config.auth` or `schema.response`. The server **refuses to boot** (`11-rbac.js` `onReady`). |
+| CSP | `02-security-headers.js` sets `default-src 'self'` with no `style-src`/`script-src` exception. swagger-ui injects inline style and an inline initializer; the page loads blank. |
+| Auth transport | The UI is a browser document. Bearer tokens do not ride along; only the `gwc_at` cookie does. The UI's own fetch to the spec must be same-origin and cookie-carrying. |
+| Posture leakage | `postureFor()` drives `x-robots-tag` and `cache-control`. A docs route that does not resolve to a gated posture would be served cacheable and indexable. |
+
+### Implementation for Swagger UI
+
+- [X] T206 [US5] Add `@fastify/swagger-ui` to `/server/package.json` dependencies at a version matching the installed `@fastify/swagger` major (`^9.x` → swagger-ui `^5.x`); run `npm install -w server` and commit the lockfile change
+- [X] T207 [US5] Register `@fastify/swagger-ui` inside an **encapsulated scope** in `/server/src/plugins/15-openapi.js` with `routePrefix: '/admin/docs'`, mounted after the existing `/admin/openapi.json` route so the file keeps one owner for the whole OpenAPI surface — do **not** add a `16-*.js` plugin, because swagger-ui reads `app.swagger()` at request time and has no ordering constraint of its own, while splitting it would put the gate exemption in a different file from the route it exempts
+- [X] T208 [US5] Inside that scope, add an `onRoute` hook that stamps `config.auth = { audience: 'staff', module: 'settings', flag: 'read' }`, `config.budget = 'admin-read'`, `config.rateLimit = app.bucket('admin-api')` and `config.produces` (`'binary'` for the static assets, `'text/html'` for the index) onto every route swagger-ui registers — this is the mechanism `11-rbac.js:60-73` explicitly anticipates, and it must run **before** the parent's gate collects the routes, which Fastify guarantees for an inner scope's hook
+- [X] T209 [US5] Attach `onRequest: app.guard` to the same swagger-ui routes in that same `onRoute` hook in `/server/src/plugins/15-openapi.js`, so the gate declaration and the runtime enforcement are written on the same line — a posture stamped for the gate but never enforced is worse than no posture, because the matrix test would report the route as protected
+- [X] T210 [US5] Set `schema.hide = true` on every swagger-ui route in that same `onRoute` hook in `/server/src/plugins/15-openapi.js`, so the docs UI does not describe itself as six operations inside the document it is rendering
+- [X] T211 [US5] Relax CSP for the docs prefix only, in `/server/src/plugins/02-security-headers.js`: add a route-scoped override granting `style-src 'self' 'unsafe-inline'` and `script-src 'self' 'unsafe-inline'` when the resolved route is under `/admin/docs`, leaving the global policy untouched — comment the *why* next to it (swagger-ui ships an inline initializer; a nonce would have to be threaded through a vendored bundle we do not control) and the *scope* (a gated, `noindex`, `no-store` surface reachable only by a staff member who already holds `settings.read`)
+- [X] T212 [US5] Configure the UI's spec source in `/server/src/plugins/15-openapi.js` so the page fetches the document same-origin with credentials — point it at the existing `/admin/openapi.json` rather than letting swagger-ui serve a second copy at `/admin/docs/json`, so there is exactly one gated document route and one thing to authorize
+- [X] T213 [US5] Set the swagger-ui options that matter for a gated console in the same registration in `/server/src/plugins/15-openapi.js`: `withCredentials: true`, `persistAuthorization: false` (a shared staff workstation must not retain a pasted token), `tryItOutEnabled: true`, `deepLinking: true`, and `defaultModelsExpandDepth: -1` so the schema list does not bury the operation list
+- [X] T214 [US5] Confirm `/admin/docs` resolves to a gated posture in `/server/src/plugins/02-security-headers.js`'s `postureFor()` so the `x-robots-tag: noindex, nofollow` and `cache-control: private, no-store` headers are emitted — if the `/admin` prefix does not already produce that, add it and say so in a comment rather than relying on the prefix happening to match
+- [X] T215 [US5] Verify `/server/src/seo/robots.js` `disallowedPrefixes()` already covers `/admin`; if it does not, add it — belt-and-braces behind T214, because `robots.txt` is what a crawler reads before it ever sees a response header
+
+### Tests for Swagger UI
+
+Every test below carries a counter-assertion, per the repo convention: a test
+that would pass against a server that did nothing is not a test.
+
+- [X] T216 [P] [US5] Add a boot test in `/server/test/openapi-ui.test.js` asserting the app builds without throwing — the counter-assertion is a sibling case that registers a bare route with no `config.auth` and asserts the gate **does** still throw, proving T208's exemption is scoped to swagger-ui and did not disable the gate
+- [X] T217 [P] [US5] Add an authorization test in the same file: staff with `settings.read` gets `200` and an HTML body from `/admin/docs`; a member without it gets `403` problem+json with the documented `type`; an anonymous request gets `401` — counter-assert that the `403` body is problem+json and **not** an HTML login page, since a UI that 200s an empty shell is the exact failure this phase exists to avoid
+- [X] T218 [P] [US5] Extend the authorization-matrix test to walk `app.routePostures()` and assert every route under `/admin/docs` reports `audience: 'staff'` with `module: 'settings'`, `flag: 'read'` — counter-assert the set is non-empty, so a swagger-ui version that changes its route names cannot silently reduce this to a vacuous pass
+- [X] T219 [P] [US5] Add a headers test asserting `/admin/docs` responds with `x-robots-tag: noindex, nofollow`, `cache-control: private, no-store`, and a `content-security-policy` whose `style-src` permits inline — counter-assert that a public route (`/robots.txt`) in the same test still gets the **strict** CSP with no inline allowance, proving T211 scoped the relaxation
+- [X] T220 [P] [US5] Add a document-integrity test asserting the spec the UI fetches parses as OpenAPI 3.1, contains at least one operation per declared tag, and that a known staff route carries the `bearer`/`cookie` security requirement while a known public route carries `security: []` — counter-assert against a route the test registers with `audience: 'public'`, so the assertion cannot pass by every route being annotated identically
+- [X] T221 [US5] Run `npm run -w server test` and `npm run -w server verify:seo` and confirm both pass, and specifically that `verify:seo` reports no crawlable path under `/admin/docs`
+
+### Documentation
+
+- [X] T222 [P] [US5] Document the docs UI in `/server/README.md`: the URL, the permission required, and the CSP exception with its rationale — an operator who finds a relaxed CSP in production and no explanation will either revert it or assume it is deliberate elsewhere too
+- [X] T223 [P] [US5] Add a line to `/CLAUDE.md` under "Things that will bite you" recording that third-party plugins registering their own routes must stamp posture through an inner-scope `onRoute` hook, with swagger-ui as the worked example — this is the general lesson T208 teaches and the next such plugin will hit it blind
+
+### Implementation notes (2026-09-16) — where reality differed from the plan
+
+Four tasks were satisfied differently from how they were written. Each is a
+case where the library or the existing code already did the job, or did it
+better than the plan assumed.
+
+- **T206** installed `@fastify/swagger-ui@6.1.1`, not the `^5.x` the task
+  guessed. v6 declares `fastify: '5.x'` and `dependencies: ['@fastify/swagger']`
+  and works against the installed `@fastify/swagger@9`.
+- **T210 needed no work.** swagger-ui already sets `schema: { hide: true }` on
+  every route it declares by hand, which satisfies the response half of the
+  boot gate on its own. `config.produces` is still stamped for the static
+  subtree, which carries no `hide`.
+- **T211 did not touch `02-security-headers.js`, and no `'unsafe-inline'` was
+  added.** swagger-ui's own `staticCSP: true` installs an `onSend` hook
+  confined to its scope; because v6 externalises its scripts, the shipped
+  `static/csp.json` hash lists are empty and the resulting policy still
+  requires `script-src 'self'`. Scoping is a property of the plugin's hook
+  rather than something we had to build. The global policy is unmodified.
+- **T212 is not achievable in this version and was dropped.** The UI cannot be
+  pointed at `/admin/openapi.json`: `lib/swagger-initializer.js` applies
+  `url: resolveUrl('./json')` *after* spreading `uiConfig`, so the option is
+  always overridden. `/admin/docs/json` and `/admin/docs/yaml` therefore stay
+  registered and are gated by the same scope hook as everything else — the
+  matrix suite has a row for each, and the anonymous-refusal suite probes both.
+- **T214, T215 were already satisfied.** `src/seo/surfaces.js` classifies
+  `/admin` as gated and never-indexed, so `disallowedPrefixes()` already emits
+  the `robots.txt` line and `postureFor()` already drives `noindex` and
+  `no-store` for the docs. Both are now asserted rather than assumed.
+
+One defect the plan did not anticipate was found and fixed:
+
+- **A bucket declared through `config.rateLimit` alone produces no limiter.**
+  `@fastify/rate-limit`'s `onRoute` hook is registered at the root context long
+  before the docs scope exists, so it runs before the scope's stamping hook and
+  reads a config that is not yet written — silently, with the route answering
+  normally and no `RateLimit-*` headers. The bucket is attached explicitly with
+  `app.rateLimit(app.bucket('admin-api'))` as a scope `preHandler`; the config
+  stamp is kept because the shared `keyGenerator` and the refusal metric read
+  the bucket name from it at request time. This is the general hazard now
+  recorded in `/CLAUDE.md`.
+
+Tests live in `/server/tests/ops/openapi-ui.test.js` (16 assertions) rather
+than `/server/test/openapi-ui.test.js`; the repo's suites are under `tests/`.
+T218 was implemented by adding six rows to `/server/tests/authz/matrix.test.js`
+— its coverage assertion caught the new routes with no rows, exactly as it was
+built to.
+
+**Verification**: `npm run -w server test` → 48 files, 671 tests, all passing.
+`npm run -w server verify:seo` → "No SEO problems found." The two DB-backed
+cases in the new suite skip without PostgreSQL, per the repo convention.
+
+**Checkpoint**: A staff member can browse the API. No API description is
+publicly reachable, both boot gates still fire on an undeclared route, and the
+global CSP is unchanged outside `/admin/docs`.
+
+### Dependencies within Phase 9
+
+- T206 blocks everything (the package must exist)
+- T207 blocks T208–T213 (they all configure the same registration)
+- T208 blocks T209, T210 (same hook)
+- T208 blocks T216, T218 (the gate and matrix tests assert what the hook stamps)
+- T211 blocks T219
+- T212 blocks T220
+- T216–T220 are `[P]` — separate concerns, and T216/T217/T219 share one new file only by name; write them as separate `describe` blocks with no shared fixture
+- T221 depends on all of T216–T220
+- T222, T223 are `[P]` and depend only on the implementation being settled
+
+## Phase 9a: the development mount — `/swagger-ui`, unauthenticated (extends Phase 9)
+
+**Added by**: `/speckit-implement` (2026-09-16), from the request "swagger ui
+should be available in the DEV mode or development mode at /swagger-ui route
+without any permission".
+
+**Context**: Phase 9 shipped the UI gated behind `settings.read`, and that
+posture is correct for a deployed origin — the argument in its header still
+holds and is not being reversed. It is the wrong trade on a laptop, where
+reading your own API first costs a staff account, a grant and a token. Phase 9a
+adds a *second* mount that exists only when `NODE_ENV=development`.
+
+The distinction that makes this safe is that the exemption is the
+**registration**, not a check inside a handler. Outside development the routes
+are never added to the router, so there is no posture to get wrong, no header
+to forget, and an anonymous request meets the ordinary not-found handler rather
+than a refusal that confirms the surface exists. `development` exactly, not
+`!isProduction`: `test` is a CI environment that should exercise the shipping
+posture, and staging runs as production.
+
+**Independent Test**: With `NODE_ENV=development`, open `/swagger-ui` with no
+session and confirm the operation list renders. Rebuild with any other
+`NODE_ENV` and confirm the same URL — and every asset under it — answers `404`,
+not `401`.
+
+### Implementation
+
+- [X] T224 [US5] Register a second `@fastify/swagger-ui` in its own encapsulated scope in `/server/src/plugins/15-openapi.js` at `routePrefix: '/swagger-ui'`, wrapped in `if (app.env.NODE_ENV === 'development')` — a sibling scope rather than a nested one, because the plugin is `fastify-plugin`-wrapped and decorates `swaggerCSP`, so two registrations sharing a context would be a duplicate decorator and a boot failure
+- [X] T225 [US5] Stamp `config.auth = { audience: 'public' }`, `config.budget = 'public-page'` and `config.produces` onto every route of that scope through its own `onRoute` hook, the same mechanism Phase 9 uses — the public posture is still an affirmative act visible in a diff, it is simply confined to a branch that cannot be taken outside development
+- [X] T226 [US5] Attach the IP-keyed `public-read` bucket as a scope `onRequest` hook (not `preHandler`, unlike the gated mount — there is no principal to wait for), carrying forward Phase 9's finding that `config.rateLimit` alone builds no limiter
+- [X] T227 [US5] Declare `/swagger-ui` in `/server/src/seo/surfaces.js` as public-but-never-indexed, so a URL that leaks off a dev machine through a referrer carries `X-Robots-Tag: noindex, nofollow` — §10.1 asks for a posture per surface, not per surface that happens to be mounted
+- [X] T228 [US5] Leave the gated `/admin/docs` mount byte-for-byte unchanged, so nothing about production behaviour depends on reading an `if` correctly
+
+### Tests
+
+- [X] T229 [P] [US5] Extend `/server/tests/ops/openapi-ui.test.js` with a `development docs mount` block that builds two apps — one `development`, one `test` — and asserts the page, the bundle, the initializer and the document all answer `200` anonymously in the first; the counter-assertion is the same four requests against the second asserting `404`, which is the only assertion that distinguishes this feature from publishing the admin surface
+- [X] T230 [P] [US5] Assert in the same block that every route under `/swagger-ui` reports `{ audience: 'public' }` through `app.routePostures()` including the static subtree, counter-asserted by the non-development app reporting an empty list; that the page renders real UI over a document with >10 paths rather than an empty shell; that it carries `ratelimit-limit` and `x-robots-tag: noindex, nofollow` despite being public; that `/admin/docs` is **still** `401` in development; and that the mount does not describe itself as operations inside its own document
+- [X] T231 [US5] Run `npm run -w server test` and `npm run -w server verify:seo` and confirm both still pass with the dev mount live — `verify:seo` boots from `server/.env`, which sets `NODE_ENV=development`, so it exercises the mount rather than skipping past it
+
+### Documentation
+
+- [X] T232 [P] [US5] Add a "development copy" subsection to `/server/README.md` under The API reference: the URL, that it is unauthenticated, why the gated argument does not apply to a dev process, that the guard is the registration rather than a runtime check, and the note that CI should generate the document from the built app rather than set `NODE_ENV=development` to reach it
+
+### Implementation notes (2026-09-16)
+
+- **One assertion was written and then removed as vacuous.** A test that the
+  sitemap never advertises `/swagger-ui` fails its own counter-assertion
+  without PostgreSQL, and would be meaningless with it: `/sitemap.xml` is
+  rendered from content records via a live query, so no route prefix can appear
+  in it by construction. The `noindex` header is the assertion that carries
+  that property, and it is in T230.
+- **`02-security-headers.js` needed no change.** `postureFor()` resolves the
+  new surface from the table added in T227, and swagger-ui's own scoped
+  `staticCSP` hook covers the CSP exactly as it does for the gated mount.
+
+**Verification**: `npm run -w server test` → 48 files, 680 tests, all passing
+(the SQL-backed cases skip without PostgreSQL, per the repo convention).
+`npm run -w server verify:seo` → "No SEO problems found.", booted with
+`NODE_ENV=development` and therefore with the dev mount registered.
+
+**Checkpoint**: A developer reaches the API reference with no session on a
+laptop. No non-development build registers the routes at all, the gated mount
+is unchanged, and both boot gates still fire on an undeclared route.
+
+---
+
+### Relationship to existing phases
+
+Phase 9 depends on Phase 7 (US5) being complete — specifically T196, which is
+done. It touches two files outside its own scope (`02-security-headers.js` for
+T211/T214, `11-rbac.js` not at all) and adds one test file. No other phase
+depends on Phase 9; it can be cut without affecting any success criterion.

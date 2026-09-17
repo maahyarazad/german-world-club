@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      A second Vite entry, separate from index.html.
+
+      index.html is the public GWC landing page: indexed, entirely static, and
+      carrying its own content and styling inline so it renders without any
+      JavaScript. The console is gated, never indexed, and is a React
+      application. One document cannot be both — the landing page must not pay
+      for the console's bundle, and the console has no use for the landing
+      page's inline stylesheet.
+
+      This file carries no member content of any kind. It is the empty shell
+      the server hands to an unauthenticated requester at any /konsole/* path,
+      which is why the route serving it can be declared public without
+      breaching Principle VI.
+    -->
+    <title>GWC Konsole</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <style>
+      /* Paints the page ground before the bundle arrives, so the console does
+         not flash white-on-white then re-ground itself. Mirrors --color-ground
+         and --color-text in src/styles/theme.css; if those change, change
+         these. Kept inline because it must apply before any stylesheet loads. */
+      html,
+      body {
+        margin: 0;
+        background: #f7f8fa;
+        color: #171b20;
+      }
+      #konsole-boot {
+        min-height: 100svh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        font-size: 0.8125rem;
+        color: #626a73;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Replaced on mount. Also what a visitor without JavaScript sees:
+           gated surfaces may be client-rendered and are never indexed, so
+           there is nothing here to degrade to. -->
+      <div id="konsole-boot">Konsole wird geladen …</div>
+    </div>
+    <script type="module" src="/src/konsole.jsx"></script>
+  </body>
+</html>

@@ -25,10 +25,12 @@ Source of derived content:
   - User input in this session (Principle VI, payload shaping)
 
 Follow-up TODOs:
-  - TODO(PROJECT_NAME_CONFLICT): The requirements document names the club "German World Club
-    (GWC)"; the deployed client and domain use "German Emirates Club"
-    (expertscircle.german-emirates-club.com). This constitution uses "German World Club" per
-    the requirements document. Resolve the canonical brand name and amend as a PATCH.
+  - RESOLVED 2026-09-17 (PROJECT_NAME_CONFLICT): The canonical brand is **German World Club
+    (GWC)**, confirmed by explicit instruction during feature 003. The Experts Circle / German
+    Emirates Club client, its palette, its copy and its domain have been removed from the
+    repository; `/` now serves a GWC landing page, and the RFC 9457 problem-type namespace moved
+    from german-emirates-club.com to german-world-club.com. This constitution already used
+    "German World Club", so no principle changes — hence PATCH.
   - Ratification date recorded as the date of this adoption. If the project considers an
     earlier date authoritative, amend as a PATCH.
 
@@ -226,4 +228,4 @@ passing automated check. Complexity that violates a principle MUST be justified 
 the specific principle, with the simpler rejected alternative named; an unjustified violation
 blocks the change.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-15
+**Version**: 1.0.1 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-17
