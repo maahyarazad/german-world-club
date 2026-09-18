@@ -1,0 +1,44 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Test coverage
+coverage/
+
+# Server
+server/.env
+server/coverage/
+server/var/
+
+# Speckit implementation worktrees
+.claude/worktrees/
+expo-client/
+# Demo-seed credentials. Publishing them on a terminal is the point of the
+# seed; committing them is not.
+server/.seed-credentials.md

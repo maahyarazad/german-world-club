@@ -1,0 +1,21 @@
+-- Merchant and partner principals: the enum, and NOTHING else.
+--
+-- This file is deliberately one statement pair. A newly added enum value cannot
+-- be used in the transaction that added it, and src/db/migrate.js wraps each
+-- migration file in exactly one transaction — on purpose, so a partial apply
+-- can never leave the schema half-built. Postgres is explicit about it:
+--
+--   ERROR:  unsafe use of new value "merchant" of enum type account_kind
+--   HINT:   New enum values must be committed before they can be used.
+--
+-- So the tables that reference these values live in 014. Splitting the file is
+-- the smaller accommodation; the alternative is exempting one migration from
+-- the atomicity guarantee every other migration has.
+--
+-- Widening account_kind rather than giving organisations their own session
+-- table is what lets `sessions`, `refresh_tokens`, `password_reset_tokens` and
+-- `otp_challenges` serve all four principal kinds unchanged. Each of those keys
+-- on (account_id, account_kind) with no foreign key, precisely so one session
+-- mechanism can serve every kind of principal.
+ALTER TYPE account_kind ADD VALUE IF NOT EXISTS 'merchant';
+ALTER TYPE account_kind ADD VALUE IF NOT EXISTS 'partner';

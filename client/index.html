@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>German World Club — Ein globales Vertrauensnetz</title>
+    <meta
+      name="description"
+      content="Der German World Club verbindet deutschsprachige Menschen mit internationalem Leben: reale Beziehungen, geprüfte Experten, Veranstaltungen, lokale Vorteile und globale Kontinuität."
+    />
+    <meta name="theme-color" content="#0A2457" />
+    <link rel="canonical" href="https://german-world-club.com/" />
+    <!-- Reciprocal by construction: both pages share one translation group, and
+         the server derives the set from it. x-default points at German (§10.7).
+         NEVER canonicalise /en onto / — that delists the English page. -->
+    <link rel="alternate" hreflang="de" href="https://german-world-club.com/" />
+    <link rel="alternate" hreflang="en" href="https://german-world-club.com/en" />
+    <link rel="alternate" hreflang="x-default" href="https://german-world-club.com/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="German World Club" />
+    <meta property="og:title" content="German World Club — Ein globales Vertrauensnetz" />
+    <meta
+      property="og:description"
+      content="Ein globales Netzwerk für deutschsprachige Menschen mit internationalem Leben."
+    />
+    <meta property="og:url" content="https://german-world-club.com/" />
+    <!-- The logo is the only brand image in the repository. Its real intrinsic
+         dimensions are declared rather than the 1200x630 a share card would
+         prefer: stating a size the file does not have is how a preview renders
+         stretched. A purpose-made share card should replace this. -->
+    <meta property="og:image" content="https://german-world-club.com/gwc-logo.png" />
+    <meta property="og:image:width" content="844" />
+    <meta property="og:image:height" content="578" />
+    <meta property="og:image:alt" content="German World Club" />
+    <meta property="og:locale" content="de_DE" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="German World Club — Ein globales Vertrauensnetz" />
+    <meta
+      name="twitter:description"
+      content="Ein globales Netzwerk für deutschsprachige Menschen mit internationalem Leben."
+    />
+    <meta name="twitter:image" content="https://german-world-club.com/gwc-logo.png" />
+
+    <!--
+      The whole page, inline.
+
+      Constitution "Public rendering": a public page MUST deliver meaningful
+      content in the initial response without executing JavaScript. Link-preview
+      bots and most non-Google crawlers run none, and partner visibility is a
+      sold deliverable — so this page carries its content as HTML and its styling
+      as inline CSS. There is no bundle to wait for and nothing to hydrate.
+
+      The colour values below mirror client/src/styles/theme.css exactly.
+      client/scripts/check-tokens.mjs compares the two and fails the build if
+      they drift, so this duplication cannot rot silently.
+    -->
+    <style>
+      :root {
+        --navy: #0a2457;
+        --navy-2: #1e4c7c;
+        --accent: #d49626;
+        --accent-fg: #9a6106;
+        --ink: #171b20;
+        --ground: #f7f8fa;
+        --surface: #ffffff;
+        --text: #171b20;
+        --text-muted: #626a73;
+        --hairline: #d9dee4;
+        --tint-gold: #fff7e4;
+        --radius: 0.5rem;
+        color-scheme: light;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--text);
+        font-family: "GWC Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .wrap {
+        max-width: 68rem;
+        margin: 0 auto;
+        /* 16px side gutter, so nothing touches the edge on a phone. */
+        padding: 0 1rem;
+      }
+
+      a {
+        color: var(--navy);
+      }
+
+      .skip {
+        position: absolute;
+        left: -9999px;
+      }
+      .skip:focus {
+        left: 1rem;
+        top: 1rem;
+        z-index: 50;
+        background: var(--surface);
+        padding: 0.625rem 1rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--hairline);
+      }
+
+      /* --- Masthead ----------------------------------------------------- */
+      .masthead {
+        background: var(--surface);
+        border-bottom: 1px solid var(--hairline);
+      }
+      .masthead .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+      }
+      .masthead img {
+        height: 2.5rem;
+        width: auto;
+        display: block;
+      }
+
+      /* --- Language control ----------------------------------------------
+         A link, not a toggle. This page runs no JavaScript at all, and the
+         platform already serves one URL per language (about/about-us,
+         impressum/imprint). Each option names its own language: someone who
+         cannot read the current one needs to recognise the target, and
+         "Englisch" does not help an English speaker. No flags — a flag names a
+         country, and none means "English" to a reader in Dubai, Zürich and
+         Singapore at once.
+      ------------------------------------------------------------------- */
+      .lang {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+      }
+      .lang a,
+      .lang span {
+        text-decoration: none;
+        padding: 0.25rem 0.125rem;
+      }
+      .lang a {
+        color: var(--navy);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .lang [aria-current="true"] {
+        font-weight: 600;
+        color: var(--text);
+        /* The gold marks the active option but never carries the meaning
+           alone — aria-current does that, and the weight change is visible
+           without colour. */
+        border-bottom: 2px solid var(--accent);
+      }
+      .lang .sep {
+        color: var(--text-muted);
+      }
+      .lang a:focus-visible,
+      .masthead .btn:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 2px;
+      }
+
+      .masthead .actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .btn {
+        display: inline-block;
+        border-radius: var(--radius);
+        padding: 0.7rem 1.1rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: var(--navy);
+        color: #fff;
+      }
+      .btn-accent {
+        background: var(--accent);
+        color: var(--ink);
+      }
+      .btn-secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--hairline);
+      }
+      .btn:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 2px;
+      }
+
+      /* --- Hero ---------------------------------------------------------- */
+      .hero {
+        background: var(--ink);
+        color: #fff;
+      }
+      .hero .wrap {
+        padding-top: 4rem;
+        padding-bottom: 4rem;
+      }
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2rem, 7vw, 3.25rem);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        font-weight: 700;
+      }
+      .hero .lede {
+        margin: 1.25rem 0 0;
+        max-width: 42rem;
+        font-size: 1.0625rem;
+        color: #d7dce2;
+      }
+      .hero .rule {
+        width: 5rem;
+        height: 3px;
+        background: var(--accent);
+        margin: 1.75rem 0;
+      }
+      .hero .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      /* --- Sections ------------------------------------------------------ */
+      section {
+        padding: 3.5rem 0;
+      }
+      .label {
+        margin: 0 0 0.5rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      h2 {
+        margin: 0 0 1.5rem;
+        font-size: clamp(1.375rem, 3.5vw, 1.75rem);
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        font-weight: 700;
+      }
+      h3 {
+        margin: 0 0 0.375rem;
+        font-size: 1.0625rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+      p:last-child {
+        margin-bottom: 0;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+      @media (min-width: 640px) {
+        .grid-2 {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (min-width: 900px) {
+        .grid-4 {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+      }
+      .card p {
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+      }
+
+      .tiers {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+      .tiers caption {
+        text-align: left;
+        padding: 0 0 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+      }
+      .tiers th,
+      .tiers td {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        font-size: 0.8125rem;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .tiers thead th {
+        background: var(--ground);
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+      }
+      .tiers tbody th {
+        font-weight: 600;
+      }
+      .tiers tr:last-child th,
+      .tiers tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .callout {
+        background: var(--tint-gold);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+      }
+      .callout h2 {
+        margin-bottom: 0.5rem;
+      }
+
+      .rules {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .rules li {
+        padding: 0.625rem 0;
+        border-bottom: 1px solid var(--hairline);
+        font-size: 0.875rem;
+      }
+      .rules li:last-child {
+        border-bottom: 0;
+      }
+      .rules li::before {
+        content: "✓";
+        color: var(--accent-fg);
+        font-weight: 700;
+        margin-right: 0.625rem;
+      }
+
+      /* --- Login --------------------------------------------------------- */
+      #anmeldung {
+        background: var(--surface);
+        border-top: 1px solid var(--hairline);
+        border-bottom: 1px solid var(--hairline);
+      }
+      .login-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+      .roles {
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+      }
+
+      /* --- Footer -------------------------------------------------------- */
+      footer {
+        background: var(--ink);
+        color: #fff;
+        padding: 2rem 0;
+      }
+      footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        justify-content: space-between;
+        font-size: 0.8125rem;
+      }
+      footer strong {
+        color: var(--accent);
+      }
+      footer a {
+        color: #d7dce2;
+      }
+      footer .pillars span {
+        display: block;
+        color: #d7dce2;
+      }
+    </style>
+  </head>
+
+  <body>
+    <a class="skip" href="#inhalt">Zum Inhalt springen</a>
+
+    <header class="masthead">
+      <div class="wrap">
+        <img src="/gwc-logo.png" alt="German World Club" width="844" height="578" />
+        <div class="actions">
+          <nav class="lang" aria-label="Sprache">
+            <span aria-current="true" lang="de">Deutsch</span>
+            <span class="sep" aria-hidden="true">·</span>
+            <a href="/en" lang="en" hreflang="en">English</a>
+          </nav>
+          <a class="btn btn-primary" href="/konsole/anmelden">Anmelden</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="inhalt">
+      <div class="hero">
+        <div class="wrap">
+          <h1>Ein Club. Eine Identität.<br />Ein globales Vertrauensnetz.</h1>
+          <div class="rule"></div>
+          <p class="lede">
+            Ein globales Netzwerk für deutschsprachige Menschen mit internationalem Leben. Die
+            Plattform verbindet reale Beziehungen, geprüfte Experten, Veranstaltungen, Vorteile und
+            internationale Mobilität.
+          </p>
+          <p class="lede">
+            „Wo immer du auf der Welt bist: GWC kennt bereits jemanden, dem du vertrauen kannst.“
+          </p>
+          <div class="actions">
+            <a class="btn btn-accent" href="#anmeldung">Zur Anmeldung</a>
+            <a class="btn btn-secondary" href="#wertschleifen">Wie GWC arbeitet</a>
+          </div>
+        </div>
+      </div>
+
+      <section id="wertschleifen">
+        <div class="wrap">
+          <p class="label">Vier Wertschleifen</p>
+          <h2>Was der Club tatsächlich leistet</h2>
+          <div class="grid grid-2 grid-4">
+            <div class="card">
+              <h3>Ask GWC</h3>
+              <p>Frage → Lösung. Eine freie Frage wird strukturiert, an geprüfte Quellen und
+                Personen gebracht und bis „gelöst“ verfolgt.</p>
+            </div>
+            <div class="card">
+              <h3>Event</h3>
+              <p>Treffen → Beziehung. Veranstaltungen sind kein Kalender, sondern der Weg von der
+                Begegnung zur belastbaren Verbindung.</p>
+            </div>
+            <div class="card">
+              <h3>Vorteil</h3>
+              <p>Nutzung → messbarer Wert. Jeder Vorteil zeigt regulären Preis, GWC-Preis, Laufzeit
+                und Bedingungen — nachprüfbar.</p>
+            </div>
+            <div class="card">
+              <h3>Partner</h3>
+              <p>Inhalt → qualifizierter Zugang. Unternehmen erreichen die Community über
+                redaktionell geprüfte Inhalte, nie über Massenversand.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <p class="label">Mitgliedschaft</p>
+          <h2>Fünf Stufen, unverändert aus dem Masterplan</h2>
+          <table class="tiers">
+            <caption>
+              Die Aufnahme erfolgt kuratiert. Ein hoher Preis ersetzt niemals tatsächlichen
+              Mehrwert.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Stufe</th>
+                <th scope="col">Beitrag</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">GWC CONNECT</th>
+                <td>kostenlos / sehr geringe Gebühr</td>
+              </tr>
+              <tr>
+                <th scope="row">GWC MEMBER</th>
+                <td>€150–€300 pro Jahr</td>
+              </tr>
+              <tr>
+                <th scope="row">GWC PREMIUM</th>
+                <td>€600–€1.200 pro Jahr</td>
+              </tr>
+              <tr>
+                <th scope="row">GWC EXECUTIVE</th>
+                <td>€2.500–€5.000 pro Jahr</td>
+              </tr>
+              <tr>
+                <th scope="row">GWC PRIVATE CIRCLE</th>
+                <td>€10.000+ · nur auf Einladung</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <p class="label">Vertrauensregeln</p>
+          <h2>Was es hier bewusst nicht gibt</h2>
+          <div class="grid grid-2">
+            <ul class="rules">
+              <li>Kein Pay-to-rank bei Experten</li>
+              <li>Keine unkontrollierten Partner- oder Merchant-Blasts</li>
+              <li>Mitgliederdaten werden nicht verkauft</li>
+              <li>Qualität wird über Ergebnisse und Feedback gemessen</li>
+            </ul>
+            <div class="callout">
+              <h2>Produktgefühl</h2>
+              <p>
+                Nicht „noch ein soziales Netzwerk“, sondern ein hochvernetztes, vertrauenswürdiges
+                internationales Private Office in der Tasche.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="anmeldung">
+        <div class="wrap">
+          <p class="label">Anmeldung</p>
+          <h2>Zugang zur GWC-Konsole</h2>
+          <p class="roles">
+            Eine Anmeldung für alle Rollen. Mitglieder, das GWC-Team, Club Merchants und Corporate
+            Club Partner verwenden dieselbe Anmeldemaske; nach der Anmeldung führt die Konsole jede
+            Rolle in ihren eigenen Bereich.
+          </p>
+          <div class="login-actions">
+            <a class="btn btn-primary" href="/konsole/anmelden">Anmelden</a>
+            <a class="btn btn-secondary" href="/konsole/passwort">Passwort vergessen?</a>
+          </div>
+          <!--
+            There is deliberately NO account-creation link here.
+
+            The process for taking on new members is unfinished, so the
+            platform offers no way to start one (FR-002). Membership is curated
+            and begins off the platform.
+
+            client/tests/no-registration.test.jsx scans this file for the
+            vocabulary such a control would use and fails the build on a match
+            — which is why the words themselves do not appear in this comment.
+          -->
+          <p class="roles">
+            Die Aufnahme neuer Mitglieder erfolgt kuratiert und nicht über dieses Formular.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="pillars">
+          <span><strong>GLOBAL</strong> — Beziehungen weltweit</span>
+          <span><strong>VERTRAUEN</strong> — geprüft und kuratiert</span>
+          <span><strong>MEHRWERT</strong> — messbare Ergebnisse</span>
+        </div>
+        <div>
+          <p>GERMAN WORLD CLUB</p>
+          <p>
+            <a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a> ·
+            <a href="/konsole/anmelden">Anmelden</a>
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
