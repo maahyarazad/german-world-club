@@ -22,8 +22,23 @@ import type { PoolClient } from 'pg'
  */
 
 /** Raised when a reservation would cross the ceiling. Carries the numbers. */
+export type QuotaFailure = {
+  scope: string
+  subject: string
+  requested: number
+  used: number
+  limit: number
+}
+
 export class QuotaExceededError extends Error {
-  constructor({ scope, subject, requested, used, limit }) {
+  readonly scope: string
+  readonly subject: string
+  readonly requested: number
+  readonly used: number
+  readonly limit: number
+  readonly remaining: number
+
+  constructor({ scope, subject, requested, used, limit }: QuotaFailure) {
     super(`Quota "${scope}" exceeded for ${subject}: ${used} + ${requested} > ${limit}`)
     this.name = 'QuotaExceededError'
     this.scope = scope
@@ -35,7 +50,7 @@ export class QuotaExceededError extends Error {
   }
 }
 
-const key = (scope, subject) => ({ scope: String(scope), subject: String(subject) })
+const key = (scope: string, subject: string) => ({ scope: String(scope), subject: String(subject) })
 
 /**
  * Read a counter without locking. For display only.
@@ -43,7 +58,7 @@ const key = (scope, subject) => ({ scope: String(scope), subject: String(subject
  * Deliberately not usable as a check-then-act: by the time the caller acts the
  * value may have moved. Anything that gates on the number must call `reserve`.
  */
-export async function read(client: PoolClient, scope, subject) {
+export async function read(client: PoolClient, scope: string, subject: string) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     'SELECT used, limit_value, window_start, window_ends FROM counters WHERE scope = $1 AND subject = $2',
@@ -71,7 +86,7 @@ export async function read(client: PoolClient, scope, subject) {
  * which is the intended behaviour. The CHECK constraint is written to permit
  * exactly this, so it still catches a write that bypassed the helper.
  */
-export async function configure(client: PoolClient, scope, subject, { limit = null, windowStart = null, windowEnds = null } = {}) {
+export async function configure(client: PoolClient, scope: string, subject: string, { limit = null, windowStart = null, windowEnds = null } = {}) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     `INSERT INTO counters (scope, subject, used, limit_value, window_start, window_ends)
@@ -100,7 +115,7 @@ export async function configure(client: PoolClient, scope, subject, { limit = nu
  * @throws {QuotaExceededError} when the reservation would cross the ceiling.
  * @returns {Promise<{used: number, limit: number|null, remaining: number|null}>} state AFTER the reservation
  */
-export async function reserve(client: PoolClient, scope, subject, amount, { defaultLimit = null } = {}) {
+export async function reserve(client: PoolClient, scope: string, subject: string, amount: number, { defaultLimit = null } = {}) {
   if (!Number.isFinite(amount) || amount < 0) {
     throw new TypeError(`reserve() needs a non-negative amount, got ${amount}`)
   }
@@ -143,7 +158,7 @@ export async function reserve(client: PoolClient, scope, subject, amount, { defa
  * forever — the CHECK would reject the write and fail the caller's transaction,
  * which turns a bookkeeping slip into a failed user action.
  */
-export async function release(client: PoolClient, scope, subject, amount) {
+export async function release(client: PoolClient, scope: string, subject: string, amount: number) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     `UPDATE counters SET used = GREATEST(0, used - $3), updated_at = now()
