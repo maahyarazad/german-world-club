@@ -2,7 +2,7 @@
   "name": "gwc-platform",
   "version": "1.0.0",
   "private": true,
-  "description": "German World Club platform \u2014 one API serving member web, mobile, and staff admin",
+  "description": "German World Club platform — one API serving member web, mobile, and staff admin",
   "type": "module",
   "license": "ISC",
   "workspaces": [
@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/contracts && tsc --noEmit -p server && tsc --noEmit -p client"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.0"
   }

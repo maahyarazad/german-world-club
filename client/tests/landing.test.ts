@@ -25,7 +25,7 @@ const HTML = readFileSync(join(process.cwd(), 'index.html'), 'utf8')
  * global — axe reads `window` and the CSSOM off the node's owner document and
  * rejects a detached tree.
  */
-let page
+let page: Document
 
 beforeAll(() => {
   // runScripts is deliberately omitted: this parses the file exactly as a
@@ -41,7 +41,7 @@ describe('the page renders without JavaScript', () => {
   it('needs no external stylesheet', () => {
     // An external sheet is a second round trip before the page is legible, and
     // with the old async-css swap it was a round trip that needed JavaScript.
-    expect(page.querySelectorAll('link[rel="stylesheet"]')).toHaveLength(0)
+    expect(page.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).toHaveLength(0)
     expect(page.querySelector('style')).not.toBeNull()
   })
 
@@ -59,7 +59,7 @@ describe('the page renders without JavaScript', () => {
 
   it('is German, and says so', () => {
     expect(page.documentElement.lang).toBe('de')
-    expect(page.querySelector('meta[property="og:locale"]')?.content).toBe('de_DE')
+    expect(page.querySelector<HTMLMetaElement>('meta[property="og:locale"]')?.content).toBe('de_DE')
   })
 })
 
@@ -99,7 +99,7 @@ describe('the content comes from the design document', () => {
 })
 
 describe('the login section reaches the console', () => {
-  const hrefs = () => [...page.querySelectorAll('a')].map((a) => a.getAttribute('href'))
+  const hrefs = () => [...page.querySelectorAll<HTMLAnchorElement>('a')].map((a) => a.getAttribute('href'))
 
   it('offers a sign-in route', () => {
     expect(hrefs()).toContain('/konsole/anmelden')
@@ -113,7 +113,7 @@ describe('the login section reaches the console', () => {
   it('explains that one sign-in serves every role', () => {
     // Collapse whitespace first: the source wraps at 100 columns, so a phrase
     // like "Corporate Club Partner" can straddle a newline in the raw text.
-    const section = page.querySelector('#anmeldung').textContent.replace(/\s+/g, ' ')
+    const section = page.querySelector('#anmeldung')!.textContent.replace(/\s+/g, ' ')!
     for (const role of ['Mitglieder', 'GWC-Team', 'Club Merchants', 'Corporate Club Partner']) {
       expect(section).toContain(role)
     }
@@ -145,17 +145,17 @@ describe('nothing of the previous brand survives', () => {
     // Counter-assertion for the three above: they would all pass against an
     // empty file.
     expect(HTML).toMatch(/German World Club/)
-    expect(page.querySelector('link[rel="canonical"]')?.href).toMatch(/german-world-club/)
+    expect(page.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toMatch(/german-world-club/)
   })
 })
 
 describe('share metadata is complete and honest', () => {
-  const meta = (selector) => page.querySelector(selector)?.content
+  const meta = (selector: string) => page.querySelector<HTMLMetaElement>(selector)?.content
 
   it('declares a title, description and canonical', () => {
     expect(page.title).toMatch(/German World Club/)
     expect(meta('meta[name="description"]')?.length).toBeGreaterThan(50)
-    expect(page.querySelector('link[rel="canonical"]')).not.toBeNull()
+    expect(page.querySelector<HTMLLinkElement>('link[rel="canonical"]')).not.toBeNull()
   })
 
   it('declares the share image WITH its real dimensions', () => {
@@ -169,8 +169,8 @@ describe('share metadata is complete and honest', () => {
   })
 
   it('gives the logo explicit dimensions in the markup too', () => {
-    const logo = page.querySelector('img[src="/gwc-logo.png"]')
-    expect(logo.getAttribute('width')).toBe('844')
+    const logo = page.querySelector<HTMLImageElement>('img[src="/gwc-logo.png"]')!
+    expect(logo.getAttribute('width')).toBe('844')!
     expect(logo.getAttribute('height')).toBe('578')
     expect(logo.getAttribute('alt')).toBeTruthy()
   })
@@ -179,24 +179,24 @@ describe('share metadata is complete and honest', () => {
 describe('the language control', () => {
   it('is a real link, not a script-driven toggle', () => {
     // This page runs no JavaScript. A toggle would simply not work.
-    const link = page.querySelector('nav.lang a')
-    expect(link).not.toBeNull()
+    const link = page.querySelector<HTMLAnchorElement>('nav.lang a')!
+    expect(link).not.toBeNull()!
     expect(link.getAttribute('href')).toBe('/en')
   })
 
   it('marks the current language with aria-current, not colour alone', () => {
-    const current = page.querySelector('nav.lang [aria-current="true"]')
-    expect(current.textContent.trim()).toBe('Deutsch')
+    const current = page.querySelector('nav.lang [aria-current="true"]')!
+    expect(current.textContent.trim()).toBe('Deutsch')!
   })
 
   it('names both languages, each in its own language', () => {
-    const nav = page.querySelector('nav.lang').textContent
-    expect(nav).toContain('Deutsch')
+    const nav = page.querySelector('nav.lang')!.textContent
+    expect(nav).toContain('Deutsch')!
     expect(nav).toContain('English')
   })
 
   it('gives the control an accessible name', () => {
-    expect(page.querySelector('nav.lang').getAttribute('aria-label')).toBeTruthy()
+    expect(page.querySelector('nav.lang')!.getAttribute('aria-label')).toBeTruthy()
   })
 })
 
@@ -220,13 +220,13 @@ describe('accessibility', () => {
   }, 20000)
 
   it('offers a skip link and one h1', () => {
-    expect(page.querySelector('a.skip')).not.toBeNull()
+    expect(page.querySelector<HTMLAnchorElement>('a.skip')).not.toBeNull()
     expect(page.querySelectorAll('h1')).toHaveLength(1)
   })
 
   it('gives the tier table a caption and row headers', () => {
-    const table = page.querySelector('table.tiers')
-    expect(table.querySelector('caption')).not.toBeNull()
+    const table = page.querySelector('table.tiers')!
+    expect(table.querySelector('caption')).not.toBeNull()!
     expect(table.querySelectorAll('tbody th[scope="row"]').length).toBe(5)
   })
 })

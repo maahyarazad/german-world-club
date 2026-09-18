@@ -20,23 +20,23 @@ import { JSDOM } from 'jsdom'
  * proves they have not drifted. This is that guard, for structure.
  */
 
-const read = (file) => readFileSync(join(process.cwd(), file), 'utf8')
+const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8')
 
 const DE_SOURCE = read('index.html')
 const EN_SOURCE = read('en.html')
 
-let de
-let en
+let de: Document
+let en: Document
 
 beforeAll(() => {
   de = new JSDOM(DE_SOURCE).window.document
   en = new JSDOM(EN_SOURCE).window.document
 })
 
-const idsOf = (doc) => [...doc.querySelectorAll('[id]')].map((el) => el.id).sort()
-const headingsOf = (doc) => [...doc.querySelectorAll('h1, h2, h3')].map((el) => el.tagName)
-const consoleLinksOf = (doc) =>
-  [...doc.querySelectorAll('a[href^="/konsole"]')].map((a) => a.getAttribute('href')).sort()
+const idsOf = (doc: Document) => [...doc.querySelectorAll('[id]')].map((el) => el.id).sort()
+const headingsOf = (doc: Document) => [...doc.querySelectorAll('h1, h2, h3')].map((el) => el.tagName)
+const consoleLinksOf = (doc: Document) =>
+  [...doc.querySelectorAll<HTMLAnchorElement>('a[href^="/konsole"]')].map((a) => a.getAttribute('href')).sort()
 
 describe('the two pages are the same page', () => {
   it('has the same element ids', () => {
@@ -57,7 +57,7 @@ describe('the two pages are the same page', () => {
   })
 
   it('has the same number of membership tiers', () => {
-    const tiers = (doc) => doc.querySelectorAll('table.tiers tbody th[scope="row"]').length
+    const tiers = (doc: Document) => doc.querySelectorAll('table.tiers tbody th[scope="row"]').length
     expect(tiers(en)).toBe(5)
     expect(tiers(en)).toBe(tiers(de))
   })
@@ -66,7 +66,7 @@ describe('the two pages are the same page', () => {
     // The design document fixes them and they are NOT re-denominated. Only the
     // thousands separator differs, which is a locale convention rather than a
     // different number.
-    const amounts = (doc) => doc.body.textContent.match(/€[\d.,]+/g) ?? []
+    const amounts = (doc: Document) => doc.body.textContent.match(/€[\d.,]+/g) ?? []
     expect(amounts(de).length).toBeGreaterThan(0)
     expect(amounts(en).length).toBe(amounts(de).length)
   })
@@ -78,7 +78,7 @@ describe('the two pages are the same page', () => {
     // Case-folded because the footer renders the brand as GERMAN WORLD CLUB.
     // That is a styling choice, not a translation — the point of this test is
     // that the WORDS are the same in both languages.
-    const text = (doc) => doc.body.textContent.replace(/\s+/g, ' ').toLowerCase()
+    const text = (doc: Document) => doc.body.textContent.replace(/\s+/g, ' ').toLowerCase()
     for (const noun of ['Ask GWC', 'Club Merchant', 'Corporate Club Partner', 'German World Club']) {
       expect(text(de), `de: ${noun}`).toContain(noun.toLowerCase())
       expect(text(en), `en: ${noun}`).toContain(noun.toLowerCase())
@@ -93,7 +93,7 @@ describe('the two pages are the same page', () => {
    */
   it('BUT the prose differs — one is not a copy of the other', () => {
     expect(EN_SOURCE).not.toBe(DE_SOURCE)
-    expect(en.querySelector('h1').textContent).not.toBe(de.querySelector('h1').textContent)
+    expect(en.querySelector('h1')!.textContent).not.toBe(de.querySelector('h1')!.textContent)
     expect(en.title).not.toBe(de.title)
   })
 })
@@ -104,14 +104,14 @@ describe('neither page depends on JavaScript', () => {
     ['en.html', () => en],
   ])('%s has no script tag and no external stylesheet', (_file, doc) => {
     expect(doc().querySelectorAll('script')).toHaveLength(0)
-    expect(doc().querySelectorAll('link[rel="stylesheet"]')).toHaveLength(0)
+    expect(doc().querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).toHaveLength(0)
     expect(doc().querySelector('style')).not.toBeNull()
   })
 })
 
 describe('each page points at the other', () => {
   it('the German page links to /en, the English page links to /', () => {
-    const langLinks = (doc) =>
+    const langLinks = (doc: Document) =>
       [...doc.querySelectorAll('nav.lang a')].map((a) => a.getAttribute('href'))
     expect(langLinks(de)).toEqual(['/en'])
     expect(langLinks(en)).toEqual(['/'])
@@ -120,16 +120,16 @@ describe('each page points at the other', () => {
   it('marks the current language rather than only showing it', () => {
     // aria-current, so it is announced and not merely styled. The gold
     // underline may mark it but must never carry the meaning alone.
-    expect(de.querySelector('nav.lang [aria-current="true"]').textContent.trim()).toBe('Deutsch')
-    expect(en.querySelector('nav.lang [aria-current="true"]').textContent.trim()).toBe('English')
+    expect(de.querySelector('nav.lang [aria-current="true"]')!.textContent.trim()).toBe('Deutsch')
+    expect(en.querySelector('nav.lang [aria-current="true"]')!.textContent.trim()).toBe('English')
   })
 
   it('names each language in that language', () => {
     // Someone who cannot read the current language needs to recognise the
     // target. "Englisch" does not help an English speaker.
     for (const doc of [de, en]) {
-      const text = doc.querySelector('nav.lang').textContent
-      expect(text).toContain('Deutsch')
+      const text = doc.querySelector('nav.lang')!.textContent
+      expect(text).toContain('Deutsch')!
       expect(text).toContain('English')
     }
   })
@@ -138,7 +138,7 @@ describe('each page points at the other', () => {
     // A flag names a country. There is no flag meaning "English" to a reader in
     // Dubai, Zürich and Singapore at once.
     for (const [name, source] of [['de', DE_SOURCE], ['en', EN_SOURCE]]) {
-      const nav = new JSDOM(source).window.document.querySelector('nav.lang')
+      const nav = new JSDOM(source).window.document.querySelector('nav.lang')!
       expect(nav.querySelectorAll('img, svg'), `${name} uses an image in the control`).toHaveLength(0)
       // Regional indicator symbols — the emoji flags.
       expect(nav.textContent, `${name} uses a flag emoji`).not.toMatch(/[\u{1F1E6}-\u{1F1FF}]/u)
@@ -154,8 +154,8 @@ describe('each page points at the other', () => {
 })
 
 describe('the pair is declared to crawlers', () => {
-  const alternates = (doc) =>
-    [...doc.querySelectorAll('link[rel="alternate"]')].map((l) => ({
+  const alternates = (doc: Document) =>
+    [...doc.querySelectorAll<HTMLLinkElement>('link[rel="alternate"]')].map((l) => ({
       hreflang: l.getAttribute('hreflang'),
       href: l.getAttribute('href'),
     }))
@@ -183,7 +183,7 @@ describe('the pair is declared to crawlers', () => {
    * destroys.
    */
   it('each page is canonical for ITSELF, never for the other', () => {
-    expect(de.querySelector('link[rel="canonical"]').href).toMatch(/german-world-club\.com\/$/)
-    expect(en.querySelector('link[rel="canonical"]').href).toMatch(/german-world-club\.com\/en$/)
+    expect(de.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href).toMatch(/german-world-club\.com\/$/)
+    expect(en.querySelector<HTMLLinkElement>('link[rel="canonical"]')!.href).toMatch(/german-world-club\.com\/en$/)
   })
 })
