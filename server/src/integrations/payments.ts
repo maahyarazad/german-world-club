@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto'
 import { requestDependency } from './http-client.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { Problem } from '@gwc/contracts/errors'
+import { decorateError } from '../types/errors.ts'
+import type { DecoratedError } from '../types/errors.ts'
 
 /**
  * Payments — the one dependency with **no safe fallback** (FR-037, FR-038).
@@ -20,6 +23,11 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 
 /** A declined card is a business outcome, not a dependency failure (FR-036). */
 export class CardDeclinedError extends Error {
+  readonly code: string
+  readonly statusCode: number
+  readonly problem: Problem
+  readonly safeDetail: string
+
   constructor(detail = 'The card was declined.') {
     super(detail)
     this.name = 'CardDeclinedError'
@@ -43,7 +51,15 @@ export class CardDeclinedError extends Error {
  * Hashed rather than concatenated so the reference does not leak the member id
  * to the gateway or into its logs.
  */
-export function idempotencyReference({ accountId, purpose, targetId, amountMinor, currency }) {
+export type ChargeInput = {
+  accountId: string
+  purpose: string
+  targetId: string
+  amountMinor: number
+  currency?: string
+}
+
+export function idempotencyReference({ accountId, purpose, targetId, amountMinor, currency }: ChargeInput): string {
   const material = [accountId, purpose, targetId, amountMinor, currency].join(':')
   return `gwc_${createHash('sha256').update(material).digest('hex').slice(0, 32)}`
 }
@@ -63,7 +79,10 @@ export function createPaymentsClient({ baseUrl = 'https://payments.invalid', sen
      * Charge, carrying the idempotency reference so a retry after recovery is
      * harmless (FR-038).
      */
-    async charge({ accountId, purpose, targetId, amountMinor, currency = 'AED' }, { signal } = {}) {
+    async charge(
+    { accountId, purpose, targetId, amountMinor, currency = 'AED' }: ChargeInput,
+    { signal }: { signal?: AbortSignal } = {},
+  ) {
       const reference = idempotencyReference({ accountId, purpose, targetId, amountMinor, currency })
 
       const response = await send('payments', `${baseUrl}/charges`, {
@@ -78,7 +97,11 @@ export function createPaymentsClient({ baseUrl = 'https://payments.invalid', sen
         body: JSON.stringify({ amountMinor, currency, reference }),
       })
 
-      const result = await response.body.json()
+      const result = (await response.body.json()) as {
+        status?: string
+        reason?: string
+        invoiceId?: string
+      }
 
       if (result.status === 'declined') {
         // Surfaced as a distinct error so `errorFilter` can keep it off the
@@ -98,10 +121,11 @@ export function createPaymentsClient({ baseUrl = 'https://payments.invalid', sen
  * Exported as a named function rather than left implicit, so the intent is
  * greppable and a future change reads as a decision rather than an oversight.
  */
-export function paymentsUnavailable() {
-  const error = new Error('Payments are temporarily unavailable.')
-  error.problem = PROBLEMS.SERVICE_UNAVAILABLE
-  error.statusCode = 503
-  error.safeDetail = 'Payments are temporarily unavailable. No charge was made. Please try again shortly.'
-  return error
+export function paymentsUnavailable(): DecoratedError {
+  return decorateError('Payments are temporarily unavailable.', {
+    problem: PROBLEMS.SERVICE_UNAVAILABLE,
+    statusCode: 503,
+    safeDetail:
+      'Payments are temporarily unavailable. No charge was made. Please try again shortly.',
+  })
 }

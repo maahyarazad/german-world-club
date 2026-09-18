@@ -1,5 +1,6 @@
 import { Agent, request as undiciRequest } from 'undici'
 import { OUTBOUND } from '../config/budgets.ts'
+import type { DecoratedError } from '../types/errors.ts'
 
 /**
  * Outbound HTTP — timeout layer 4 (FR-032, resilience.md §1).
@@ -26,7 +27,7 @@ import { OUTBOUND } from '../config/budgets.ts'
 /** Per-dependency dispatchers, created once and reused. */
 const agents = new Map()
 
-export function dispatcherFor(dependency, { budgetMs } = {}) {
+export function dispatcherFor(dependency: string, { budgetMs }: { budgetMs?: number } = {}) {
   if (agents.has(dependency)) return agents.get(dependency)
 
   const budget = budgetMs ?? OUTBOUND[dependency] ?? 5_000
@@ -53,7 +54,19 @@ export function dispatcherFor(dependency, { budgetMs } = {}) {
  * answer the client while leaving the socket and the dependency's own worker
  * busy — which is how a slow dependency becomes a capacity problem here too.
  */
-export async function requestDependency(dependency, url, { signal, budgetMs, ...options } = {}) {
+export type DependencyRequestOptions = {
+  signal?: AbortSignal
+  budgetMs?: number
+  method?: string
+  headers?: Record<string, string>
+  body?: string | Buffer
+}
+
+export async function requestDependency(
+  dependency: string,
+  url: string,
+  { signal, budgetMs, ...options }: DependencyRequestOptions = {},
+) {
   const dispatcher = dispatcherFor(dependency, { budgetMs })
   const response = await undiciRequest(url, { ...options, dispatcher, signal })
 
@@ -63,9 +76,10 @@ export async function requestDependency(dependency, url, { signal, budgetMs, ...
   if (response.statusCode >= 400) {
     const body = await response.body.text().catch(() => '')
     const error = new Error(`${dependency} responded ${response.statusCode}`)
-    error.statusCode = response.statusCode
-    error.dependency = dependency
-    error.responseBody = body.slice(0, 500)
+    const decorated = error as DecoratedError & { dependency?: string; responseBody?: string }
+    decorated.statusCode = response.statusCode
+    decorated.dependency = dependency
+    decorated.responseBody = body.slice(0, 500)
     throw error
   }
 

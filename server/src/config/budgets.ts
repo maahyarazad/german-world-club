@@ -12,7 +12,7 @@
  */
 
 /** Per-dependency outbound budgets, in milliseconds. */
-export const OUTBOUND = Object.freeze({
+export const OUTBOUND: Readonly<Record<string, number>> = Object.freeze({
   payments: 8000,
   sms: 5000,
   mail: 10000,
@@ -54,8 +54,12 @@ export const tightestDeadlineMs = () =>
  * @throws if any route class violates the budget rule. Called from an onReady
  * hook, so a misconfiguration prevents boot.
  */
-export function assertBudgets(requestTimeoutMs, budgets = ROUTE_BUDGETS, outbound = OUTBOUND) {
-  const problems = []
+export function assertBudgets(
+  requestTimeoutMs: number,
+  budgets: Readonly<Record<string, { deadlineMs: number; calls: readonly string[] }>> = ROUTE_BUDGETS,
+  outbound: Readonly<Record<string, number>> = OUTBOUND,
+): void {
+  const problems: string[] = []
 
   for (const [name, { deadlineMs, calls }] of Object.entries(budgets)) {
     for (const dep of calls) {
@@ -63,7 +67,7 @@ export function assertBudgets(requestTimeoutMs, budgets = ROUTE_BUDGETS, outboun
         problems.push(`route class "${name}" calls unknown dependency "${dep}"`)
       }
     }
-    const sum = calls.reduce((t, d) => t + (outbound[d] ?? 0), 0)
+    const sum = calls.reduce((t: number, d: string) => t + (outbound[d] ?? 0), 0)
     if (sum >= deadlineMs) {
       problems.push(
         `route class "${name}": Σ outbound ${sum}ms >= deadline ${deadlineMs}ms ` +

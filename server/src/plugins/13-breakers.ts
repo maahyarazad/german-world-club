@@ -2,6 +2,7 @@ import fp from 'fastify-plugin'
 import CircuitBreaker from 'opossum'
 import { BREAKERS, errorFilter, assertBreakers, FAIL_CLOSED } from '../config/breakers.ts'
 import type { GwcApp } from '../app.ts'
+import type { Problem } from '@gwc/contracts/errors'
 
 /**
  * One `opossum` breaker per outbound dependency (FR-035).
@@ -18,9 +19,37 @@ import type { GwcApp } from '../app.ts'
  * nothing at all for outbound isolation, which is the problem this solves.
  */
 
+/** What the plugin accepts: a policy table and a problem-type resolver. */
+export type BreakersOptions = {
+  breakers?: Record<string, BreakerPolicy>
+  problemFor?: (name: string) => Problem | undefined
+}
+
+/** One dependency's declared policy. `fallback` names its unavailable behaviour. */
+export type BreakerPolicy = {
+  timeout: number
+  errorThresholdPercentage: number
+  volumeThreshold: number
+  resetTimeout: number
+  /** The declared unavailable-behaviour. FAIL_CLOSED forbids a fallback. */
+  fallback: string
+  /** Whether a retry through this breaker is safe to repeat (FR-038). */
+  retrySafe: boolean
+  /** Why this policy is what it is — carried so the reason survives review. */
+  why: string
+}
+
+/** The thunk a breaker wraps. It receives the caller's deadline signal. */
+export type BreakerThunk<T = unknown> = (signal?: AbortSignal) => Promise<T>
+
 /** Raised when a breaker is open, or when a fail-closed dependency failed. */
 export class DependencyUnavailableError extends Error {
-  constructor(name, problem, cause) {
+  readonly dependency: string
+  readonly problem?: Problem
+  readonly statusCode: number
+  readonly safeDetail: string
+
+  constructor(name: string, problem?: Problem, cause?: unknown) {
     super(`Dependency "${name}" is unavailable`)
     this.name = 'DependencyUnavailableError'
     this.dependency = name
@@ -32,12 +61,12 @@ export class DependencyUnavailableError extends Error {
 }
 
 export default fp(
-  async function breakers(app: GwcApp, opts = {}) {
-    const policies = opts.breakers ?? BREAKERS
+  async function breakers(app: GwcApp, opts: BreakersOptions = {}) {
+    const policies: Readonly<Record<string, BreakerPolicy>> = opts.breakers ?? BREAKERS
     assertBreakers(policies)
 
-    const instances = {}
-    const state = {}
+    const instances: Record<string, { policy: BreakerPolicy; breaker: CircuitBreaker; state: string; run<T>(fn: BreakerThunk<T>, opts?: { fallback?: T | ((err: unknown) => T); signal?: AbortSignal }): Promise<T> }> = {}
+    const state: Record<string, string> = {}
 
     for (const [name, policy] of Object.entries(policies)) {
       /**
@@ -46,7 +75,7 @@ export default fp(
        * to a dependency shares the same health signal — which is the only way
        * the threshold means anything.
        */
-      const breaker = new CircuitBreaker(async (fn, signal) => fn(signal), {
+      const breaker = new CircuitBreaker(async (fn: BreakerThunk, signal?: AbortSignal) => fn(signal), {
         timeout: policy.timeout,
         errorThresholdPercentage: policy.errorThresholdPercentage,
         volumeThreshold: policy.volumeThreshold,
@@ -61,7 +90,7 @@ export default fp(
       // Every transition is logged and counted. An operator needs to see a
       // breaker open at the moment it opens, not infer it from a latency graph.
       for (const event of ['open', 'halfOpen', 'close']) {
-        breaker.on(event, () => {
+        breaker.on(event as 'open' | 'close' | 'halfOpen', () => {
           state[name] = event === 'halfOpen' ? 'half-open' : event === 'open' ? 'open' : 'closed'
           app.log.warn({ dependency: name, circuit: state[name] }, 'circuit state changed')
           app.metrics?.circuitTransition?.(name, state[name])
@@ -83,19 +112,24 @@ export default fp(
          * site remembering, because the cost of forgetting is free membership
          * cards and assets recorded `ready` with no derivatives behind them.
          */
-        async run(fn, { fallback, signal } = {}) {
+        async run<T>(
+          fn: BreakerThunk<T>,
+          { fallback, signal }: { fallback?: T | ((err: unknown) => T); signal?: AbortSignal } = {},
+        ): Promise<T> {
           if (fallback !== undefined && policy.fallback === FAIL_CLOSED) {
             throw new Error(
               `Dependency "${name}" is declared fail-closed; a fallback here would undo FR-037.`,
             )
           }
           try {
-            return await breaker.fire(fn, signal)
+            return (await breaker.fire(fn, signal)) as T
           } catch (err) {
             // A business outcome passes straight through: the caller asked a
             // valid question and got a valid negative answer.
             if (errorFilter(err)) throw err
-            if (fallback !== undefined) return typeof fallback === 'function' ? fallback(err) : fallback
+            if (fallback !== undefined) {
+              return typeof fallback === 'function' ? (fallback as (e: unknown) => T)(err) : fallback
+            }
             throw new DependencyUnavailableError(name, opts.problemFor?.(name), err)
           }
         },
