@@ -98,6 +98,11 @@ declare module 'fastify' {
     /** True once the client has hung up; handlers stop doing work. */
     clientGone: boolean
     routeClass: string
+    /**
+     * The per-account key the OTP send limiter buckets on.
+     * Set by the auth routes before the limiter runs; absent elsewhere.
+     */
+    otpPhoneKey?: string
   }
 }
 

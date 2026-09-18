@@ -1,4 +1,4 @@
-import type { Pool } from 'pg'
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg'
 /**
  * Thin query helper.
  *
@@ -7,21 +7,26 @@ import type { Pool } from 'pg'
  * so cancellation is done by closing the client the query is running on, which
  * is what actually frees the server-side work.
  */
-export async function query(pool: Pool, sql, params = [], { signal } = {}) {
-  if (!signal) return pool.query(sql, params)
+export async function query<Row extends QueryResultRow = QueryResultRow>(
+  pool: Pool,
+  sql: string,
+  params: readonly unknown[] = [],
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<QueryResult<Row>> {
+  if (!signal) return pool.query<Row>(sql, params as unknown[])
   if (signal.aborted) throw signal.reason ?? new Error('aborted')
 
   const client = await pool.connect()
-  let onAbort
+  let onAbort: (() => void) | undefined
   try {
-    const result = await new Promise((resolve, reject) => {
+    const result = await new Promise<QueryResult<Row>>((resolve, reject) => {
       onAbort = () => {
         // Destroying the connection is what cancels the in-flight statement.
         client.release(new Error('query aborted'))
         reject(signal.reason ?? new Error('aborted'))
       }
       signal.addEventListener('abort', onAbort, { once: true })
-      client.query(sql, params).then(resolve, reject)
+      client.query<Row>(sql, params as unknown[]).then(resolve, reject)
     })
     return result
   } finally {
@@ -43,7 +48,11 @@ export async function query(pool: Pool, sql, params = [], { signal } = {}) {
  * of time should not start a transaction, and one that runs out mid-way is
  * interrupted rather than politely asked to stop.
  */
-export async function withTransaction(pool: Pool, fn, { signal } = {}) {
+export async function withTransaction<T>(
+  pool: Pool,
+  fn: (client: PoolClient) => Promise<T>,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<T> {
   if (signal?.aborted) throw signal.reason ?? new Error('aborted')
 
   const client = await pool.connect()
