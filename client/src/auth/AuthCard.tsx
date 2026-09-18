@@ -29,9 +29,9 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
           <img
             src="/gwc-logo.png"
             alt={t.brand.logoAlt}
-            width="844"
-            height="578"
-            className="mb-5 h-10 w-auto"
+            
+            style={{width: 150}}
+            className="mb-5"
           />
         </a>
         <h1 className="text-[26px] font-bold leading-tight tracking-tight text-text">{title}</h1>
