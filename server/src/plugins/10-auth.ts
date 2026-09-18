@@ -6,6 +6,7 @@ import { createPermissionResolver } from '../authz/permissions.ts'
 import { makeRequirePermission, forbidden } from '../authz/require-permission.ts'
 import type { FastifyRequest } from 'fastify'
 import type { GwcApp } from '../app.ts'
+import type { Problem } from '@gwc/contracts/errors'
 
 /**
  * Authentication, and the member-side gates (FR-003, FR-010, FR-011, FR-012).
@@ -21,7 +22,7 @@ import type { GwcApp } from '../app.ts'
  */
 
 /** The token audience each route audience expects. */
-const TOKEN_AUDIENCE = Object.freeze({
+const TOKEN_AUDIENCE: Readonly<Record<string, string>> = Object.freeze({
   member: 'member',
   staff: 'admin',
   // Organisation principals ride the same session machinery — one map entry
@@ -32,7 +33,7 @@ const TOKEN_AUDIENCE = Object.freeze({
 })
 
 /** §3.2's state machine, with the remedy each refusal carries. */
-const STATUS_REFUSAL = Object.freeze({
+const STATUS_REFUSAL: Readonly<Record<string, { problem: Problem; detail: string }>> = Object.freeze({
   locked: { problem: PROBLEMS.ACCOUNT_LOCKED, detail: 'This account is locked. Please contact support.' },
   inactive: { problem: PROBLEMS.ACCOUNT_INACTIVE, detail: 'This account is inactive. Reset your password to reactivate it.' },
   ended: { problem: PROBLEMS.MEMBERSHIP_ENDED, detail: 'This membership has ended.' },
@@ -70,7 +71,7 @@ export default fp(
     })
 
     /** Load the live member row behind a token. */
-    async function loadMember(memberId, signal) {
+    async function loadMember(memberId: string, signal?: AbortSignal) {
       const { rows } = await query(
         app.pg,
         `SELECT id, email_confirmed_at, status, display_name, permissions
@@ -81,7 +82,7 @@ export default fp(
       return rows[0] ?? null
     }
 
-    async function deviceApproved(memberId, deviceId, signal) {
+    async function deviceApproved(memberId: string, deviceId: string | undefined, signal?: AbortSignal) {
       if (!deviceId) return true // web has no device binding (§6.1 is mobile)
       const { rows } = await query(
         app.pg,
@@ -102,11 +103,11 @@ export default fp(
       const auth = request.routeOptions?.config?.auth
       if (!auth || auth.audience === 'public') return
 
-      const expected = TOKEN_AUDIENCE[auth.audience]
+      const expected = TOKEN_AUDIENCE[String(auth.audience)]
 
       let claims
       try {
-        claims = await app.verifyAccessToken(request, expected)
+        claims = await app.verifyAccessToken(request, expected!)
       } catch (err) {
         // A member token on a staff route fails HERE — at verification, before
         // any handler — which is what FR-003 asks for.
@@ -115,7 +116,7 @@ export default fp(
         // this audience. Answering 401 would invite the client to re-
         // authenticate, which cannot help, and would blur the distinction
         // http-conventions.md §2 draws between the two.
-        if (err.code === 'FST_JWT_BAD_AUDIENCE') {
+        if ((err as { code?: string })?.code === 'FST_JWT_BAD_AUDIENCE') {
           await app.auditDenial(request, { requiredPermission: `audience:${expected}`, reason: 'audience-mismatch' })
           throw forbidden(PROBLEMS.INSUFFICIENT_PERMISSION, 'This credential is not valid for this interface.')
         }
@@ -124,18 +125,18 @@ export default fp(
 
       // Session-level revocation. The denylist closes the window between a
       // revocation and the token's own ten-minute expiry.
-      if (await denylist.has(claims.sid)) {
+      if (await denylist.has(String(claims.sid))) {
         throw forbidden(PROBLEMS.SESSION_REVOKED, 'This session has been ended.')
       }
 
-      const session = await loadSession(app.pg, claims.sid, { signal: request.deadlineSignal })
+      const session = await loadSession(app.pg, String(claims.sid), { signal: request.deadlineSignal })
       if (!session || session.revoked_at !== null) {
         throw forbidden(PROBLEMS.SESSION_REVOKED, 'This session has been ended.')
       }
 
       request.principal = {
-        id: claims.sub,
-        kind: claims.aud,
+        id: String(claims.sub),
+        kind: String(claims.aud),
         sid: claims.sid,
         deviceId: session.device_id ?? null,
       }
@@ -161,6 +162,9 @@ export default fp(
      * authorization is never read from the token.
      */
     async function applyOrganisationGates(request: FastifyRequest) {
+      // authenticate() has already run and set this; the gates are only
+      // reached on an authenticated route.
+      const principal = request.principal!
       const { rows } = await query(
         app.pg,
         `SELECT ou.id, ou.status, ou.role, ou.display_name,
@@ -168,13 +172,13 @@ export default fp(
            FROM organisation_users ou
            JOIN organisations o ON o.id = ou.organisation_id
           WHERE ou.id = $1`,
-        [request.principal.id],
+        [principal.id],
         { signal: request.deadlineSignal },
       )
       const row = rows[0]
       if (!row) throw forbidden(PROBLEMS.SESSION_REVOKED, 'This account no longer exists.')
 
-      const refusal = STATUS_REFUSAL[row.status]
+      const refusal = STATUS_REFUSAL[String(row.status)]
       if (refusal) throw forbidden(refusal.problem, refusal.detail)
 
       // A suspended or ended organisation takes its people with it. The
@@ -190,28 +194,33 @@ export default fp(
       // The token's audience and the organisation's kind are two independent
       // facts, and a mismatch means one of them is wrong. Refusing beats
       // guessing which.
-      if (row.kind !== request.principal.kind) {
+      if (row.kind !== principal.kind) {
         throw forbidden(PROBLEMS.INSUFFICIENT_PERMISSION, 'This credential is not valid for this interface.')
       }
 
-      request.principal.organisationId = row.organisation_id
-      request.principal.role = row.role
+      principal.organisationId = row.organisation_id
+      principal.role = row.role
       request.permissions = { kind: row.kind, role: row.role, displayName: row.display_name }
     }
 
     /** FR-010, FR-011, FR-012 — state gates, not permissions. */
-    async function applyMemberGates(request: FastifyRequest, auth) {
-      const member = await loadMember(request.principal.id, request.deadlineSignal)
+    async function applyMemberGates(
+      request: FastifyRequest,
+      auth: { audience?: string; requires?: string },
+    ) {
+      // As above: principal is set by authenticate() before any gate runs.
+      const principal = request.principal!
+      const member = await loadMember(principal.id!, request.deadlineSignal)
       if (!member) throw forbidden(PROBLEMS.SESSION_REVOKED, 'This account no longer exists.')
 
-      const refusal = STATUS_REFUSAL[member.status]
+      const refusal = STATUS_REFUSAL[String(member.status)]
       if (refusal) throw forbidden(refusal.problem, refusal.detail)
 
       if (member.email_confirmed_at === null) {
         throw forbidden(PROBLEMS.PROFILE_INCOMPLETE, 'Confirm your email address to continue.')
       }
 
-      if (!(await deviceApproved(member.id, request.principal.deviceId, request.deadlineSignal))) {
+      if (!(await deviceApproved(member.id, principal.deviceId as string | undefined, request.deadlineSignal))) {
         throw forbidden(PROBLEMS.APPROVAL_PENDING, 'This device is waiting for approval.')
       }
 

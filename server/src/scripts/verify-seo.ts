@@ -17,7 +17,7 @@ import { buildApp } from '../app.ts'
 import { loadEnv } from '../config/env.ts'
 
 const args = process.argv.slice(2)
-const flag = (name, fallback) => {
+const flag = (name: string, fallback?: string) => {
   const i = args.indexOf(`--${name}`)
   return i >= 0 ? args[i + 1] : fallback
 }
@@ -25,22 +25,23 @@ const flag = (name, fallback) => {
 const limit = Number(flag('limit', '500'))
 const verbose = args.includes('--verbose')
 
-const problems = []
-const note = (severity, url, message) => problems.push({ severity, url, message })
+const problems: { severity: string; url: string; message: string }[] = []
+const note = (severity: string, url: string, message: string) => problems.push({ severity, url, message })
 
 /** Pull every <loc> out of the sitemap without a full XML parser. */
-const locations = (xml) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+const locations = (xml: string): string[] =>
+  [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]!)
 
-const meta = (html, attr, value) => {
+const meta = (html: string, attr: string, value: string) => {
   const pattern = new RegExp(`<meta[^>]*${attr}=["']${value}["'][^>]*content=["']([^"']*)["']`, 'i')
   const reversed = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*${attr}=["']${value}["']`, 'i')
   return html.match(pattern)?.[1] ?? html.match(reversed)?.[1] ?? null
 }
 
-const canonicalOf = (html) =>
+const canonicalOf = (html: string) =>
   html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["']/i)?.[1] ?? null
 
-const titleOf = (html) => html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? null
+const titleOf = (html: string) => html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? null
 
 async function main() {
   const env = loadEnv()
@@ -55,7 +56,7 @@ async function main() {
    * the redirect rather than the pages, and reports every URL as broken.
    */
   const host = new URL(env.canonicalOrigin).host
-  const fetchPath = (url) => app.inject({ method: 'GET', url, headers: { host } })
+  const fetchPath = (url: string) => app.inject({ method: 'GET', url, headers: { host } })
 
   try {
     const sitemap = await fetchPath('/sitemap.xml')
@@ -70,9 +71,9 @@ async function main() {
     // Uniqueness is checked across the whole set, not per page: a title that is
     // fine on its own but repeated across forty partner pages suppresses all
     // forty (§10.3, SC-006).
-    const titles = new Map()
-    const descriptions = new Map()
-    const canonicals = new Map()
+    const titles = new Map<string, string[]>()
+    const descriptions = new Map<string, string[]>()
+    const canonicals = new Map<string, string[]>()
 
     for (const absolute of urls) {
       const path = new URL(absolute).pathname
@@ -100,12 +101,12 @@ async function main() {
         /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
       )) {
         try {
-          const parsed = JSON.parse(block)
+          const parsed = JSON.parse(block ?? '')
           if (!parsed['@context'] || !parsed['@type']) {
             note('error', path, 'JSON-LD block is missing @context or @type')
           }
         } catch (err) {
-          note('error', path, `JSON-LD does not parse: ${err.message}`)
+          note('error', path, `JSON-LD does not parse: ${err instanceof Error ? err.message : String(err)}`)
         }
       }
 
@@ -118,14 +119,20 @@ async function main() {
         }
       }
 
-      for (const [map, value] of [[titles, title], [descriptions, description], [canonicals, canonical]]) {
+      const uniquenessMaps: [Map<string, string[]>, string | undefined][] = [
+        [titles, title ?? undefined], [descriptions, description ?? undefined], [canonicals, canonical ?? undefined],
+      ]
+      for (const [map, value] of uniquenessMaps) {
         if (value) map.set(value, [...(map.get(value) ?? []), path])
       }
 
       if (verbose) process.stdout.write(`  ok  ${path}\n`)
     }
 
-    for (const [label, map] of [['title', titles], ['description', descriptions], ['canonical', canonicals]]) {
+    const uniqueness: [string, Map<string, string[]>][] = [
+      ['title', titles], ['description', descriptions], ['canonical', canonicals],
+    ]
+    for (const [label, map] of uniqueness) {
       for (const [value, paths] of map) {
         if (paths.length > 1) {
           note('error', paths.join(', '), `duplicate ${label}: ${JSON.stringify(value.slice(0, 60))}`)
@@ -148,8 +155,8 @@ async function main() {
      * one-directional hreflang suppresses both as duplicates, and negotiating
      * on `Accept-Language` makes the two URLs serve the same body.
      */
-    const pair = [['/', 'de'], ['/en', 'en']]
-    const pairHtml = {}
+    const pair: [string, string][] = [['/', 'de'], ['/en', 'en']]
+    const pairHtml: Record<string, string> = {}
 
     for (const [path, language] of pair) {
       const response = await fetchPath(path)
@@ -174,7 +181,7 @@ async function main() {
       const canonical = canonicalOf(response.body)
       if (canonical) {
         const declared = new URL(canonical)
-        const trim = (p) => (p === '/' ? '/' : p.replace(/\/$/, ''))
+        const trim = (p: string) => (p === '/' ? '/' : p.replace(/\/$/, ''))
         if (trim(declared.pathname) !== trim(path)) {
           note('error', path, `canonical points at ${declared.pathname}, not ${path}`)
         }
@@ -204,7 +211,7 @@ async function main() {
     }
 
     // Reciprocity: a one-directional hreflang is ignored and suppresses both.
-    const alternatesOf = (html) =>
+    const alternatesOf = (html: string) =>
       [...html.matchAll(/<link[^>]+rel="alternate"[^>]*>/g)]
         .map((m) => m[0].match(/hreflang="([^"]+)"/)?.[1])
         .filter(Boolean)

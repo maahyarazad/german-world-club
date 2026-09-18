@@ -50,14 +50,19 @@ declare module 'fastify' {
       invalidate?(adminId: string): void
     }
     requirePermission(module: Module, flag: Flag): preHandlerHookHandler
-    guard(...args: unknown[]): preHandlerHookHandler
+    /**
+     * The standard preHandler chain: authenticate, then authorize.
+     * An array, because Fastify runs a list of hooks in order.
+     */
+    guard: preHandlerHookHandler[]
     availableModules(...args: unknown[]): readonly Module[]
     routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
     /** Revoked session ids, so a superseded session stops working immediately. */
     denylist: {
-      add(sessionId: string, ttlSeconds?: number): Promise<void>
+      add(sessionId: string): Promise<void>
       has(sessionId: string): Promise<boolean>
-      prune?(): Promise<void>
+      /** Only the in-process fallback has this; Redis expires its own keys. */
+      prune?(): Promise<number>
     }
     /** From @fastify/csrf-protection. */
     csrfProtection(request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void): void
