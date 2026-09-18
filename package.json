@@ -11,7 +11,15 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "test": "npm run typecheck && npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p packages/contracts && tsc --noEmit -p server && tsc --noEmit -p client"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/opossum": "^8.1.9",
+    "@types/pg": "^8.23.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0"
   }
 }

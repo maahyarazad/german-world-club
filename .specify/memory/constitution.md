@@ -1,6 +1,51 @@
 <!--
-SYNC IMPACT REPORT
-==================
+SYNC IMPACT REPORT (2.0.0)
+==========================
+Version change: 1.0.1 -> 2.0.0
+Bump rationale: MAJOR. Three MUSTs are downgraded, which the versioning policy below classifies
+as MAJOR without qualification. Adopted for feature 007 (TypeScript migration and runtime
+validation removal), which converts the codebase to TypeScript and removes Zod. The amendment
+lands BEFORE the removal merges, as Governance requires: amendments "are never made implicitly
+by a feature that declines to comply."
+
+Modified clauses (three; each carries an inline amendment note stating what replaces it):
+  - Principle I, shared-package clause: runtime schemas -> types. Divergence detection moves
+    from runtime to `tsc --noEmit`. Replacement: partial.
+  - Principle VI, response-serialization clause: REMOVED. Replacement: NONE. A column added
+    later can now leak. This is the most consequential line in the amendment and it is stated
+    plainly rather than softened.
+  - Technology & Security Baseline, configuration clause: all-configuration validation ->
+    named-precondition checks. Replacement: partial (preconditions, TRUST_PROXY transform,
+    timeout invariant and all coercion survive by hand).
+
+Unchanged: Principles II, III, IV, V in full; every other clause of I and VI; the whole of the
+Development Workflow & Quality Gates and Governance sections.
+
+Automated checks to withdraw with the removal (Workflow requires every principle to have a
+passing check; a red suite nobody may fix is worse than a withdrawn one):
+  - server/tests/authz/route-posture.test.js -- RETARGET, do not delete. Its `config.auth`
+    assertions still hold and still guard Principle II; only its response-schema assertions go.
+  - server/tests/ops/openapi-ui.test.js -- DELETE. Its subject (/admin/docs, /swagger-ui) is
+    withdrawn with the OpenAPI document, which was generated from the removed schemas.
+  - server/tests/http/error-envelope.test.js -- RETARGET. RFC 9457 shaping is unaffected; only
+    its Zod import goes.
+  - server/tests/ops/logging-redaction.test.js -- RETARGET. Redaction is central and survives;
+    this suite must stay green.
+
+Migration path for work already shipped:
+  - Features 001-006 each recorded a Constitution Check against 1.0.x. Those checks remain
+    valid as records of what was true when they were made. They are NOT re-opened: none of
+    them relied on the three amended clauses for a passing verdict, because the response
+    schemas they declared were an implementation of Principle VI rather than a dependency on
+    it. Feature 006 in particular reorganised routes without changing their postures.
+  - The precedent for this handling is the 1.0.0 report below, which voided feature 002's
+    "PASS (vacuous)" explicitly rather than leaving it ambiguous.
+  - Feature 007's own Constitution Check is recorded as FAIL-with-justification in
+    specs/007-typescript-migration/plan.md, with the rejected simpler alternative named for
+    each of the three violations, as Governance requires.
+
+-- previous report retained below --
+
 Version change: (unratified template) -> 1.0.0
 Bump rationale: MINOR-from-nothing is not applicable; this is the initial ratification of a
 document that previously contained only unfilled bracketed placeholder tokens. No prior principles
@@ -50,9 +95,14 @@ Compliance consequences for work already planned (informational, not part of thi
 Every business rule MUST be computed on the server and MUST NOT be reimplemented in any client.
 
 - Entitlement, pricing, capacity, quota, and moderation decisions MUST be resolved server-side.
-- Request and response schemas, error types, and permission constants MUST live in one shared
+- Request and response **types**, error types, and permission constants MUST live in one shared
   package that every client imports. A rule expressed in two places is a defect, not a
-  convenience.
+  convenience. *(Amended 2.0.0: this clause required runtime **schemas**. Feature 007 removed
+  them. The surviving requirement — one definition per shape, in one package — is now enforced
+  by the type checker rather than at runtime. What is lost is detection of divergence between a
+  client's belief and the server's behaviour at runtime; what replaces it is `tsc --noEmit`,
+  which catches the same divergence at build time but only for code that is compiled. No client
+  ever imported a schema to validate with, so the practical loss is server-side only.)*
 - A client MAY use server-supplied capability data to decide what to *display*. It MUST NOT use
   it to decide what is *allowed*; the server re-checks every operation.
 - Authentication *mechanism* MAY differ per client (cookies for browsers, bearer tokens for
@@ -147,7 +197,14 @@ Nothing leaves the server in a shape or size the server did not choose.
   width, height, and byte size.
 - Uploads MUST be validated by content inspection, never by filename or client-declared type, and
   MUST have bounded decoded size. Embedded location and device metadata MUST be stripped.
-- Responses MUST be serialized through an explicit schema, so a column added later cannot leak.
+- Responses are serialized from the handler's return value. *(Amended 2.0.0: this clause read
+  "Responses MUST be serialized through an explicit schema, so a column added later cannot
+  leak." Feature 007 removed the schemas. **Nothing replaces this protection.** The amendment
+  procedure requires naming what replaces a removed protection; the honest answer here is that
+  nothing does. A column added to a table and picked up by a `SELECT *` will now reach the
+  client. The only remaining discipline is a convention — queries in `application/` name their
+  columns explicitly, checked by a test rather than by the framework. This is a real reduction
+  in the platform's guarantees and is recorded as such.)*
 - Credentials, tokens, one-time codes, and member contact details MUST NOT appear in logs, error
   bodies, or responses. Redaction MUST be configured centrally so it applies to code not yet
   written.
@@ -179,8 +236,16 @@ stripping are stated as absolutes.
 - **Settings that must agree with infrastructure** — trusted-proxy depth, canonical origin, and
   keep-alive versus proxy idle timeout — MUST have no silent default. Production startup MUST fail
   when they are unset.
-- **Secrets** MUST NOT be committed. Configuration MUST be validated at startup, and an invalid
-  value MUST prevent boot rather than degrade behaviour.
+- **Secrets** MUST NOT be committed. Configuration that must agree with infrastructure MUST be
+  checked at startup, and a missing or contradictory value MUST prevent boot rather than degrade
+  behaviour. *(Amended 2.0.0: this clause required **all** configuration to be validated at
+  startup. Feature 007 removed schema validation of the environment. What survives, by
+  hand-written check: the three deployment preconditions still refuse to boot when unset; the
+  `TRUST_PROXY` hop-count transform still rejects the literal `"true"`; the
+  `CONNECTION_TIMEOUT_MS > REQUEST_TIMEOUT_MS` invariant still throws; and every coercion and
+  default is preserved, because turning `"3000"` into `3000` is behaviour, not validation. What
+  is lost: type validation of individual values. An unrecognised or malformed setting that does
+  not trip one of the named checks now reaches the application rather than stopping the boot.)*
 
 ## Development Workflow & Quality Gates
 
@@ -228,4 +293,4 @@ passing automated check. Complexity that violates a principle MUST be justified 
 the specific principle, with the simpler rejected alternative named; an unjustified violation
 blocks the change.
 
-**Version**: 1.0.1 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-17
+**Version**: 2.0.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-18

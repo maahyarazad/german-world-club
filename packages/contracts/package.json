@@ -5,13 +5,13 @@
   "type": "module",
   "description": "Schemas, error types, and permission constants shared by the API and every client (Constitution Principle I)",
   "exports": {
-    "./errors": "./src/errors.js",
-    "./permissions": "./src/permissions.js",
-    "./auth": "./src/auth.js",
-    "./seo": "./src/seo.js",
-    "./media": "./src/media.js",
-    "./push": "./src/push.js",
-    "./capabilities": "./src/capabilities.js"
+    "./errors": "./src/errors.ts",
+    "./permissions": "./src/permissions.ts",
+    "./auth": "./src/auth.ts",
+    "./seo": "./src/seo.ts",
+    "./media": "./src/media.ts",
+    "./push": "./src/push.ts",
+    "./capabilities": "./src/capabilities.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"

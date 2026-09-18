@@ -24,8 +24,12 @@ HTTP-facing feature lives under `server/src/modules/<domain>/` split into
 shaping) and `application/` (the actual business rule, framework-free).
 
 `packages/contracts` exists so a field renamed in one place is a type error
-everywhere else rather than a runtime surprise in one client. Adding a shape
-that both the server and a client need? It goes there, not in either of them.
+everywhere else rather than a runtime surprise in one client. Since feature 007
+that is literal: it exports TypeScript types, and `tsc --noEmit` names every
+caller. Adding a shape that both the server and a client need? It goes there,
+not in either of them — a type declared locally because the shared one was
+inconvenient recreates exactly the divergence the package exists to prevent,
+and nothing detects it at runtime any more.
 
 ## Commands
 
@@ -76,15 +80,21 @@ surface exists; the test for it asserts `404` rather than `401`. The gated
 `/admin/docs` mount is unchanged in every environment, which is the point:
 production behaviour never depends on reading a conditional correctly.
 
-**Four gates refuse to boot**, rather than letting a defect through to review:
+**Three gates refuse to boot**, rather than letting a defect through to review:
 
 - a route with no `config.auth`
-- a route with no `schema.response` and no `config.produces`
 - Σ(outbound budgets) ≥ the route's deadline
 - a dependency with no declared fallback
 
-Adding a route means declaring both its access posture and what it sends back.
-Making it public is an affirmative act that shows up in a diff.
+Adding a route means declaring its access posture. Making it public is an
+affirmative act that shows up in a diff.
+
+There used to be a fourth: a route with no `schema.response` and no
+`config.produces`. Feature 007 removed it along with the response schemas it
+checked, under constitution 2.0.0. Nothing now stops a column added later from
+reaching a client, so **queries in `application/` name their columns
+explicitly** — never `SELECT *` on a path that reaches a response. That is a
+convention backed by a test where it used to be a property of the framework.
 
 **Rate limits are not quotas.** A 429 means "retry later and it will work". A
 business quota — invitations, coupons, event capacity, stored bytes — means
