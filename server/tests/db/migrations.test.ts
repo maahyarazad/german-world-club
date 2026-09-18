@@ -8,7 +8,7 @@ import { loadEnv } from '../../src/config/env.ts'
  * partial unique index, an append-only trigger, a CHECK that ties state to a
  * failure reason — so nothing here is mocked (research R20).
  */
-let pool
+let pool: pg.Pool
 beforeAll(() => { pool = createPool(loadEnv()) })
 afterAll(async () => { await pool.end() })
 

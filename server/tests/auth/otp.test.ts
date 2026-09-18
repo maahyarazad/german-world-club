@@ -5,6 +5,7 @@ import {
   issueChallenge, verifyChallenge, generateCode, hashCode, maskPhone,
   OTP_OUTCOME, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS,
 } from '../../src/modules/auth/otp.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-012 / §6.2 — the three things that make a 4-digit code safe.
@@ -15,7 +16,7 @@ import {
  * Each is asserted here on its own, because losing any one of them silently
  * reduces the factor to a guessing game that succeeds in an afternoon.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
@@ -38,7 +39,7 @@ describe('the code itself', () => {
 })
 
 describe.skipIf(!hasDatabase)('the challenge (FR-012)', () => {
-  let member
+  let member: Record<string, unknown>
   const DEVICE = 'device-under-test'
 
   beforeEach(async () => {

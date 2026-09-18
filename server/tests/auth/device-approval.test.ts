@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables, signIn } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * §6.1 / §12.6 — device approval, and why the primary key is the mechanism.
@@ -12,7 +13,7 @@ import { hasDatabase } from '../helpers/db.ts'
  * sees, and then assert the key that produces it — because a well-meaning
  * change to either one alone would quietly re-admit an unapproved device.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
@@ -20,7 +21,7 @@ const KNOWN = 'device-known'
 const FRESH = 'device-never-seen'
 
 describe.skipIf(!hasDatabase)('a device must be approved before it signs in (§6.1)', () => {
-  let member
+  let member: Record<string, unknown>
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)
@@ -88,7 +89,7 @@ describe.skipIf(!hasDatabase)('a device must be approved before it signs in (§6
 })
 
 describe.skipIf(!hasDatabase)('the key is what makes re-approval automatic (§12.6)', () => {
-  let member
+  let member: Record<string, unknown>
   beforeEach(async () => {
     await resetAuthTables(app.pg)
     member = await createMember(app.pg)

@@ -3,6 +3,7 @@ import { buildPageMeta, pathFor } from '../../src/modules/seo/build-page-meta.ts
 import { postureFor } from '../../src/modules/seo/surfaces.ts'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * The landing pair, from the server's side.
@@ -115,7 +116,7 @@ describe('both landing pages are public and indexed', () => {
 })
 
 describe('both landing pages are served, and the URL decides the language', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildApp({ contentSource: createFixtureContentSource([]) })
     await app.ready()

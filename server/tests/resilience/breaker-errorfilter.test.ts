@@ -3,6 +3,7 @@ import Fastify from 'fastify'
 import breakers from '../../src/plugins/13-breakers.ts'
 import { errorFilter } from '../../src/config/breakers.ts'
 import { createPaymentsClient, CardDeclinedError, idempotencyReference } from '../../src/integrations/payments.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-012 — twenty consecutive declined cards leave the payment circuit
@@ -62,7 +63,7 @@ describe('the filter itself (FR-036)', () => {
 })
 
 describe('twenty declines leave the circuit closed (SC-012)', () => {
-  let app
+  let app: GwcApp
   beforeEach(async () => {
     if (app) await app.close()
     app = await buildPaymentsApp()

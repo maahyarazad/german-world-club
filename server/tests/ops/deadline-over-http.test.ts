@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { loadEnv } from '../../src/config/env.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * The deadline, over a real socket.
@@ -23,7 +24,7 @@ import { loadEnv } from '../../src/config/env.ts'
  * This file exists so that class of defect cannot hide again. It listens on a
  * real ephemeral port and uses `fetch`.
  */
-let app
+let app: GwcApp
 let origin
 
 /**

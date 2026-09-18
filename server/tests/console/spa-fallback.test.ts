@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * The console's SPA fallback (T010, research R9).
@@ -17,7 +18,7 @@ import { createFixtureContentSource } from '../../src/modules/public/content.ts'
  * that everything outside `/konsole` still 404s — are the point.
  */
 describe('the console shell is served under its own prefix', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildApp({ contentSource: createFixtureContentSource([]) })
     await app.ready()

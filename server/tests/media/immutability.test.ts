@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { checksumOf, keyFor, hexOf } from '../../src/modules/media/storage.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-062 — a variant URL is byte-identical across fetches, and says so.
@@ -17,7 +18,7 @@ import { checksumOf, keyFor, hexOf } from '../../src/modules/media/storage.ts'
  * about the addressing scheme rather than a promise about future behaviour,
  * which is what these tests assert.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -47,8 +48,8 @@ describe('the addressing scheme is what makes immutability safe', () => {
 })
 
 describe.skipIf(!hasDatabase)('as served (FR-062)', () => {
-  let headers
-  let variants
+  let headers: Record<string, string>
+  let variants: Record<string, unknown>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => {

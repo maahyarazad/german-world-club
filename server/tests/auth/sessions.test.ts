@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables, signIn, PASSWORD } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { startSession } from '../../src/modules/auth/sessions.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-004 / §12.7 — one active session per account.
@@ -11,12 +12,12 @@ import { startSession } from '../../src/modules/auth/sessions.ts'
  * violation the application handles deterministically, rather than a race whose
  * winner depends on timing and whose loser leaves a second live session behind.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('single active session (FR-004)', () => {
-  let member
+  let member: Record<string, unknown>
   beforeEach(async () => {
     await resetAuthTables(app.pg)
     member = await createMember(app.pg)

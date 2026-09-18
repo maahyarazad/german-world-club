@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-010 — the server emits the same bytes whatever language the client wants.
@@ -19,7 +20,7 @@ import { createFixtureContentSource } from '../../src/modules/public/content.ts'
  * If a future change starts localising responses, this suite fails, and that
  * failure is the conversation rather than a surprise in production.
  */
-let app
+let app: GwcApp
 
 beforeAll(async () => {
   app = await buildApp({ contentSource: createFixtureContentSource([]) })

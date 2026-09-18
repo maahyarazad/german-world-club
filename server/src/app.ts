@@ -109,6 +109,16 @@ const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
  * rendering and OG-tag assertions are about the resolver and the templates
  * rather than about SQL.
  */
+/**
+ * A built application instance.
+ *
+ * Derived from buildApp rather than written out, so it follows the decorations
+ * in src/types/fastify.d.ts automatically. Tests annotate their `let app` with
+ * this; without it every suite's app is an implicit any and none of the
+ * decorations above are checked at the call site.
+ */
+export type GwcApp = Awaited<ReturnType<typeof buildApp>>
+
 export async function buildApp({ env = loadEnv(), contentSource, storage, jobQueue, integrations, ...overrides } = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled

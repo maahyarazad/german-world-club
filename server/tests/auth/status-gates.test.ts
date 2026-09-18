@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, createAdmin, resetAuthTables, signIn } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-010 / §3.2 — the status gates, and the rule that binds them:
@@ -10,7 +11,7 @@ import { hasDatabase } from '../helpers/db.ts'
  * still minting a session leaves a usable credential behind, and the member who
  * was just locked can keep working from a client that already holds one.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 

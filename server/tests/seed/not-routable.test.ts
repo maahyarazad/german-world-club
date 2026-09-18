@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { isNonRoutableEmail, isNonRoutableMobile, EMAIL_DOMAIN } from '../../src/seed/faker.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * SC-005 — nothing the seed writes can reach a real person.
@@ -28,7 +29,7 @@ const EMAIL_SHAPED = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
 const PHONE_SHAPED = /(?:\+|00)\d[\d\s().-]{7,17}\d|\b0\d{9,12}\b/g
 
 describe.skipIf(!hasDatabase)('no seeded value can reach anybody', () => {
-  let db
+  let db: SeededDatabase
   let columns
 
   beforeAll(async () => {

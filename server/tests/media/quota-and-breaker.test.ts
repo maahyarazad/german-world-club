@@ -5,6 +5,7 @@ import { withTransaction } from '../../src/db/query.ts'
 import { reserve, release, configure, read, SCOPE, QuotaExceededError } from '../../src/db/counters.ts'
 import { BUCKETS } from '../../src/config/rate-limits.ts'
 import { BREAKERS, FAIL_CLOSED, errorFilter } from '../../src/config/breakers.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-063 — the two independent ceilings on media, and the fail-closed rule.
@@ -24,7 +25,7 @@ import { BREAKERS, FAIL_CLOSED, errorFilter } from '../../src/config/breakers.ts
  * with no derivatives behind it is worse than a refused upload — every page
  * referencing it then has nothing to serve and no error to explain why.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -149,9 +150,9 @@ describe.skipIf(!hasDatabase)('the transactional counter (FR-043)', () => {
 })
 
 describe.skipIf(!hasDatabase)('the stored-byte quota refuses an upload (FR-063)', () => {
-  let app2
-  let headers
-  let member
+  let app2: GwcApp
+  let headers: Record<string, string>
+  let member: Record<string, unknown>
 
   beforeAll(async () => {
     // A deliberately tiny ceiling, so one ordinary photograph crosses it.
@@ -204,8 +205,8 @@ describe.skipIf(!hasDatabase)('the stored-byte quota refuses an upload (FR-063)'
 })
 
 describe.skipIf(!hasDatabase)('with the generator failing, ZERO assets are ready (FR-063)', () => {
-  let app3
-  let headers
+  let app3: GwcApp
+  let headers: Record<string, string>
 
   beforeAll(async () => {
     app3 = await buildMediaApp()

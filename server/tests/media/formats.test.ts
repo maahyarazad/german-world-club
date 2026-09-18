@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, transparentLogo, opaquePng } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { deriveImage, fallbackFormatFor } from '../../src/modules/media/derive-image.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-057 — WebP primary, and the fallback chosen by whether the source has
@@ -14,7 +15,7 @@ import { deriveImage, fallbackFormatFor } from '../../src/modules/media/derive-i
  * "because it is lossless" would mean the club ships megabytes to phones in the
  * name of a fallback that almost nothing uses any more.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -98,7 +99,7 @@ describe('an OPAQUE png still falls back to JPEG', () => {
 })
 
 describe.skipIf(!hasDatabase)('as served', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

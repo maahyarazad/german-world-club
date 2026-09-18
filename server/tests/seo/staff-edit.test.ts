@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { buildAuthApp, createAdmin, grant, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-020, FR-021 and §12.12 — staff editing of SEO fields.
@@ -18,7 +19,7 @@ import { hasDatabase } from '../helpers/db.ts'
  *     anywhere to explain it — which is why this is enforced in the same
  *     transaction as the update rather than left to whoever made the change.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
@@ -110,7 +111,7 @@ describe.skipIf(!hasDatabase)('editing SEO fields requires BOTH modules (FR-020,
 
 describe.skipIf(!hasDatabase)('a slug change registers its own 301 (§12.12)', () => {
   let recordId
-  let headers
+  let headers: Record<string, string>
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)

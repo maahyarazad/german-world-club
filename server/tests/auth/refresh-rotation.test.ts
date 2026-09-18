@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { startSession, rotateRefreshToken, REFRESH_OUTCOME } from '../../src/modules/auth/sessions.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-005 — rotation, and the replay response.
@@ -11,13 +12,13 @@ import { startSession, rotateRefreshToken, REFRESH_OUTCOME } from '../../src/mod
  * indistinguishable — one of them has a copy neither should have. The only safe
  * action is to end the lineage and make both re-authenticate.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('refresh rotation (FR-005)', () => {
-  let member
-  let session
+  let member: Record<string, unknown>
+  let session: Record<string, unknown>
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)

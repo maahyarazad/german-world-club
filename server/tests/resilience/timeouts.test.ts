@@ -4,6 +4,7 @@ import requestContext from '../../src/plugins/00-request-context.ts'
 import errorHandler from '../../src/plugins/14-error-handler.ts'
 import deadline, { DeadlineExceededError } from '../../src/plugins/12-deadline.ts'
 import { ROUTE_BUDGETS, OUTBOUND, assertBudgets, tightestDeadlineMs } from '../../src/config/budgets.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-009 — a request against a hung dependency completes within 110% of its
@@ -34,7 +35,7 @@ async function buildDeadlineApp(routes) {
   return app
 }
 
-let app
+let app: GwcApp
 
 beforeAll(async () => {
   app = await buildDeadlineApp({

@@ -3,6 +3,7 @@ import sharp from 'sharp'
 import { buildMediaApp, uploader, resetMedia, upload, photographWithGps } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { stripMetadata, hasLocationMetadata } from '../../src/modules/media/strip-metadata.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-020, FR-054 — no location metadata survives ingest.
@@ -17,7 +18,7 @@ import { stripMetadata, hasLocationMetadata } from '../../src/modules/media/stri
  * The original is not served today (FR-060), but "not currently routed" is a
  * property of this month's routes, not of the bytes on disk.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -76,7 +77,7 @@ describe('stripping removes it (SC-020)', () => {
 })
 
 describe.skipIf(!hasDatabase)('nothing stored or delivered carries location (SC-020)', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createAdmin, grant, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { SNAPSHOT_TTL_MS } from '../../src/authz/permissions.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-003 — a revoked permission is refused on the target's **very next**
@@ -14,13 +15,13 @@ import { SNAPSHOT_TTL_MS } from '../../src/authz/permissions.ts'
  * invalidation is what makes it "next request", and the TTL is only a backstop
  * for a write another instance made.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('revocation takes effect immediately (SC-003)', () => {
-  let admin
-  let headers
+  let admin: Record<string, unknown>
+  let headers: Record<string, string>
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)

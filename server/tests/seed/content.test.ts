@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * SC-011 … SC-013 — offers and events, and the constraints behind them.
@@ -11,7 +12,7 @@ import { hasDatabase } from '../helpers/db.ts'
  * which is the difference Principle IV is about.
  */
 describe.skipIf(!hasDatabase)('offers span their lifecycle', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_content') }, 120_000)
   afterAll(async () => { await db?.drop() })
 
@@ -112,7 +113,7 @@ describe.skipIf(!hasDatabase)('offers span their lifecycle', () => {
 })
 
 describe.skipIf(!hasDatabase)('events span their state machine', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_events') }, 120_000)
   afterAll(async () => { await db?.drop() })
 

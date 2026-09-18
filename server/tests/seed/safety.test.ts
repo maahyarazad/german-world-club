@@ -3,6 +3,7 @@ import { withSeededDatabase, runSeed } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { isNonRoutableEmail, isNonRoutableMobile } from '../../src/seed/faker.ts'
 import { NEVER_SEEDED } from '../../src/seed/tables.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * The safety properties. Each one is here because breaking it would reach
@@ -37,7 +38,7 @@ describe('the development gate', () => {
 })
 
 describe.skipIf(!hasDatabase)('nothing seeded can reach a real person', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_safety') }, 120_000)
   afterAll(async () => { await db?.drop() })
 
@@ -68,7 +69,7 @@ describe.skipIf(!hasDatabase)('nothing seeded can reach a real person', () => {
 })
 
 describe.skipIf(!hasDatabase)('no live credential is ever seeded', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_nocreds') }, 120_000)
   afterAll(async () => { await db?.drop() })
 
@@ -92,7 +93,7 @@ describe.skipIf(!hasDatabase)('no live credential is ever seeded', () => {
 })
 
 describe.skipIf(!hasDatabase)('history agrees with the state it describes', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_history') }, 120_000)
   afterAll(async () => { await db?.drop() })
 

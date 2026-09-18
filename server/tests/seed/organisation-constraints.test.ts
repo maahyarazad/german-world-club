@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * Constitution Principle IV — integrity in the database.
@@ -14,8 +15,8 @@ import { hasDatabase } from '../helpers/db.ts'
  * proves the constraints do not fire, not that they exist.
  */
 describe.skipIf(!hasDatabase)('the organisation rules hold against raw SQL', () => {
-  let db
-  let pool
+  let db: SeededDatabase
+  let pool: pg.Pool
 
   beforeAll(async () => {
     db = await withSeededDatabase('gwc_seed_constraints')

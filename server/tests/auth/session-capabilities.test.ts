@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildAuthApp, createAdmin, createMember, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * GET /auth/session — what the console boots from.
@@ -15,7 +16,7 @@ import { hasDatabase } from '../helpers/db.ts'
  */
 
 describe('the session route is reachable without holding a module', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => { app = await buildAuthApp() })
   afterAll(async () => { await app.close() })
 
@@ -41,7 +42,7 @@ describe('the session route is reachable without holding a module', () => {
 })
 
 describe.skipIf(!hasDatabase)('the snapshot describes the principal, and only them', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)

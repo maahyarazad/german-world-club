@@ -5,6 +5,7 @@ import { loadEnv } from '../../src/config/env.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { buildAuthApp, createAdmin, createMember, grant, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * The docs UI (T206–T223) — gated, not public.
@@ -62,7 +63,7 @@ describe('the docs UI does not weaken the startup gate', () => {
 })
 
 describe('anonymous reaches no part of the docs', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => { app = await buildAuthApp() })
   afterAll(async () => { await app.close() })
 
@@ -94,7 +95,7 @@ describe('anonymous reaches no part of the docs', () => {
 })
 
 describe('the docs carry the gated-surface headers (§10.1)', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => { app = await buildAuthApp() })
   afterAll(async () => { await app.close() })
 
@@ -123,7 +124,7 @@ describe('the docs carry the gated-surface headers (§10.1)', () => {
 })
 
 describe('the document the UI renders', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => { app = await buildAuthApp() })
   afterAll(async () => { await app.close() })
 
@@ -157,7 +158,7 @@ describe('the document the UI renders', () => {
 })
 
 describe.skipIf(!hasDatabase)('a staff member with settings.read can browse', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)
@@ -218,7 +219,7 @@ const buildIn = async (nodeEnv) => {
 }
 
 describe('the development docs mount', () => {
-  let dev
+  let dev: GwcApp
   let prod
   beforeAll(async () => {
     dev = await buildIn('development')

@@ -5,6 +5,8 @@ import { hasDatabase } from '../helpers/db.ts'
 import { bearerFor } from '../helpers/auth.ts'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
+import type { GwcApp } from '../../src/app.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * FR-003 and FR-012 — four principal kinds, and the walls between them.
@@ -32,8 +34,8 @@ const ROUTES = Object.freeze({
 const TOKEN_KIND = Object.freeze({ member: 'member', staff: 'admin', merchant: 'merchant', partner: 'partner' })
 
 describe.skipIf(!hasDatabase)('four audiences, twelve walls', () => {
-  let db
-  let app
+  let db: SeededDatabase
+  let app: GwcApp
   const accounts = {}
 
   beforeAll(async () => {
@@ -114,8 +116,8 @@ describe.skipIf(!hasDatabase)('four audiences, twelve walls', () => {
  * failure this half exists to catch.
  */
 describe.skipIf(!hasDatabase)('an organisation principal sees its own organisation and no other', () => {
-  let db
-  let app
+  let db: SeededDatabase
+  let app: GwcApp
   let principal
   let ownId
   let otherId

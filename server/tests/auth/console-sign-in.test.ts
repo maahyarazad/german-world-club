@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import { COOKIES } from '@gwc/contracts/auth'
 import { buildAuthApp, createAdmin, createMember, resetAuthTables, bearerFor, PASSWORD } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * The endpoints the console's sign-in and password-reset screens depend on.
@@ -14,7 +15,7 @@ import { hasDatabase } from '../helpers/db.ts'
  */
 
 describe.skipIf(!hasDatabase)('sign-in outcomes the browser face can reach', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)
@@ -120,7 +121,7 @@ describe.skipIf(!hasDatabase)('sign-in outcomes the browser face can reach', () 
  * the comparison about what it claims to be about.
  */
 describe.skipIf(!hasDatabase)('sign-in does not reveal whether an address has an account', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)
@@ -154,7 +155,7 @@ describe.skipIf(!hasDatabase)('sign-in does not reveal whether an address has an
  * cannot depend on a grant somebody else controls.
  */
 describe.skipIf(!hasDatabase)('any authenticated staff member can end their own session', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)
@@ -197,7 +198,7 @@ describe.skipIf(!hasDatabase)('any authenticated staff member can end their own 
 })
 
 describe.skipIf(!hasDatabase)('password reset, end to end', () => {
-  let app
+  let app: GwcApp
   let sent
 
   /**

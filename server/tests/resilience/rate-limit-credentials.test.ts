@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { buildAuthApp, createMember, resetAuthTables } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { BUCKETS } from '../../src/config/rate-limits.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-013 — credential limits must refuse in **both** directions.
@@ -19,7 +20,7 @@ import { BUCKETS } from '../../src/config/rate-limits.ts'
  * So both are checked on every sign-in, and this file asserts each direction
  * separately — a single combined assertion would pass with one bucket missing.
  */
-let app
+let app: GwcApp
 beforeAll(async () => {
   app = await buildAuthApp()
   if (hasDatabase) await resetAuthTables(app.pg)

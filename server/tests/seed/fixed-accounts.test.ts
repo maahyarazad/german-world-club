@@ -47,7 +47,7 @@ describe.skipIf(!hasDatabase)('the demo seed leaves the fixed accounts exactly a
   const name = 'gwc_seed_fixed'
   const url = `postgres://localhost:5432/${name}`
   const env = { DATABASE_URL: url, NODE_ENV: 'development' }
-  let pool
+  let pool: pg.Pool
   let before
 
   const snapshot = async () => {

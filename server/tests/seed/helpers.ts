@@ -14,7 +14,7 @@ const SERVER = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
  * of rows, and a suite that left them behind would change what every other
  * DB-backed suite sees.
  */
-export async function withSeededDatabase(name, { args = [] } = {}) {
+export async function withSeededDatabase(name: string, { args = [] }: { args?: string[] } = {}) {
   const url = `postgres://localhost:5432/${name}`
   const admin = new pg.Client({ connectionString: 'postgres://localhost:5432/postgres' })
   await admin.connect()
@@ -42,7 +42,7 @@ export async function withSeededDatabase(name, { args = [] } = {}) {
 }
 
 /** Run the seed and hand back its outcome without throwing. */
-export async function runSeed({ env = {}, args = [] } = {}) {
+export async function runSeed({ env = {}, args = [] }: { env?: Record<string, string>; args?: string[] } = {}) {
   try {
     const { stdout } = await run('node', ['src/scripts/seed-demo.ts', ...args], {
       cwd: SERVER,
@@ -53,3 +53,6 @@ export async function runSeed({ env = {}, args = [] } = {}) {
     return { code: error.code ?? 1, stdout: error.stdout ?? '', stderr: error.stderr ?? '' }
   }
 }
+
+/** A scratch database plus its pool, as withSeededDatabase hands it back. */
+export type SeededDatabase = Awaited<ReturnType<typeof withSeededDatabase>>

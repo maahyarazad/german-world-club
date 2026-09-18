@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { BAD_PATHS } from '../fixtures/bad-paths.ts'
 import { buildFixtureApp, HTML } from '../helpers/fixtures.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-004 — the headline regression.
@@ -14,7 +15,7 @@ import { buildFixtureApp, HTML } from '../helpers/fixtures.ts'
  * URL (upper case, trailing slash) — canonicalisation runs before routing, and
  * following it lands on a 404. What must never happen is a 200.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildFixtureApp() })
 afterAll(async () => { await app.close() })
 

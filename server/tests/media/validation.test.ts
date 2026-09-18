@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, opaquePng, svgWithScript } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { validateUpload, extensionAgrees, MediaRejected, ALLOWED_MIME } from '../../src/modules/media/validate.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-021, FR-052 — the type comes from the bytes, never from the name.
@@ -11,7 +12,7 @@ import { validateUpload, extensionAgrees, MediaRejected, ALLOWED_MIME } from '..
  * standard route to storing a file the server believes is a PNG and a browser
  * treats as something else entirely.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -77,7 +78,7 @@ describe('SVG is refused outright', () => {
 })
 
 describe.skipIf(!hasDatabase)('through the real endpoint (SC-021)', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

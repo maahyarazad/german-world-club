@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { NEVER_SEEDED } from '../../src/seed/tables.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * SC-015 / T056 — the four tables the seeder may never write.
@@ -65,7 +66,7 @@ describe('the seeder source never writes a credential table', () => {
 })
 
 describe.skipIf(!hasDatabase)('and nothing lands in one at run time either', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_livecreds') }, 180_000)
   afterAll(async () => { await db?.drop() })
 

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-049 / FR-017: one machine-readable envelope for every failure, and a real
@@ -10,7 +11,7 @@ import { buildApp } from '../../src/app.ts'
  * client parses {error} and mobile parses {message}, error handling diverges
  * on day one.
  */
-let app
+let app: GwcApp
 beforeAll(async () => {
   app = await buildApp()
   app.get('/boom', {

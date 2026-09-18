@@ -3,6 +3,7 @@ import { buildMediaApp, uploader, resetMedia, upload, shortVideo, hasFfmpeg } fr
 import { hasDatabase } from '../helpers/db.ts'
 import { processVideoJob } from '../../src/modules/media/worker.ts'
 import { probeVideo } from '../../src/modules/media/derive-video.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-058, FR-059 — video is asynchronous, and never gets stuck.
@@ -21,14 +22,14 @@ import { probeVideo } from '../../src/modules/media/derive-video.ts'
  *     than either: the client polls forever, no page can render it, and nothing
  *     says why.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
 const RUNNABLE = hasDatabase && hasFfmpeg
 
 describe.skipIf(!RUNNABLE)('upload answers 202 with dimensions already known', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })
@@ -77,7 +78,7 @@ describe.skipIf(!RUNNABLE)('upload answers 202 with dimensions already known', (
 })
 
 describe.skipIf(!RUNNABLE)('the job produces derivatives and a poster (FR-058)', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })
@@ -155,7 +156,7 @@ describe.skipIf(!RUNNABLE)('the job produces derivatives and a poster (FR-058)',
 })
 
 describe.skipIf(!RUNNABLE)('a failure is recorded, never left hanging (FR-059)', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

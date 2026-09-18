@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { buildAuthApp } from '../helpers/auth.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-003 — audience separation is structural.
@@ -13,7 +14,7 @@ import { buildAuthApp } from '../helpers/auth.ts'
  * None of these assertions touches the database, because none of them should
  * need to: the refusal happens before a handler, and therefore before a query.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 

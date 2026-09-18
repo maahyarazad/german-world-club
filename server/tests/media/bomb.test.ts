@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, pixelBomb } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { validateUpload, readDeclaredDimensions } from '../../src/modules/media/validate.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-053 — the decompression bomb, refused **before** decode.
@@ -19,7 +20,7 @@ import { validateUpload, readDeclaredDimensions } from '../../src/modules/media/
  * these assert the refusal comes from the header parser, and that the whole
  * thing is cheap.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -93,7 +94,7 @@ describe('the header is read without decoding (FR-053)', () => {
 })
 
 describe.skipIf(!hasDatabase)('through the real endpoint', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

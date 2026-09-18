@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables, signIn } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { stats } from '../../src/modules/auth/passwords.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * §3.1 — account existence is not a public fact.
@@ -19,12 +20,12 @@ import { stats } from '../../src/modules/auth/passwords.ts'
  * is recorded as a benchmark at the bottom of this file, with a stated
  * tolerance and no hard failure.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('an unknown address is indistinguishable from a wrong password (§3.1)', () => {
-  let member
+  let member: Record<string, unknown>
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)

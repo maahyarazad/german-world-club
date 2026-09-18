@@ -1,0 +1,96 @@
+/**
+ * What this platform decorates onto Fastify.
+ *
+ * Fastify's own types know nothing about `app.decorate(...)`, so without this
+ * every `app.env`, `request.principal` and `app.guard(...)` is a "property does
+ * not exist" error, and every test's `let app` is an implicit any. Declaring
+ * them here is what makes the rest of the server type-check at all.
+ *
+ * The shapes are deliberately useful rather than exhaustive: these are internal
+ * seams, and over-specifying them here would duplicate the definitions that
+ * already live next to the implementations. Where a decoration's real type is
+ * worth stating precisely it is imported from its own module.
+ */
+import type { Pool, PoolClient } from 'pg'
+import type { Audience, Flag, Module } from '@gwc/contracts/permissions'
+
+type Json = Record<string, unknown>
+
+/** A rate-limit bucket's declared options, as `app.bucket(name)` returns them. */
+type Bucket = { max: number; timeWindow: number | string; [key: string]: unknown }
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    // --- configuration and stores -------------------------------------------
+    env: Readonly<Record<string, unknown>> & {
+      NODE_ENV: 'development' | 'test' | 'production'
+      PORT: number
+      isProduction: boolean
+      isTest: boolean
+      canonicalOrigin: string
+      trustProxy: false | number
+    }
+    pg: Pool
+    redis?: unknown
+    withRedis<T>(fn: (redis: unknown) => Promise<T>): Promise<T | null>
+
+    // --- authentication and authorization -----------------------------------
+    authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>
+    verifyAccessToken(token: string): Promise<Json>
+    mintAccessToken(claims: Json): Promise<string>
+    permissions: unknown
+    requirePermission(module: Module, flag: Flag): preHandlerHookHandler
+    guard(...args: unknown[]): preHandlerHookHandler
+    availableModules(...args: unknown[]): readonly Module[]
+    routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
+    denylist: unknown
+
+    // --- rate limiting ------------------------------------------------------
+    bucket(name: string): Bucket
+    rateLimitIndependent(options: Json): preHandlerHookHandler
+
+    // --- resilience ---------------------------------------------------------
+    breakers: Record<string, unknown>
+    circuitStates(): Record<string, string>
+    underPressure: unknown
+    beginDraining(): void
+    isDraining(): boolean
+    dbHealthy(): Promise<boolean>
+    redisHealthy(): Promise<boolean>
+    metrics: unknown
+
+    // --- domain seams -------------------------------------------------------
+    audit(...args: unknown[]): Promise<void>
+    auditDenial(...args: unknown[]): Promise<void>
+    auditLog(...args: unknown[]): Promise<void>
+    contentSource: unknown
+    mediaStorage: unknown
+    integrations: Record<string, unknown>
+    sendOtp(...args: unknown[]): Promise<unknown>
+
+    // --- SEO caches ---------------------------------------------------------
+    invalidateSitemap(): void
+    invalidateLegacyRedirects(): void
+    resolveLegacyRedirect(path: string): string | null
+
+    // --- jobs ---------------------------------------------------------------
+    jobQueue: unknown
+    jobDefinitions: Map<string, unknown>
+    runJob(name: string, ...args: unknown[]): Promise<unknown>
+    recentJobRuns(...args: unknown[]): Promise<unknown[]>
+  }
+
+  interface FastifyRequest {
+    /** The authenticated principal, or null on a public route. */
+    principal: (Json & { kind?: string; id?: string }) | null
+    permissions: unknown
+    /** Milliseconds left in this request's budget. */
+    deadlineMs: number
+    deadlineSignal: AbortSignal
+    /** True once the client has hung up; handlers stop doing work. */
+    clientGone: boolean
+    routeClass: string
+  }
+}
+
+export type { Pool, PoolClient, Json, Bucket }

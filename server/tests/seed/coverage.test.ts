@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * SC-002 — the population covers every state, and is not uniform.
@@ -10,7 +11,7 @@ import { hasDatabase } from '../helpers/db.ts'
  * is exactly the demo database that teaches a reviewer nothing.
  */
 describe.skipIf(!hasDatabase)('the seeded population spans every state', () => {
-  let db
+  let db: SeededDatabase
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_coverage') }, 120_000)
   afterAll(async () => { await db?.drop() })
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildFixtureApp, HTML } from '../helpers/fixtures.ts'
 import { canonicalise, normaliseHost, MEANINGFUL_PARAMS } from '../../src/plugins/03-canonical-origin.ts'
 import { normalisePath } from '../../src/plugins/04-legacy-redirects.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-028 / FR-029 / §10.6.
@@ -11,7 +12,7 @@ import { normalisePath } from '../../src/plugins/04-legacy-redirects.ts'
  * lost visibility rather than a cosmetic detail — so the variants 301, before
  * routing, and they do it permanently.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildFixtureApp() })
 afterAll(async () => { await app.close() })
 

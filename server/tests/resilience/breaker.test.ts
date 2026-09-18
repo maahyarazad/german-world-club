@@ -3,6 +3,7 @@ import Fastify from 'fastify'
 import breakers from '../../src/plugins/13-breakers.ts'
 import { DependencyUnavailableError } from '../../src/plugins/13-breakers.ts'
 import { assertBreakers, BREAKERS, FAIL_CLOSED } from '../../src/config/breakers.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-011 — closed → open → half-open → closed, with **zero** calls reaching the
@@ -37,7 +38,7 @@ async function buildBreakerApp(policy = {}) {
 }
 
 describe('the state machine (SC-011)', () => {
-  let app
+  let app: GwcApp
   beforeEach(async () => {
     if (app) await app.close()
     app = await buildBreakerApp()

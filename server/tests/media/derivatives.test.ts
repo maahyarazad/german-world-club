@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, smallImage } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { deriveImage, breakpointsFor, BREAKPOINTS } from '../../src/modules/media/derive-image.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-056, FR-061 — every breakpoint, with its own recorded dimensions and
@@ -11,7 +12,7 @@ import { deriveImage, breakpointsFor, BREAKPOINTS } from '../../src/modules/medi
  * the most common cause of layout shift, and a `<picture>` can only carry
  * explicit `width`/`height` if something wrote them down at ingest.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -102,7 +103,7 @@ describe('what each derivative records (FR-061)', () => {
 })
 
 describe.skipIf(!hasDatabase)('as recorded and delivered', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

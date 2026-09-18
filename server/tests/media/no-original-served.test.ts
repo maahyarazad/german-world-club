@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { VARIANTS } from '@gwc/contracts/media'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-018, FR-060 — the original is a storage artefact, not a delivery path.
@@ -16,12 +17,12 @@ import { VARIANTS } from '@gwc/contracts/media'
  * So this suite attacks it from both ends: no response may *reference* the
  * original's key, and no route may *serve* it even when asked directly.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('no response references the original (SC-018)', () => {
-  let headers
+  let headers: Record<string, string>
   let asset
   let originalKey
 
@@ -80,7 +81,7 @@ describe.skipIf(!hasDatabase)('no response references the original (SC-018)', ()
 })
 
 describe.skipIf(!hasDatabase)('no public page references an original (FR-060)', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

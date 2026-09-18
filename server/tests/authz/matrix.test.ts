@@ -4,6 +4,7 @@ import { buildAuthApp, createMember, createAdmin, grant, resetAuthTables, bearer
 import { hasDatabase } from '../helpers/db.ts'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
 import { INSTITUTIONAL_SLUGS } from '../../src/modules/public/routes.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-002 — every route class × every principal kind, with zero permitted
@@ -15,7 +16,7 @@ import { INSTITUTIONAL_SLUGS } from '../../src/modules/public/routes.ts'
  * deny-by-default discipline the server applies to routes, applied to the
  * tests.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 
@@ -229,7 +230,7 @@ describe('anonymous reaches public routes and nothing else', () => {
 })
 
 describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', () => {
-  let member
+  let member: Record<string, unknown>
   let departmentAdmin
   let superadmin
 

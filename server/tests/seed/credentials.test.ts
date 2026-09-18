@@ -4,6 +4,8 @@ import { hasDatabase } from '../helpers/db.ts'
 import { CREDENTIALS, passwordCell } from '../../src/seed/credentials.ts'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
+import type { GwcApp } from '../../src/app.ts'
+import type { SeededDatabase } from '../seed/helpers.ts'
 
 /**
  * SC-001 — every row in the printed table behaves as the table says.
@@ -17,8 +19,8 @@ import { createFixtureContentSource } from '../../src/modules/public/content.ts'
  * with the same rigour as the ones that are.
  */
 describe.skipIf(!hasDatabase)('every credential does what the table says', () => {
-  let db
-  let app
+  let db: SeededDatabase
+  let app: GwcApp
 
   beforeAll(async () => {
     db = await withSeededDatabase('gwc_seed_credentials')

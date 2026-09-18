@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildAuthApp } from '../helpers/auth.ts'
 import { SURFACES, disallowedPrefixes, postureFor } from '../../src/modules/seo/surfaces.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-008, gated half — every gated surface is refused **and** marked
@@ -16,7 +17,7 @@ import { SURFACES, disallowedPrefixes, postureFor } from '../../src/modules/seo/
  * that the table itself still drives robots.txt — the mechanism that makes the
  * pair hold for surfaces nobody has built yet.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 

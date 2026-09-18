@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { buildAuthApp } from '../helpers/auth.ts'
 import { buildClaims } from '../../src/modules/auth/tokens.ts'
 import { ACCESS_TOKEN_CLAIMS, ACCESS_TOKEN_TTL_SECONDS, accessTokenClaimsSchema } from '@gwc/contracts/auth'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-006 / FR-013 — the access token carries identity and nothing else.
@@ -15,7 +16,7 @@ import { ACCESS_TOKEN_CLAIMS, ACCESS_TOKEN_TTL_SECONDS, accessTokenClaimsSchema 
  * So a well-meaning addition to the claim set fails **here**, in CI, rather
  * than silently becoming something a client starts relying on.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildAuthApp() })
 afterAll(async () => { await app.close() })
 

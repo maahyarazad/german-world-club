@@ -5,6 +5,7 @@ import { RECORDS } from '../helpers/fixtures.ts'
 import { BUCKETS, CRAWLER_ALLOWLIST } from '../../src/config/rate-limits.ts'
 // The allowlist is config; the predicate that reads it belongs to the limiter.
 import { isAllowlistedCrawler } from '../../src/plugins/07-rate-limit.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-014 — a normal-rate crawl over every public route sees **zero** 429s.
@@ -18,7 +19,7 @@ import { isAllowlistedCrawler } from '../../src/plugins/07-rate-limit.ts'
  * So `public-read` is deliberately generous and fails **open**, and verified
  * crawlers are allow-listed on top of that. SEO wins here, explicitly.
  */
-let app
+let app: GwcApp
 
 beforeAll(async () => {
   app = await buildApp({ contentSource: createFixtureContentSource(RECORDS) })

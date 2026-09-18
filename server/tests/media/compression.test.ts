@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { deriveImage } from '../../src/modules/media/derive-image.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-019 — a 2 MB photograph yields `medium` ≤ 60 KB and `thumb` ≤ 8 KB.
@@ -16,7 +17,7 @@ import { deriveImage } from '../../src/modules/media/derive-image.ts'
  * So these ceilings are conservative: anything that passes here passes on real
  * content with room to spare.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
@@ -25,7 +26,7 @@ const KB = 1024
 
 describe('SC-019 ceilings', () => {
   let source
-  let variants
+  let variants: Record<string, unknown>
 
   beforeAll(async () => {
     source = await photograph({ width: 2400, height: 1600 })
@@ -66,7 +67,7 @@ describe('SC-019 ceilings', () => {
 })
 
 describe.skipIf(!hasDatabase)('end to end', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })

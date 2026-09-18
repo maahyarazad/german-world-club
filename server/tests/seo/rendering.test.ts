@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildFixtureApp, HTML, RECORDS, PUBLIC_PATHS } from '../helpers/fixtures.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-005 / FR-016 / §10.2 — meaningful content in the **initial HTML
@@ -10,7 +11,7 @@ import { buildFixtureApp, HTML, RECORDS, PUBLIC_PATHS } from '../helpers/fixture
  * browser test and silently costs the club its share links and the partner
  * visibility it has sold.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildFixtureApp() })
 afterAll(async () => { await app.close() })
 

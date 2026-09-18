@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildFixtureApp, HTML } from '../helpers/fixtures.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-018 — the share-preview surface.
@@ -10,7 +11,7 @@ import { buildFixtureApp, HTML } from '../helpers/fixtures.ts'
  * dimensions renders a broken card, on exactly the links the club's members
  * share.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildFixtureApp() })
 afterAll(async () => { await app.close() })
 

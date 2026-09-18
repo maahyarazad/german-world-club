@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * FR-050: liveness and readiness are separate. A liveness probe that fails on
  * a database blip causes a restart loop, turning a transient dependency
  * problem into an outage.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildApp(); await app.ready() })
 afterAll(async () => { await app.close() })
 

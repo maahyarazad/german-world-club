@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { createMember, bearerFor } from '../helpers/auth.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * media-pipeline.md §4.1 — identical bytes are stored once, and deleting one
@@ -14,12 +15,12 @@ import { createMember, bearerFor } from '../helpers/auth.ts'
  * missing logo on a paying partner's profile, so it is worth a suite of its
  * own.
  */
-let app
+let app: GwcApp
 beforeAll(async () => { app = await buildMediaApp() })
 afterAll(async () => { await app.close() })
 
 describe.skipIf(!hasDatabase)('two identical uploads store one copy', () => {
-  let headers
+  let headers: Record<string, string>
 
   beforeAll(async () => { headers = (await uploader(app)).headers })
   beforeEach(async () => { await resetMedia(app.pg) })
@@ -70,7 +71,7 @@ describe.skipIf(!hasDatabase)('two identical uploads store one copy', () => {
 })
 
 describe.skipIf(!hasDatabase)('deleting one reference leaves the other intact', () => {
-  let ownerHeaders
+  let ownerHeaders: Record<string, string>
   let otherHeaders
 
   beforeAll(async () => {

@@ -3,6 +3,7 @@ import { renderSitemap, shouldInclude } from '../../src/modules/seo/application/
 import { renderRobots } from '../../src/modules/seo/application/robots.ts'
 import { disallowedPrefixes, SURFACES } from '../../src/modules/seo/surfaces.ts'
 import { buildFixtureApp, RECORDS } from '../helpers/fixtures.ts'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * SC-008 / FR-023 / FR-024.
@@ -152,7 +153,7 @@ describe('robots.txt is generated from the surface table (FR-024)', () => {
 })
 
 describe('as served', () => {
-  let app
+  let app: GwcApp
   beforeAll(async () => { app = await buildFixtureApp() })
   afterAll(async () => { await app.close() })
 
