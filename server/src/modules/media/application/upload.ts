@@ -10,6 +10,7 @@ import { enqueueVideoDerivatives } from '../queue.ts'
 import { MIME_FOR_FORMAT, VARIANTS_IN_ORDER, sortVariants, toResponse } from './format.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
+import type { StorageDriver } from '../storage.ts'
 
 /**
  * Media ingest (media-pipeline.md §1–§3), framework-free.
@@ -28,7 +29,24 @@ import type { GwcApp } from '../../../app.ts'
  * upload response already carries every variant URL and the client never has
  * to poll (media-pipeline.md §5).
  */
-export async function ingestImage(app: GwcApp, { storage, maxPixels, storedByteQuota, buffer, validated, alt, principal }) {
+/** What both ingest paths are handed once the upload has been validated. */
+export type IngestInput = {
+  storage: StorageDriver
+  storedByteQuota: number
+  buffer: Buffer
+  /** The result of magic-byte inspection: the mime the bytes actually are. */
+  validated: { mime: string; format?: string; width?: number; height?: number; bytes?: number }
+  alt: string
+  /** Always present: the upload route is gated, so the guard runs upstream. */
+  principal: { id: string; kind: string }
+  maxPixels?: number
+  queue?: unknown
+}
+
+export async function ingestImage(
+  app: GwcApp,
+  { storage, maxPixels, storedByteQuota, buffer, validated, alt, principal }: IngestInput,
+) {
   /**
    * Derivation runs under the media breaker, fail-closed (FR-063).
    *
@@ -36,7 +54,7 @@ export async function ingestImage(app: GwcApp, { storage, maxPixels, storedByteQ
    * database work is then short and cannot leave a half-written asset if
    * `sharp` dies on the next file.
    */
-  const derived = await app.breakers.mediaImage.run(async () => {
+  const derived = await app.breakers.mediaImage!.run(async () => {
     const stripped = await stripMetadata(buffer, { limitInputPixels: maxPixels })
     const result = await deriveImage(stripped.buffer, { limitInputPixels: maxPixels })
     return { stripped, ...result }
@@ -58,7 +76,7 @@ export async function ingestImage(app: GwcApp, { storage, maxPixels, storedByteQ
   }
 
   const totalBytes =
-    derived.stripped.buffer.length + derived.variants.reduce((sum, v) => sum + v.bytes, 0)
+    derived.stripped.buffer.length + derived.variants.reduce((sum: number, v) => sum + v.bytes, 0)
 
   const { asset, variants } = await withTransaction(app.pg, async (client: PoolClient) => {
     // Content-addressed dedupe: identical bytes are one stored copy. The
@@ -119,7 +137,10 @@ export async function ingestImage(app: GwcApp, { storage, maxPixels, storedByteQ
  * layout-shift requirement needs width and height at first render and cannot
  * wait for the transcode.
  */
-export async function ingestVideo(app: GwcApp, { storage, queue, storedByteQuota, buffer, validated, alt, principal }) {
+export async function ingestVideo(
+  app: GwcApp,
+  { storage, queue, storedByteQuota, buffer, validated, alt, principal }: IngestInput,
+) {
   const probed = await probeVideo(buffer)
   if (!probed.width || !probed.height) {
     throw new MediaRejected(PROBLEMS.VALIDATION_FAILED, 'The video’s dimensions could not be read.')

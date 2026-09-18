@@ -1,6 +1,7 @@
 import { query } from '../../db/query.ts'
 import { shareImageFromVariants } from '../seo/build-page-meta.ts'
 import type { Pool } from 'pg'
+import type { SeoRecord, VariantRow } from '../seo/types.ts'
 
 /**
  * Where a public page's content comes from.
@@ -23,7 +24,7 @@ import type { Pool } from 'pg'
  */
 
 /** Humanise a slug into a title, for a record whose domain feature does not exist yet. */
-export function titleFromSlug(slug) {
+export function titleFromSlug(slug: string): string {
   return String(slug)
     .split(/[-_/]+/)
     .filter(Boolean)
@@ -31,7 +32,7 @@ export function titleFromSlug(slug) {
     .join(' ')
 }
 
-const KIND_LABEL = {
+const KIND_LABEL: Record<string, string> = {
   page: 'Seite', partner: 'Partner', outlet: 'Filiale',
   event: 'Veranstaltung', article: 'Magazin', committee: 'Komitee',
 }
@@ -40,7 +41,23 @@ const KIND_LABEL = {
  * Turn a `seo_metadata` row into the record `buildPageMeta` and the templates
  * consume. Staff overrides win; the derived values are the fallback (FR-020).
  */
-export function recordFromSeoRow(row, variants = []) {
+/** One row of `seo_metadata`, as this module reads it. */
+export type SeoRow = {
+  record_type: string
+  record_id?: string
+  slug: string
+  seo_title?: string | null
+  meta_description?: string | null
+  language?: string
+  translation_group_id?: string | null
+  indexable?: boolean
+  published?: boolean
+  updated_at?: string | Date | null
+  share_image_asset_id?: string | null
+  [key: string]: unknown
+}
+
+export function recordFromSeoRow(row: SeoRow, variants: readonly VariantRow[] = []) {
   const title = row.seo_title?.trim() || titleFromSlug(row.slug)
   return {
     recordType: row.record_type,
@@ -51,10 +68,10 @@ export function recordFromSeoRow(row, variants = []) {
     // repeated across every partner page suppresses all of them (§10.3, SC-006).
     description:
       row.meta_description?.trim() ||
-      `${title} — ${KIND_LABEL[row.record_type] ?? 'Seite'} beim German World Club.`,
+      `${title} — ${KIND_LABEL[String(row.record_type)] ?? 'Seite'} beim German World Club.`,
     seoTitle: row.seo_title ?? null,
     metaDescription: row.meta_description ?? null,
-    shareImage: shareImageFromVariants(variants, row.share_image_alt ?? title),
+    shareImage: shareImageFromVariants(variants, String(row.share_image_alt ?? title)),
     language: row.language ?? 'de',
     translationGroupId: row.translation_group_id ?? null,
     indexable: row.indexable,
@@ -71,7 +88,7 @@ const RECORD_COLUMNS = `
 
 /** The database-backed source. */
 export function createDbContentSource(pool: Pool) {
-  async function variantsFor(assetId, signal) {
+  async function variantsFor(assetId: string | null | undefined, signal?: AbortSignal): Promise<VariantRow[]> {
     if (!assetId) return []
     const { rows } = await query(
       pool,
@@ -89,7 +106,7 @@ export function createDbContentSource(pool: Pool) {
   }
 
   return {
-    async find(recordType, slug, { signal } = {}) {
+    async find(recordType: string, slug: string, { signal }: { signal?: AbortSignal } = {}) {
       const { rows } = await query(
         pool,
         `SELECT ${RECORD_COLUMNS}
@@ -100,11 +117,11 @@ export function createDbContentSource(pool: Pool) {
         { signal },
       )
       if (rows.length === 0) return null
-      return recordFromSeoRow(rows[0], await variantsFor(rows[0].share_image_id, signal))
+      return recordFromSeoRow(rows[0] as SeoRow, await variantsFor(rows[0]!.share_image_id, signal))
     },
 
     /** Reciprocal alternates for a record's translation group (FR-030). */
-    async alternates(record, { signal } = {}) {
+    async alternates(record: SeoRecord, { signal }: { signal?: AbortSignal } = {}) {
       if (!record.translationGroupId) return []
       const { rows } = await query(
         pool,
@@ -125,17 +142,17 @@ export function createDbContentSource(pool: Pool) {
  * canonical suites so they assert on the resolver and templates rather than on
  * SQL, and by any later feature that wants to preview a page.
  */
-export function createFixtureContentSource(records) {
+export function createFixtureContentSource(records: readonly SeoRecord[] | (() => readonly SeoRecord[])) {
   const all = () => (typeof records === 'function' ? records() : records)
   return {
-    async find(recordType, slug) {
-      return all().find((r) => r.recordType === recordType && r.slug === slug) ?? null
+    async find(recordType: string, slug: string) {
+      return all().find((r: SeoRecord) => r.recordType === recordType && r.slug === slug) ?? null
     },
-    async alternates(record) {
+    async alternates(record: SeoRecord) {
       if (!record.translationGroupId) return []
       return all()
-        .filter((r) => r.translationGroupId === record.translationGroupId && r.published)
-        .map((r) => ({ recordType: r.recordType, slug: r.slug, language: r.language }))
+        .filter((r: SeoRecord) => r.translationGroupId === record.translationGroupId && r.published)
+        .map((r: SeoRecord) => ({ recordType: r.recordType, slug: r.slug, language: r.language }))
     },
   }
 }

@@ -115,7 +115,13 @@ export async function configure(client: PoolClient, scope: string, subject: stri
  * @throws {QuotaExceededError} when the reservation would cross the ceiling.
  * @returns {Promise<{used: number, limit: number|null, remaining: number|null}>} state AFTER the reservation
  */
-export async function reserve(client: PoolClient, scope: string, subject: string, amount: number, { defaultLimit = null } = {}) {
+export async function reserve(
+  client: PoolClient,
+  scope: string,
+  subject: string,
+  amount: number,
+  { defaultLimit = null }: { defaultLimit?: number | null } = {},
+) {
   if (!Number.isFinite(amount) || amount < 0) {
     throw new TypeError(`reserve() needs a non-negative amount, got ${amount}`)
   }

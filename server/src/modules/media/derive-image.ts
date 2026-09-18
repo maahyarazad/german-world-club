@@ -75,7 +75,12 @@ export function breakpointsFor(sourceWidth) {
  * @param options.limitInputPixels the decode-time bomb bound (FR-053)
  * @returns {Promise<{source: {width, height, hasAlpha}, variants: Array<{variant, format, width, height, bytes, buffer}>}>}
  */
-export async function deriveImage(buffer, { limitInputPixels, primaryFormat = 'webp' } = {}) {
+export type DeriveImageOptions = { limitInputPixels?: number; primaryFormat?: string }
+
+export async function deriveImage(
+  buffer: Buffer,
+  { limitInputPixels, primaryFormat = 'webp' }: DeriveImageOptions = {},
+) {
   const meta = await sharp(buffer, { limitInputPixels, failOn: 'error' }).metadata()
   const hasAlpha = Boolean(meta.hasAlpha)
   const fallback = fallbackFormatFor(hasAlpha)

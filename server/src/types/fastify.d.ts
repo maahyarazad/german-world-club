@@ -67,7 +67,17 @@ declare module 'fastify' {
     rateLimitIndependent(options: Json): preHandlerHookHandler
 
     // --- resilience ---------------------------------------------------------
-    breakers: Record<string, unknown>
+    /**
+     * One breaker per outbound dependency, keyed by name.
+     * `run` is generic over the thunk's result; a fallback must match it.
+     */
+    breakers: Record<string, {
+      state: string
+      run<T>(
+        fn: (signal?: AbortSignal) => Promise<T>,
+        opts?: { fallback?: T | ((err: unknown) => T); signal?: AbortSignal },
+      ): Promise<T>
+    }>
     circuitStates(): Record<string, string>
     underPressure: unknown
     beginDraining(): void
@@ -80,7 +90,12 @@ declare module 'fastify' {
     audit(...args: unknown[]): Promise<void>
     auditDenial(...args: unknown[]): Promise<void>
     auditLog(...args: unknown[]): Promise<void>
-    contentSource: unknown
+    /** Resolves published records for the public surface. Injectable in tests. */
+    contentSource: {
+      find(recordType: string, slug: string, opts?: { signal?: AbortSignal }): Promise<unknown>
+      alternates(record: unknown, opts?: { signal?: AbortSignal }): Promise<unknown[]>
+      [key: string]: unknown
+    }
     mediaStorage: unknown
     integrations: Record<string, unknown>
     sendOtp(...args: unknown[]): Promise<unknown>

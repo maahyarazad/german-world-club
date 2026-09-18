@@ -1,6 +1,6 @@
 import { hexOf, extensionFor } from '../storage.ts'
 
-export const MIME_FOR_FORMAT = Object.freeze({
+export const MIME_FOR_FORMAT: Readonly<Record<string, string>> = Object.freeze({
   webp: 'image/webp', png: 'image/png', jpeg: 'image/jpeg', jpg: 'image/jpeg', webm: 'video/webm',
 })
 

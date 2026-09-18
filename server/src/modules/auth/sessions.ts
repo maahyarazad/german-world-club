@@ -32,7 +32,7 @@ export const denylistKey = (sid: string) => `denylist:sid:${sid}`
  */
 /** Just the two Redis commands the denylist uses, so a stub is easy to pass. */
 export type DenylistRedis = {
-  set(key: string, value: string, mode?: string, ttl?: number): Promise<unknown>
+  setex(key: string, seconds: number, value: string): Promise<unknown>
   exists(key: string): Promise<number>
 } | null | undefined
 
@@ -42,7 +42,7 @@ export function createDenylist(redis: DenylistRedis) {
     // token stays valid for up to its remaining lifetime. That is why
     // REDIS_URL is required in production; in a single-process development run
     // it is a documented, bounded gap rather than a silent one.
-    const local = new Map()
+    const local = new Map<string, number>()
     return {
       async add(sid: string) {
         local.set(sid, Date.now() + DENYLIST_TTL_SECONDS * 1000)
