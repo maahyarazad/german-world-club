@@ -43,8 +43,8 @@ function allowedColours() {
   return allowed
 }
 
-function* walk(dir) {
-  let entries
+function* walk(dir: string): Generator<string> {
+  let entries: string[]
   try {
     entries = readdirSync(dir)
   } catch {
@@ -69,16 +69,19 @@ function* walk(dir) {
  * drifted from the token, fails here — which is the only thing standing between
  * "one palette" and "two palettes that used to agree".
  */
+/** One colour found outside the token sheet, or one that drifted from it. */
+type Violation = { file: string; line: number; value: string; kind: string }
+
 /** Every static page that carries the palette inline. */
 const INLINE_PALETTE_PAGES = ['index.html', 'en.html']
 
-function checkLandingPalette(root) {
+function checkLandingPalette(root: string): Violation[] {
   return INLINE_PALETTE_PAGES.flatMap((page) => checkOnePagePalette(root, page))
 }
 
-function checkOnePagePalette(root, page) {
-  const violations = []
-  let html
+function checkOnePagePalette(root: string, page: string): Violation[] {
+  const violations: Violation[] = []
+  let html: string
   try {
     html = readFileSync(join(root, page), 'utf8')
   } catch {
@@ -86,9 +89,9 @@ function checkOnePagePalette(root, page) {
   }
 
   const theme = readFileSync(join(root, 'src/styles/theme.css'), 'utf8')
-  const tokens = new Map()
+  const tokens = new Map<string, string>()
   for (const match of theme.matchAll(/--color-([\w-]+):\s*(#[0-9a-fA-F]{3,8})/g)) {
-    tokens.set(match[1], match[2].toLowerCase())
+    tokens.set(match[1]!, match[2]!.toLowerCase())
   }
 
   const rootBlock = html.match(/:root\s*\{([\s\S]*?)\}/)
@@ -97,9 +100,9 @@ function checkOnePagePalette(root, page) {
     return violations
   }
 
-  for (const match of rootBlock[1].matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{3,8})/g)) {
+  for (const match of rootBlock[1]!.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{3,8})/g)) {
     const [, name, value] = match
-    const expected = tokens.get(name)
+    const expected = tokens.get(name!)
     if (expected === undefined) {
       violations.push({
         file: page,
@@ -107,7 +110,7 @@ function checkOnePagePalette(root, page) {
         value: `--${name}`,
         kind: 'colour not defined in theme.css',
       })
-    } else if (expected !== value.toLowerCase()) {
+    } else if (expected !== value!.toLowerCase()) {
       violations.push({
         file: page,
         line: 0,

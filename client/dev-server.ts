@@ -1,3 +1,5 @@
+import type { Plugin, ViteDevServer } from 'vite'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 /**
  * Dev-server wiring for the two-entry build.
  *
@@ -42,9 +44,10 @@ export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health']
  * with `index.html` — the German page at the English URL, which is the same
  * class of silent wrong answer the console fallback exists to prevent.
  */
-export const STATIC_PAGES = Object.freeze({ '/en': '/en.html' })
+export const STATIC_PAGES: Readonly<Record<string, string>> = Object.freeze({ '/en': '/en.html' })
 
-const startsWithSegment = (path, prefix) => path === prefix || path.startsWith(`${prefix}/`)
+const startsWithSegment = (path: string, prefix: string): boolean =>
+  path === prefix || path.startsWith(`${prefix}/`)
 
 /**
  * The path Vite should serve for a request, or null to leave it alone.
@@ -52,13 +55,14 @@ const startsWithSegment = (path, prefix) => path === prefix || path.startsWith(`
  * `/konsole` and everything below it resolves to the console entry; the query
  * string is dropped because it is the router's business, not the file's.
  */
-export function consoleEntryFor(url) {
+export function consoleEntryFor(url: string | undefined | null): string | null {
   if (!url) return null
-  const path = url.split('?')[0].split('#')[0]
+  const path = url.split('?')[0]!.split('#')[0]!
 
   // A named static page wins over everything: /en is a document, not a console
   // route and not the SPA fallback's business.
-  if (STATIC_PAGES[path]) return STATIC_PAGES[path]
+  const staticPage = STATIC_PAGES[path]
+  if (staticPage) return staticPage
 
   // The entry itself, and Vite's own internals, must pass through untouched —
   // rewriting /konsole.html to /konsole.html would loop, and rewriting
@@ -69,9 +73,9 @@ export function consoleEntryFor(url) {
 }
 
 /** True when the API, not Vite, should answer. */
-export function isApiPath(url) {
+export function isApiPath(url: string | undefined | null): boolean {
   if (!url) return false
-  const path = url.split('?')[0]
+  const path = url.split('?')[0]!
   return API_PREFIXES.some((prefix) => startsWithSegment(path, prefix))
 }
 
@@ -86,13 +90,13 @@ export function isApiPath(url) {
  * the SPA fallback has already rewritten the URL to `/index.html` and the
  * console is unreachable.
  */
-export function consoleFallback() {
+export function consoleFallback(): Plugin {
   return {
     name: 'gwc-dev-routing',
     apply: 'serve',
     enforce: 'pre',
-    configureServer(server) {
-      server.middlewares.use((req, _res, next) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use((req: IncomingMessage, _res: ServerResponse, next: () => void) => {
         const entry = consoleEntryFor(req.url)
         if (entry) req.url = entry
         next()

@@ -1,6 +1,8 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+// vitest/config, not vite: this file carries a `test` block, which Vite's
+// own UserConfig does not describe.
+import { defineConfig } from 'vitest/config'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { consoleFallback, apiProxy } from './dev-server'

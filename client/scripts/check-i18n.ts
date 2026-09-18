@@ -35,9 +35,11 @@ const NOT_A_CATALOGUE = new Set(['index.ts', 'index.tsx', 'locales.ts'])
  * ever does, comparing element-by-element would report noise rather than a
  * missing translation.
  */
-function flatten(value, prefix = '', out = new Map()) {
+type FlatMap = Map<string, string>
+
+function flatten(value: unknown, prefix = '', out: FlatMap = new Map()): FlatMap {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-    for (const [key, child] of Object.entries(value)) {
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
       flatten(child, prefix ? `${prefix}.${key}` : key, out)
     }
     return out
@@ -46,8 +48,8 @@ function flatten(value, prefix = '', out = new Map()) {
   return out
 }
 
-export async function loadCatalogues(dir = I18N_DIR) {
-  const catalogues = new Map()
+export async function loadCatalogues(dir = I18N_DIR): Promise<Map<string, unknown>> {
+  const catalogues = new Map<string, unknown>()
   for (const entry of readdirSync(dir)) {
     if (!entry.endsWith('.ts') || NOT_A_CATALOGUE.has(entry)) continue
     const locale = entry.replace(/\.ts$/, '')
@@ -70,8 +72,11 @@ export async function loadCatalogues(dir = I18N_DIR) {
  * Generalises to N locales without modification: a third catalogue is a third
  * entry in the map and nothing here changes.
  */
-export function compareCatalogues(catalogues) {
-  const problems = []
+/** One disagreement between catalogues. `detail` is optional by shape. */
+export type I18nProblem = { kind: string; key: string; locale: string; detail?: string }
+
+export function compareCatalogues(catalogues: Map<string, unknown>): I18nProblem[] {
+  const problems: I18nProblem[] = []
 
   if (catalogues.size === 0) {
     problems.push({ kind: 'no catalogues found', locale: '-', key: '(none)' })
@@ -83,7 +88,7 @@ export function compareCatalogues(catalogues) {
 
   for (const key of [...allKeys].sort()) {
     const present = [...flat].filter(([, m]) => m.has(key)).map(([locale]) => locale)
-    const missing = [...flat.keys()].filter((locale) => !flat.get(locale).has(key))
+    const missing = [...flat.keys()].filter((locale) => !flat.get(locale)!.has(key))
 
     if (missing.length > 0) {
       problems.push({
@@ -95,7 +100,7 @@ export function compareCatalogues(catalogues) {
       continue
     }
 
-    const types = new Set(present.map((locale) => flat.get(locale).get(key)))
+    const types = new Set(present.map((locale) => flat.get(locale)!.get(key)))
     if (types.size > 1) {
       problems.push({
         kind: 'type mismatch',
