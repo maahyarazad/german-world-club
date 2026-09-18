@@ -9,6 +9,9 @@ import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { createMemoryDriver } from '../../src/modules/media/storage.ts'
 import { createInlineQueue } from '../../src/modules/media/queue.ts'
 import { createMember, resetAuthTables, bearerFor } from './auth.ts'
+import type { GwcApp } from '../../src/app.ts'
+import type { Pool } from 'pg'
+import type { StorageDriver } from '../../src/modules/media/storage.ts'
 
 /**
  * Scaffolding for the media suites.
@@ -21,7 +24,13 @@ import { createMember, resetAuthTables, bearerFor } from './auth.ts'
  * worth asserting.
  */
 
-export async function buildMediaApp({ storage, queue, ...overrides } = {}) {
+export type BuildMediaAppOptions = {
+  storage?: StorageDriver
+  queue?: unknown
+  [key: string]: unknown
+}
+
+export async function buildMediaApp({ storage, queue, ...overrides }: BuildMediaAppOptions = {}) {
   const app = await buildApp({
     contentSource: createFixtureContentSource([]),
     storage: storage ?? createMemoryDriver(),
@@ -43,7 +52,7 @@ export async function buildMediaApp({ storage, queue, ...overrides } = {}) {
  * file and left alone. Per-test isolation of the things these suites *do* care
  * about is `resetMedia`, which touches only assets and counters.
  */
-export async function uploader(app) {
+export async function uploader(app: GwcApp) {
   await resetAuthTables(app.pg)
   const member = await createMember(app.pg)
   const headers = await bearerFor(app, { accountId: member.id, accountKind: 'member' })
@@ -51,7 +60,7 @@ export async function uploader(app) {
 }
 
 /** Remove every asset, so byte-count assertions start from a known state. */
-export async function resetMedia(pool) {
+export async function resetMedia(pool: Pool) {
   await pool.query('TRUNCATE asset_variants, assets RESTART IDENTITY CASCADE')
   await pool.query(`DELETE FROM counters WHERE scope = 'media.stored_bytes'`)
 }
@@ -66,8 +75,17 @@ const BOUNDARY = '----gwcMediaTestBoundary'
  * filename that disagrees with its contents — which is exactly what SC-021 is
  * about and what a well-behaved library would prevent.
  */
-export function multipartBody({ file, filename = 'upload.bin', contentType = 'application/octet-stream', fields = {} }) {
-  const parts = []
+export type MultipartInput = {
+  file: Buffer
+  filename?: string
+  contentType?: string
+  fields?: Record<string, string>
+}
+
+export function multipartBody({
+  file, filename = 'upload.bin', contentType = 'application/octet-stream', fields = {},
+}: MultipartInput) {
+  const parts: Buffer[] = []
 
   for (const [name, value] of Object.entries(fields)) {
     parts.push(
@@ -99,7 +117,11 @@ export function multipartBody({ file, filename = 'upload.bin', contentType = 'ap
 }
 
 /** POST /media with a file and alt text. */
-export function upload(app, headers, { file, filename, contentType, alt = 'A test image' }) {
+export function upload(
+  app: GwcApp,
+  headers: Record<string, string>,
+  { file, filename, contentType, alt = 'A test image' }: MultipartInput & { alt?: string },
+) {
   const body = multipartBody({ file, filename, contentType, fields: { alt } })
   return app.inject({
     method: 'POST',
@@ -177,7 +199,7 @@ export async function pixelBomb({ declaredWidth = 100_000, declaredHeight = 100_
     crcTable[n] = c >>> 0
   }
   let crc = 0xffffffff
-  for (let i = 12; i < 29; i += 1) crc = crcTable[(crc ^ bomb[i]) & 0xff] ^ (crc >>> 8)
+  for (let i = 12; i < 29; i += 1) crc = crcTable[(crc ^ bomb[i]!) & 0xff]! ^ (crc >>> 8)
   bomb.writeUInt32BE((crc ^ 0xffffffff) >>> 0, 29)
 
   return bomb
@@ -256,9 +278,9 @@ export async function shortVideo({ seconds = 2, width = 320, height = 240 } = {}
   const dir = await mkdtemp(path.join(tmpdir(), 'gwc-fixture-video-'))
   const output = path.join(dir, 'fixture.mp4')
   try {
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const child = spawn(
-        ffmpegPath,
+        ffmpegPath as unknown as string,
         [
           '-y', '-f', 'lavfi', '-i', `testsrc=size=${width}x${height}:rate=10`,
           '-t', String(seconds), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', output,

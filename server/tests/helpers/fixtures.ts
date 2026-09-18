@@ -111,12 +111,12 @@ export const RECORDS = Object.freeze([
 
 /** The public URL each fixture record is served at. */
 export const PUBLIC_PATHS = Object.freeze({
-  page: (slug) => `/${slug}`,
-  partner: (slug) => `/partners/${slug}`,
-  outlet: (slug) => `/outlets/${slug}`,
-  event: (slug) => `/events/${slug}`,
-  article: (slug) => `/magazine/${slug}`,
-  committee: (slug) => `/committees/${slug}`,
+  page: (slug: string) => `/${slug}`,
+  partner: (slug: string) => `/partners/${slug}`,
+  outlet: (slug: string) => `/outlets/${slug}`,
+  event: (slug: string) => `/events/${slug}`,
+  article: (slug: string) => `/magazine/${slug}`,
+  committee: (slug: string) => `/committees/${slug}`,
 })
 
 /**

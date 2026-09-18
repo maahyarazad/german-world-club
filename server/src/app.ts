@@ -120,7 +120,25 @@ const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
  */
 export type GwcApp = Awaited<ReturnType<typeof buildApp>>
 
-export async function buildApp({ env = loadEnv(), contentSource, storage, jobQueue, integrations, ...overrides } = {}) {
+/**
+ * What a caller may inject when building the app.
+ *
+ * `contentSource`, `storage`, `jobQueue` and `integrations` are the seams the
+ * suites drive through; everything else is passed straight to Fastify, which
+ * is why the rest is open.
+ */
+export type BuildAppOptions = {
+  env?: ReturnType<typeof loadEnv>
+  contentSource?: unknown
+  storage?: unknown
+  jobQueue?: unknown
+  integrations?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export async function buildApp({
+  env = loadEnv(), contentSource, storage, jobQueue, integrations, ...overrides
+}: BuildAppOptions = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled
     // request would be held open indefinitely. Layers 1 and 2 of

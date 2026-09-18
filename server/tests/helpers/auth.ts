@@ -3,6 +3,9 @@ import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { hashPassword } from '../../src/modules/auth/passwords.ts'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
+import type { Pool } from 'pg'
+import type { Module, Flag } from '@gwc/contracts/permissions'
+import type { GwcApp } from '../../src/app.ts'
 
 /**
  * Shared scaffolding for the authorization suites.
@@ -22,7 +25,7 @@ export async function buildAuthApp() {
 }
 
 /** Truncate everything these suites write, in dependency order. */
-export async function resetAuthTables(pool) {
+export async function resetAuthTables(pool: Pool) {
   await pool.query(`
     TRUNCATE refresh_tokens, sessions, otp_challenges, device_approvals,
              admin_permissions, password_reset_tokens, audit_log RESTART IDENTITY CASCADE`)
@@ -40,7 +43,21 @@ export async function resetAuthTables(pool) {
   await pool.query(`ALTER TABLE members ENABLE TRIGGER members_refuse_delete`)
 }
 
-export async function createMember(pool, {
+export type CreateMemberOptions = {
+  email?: string
+  password?: string
+  status?: string
+  emailConfirmed?: boolean
+  mobile?: string | null
+  mobileVerified?: boolean
+  passwordResetRequired?: boolean
+  /** Pass a precomputed hash to skip argon2, or null to leave it unset. */
+  passwordHash?: string | null
+  permissions?: Record<string, boolean>
+  displayName?: string
+}
+
+export async function createMember(pool: Pool, {
   email = `member-${randomUUID()}@test.invalid`,
   password = PASSWORD,
   status = 'active',
@@ -51,7 +68,7 @@ export async function createMember(pool, {
   passwordHash,
   permissions = {},
   displayName = 'Test Member',
-} = {}) {
+}: CreateMemberOptions = {}) {
   const hash = passwordHash !== undefined ? passwordHash : await hashPassword(password)
   const { rows } = await pool.query(
     `INSERT INTO members (email, password_hash, password_reset_required, status,
@@ -68,7 +85,7 @@ export async function createMember(pool, {
   return { ...rows[0], password }
 }
 
-export async function createAdmin(pool, {
+export async function createAdmin(pool: Pool, {
   email = `admin-${randomUUID()}@test.invalid`,
   password = PASSWORD,
   isAdmin = true,
@@ -83,16 +100,23 @@ export async function createAdmin(pool, {
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email`,
     [email, hash, isAdmin, isSuperadmin, isActive, displayName],
   )
-  const admin = rows[0]
-  for (const [module, flags] of Object.entries(grants)) {
+  const admin = rows[0]!
+  // Object.entries widens the key to string; the grants map is keyed by Module.
+  for (const [module, flags] of Object.entries(grants) as [Module, true | Partial<Record<Flag, boolean>>][]) {
     await grant(pool, admin.id, module, flags)
   }
   return { ...admin, password }
 }
 
 /** Grant a set of flags on one module. `true` means all five. */
-export async function grant(pool, adminId, module, flags) {
-  const set = flags === true ? Object.fromEntries(FLAGS.map((f) => [f, true])) : flags
+export async function grant(
+  pool: Pool,
+  adminId: string,
+  module: Module,
+  flags: true | Partial<Record<Flag, boolean>>,
+) {
+  const set: Partial<Record<Flag, boolean>> =
+    flags === true ? Object.fromEntries(FLAGS.map((f) => [f, true])) : flags
   await pool.query(
     `INSERT INTO admin_permissions (admin_user_id, module, can_read, can_write, can_edit, can_delete, can_status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -107,7 +131,12 @@ export async function grant(pool, adminId, module, flags) {
 export const ALL_MODULES = MODULES
 
 /** Sign in through the real endpoint and return whatever the client would hold. */
-export async function signIn(app, email, password = PASSWORD, extra = {}) {
+export async function signIn(
+  app: GwcApp,
+  email: string,
+  password: string = PASSWORD,
+  extra: Record<string, unknown> = {},
+) {
   const response = await app.inject({
     method: 'POST', url: '/auth/sign-in', payload: { email, password, ...extra },
   })
@@ -115,7 +144,10 @@ export async function signIn(app, email, password = PASSWORD, extra = {}) {
 }
 
 /** A bearer header for a freshly-minted token on a real session. */
-export async function bearerFor(app, { accountId, accountKind }) {
+export async function bearerFor(
+  app: GwcApp,
+  { accountId, accountKind }: { accountId: string; accountKind: string },
+) {
   // One active session per account (FR-004) is enforced by a partial unique
   // index, so minting a second bearer for the same account has to supersede the
   // first — exactly as a real second sign-in would. Without this a suite that
