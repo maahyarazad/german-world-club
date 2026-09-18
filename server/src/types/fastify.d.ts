@@ -88,6 +88,29 @@ declare module 'fastify' {
     recentJobRuns(...args: unknown[]): Promise<unknown[]>
   }
 
+  /**
+   * What a route declares about itself.
+   *
+   * `auth` is the access posture the onReady gate in 11-rbac refuses to boot
+   * without — the most consequential entry here. `produces` is the escape
+   * hatch for routes answering with something other than JSON; together with
+   * schema.response it satisfies the response-schema gate.
+   */
+  interface FastifyContextConfig {
+    auth?: {
+      audience: Audience | string
+      module?: Module
+      flag?: Flag
+      requires?: string
+    }
+    /** Names the route class whose deadline and outbound budgets apply. */
+    budget?: string
+    rateLimit?: Record<string, unknown> | false
+    produces?: string
+    /** Set by @fastify/static for the per-file routes it registers. */
+    file?: string
+  }
+
   interface FastifyRequest {
     /** The authenticated principal, or null on a public route. */
     principal: (Json & { kind?: string; id?: string }) | null
