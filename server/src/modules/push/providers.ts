@@ -17,6 +17,45 @@ import { request as undiciRequest } from 'undici'
  * FCM's HTTP v1 API, which is forty lines of RS256 below.
  */
 
+/** The two transports a device row can name. */
+export type PushProvider = 'expo' | 'fcm'
+
+/** Arbitrary payload the client receives; every value is stringified below. */
+export type PushData = Record<string, unknown>
+
+/** One device's outcome. `error` is null exactly when status is 'delivered'. */
+export type DeliveryResult = {
+  token: string
+  provider: PushProvider
+  status: 'delivered' | 'failed'
+  error: string | null
+}
+
+/** One transport's outcome for a whole send. */
+export type SendResult = {
+  provider: PushProvider
+  successCount: number
+  failureCount: number
+  results: DeliveryResult[]
+}
+
+/**
+ * The undici `request` seam.
+ *
+ * Typed structurally rather than as undici's own signature so the suites can
+ * pass a stub without reconstructing a Dispatcher response.
+ */
+export type Send = (
+  url: string,
+  options: { method: string; headers?: Record<string, string>; body?: string },
+) => Promise<{
+  statusCode: number
+  body: { json(): Promise<unknown>; text(): Promise<string> }
+}>
+
+/** `catch` binds unknown under strict; this is the one place that unwraps it. */
+const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
 const EXPO_ENDPOINT = 'https://exp.host/--/api/v2/push/send'
 /** Expo accepts at most 100 messages per request. */
 const EXPO_CHUNK = 100
@@ -30,28 +69,40 @@ const FCM_CONCURRENCY = 20
  * because the client then has to handle both shapes and iOS silently drops the
  * payload. Normalised once, here, so neither client ever has to ask.
  */
-export function normalizeData(data = {}) {
+export function normalizeData(data: PushData = {}): Record<string, string> {
   return Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')]))
 }
 
-const chunk = (items, size) => {
-  const out = []
+const chunk = <T,>(items: readonly T[], size: number): T[][] => {
+  const out: T[][] = []
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
   return out
 }
 
 // ---- Expo -------------------------------------------------------------------
 
-export async function sendExpo({ tokens, title, body, data = {}, accessToken, send = undiciRequest }) {
-  const clean = [...new Set((tokens ?? []).filter(Boolean))]
+export type SendExpoOptions = {
+  tokens?: readonly (string | null | undefined)[]
+  title: string
+  body: string
+  data?: PushData
+  /** Only needed when the Expo project enables enhanced security. */
+  accessToken?: string
+  send?: Send
+}
+
+export async function sendExpo({
+  tokens, title, body, data = {}, accessToken, send = undiciRequest as unknown as Send,
+}: SendExpoOptions): Promise<SendResult> {
+  const clean = [...new Set((tokens ?? []).filter(Boolean))] as string[]
   if (clean.length === 0) return { provider: 'expo', successCount: 0, failureCount: 0, results: [] }
 
-  const results = []
+  const results: DeliveryResult[] = []
   let successCount = 0
   let failureCount = 0
 
   for (const batch of chunk(clean, EXPO_CHUNK)) {
-    const messages = batch.map((to) => ({ to, sound: 'default', title, body, data: normalizeData(data) }))
+    const messages = batch.map((to: string) => ({ to, sound: 'default', title, body, data: normalizeData(data) }))
 
     try {
       const response = await send(EXPO_ENDPOINT, {
@@ -65,10 +116,11 @@ export async function sendExpo({ tokens, title, body, data = {}, accessToken, se
         body: JSON.stringify(messages),
       })
 
-      const payload = await response.body.json()
-      const tickets = Array.isArray(payload?.data) ? payload.data : []
+      const payload = (await response.body.json()) as { data?: unknown } | null
+      const tickets: { status?: string; message?: string }[] =
+        Array.isArray(payload?.data) ? payload.data : []
 
-      batch.forEach((token, index) => {
+      batch.forEach((token: string, index: number) => {
         const ticket = tickets[index]
         const ok = ticket?.status === 'ok'
         if (ok) successCount += 1
@@ -85,7 +137,7 @@ export async function sendExpo({ tokens, title, body, data = {}, accessToken, se
       // remaining batches still go out.
       failureCount += batch.length
       for (const token of batch) {
-        results.push({ token, provider: 'expo', status: 'failed', error: err.message })
+        results.push({ token, provider: 'expo', status: 'failed', error: messageOf(err) })
       }
     }
   }
@@ -103,8 +155,12 @@ export async function sendExpo({ tokens, title, body, data = {}, accessToken, se
  * broadcast for no reason. The 60-second margin covers clock skew between here
  * and Google.
  */
-function createTokenSource({ clientEmail, privateKey, send = undiciRequest }) {
-  let cached = null
+type TokenSourceOptions = { clientEmail: string; privateKey: string; send?: Send }
+
+function createTokenSource({
+  clientEmail, privateKey, send = undiciRequest as unknown as Send,
+}: TokenSourceOptions) {
+  let cached: { value: string; expiresAt: number } | null = null
   /**
    * The *in-flight* exchange, not just the finished one.
    *
@@ -114,9 +170,9 @@ function createTokenSource({ clientEmail, privateKey, send = undiciRequest }) {
    * Google throttles — and the symptom is a broadcast that half-delivers for no
    * visible reason. Memoising the promise collapses them into one.
    */
-  let inFlight = null
+  let inFlight: Promise<string> | null = null
 
-  return async function accessToken() {
+  return async function accessToken(): Promise<string> {
     if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value
     if (inFlight) return inFlight
 
@@ -124,7 +180,7 @@ function createTokenSource({ clientEmail, privateKey, send = undiciRequest }) {
     return inFlight
   }
 
-  async function exchange() {
+  async function exchange(): Promise<string> {
     const now = Math.floor(Date.now() / 1000)
     const header = { alg: 'RS256', typ: 'JWT' }
     const claims = {
@@ -135,7 +191,7 @@ function createTokenSource({ clientEmail, privateKey, send = undiciRequest }) {
       exp: now + 3600,
     }
 
-    const b64 = (value) => Buffer.from(JSON.stringify(value)).toString('base64url')
+    const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
     const unsigned = `${b64(header)}.${b64(claims)}`
     const signature = createSign('RSA-SHA256')
       .update(unsigned)
@@ -150,20 +206,34 @@ function createTokenSource({ clientEmail, privateKey, send = undiciRequest }) {
       }).toString(),
     })
 
-    const payload = await response.body.json()
+    const payload = (await response.body.json()) as
+      | { access_token?: string; expires_in?: number; error_description?: string }
+      | null
     if (!payload?.access_token) {
       throw new Error(`FCM token exchange failed: ${payload?.error_description ?? 'no access_token'}`)
     }
 
-    cached = { value: payload.access_token, expiresAt: Date.now() + payload.expires_in * 1000 }
+    cached = { value: payload.access_token, expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000 }
     return cached.value
   }
 }
 
+export type SendFcmOptions = {
+  tokens?: readonly (string | null | undefined)[]
+  title: string
+  body: string
+  data?: PushData
+  projectId?: string
+  clientEmail?: string
+  privateKey?: string
+  send?: Send
+}
+
 export async function sendFcm({
-  tokens, title, body, data = {}, projectId, clientEmail, privateKey, send = undiciRequest,
-}) {
-  const clean = [...new Set((tokens ?? []).filter(Boolean))]
+  tokens, title, body, data = {}, projectId, clientEmail, privateKey,
+  send = undiciRequest as unknown as Send,
+}: SendFcmOptions): Promise<SendResult> {
+  const clean = [...new Set((tokens ?? []).filter(Boolean))] as string[]
   if (clean.length === 0) return { provider: 'fcm', successCount: 0, failureCount: 0, results: [] }
 
   if (!projectId || !clientEmail || !privateKey) {
@@ -171,7 +241,7 @@ export async function sendFcm({
       provider: 'fcm',
       successCount: 0,
       failureCount: clean.length,
-      results: clean.map((token) => ({
+      results: clean.map((token: string): DeliveryResult => ({
         token, provider: 'fcm', status: 'failed', error: 'FCM credentials are not configured',
       })),
     }
@@ -179,11 +249,11 @@ export async function sendFcm({
 
   const accessToken = createTokenSource({ clientEmail, privateKey, send })
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
-  const results = []
+  const results: DeliveryResult[] = []
   let successCount = 0
   let failureCount = 0
 
-  const deliver = async (token) => {
+  const deliver = async (token: string): Promise<DeliveryResult> => {
     try {
       const response = await send(endpoint, {
         method: 'POST',
@@ -210,7 +280,7 @@ export async function sendFcm({
       await response.body.text().catch(() => '')
       return { token, provider: 'fcm', status: 'delivered', error: null }
     } catch (err) {
-      return { token, provider: 'fcm', status: 'failed', error: err.message }
+      return { token, provider: 'fcm', status: 'failed', error: messageOf(err) }
     }
   }
 
@@ -233,9 +303,31 @@ export async function sendFcm({
  *
  * @param devices rows from `push_devices`, each carrying `token` and `provider`
  */
-export async function sendToDevices({ devices = [], title, body, data = {}, config = {}, send }) {
-  const expoTokens = []
-  const fcmTokens = []
+/** A row from `push_devices`, as far as this module is concerned. */
+export type PushDevice = { token?: string | null; provider?: PushProvider | string }
+
+/** Transport credentials, read from the validated environment. */
+export type PushConfig = {
+  expoAccessToken?: string
+  fcmProjectId?: string
+  fcmClientEmail?: string
+  fcmPrivateKey?: string
+}
+
+export type SendToDevicesOptions = {
+  devices?: readonly PushDevice[]
+  title: string
+  body: string
+  data?: PushData
+  config?: PushConfig
+  send?: Send
+}
+
+export async function sendToDevices({
+  devices = [], title, body, data = {}, config = {}, send,
+}: SendToDevicesOptions) {
+  const expoTokens: string[] = []
+  const fcmTokens: string[] = []
 
   for (const device of devices) {
     if (!device?.token) continue
@@ -255,7 +347,7 @@ export async function sendToDevices({ devices = [], title, body, data = {}, conf
     }),
   ])
 
-  const byToken = new Map()
+  const byToken = new Map<string, DeliveryResult>()
   for (const result of [...expo.results, ...fcm.results]) byToken.set(result.token, result)
 
   return {
@@ -264,9 +356,10 @@ export async function sendToDevices({ devices = [], title, body, data = {}, conf
     expo,
     fcm,
     /** Per-device outcome, in the order the devices were given. */
-    perDevice: devices.map((device) => ({
+    perDevice: devices.map((device: PushDevice) => ({
       device,
-      ...(byToken.get(device.token) ?? { status: 'failed', error: 'no token', provider: device.provider }),
+      ...((device.token ? byToken.get(device.token) : undefined) ??
+        { status: 'failed', error: 'no token', provider: device.provider }),
     })),
   }
 }
