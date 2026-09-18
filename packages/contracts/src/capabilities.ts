@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { FLAGS, MODULES } from './permissions.js'
+import { FLAGS, MODULES } from './permissions.ts'
+import type { Flag, Module } from './permissions.ts'
 
 /**
  * The capability snapshot: what a client may *display*.
@@ -77,7 +78,10 @@ export const sessionResponseSchema = z.discriminatedUnion('kind', [
 ])
 
 /** Principal kinds the console routes on. `member` comes from `/auth/me`. */
-export const CONSOLE_KINDS = Object.freeze(['member', 'staff', 'merchant', 'partner'])
+export const CONSOLE_KINDS = Object.freeze(['member', 'staff', 'merchant', 'partner'] as const)
+
+/** Principal kinds the console routes on, as a union. */
+export type ConsoleKind = (typeof CONSOLE_KINDS)[number]
 
 /**
  * Where each principal kind lands after sign-in.
@@ -94,20 +98,44 @@ export const HOME_FOR_KIND = Object.freeze({
   partner: '/konsole/partner',
 })
 
+/**
+ * A session snapshot as the helpers below read it.
+ *
+ * Deliberately wider than `SessionResponse`: these three run against whatever
+ * the client currently holds, which may be null before sign-in resolves or a
+ * non-staff principal with no module matrix at all. Typing the parameter as
+ * `SessionResponse` would be a claim the call sites cannot honour.
+ */
+export type GrantSnapshot =
+  | { kind: string; modules?: Partial<Record<Module, Partial<Record<Flag, boolean>>>>; available?: readonly Module[] }
+  | null
+  | undefined
+
 /** True when the snapshot grants `flag` on `module`. Absence is denial. */
-export function hasGrant(snapshot, module, flag) {
+export function hasGrant(snapshot: GrantSnapshot, module: Module, flag: Flag): boolean {
   if (!snapshot || snapshot.kind !== 'staff') return false
   return snapshot.modules?.[module]?.[flag] === true
 }
 
 /** True when the principal holds any flag at all on `module`. */
-export function hasAnyGrant(snapshot, module) {
+export function hasAnyGrant(snapshot: GrantSnapshot, module: Module): boolean {
   if (!snapshot || snapshot.kind !== 'staff') return false
   const grant = snapshot.modules?.[module]
   return grant ? FLAGS.some((flag) => grant[flag] === true) : false
 }
 
 /** True when the server can actually serve `module` yet (SC-001). */
-export function isAvailable(snapshot, module) {
+export function isAvailable(snapshot: GrantSnapshot, module: Module): boolean {
   return Array.isArray(snapshot?.available) && snapshot.available.includes(module)
 }
+
+// ---------------------------------------------------------------------------
+// Types (feature 007). Derived from the schemas above so there is still exactly
+// one definition per shape while both exist. T086 removes the schemas and these
+// become the definition.
+// ---------------------------------------------------------------------------
+
+export type ModuleGrant = z.infer<typeof moduleGrantSchema>
+export type GrantedModules = z.infer<typeof grantedModulesSchema>
+export type AvailableModules = z.infer<typeof availableModulesSchema>
+export type SessionResponse = z.infer<typeof sessionResponseSchema>

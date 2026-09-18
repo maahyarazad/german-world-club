@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { FLAGS, MODULES, TOKEN_AUDIENCES } from './permissions.js'
+import { FLAGS, MODULES, TOKEN_AUDIENCES } from './permissions.ts'
 
 /**
  * Authentication request and response schemas, imported by the API and by
@@ -177,3 +177,24 @@ export const PASSWORD_RESET_TTL_SECONDS = 3600
 
 /** Cookie names, shared so a client and the server cannot disagree. */
 export const COOKIES = Object.freeze({ access: 'gwc_at', refresh: 'gwc_rt', csrf: 'gwc_csrf' })
+
+// ---------------------------------------------------------------------------
+// Types (feature 007). Derived from the schemas above so there is still exactly
+// one definition per shape while both exist. T086 removes the schemas and these
+// become the definition.
+// ---------------------------------------------------------------------------
+
+export type SignInRequest = z.infer<typeof signInRequestSchema>
+export type VerifyOtpRequest = z.infer<typeof verifyOtpRequestSchema>
+export type ResendOtpRequest = z.infer<typeof resendOtpRequestSchema>
+export type RefreshRequest = z.infer<typeof refreshRequestSchema>
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>
+export type PasswordResetConfirm = z.infer<typeof passwordResetConfirmSchema>
+export type Principal = z.infer<typeof principalSchema>
+export type SignInResponse = z.infer<typeof signInResponseSchema>
+export type TokenPairResponse = z.infer<typeof tokenPairResponseSchema>
+export type ResendOtpResponse = z.infer<typeof resendOtpResponseSchema>
+export type PasswordResetAccepted = z.infer<typeof passwordResetAcceptedSchema>
+export type CsrfTokenResponse = z.infer<typeof csrfTokenResponseSchema>
+export type MeResponse = z.infer<typeof meResponseSchema>
+export type AccessTokenClaims = z.infer<typeof accessTokenClaimsSchema>

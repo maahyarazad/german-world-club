@@ -114,3 +114,20 @@ export const testRecipientListSchema = z.object({
 })
 
 export const deletedSchema = z.object({ id: z.string().uuid(), deleted: z.literal(true) })
+
+// ---------------------------------------------------------------------------
+// Types (feature 007). Derived from the schemas above so there is still exactly
+// one definition per shape while both exist. T086 removes the schemas and these
+// become the definition.
+// ---------------------------------------------------------------------------
+
+export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>
+export type Device = z.infer<typeof deviceSchema>
+export type DeviceList = z.infer<typeof deviceListSchema>
+export type CampaignRequest = z.infer<typeof campaignRequestSchema>
+export type CampaignResult = z.infer<typeof campaignResultSchema>
+export type CampaignHistory = z.infer<typeof campaignHistorySchema>
+export type CampaignQuery = z.infer<typeof campaignQuerySchema>
+export type TestRecipient = z.infer<typeof testRecipientSchema>
+export type TestRecipientList = z.infer<typeof testRecipientListSchema>
+export type Deleted = z.infer<typeof deletedSchema>

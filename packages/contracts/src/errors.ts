@@ -13,7 +13,8 @@
 // german-emirates-club.com when the platform settled on German World Club.
 const BASE = 'https://german-world-club.com/problems'
 
-/** @type {Record<string, {type: string, title: string, status: number}>} */
+export type Problem = { readonly type: string; readonly title: string; readonly status: number }
+
 export const PROBLEMS = {
   // --- Validation -----------------------------------------------------------
   VALIDATION_FAILED: { type: `${BASE}/validation-failed`, title: 'Validation failed', status: 400 },
@@ -88,7 +89,13 @@ export const PROBLEMS = {
   INTERNAL: { type: `${BASE}/internal`, title: 'Internal error', status: 500 },
   REQUEST_DEADLINE_EXCEEDED: { type: `${BASE}/request-deadline-exceeded`, title: 'Request deadline exceeded', status: 503 },
   SERVICE_UNAVAILABLE: { type: `${BASE}/service-unavailable`, title: 'Service unavailable', status: 503 },
-}
+} as const satisfies Record<string, Problem>
 
 /** Problem keys, for exhaustiveness checks in tests. */
 export const PROBLEM_KEYS = Object.freeze(Object.keys(PROBLEMS))
+
+/** Every problem key, as a union. A typo in a comparison is now a type error. */
+export type ProblemKey = keyof typeof PROBLEMS
+
+/** Every problem `type` URI, as a union. Clients branch on this, never on `detail`. */
+export type ProblemType = (typeof PROBLEMS)[ProblemKey]['type']

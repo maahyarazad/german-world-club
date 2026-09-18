@@ -103,3 +103,19 @@ export const deleteResultSchema = z.object({
 
 /** Immutable because the path is content-addressed — see media-pipeline.md §2. */
 export const DELIVERY_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
+// ---------------------------------------------------------------------------
+// Types (feature 007). Derived from the schemas above so there is still exactly
+// one definition per shape while both exist. T086 removes the schemas and these
+// become the definition.
+// ---------------------------------------------------------------------------
+
+export type Alt = z.infer<typeof altSchema>
+export type Variant = z.infer<typeof variantSchema>
+export type Asset = z.infer<typeof assetSchema>
+export type UploadAccepted = z.infer<typeof uploadAcceptedSchema>
+export type UploadRequest = z.infer<typeof uploadRequestSchema>
+export type AssetIdParam = z.infer<typeof assetIdParamSchema>
+export type DeliveryParam = z.infer<typeof deliveryParamSchema>
+export type DeliveryLookupParam = z.infer<typeof deliveryLookupParamSchema>
+export type DeleteResult = z.infer<typeof deleteResultSchema>

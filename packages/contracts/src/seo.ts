@@ -81,3 +81,14 @@ export const SITE_NAME = 'German World Club'
 export const DEFAULT_LOCALE = 'de'
 export const TITLE_MAX = 60
 export const DESCRIPTION_MAX = 160
+
+// ---------------------------------------------------------------------------
+// Types (feature 007). Derived from the schemas above so there is still exactly
+// one definition per shape while both exist. T086 removes the schemas and these
+// become the definition.
+// ---------------------------------------------------------------------------
+
+export type ShareImage = z.infer<typeof shareImageSchema>
+export type Alternate = z.infer<typeof alternateSchema>
+export type PageMeta = z.infer<typeof pageMetaSchema>
+export type ContentRecord = z.infer<typeof contentRecordSchema>
