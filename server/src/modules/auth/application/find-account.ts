@@ -11,7 +11,21 @@ import type { GwcApp } from '../../../app.ts'
  * sign-in; picking among several is a later problem, never a credential's to
  * answer.
  */
-export async function findAccount(app: GwcApp, email, signal) {
+/**
+ * An account row, whichever table it came from.
+ *
+ * Deliberately a bag: the three queries select different columns, and the
+ * callers guard on `kind` before reading the ones specific to it.
+ */
+export type AccountRow = Record<string, unknown> & { id: string; password_hash: string | null }
+
+export type FoundAccount = { kind: string; row: AccountRow }
+
+export async function findAccount(
+  app: GwcApp,
+  email: string,
+  signal?: AbortSignal,
+): Promise<FoundAccount | null> {
   const { rows: members } = await query(
     app.pg,
     `SELECT id, email, password_hash, password_reset_required, status, email_confirmed_at,
@@ -20,7 +34,7 @@ export async function findAccount(app: GwcApp, email, signal) {
     [email],
     { signal },
   )
-  if (members.length > 0) return { kind: 'member', row: members[0] }
+  if (members.length > 0) return { kind: 'member', row: members[0] as AccountRow }
 
   const { rows: admins } = await query(
     app.pg,
@@ -28,7 +42,7 @@ export async function findAccount(app: GwcApp, email, signal) {
     [email],
     { signal },
   )
-  if (admins.length > 0) return { kind: 'admin', row: admins[0] }
+  if (admins.length > 0) return { kind: 'admin', row: admins[0] as AccountRow }
 
   const { rows: orgUsers } = await query(
     app.pg,
@@ -44,7 +58,7 @@ export async function findAccount(app: GwcApp, email, signal) {
     { signal },
   )
   if (orgUsers.length > 0) {
-    return { kind: orgUsers[0].organisation_kind, row: orgUsers[0] }
+    return { kind: String(orgUsers[0]!.organisation_kind), row: orgUsers[0] as AccountRow }
   }
 
   return null

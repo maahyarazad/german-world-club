@@ -20,7 +20,7 @@ import type { Pool, PoolClient } from 'pg'
 /** Access-token lifetime, so a denylist entry expires exactly when the token does. */
 const DENYLIST_TTL_SECONDS = 600
 
-export const denylistKey = (sid) => `denylist:sid:${sid}`
+export const denylistKey = (sid: string) => `denylist:sid:${sid}`
 
 /**
  * The Redis denylist closes the window between a revocation and the access
@@ -30,7 +30,13 @@ export const denylistKey = (sid) => `denylist:sid:${sid}`
  * Permission changes never had this window — authorization is not read from the
  * token — so this exists solely for session-level revocation.
  */
-export function createDenylist(redis) {
+/** Just the two Redis commands the denylist uses, so a stub is easy to pass. */
+export type DenylistRedis = {
+  set(key: string, value: string, mode?: string, ttl?: number): Promise<unknown>
+  exists(key: string): Promise<number>
+} | null | undefined
+
+export function createDenylist(redis: DenylistRedis) {
   if (!redis) {
     // Without Redis the denylist is unavailable, so a revoked session's access
     // token stays valid for up to its remaining lifetime. That is why
@@ -38,10 +44,10 @@ export function createDenylist(redis) {
     // it is a documented, bounded gap rather than a silent one.
     const local = new Map()
     return {
-      async add(sid) {
+      async add(sid: string) {
         local.set(sid, Date.now() + DENYLIST_TTL_SECONDS * 1000)
       },
-      async has(sid) {
+      async has(sid: string) {
         const until = local.get(sid)
         if (until === undefined) return false
         if (until < Date.now()) {
@@ -71,10 +77,10 @@ export function createDenylist(redis) {
     }
   }
   return {
-    async add(sid) {
+    async add(sid: string) {
       await redis.setex(denylistKey(sid), DENYLIST_TTL_SECONDS, '1')
     },
-    async has(sid) {
+    async has(sid: string) {
       return (await redis.exists(denylistKey(sid))) === 1
     },
     // Redis expires these itself through SETEX, so there is nothing to sweep.
@@ -92,9 +98,20 @@ export function createDenylist(redis) {
  * accept the insert; doing it the other way round makes every sign-in a
  * constraint violation.
  */
+export type StartSessionInput = {
+  accountId: string
+  accountKind: string
+  deviceId?: string | null
+  userAgent?: string | null
+  ip?: string | null
+  /** Which client face opened it; a deviceId marks the mobile one. */
+  face?: string
+  now?: Date
+}
+
 export async function startSession(pool: Pool, {
   accountId, accountKind, deviceId = null, userAgent = null, ip = null, face = 'web', now = new Date(),
-}) {
+}: StartSessionInput) {
   return withTransaction(pool, async (client: PoolClient) => {
     const { rows: superseded } = await client.query(
       `UPDATE sessions
@@ -141,7 +158,7 @@ export const REFRESH_OUTCOME = Object.freeze({
  * The whole decision table of data-model.md §3, in one transaction so a
  * concurrent second presentation cannot slip between the read and the write.
  */
-export async function rotateRefreshToken(pool: Pool, presentedPlaintext, { face = 'web', now = new Date() } = {}) {
+export async function rotateRefreshToken(pool: Pool, presentedPlaintext: string, { face = 'web', now = new Date() } = {}) {
   const presentedHash = hashRefreshToken(presentedPlaintext)
 
   return withTransaction(pool, async (client: PoolClient) => {
@@ -211,7 +228,7 @@ export async function rotateRefreshToken(pool: Pool, presentedPlaintext, { face 
 // NOTE: the caller's deadline signal is accepted and currently unused —
 // `withTransaction` has no signal path yet. T178 propagates it into every `pg`
 // query; until then the parameter is dropped rather than silently promised.
-export async function revokeSession(pool: Pool, sessionId, reason) {
+export async function revokeSession(pool: Pool, sessionId: string, reason: string) {
   await withTransaction(pool, async (client: PoolClient) => {
     await client.query(
       `UPDATE sessions SET revoked_at = now(), revoked_reason = $2
@@ -224,7 +241,13 @@ export async function revokeSession(pool: Pool, sessionId, reason) {
 }
 
 /** Revoke every session for an account — what a password reset does (§3.2). */
-export async function revokeAllSessions(pool: Pool, accountId, accountKind, reason, { signal } = {}) {
+export async function revokeAllSessions(
+  pool: Pool,
+  accountId: string,
+  accountKind: string,
+  reason: string,
+  { signal }: { signal?: AbortSignal } = {},
+) {
   const { rows } = await query(
     pool,
     `UPDATE sessions SET revoked_at = now(), revoked_reason = $3
@@ -241,7 +264,11 @@ export async function revokeAllSessions(pool: Pool, accountId, accountKind, reas
 }
 
 /** Is this session still usable? Read per request, alongside the denylist. */
-export async function loadSession(pool: Pool, sessionId, { signal } = {}) {
+export async function loadSession(
+  pool: Pool,
+  sessionId: string,
+  { signal }: { signal?: AbortSignal } = {},
+) {
   const { rows } = await query(
     pool,
     'SELECT id, account_id, account_kind, device_id, revoked_at FROM sessions WHERE id = $1',

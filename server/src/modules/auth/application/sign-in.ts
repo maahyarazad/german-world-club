@@ -25,7 +25,22 @@ const invalidCredentials = () =>
  *     instead: locked ⇒ contact support, inactive ⇒ reset to reactivate, ended
  *     ⇒ no remedy.
  */
-export async function signIn(app: GwcApp, { email, password, deviceId, face, ip, userAgent, requestId, signal }) {
+export type SignInInput = {
+  email: string
+  password: string
+  deviceId?: string
+  /** Which client is asking; a deviceId marks the mobile face. */
+  face?: string
+  ip?: string
+  userAgent?: string
+  requestId?: string
+  signal?: AbortSignal
+}
+
+export async function signIn(
+  app: GwcApp,
+  { email, password, deviceId, face, ip, userAgent, requestId, signal }: SignInInput,
+) {
   const account = await findAccount(app, email, signal)
 
   // The dummy verification runs for a missing account, so an unknown address

@@ -44,12 +44,21 @@ declare module 'fastify' {
       audience: string
       now?: number
     }): { token: string; [key: string]: unknown }
-    permissions: unknown
+    /** Resolves a staff member's module matrix from server-held state, per request. */
+    permissions: {
+      resolve(adminId: string, opts?: { signal?: AbortSignal }): Promise<unknown>
+      invalidate?(adminId: string): void
+    }
     requirePermission(module: Module, flag: Flag): preHandlerHookHandler
     guard(...args: unknown[]): preHandlerHookHandler
     availableModules(...args: unknown[]): readonly Module[]
     routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
-    denylist: unknown
+    /** Revoked session ids, so a superseded session stops working immediately. */
+    denylist: {
+      add(sessionId: string, ttlSeconds?: number): Promise<void>
+      has(sessionId: string): Promise<boolean>
+      prune?(): Promise<void>
+    }
     /** From @fastify/csrf-protection. */
     csrfProtection(request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void): void
 
@@ -114,7 +123,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** The authenticated principal, or null on a public route. */
     principal: (Json & { kind?: string; id?: string }) | null
-    permissions: unknown
+    permissions: Record<string, unknown> | null
     /** Milliseconds left in this request's budget. */
     deadlineMs: number
     deadlineSignal: AbortSignal
