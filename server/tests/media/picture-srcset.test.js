@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { renderShareImage } from '../../src/public/templates/partner.js'
-import { sourcesFromVariants, shareImageFromVariants } from '../../src/seo/build-page-meta.js'
+import { renderShareImage } from '../../src/modules/public/templates/partner.js'
+import { sourcesFromVariants, shareImageFromVariants } from '../../src/modules/seo/build-page-meta.js'
 
 /**
  * FR-060, SC-018, §10.9 — the browser picks the smallest sufficient variant,

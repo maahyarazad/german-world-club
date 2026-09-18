@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { buildPageMeta, pathFor } from '../../src/seo/build-page-meta.js'
-import { postureFor } from '../../src/seo/surfaces.js'
+import { buildPageMeta, pathFor } from '../../src/modules/seo/build-page-meta.js'
+import { postureFor } from '../../src/modules/seo/surfaces.js'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * The landing pair, from the server's side.
@@ -15,7 +15,7 @@ import { createFixtureContentSource } from '../../src/public/content.js'
 
 const ORIGIN = 'https://german-world-club.test'
 
-/** Exactly what `server/src/public/routes.js` hands to `buildPageMeta`. */
+/** Exactly what `server/src/modules/public/routes.js` hands to `buildPageMeta`. */
 const ALTERNATES = [
   { language: 'de', slug: 'home', recordType: 'page' },
   { language: 'en', slug: 'en', recordType: 'page' },

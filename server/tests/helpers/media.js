@@ -5,9 +5,9 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
-import { createMemoryDriver } from '../../src/media/storage.js'
-import { createInlineQueue } from '../../src/media/queue.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
+import { createMemoryDriver } from '../../src/modules/media/storage.js'
+import { createInlineQueue } from '../../src/modules/media/queue.js'
 import { createMember, resetAuthTables, bearerFor } from './auth.js'
 
 /**

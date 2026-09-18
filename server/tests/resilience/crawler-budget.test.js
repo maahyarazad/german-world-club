@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 import { RECORDS } from '../helpers/fixtures.js'
 import { BUCKETS, CRAWLER_ALLOWLIST } from '../../src/config/rate-limits.js'
 // The allowlist is config; the predicate that reads it belongs to the limiter.

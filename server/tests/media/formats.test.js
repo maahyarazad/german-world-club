@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, transparentLogo, opaquePng } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { deriveImage, fallbackFormatFor } from '../../src/media/derive-image.js'
+import { deriveImage, fallbackFormatFor } from '../../src/modules/media/derive-image.js'
 
 /**
  * FR-057 — WebP primary, and the fallback chosen by whether the source has

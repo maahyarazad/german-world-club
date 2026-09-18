@@ -7,12 +7,21 @@ public site that search engines and preview bots see.
 
 ```
 server/              Fastify 5 API. Everything testable lives in app.js;
-                     server.js only listens.
+                     server.js only listens. See server/ARCHITECTURE.md for
+                     how src/ is laid out (routes/controllers/application,
+                     plugins/decorators/hooks).
 client/              Vite web client.
 packages/contracts/  Zod schemas, problem types and permission constants,
                      imported by the server AND every client.
 specs/               Spec-kit artifacts: spec, plan, tasks, contracts.
 ```
+
+`server/src/plugins/` holds the numbered Fastify bootstrap (unchanged by feature
+006); `server/src/decorators/` and `server/src/hooks/` hold the cross-cutting
+`app.decorate`/`app.addHook` calls that used to sit inline in `app.js`; each
+HTTP-facing feature lives under `server/src/modules/<domain>/` split into
+`routes.js` (schema + posture + wiring), `controller.js` (request/reply
+shaping) and `application/` (the actual business rule, framework-free).
 
 `packages/contracts` exists so a field renamed in one place is a type error
 everywhere else rather than a runtime surprise in one client. Adding a shape

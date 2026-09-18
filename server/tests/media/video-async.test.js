@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, shortVideo, hasFfmpeg } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { processVideoJob } from '../../src/media/worker.js'
-import { probeVideo } from '../../src/media/derive-video.js'
+import { processVideoJob } from '../../src/modules/media/worker.js'
+import { probeVideo } from '../../src/modules/media/derive-video.js'
 
 /**
  * FR-058, FR-059 — video is asynchronous, and never gets stuck.

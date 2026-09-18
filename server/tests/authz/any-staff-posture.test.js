@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { validateAuthConfig } from '../../src/plugins/11-rbac.js'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * The `anyStaff` posture (T027, research R3).

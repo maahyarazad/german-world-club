@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin'
 import { PROBLEMS } from '@gwc/contracts/errors'
-import { errorPage } from '../public/templates/error-page.js'
+import { errorPage } from '../modules/public/templates/error-page.js'
 
 /**
  * One error envelope for every route (FR-049, FR-017).

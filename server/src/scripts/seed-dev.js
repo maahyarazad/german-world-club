@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { loadEnv } from '../config/env.js'
 import { createPool } from '../db/pool.js'
-import { hashPassword } from '../auth/passwords.js'
+import { hashPassword } from '../modules/auth/passwords.js'
 import { FLAGS } from '@gwc/contracts/permissions'
 
 /**

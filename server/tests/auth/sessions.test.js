@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables, signIn, PASSWORD } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
-import { startSession } from '../../src/auth/sessions.js'
+import { startSession } from '../../src/modules/auth/sessions.js'
 
 /**
  * FR-004 / §12.7 — one active session per account.

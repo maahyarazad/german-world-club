@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPageMeta } from '../../src/seo/build-page-meta.js'
+import { buildPageMeta } from '../../src/modules/seo/build-page-meta.js'
 
 /**
  * FR-030 / §10.7. Reciprocity is the whole point: a one-directional hreflang is

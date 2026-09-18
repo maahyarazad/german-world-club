@@ -3,7 +3,7 @@ import { withSeededDatabase } from './helpers.js'
 import { hasDatabase } from '../helpers/db.js'
 import { CREDENTIALS, passwordCell } from '../../src/seed/credentials.js'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * SC-001 — every row in the printed table behaves as the table says.

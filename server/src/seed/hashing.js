@@ -1,4 +1,4 @@
-import { hashPassword } from '../auth/passwords.js'
+import { hashPassword } from '../modules/auth/passwords.js'
 
 /**
  * One argon2id hash per distinct password, reused across every account that

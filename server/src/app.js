@@ -13,7 +13,6 @@ import { fileURLToPath } from 'node:url'
 import { validatorCompiler, serializerCompiler } from 'fastify-type-provider-zod'
 
 import { loadEnv } from './config/env.js'
-import { assertBudgets } from './config/budgets.js'
 import { GwcLogController, loggerOptions } from './plugins/01-logging.js'
 import { makeGenReqId } from './plugins/00-request-context.js'
 
@@ -35,25 +34,23 @@ import openapi from './plugins/15-openapi.js'
 import health from './ops/health.js'
 import metrics from './ops/metrics.js'
 import jobs from './ops/jobs.js'
-import robots from './seo/robots.js'
-import sitemap from './seo/sitemap.js'
-import seoStaffRoutes from './seo/staff-routes.js'
-import organisationRoutes from './organisations/routes.js'
-import authRoutes from './auth/routes.js'
-import mediaRoutes from './media/routes.js'
-import mediaWorker from './media/worker.js'
-import pushRoutes from './push/routes.js'
-import publicRoutes from './public/routes.js'
+import seoPublicRoutes from './modules/seo/public-routes.js'
+import seoStaffRoutes from './modules/seo/staff-routes.js'
+import organisationRoutes from './modules/organisations/routes.js'
+import authRoutes from './modules/auth/routes.js'
+import mediaRoutes from './modules/media/routes.js'
+import mediaWorker from './modules/media/worker.js'
+import pushRoutes from './modules/push/routes.js'
+import publicRoutes from './modules/public/routes.js'
 import { COOKIES } from '@gwc/contracts/auth'
-import { createDbContentSource } from './public/content.js'
-import { createAuditWriter, createAuditReader } from './ops/audit.js'
-import { createStorage } from './media/storage.js'
-import { createInlineQueue } from './media/queue.js'
-import { closeDispatchers } from './integrations/http-client.js'
-import { createPaymentsClient } from './integrations/payments.js'
-import { createSmsClient, smsUnavailable } from './integrations/sms.js'
-import { createMailClient } from './integrations/mail.js'
-import { createGeocodingClient } from './integrations/geocoding.js'
+import { registerCsrfHook } from './hooks/csrf-on-request.js'
+import { registerShutdownHook } from './hooks/shutdown.js'
+import { registerBudgetGate } from './hooks/budget-on-ready.js'
+import { registerContentSource } from './decorators/content-source.js'
+import { registerAudit } from './decorators/audit.js'
+import { registerMediaDecorators } from './decorators/media.js'
+import { registerIntegrations } from './decorators/integrations.js'
+import { registerSendOtp } from './decorators/send-otp.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
@@ -92,7 +89,7 @@ function consoleShell() {
  * future client build that still ships a robots.txt or sitemap.xml would
  * collide with the generated route and crash startup with "Method 'GET'
  * already declared". Excluding them at registration time — rather than
- * deleting the files — keeps the "one source" rule in seo/robots.js true no
+ * deleting the files — keeps the "one source" rule in modules/seo/public-routes.js true no
  * matter what lands in the build output.
  */
 const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
@@ -190,16 +187,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
    * valid. The token travels in `x-csrf-token`, which is what makes the check
    * possible this early — the body has not been parsed yet.
    */
-  app.addHook('onRequest', async (request, reply) => {
-    const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method)
-    const cookieBorne = Boolean(request.cookies?.[COOKIES.access] ?? request.cookies?.[COOKIES.refresh])
-    const bearer = String(request.headers.authorization ?? '').startsWith('Bearer ')
-    if (unsafe && cookieBorne && !bearer) {
-      await new Promise((resolve, reject) => {
-        app.csrfProtection(request, reply, (err) => (err ? reject(err) : resolve()))
-      })
-    }
-  })
+  registerCsrfHook(app)
 
   await app.register(jwtPlugin, { env })
   await app.register(authPlugin)
@@ -209,72 +197,12 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   await app.register(canonicalOrigin)
   await app.register(legacyRedirects)
 
-  app.decorate('contentSource', contentSource ?? createDbContentSource(app.pg))
-  app.decorate('audit', createAuditWriter(app.pg))
-  app.decorate('auditLog', createAuditReader(app.pg))
-
-  /**
-   * Media storage and the video work queue.
-   *
-   * Both are seams the suites inject through, for the same reason
-   * `contentSource` is: derivative and delivery assertions should be about the
-   * pipeline and the routes, not about whether an object store is reachable.
-   * The inline queue is the default when no PostgreSQL-backed queue is
-   * configured, so a single-host install still transcodes.
-   */
-  app.decorate('mediaStorage', storage ?? createStorage(env))
-  app.decorate('jobQueue', jobQueue ?? createInlineQueue())
-
-  /**
-   * Outbound dependencies, each behind its own breaker and its own `undici`
-   * dispatcher. Injectable as a whole, so a resilience suite can drive a hung
-   * or failing dependency without a network.
-   */
-  app.decorate('integrations', integrations ?? {
-    payments: createPaymentsClient(),
-    sms: createSmsClient({
-      apiKey: env.SMSGLOBAL_API_KEY,
-      apiSecret: env.SMSGLOBAL_API_SECRET,
-      origin: env.SMSGLOBAL_ORIGIN,
-    }),
-    mail: createMailClient(),
-    geocoding: createGeocodingClient(),
-  })
-
-  app.addHook('onClose', async () => {
-    await closeDispatchers()
-  })
-
-  /**
-   * OTP delivery (FR-012, §6.2).
-   *
-   * `auth/routes.js` calls this after minting a challenge. It was previously
-   * optional-chained against nothing at all, so codes were generated and never
-   * sent — the challenge was real, the SMS was not.
-   *
-   * Runs under the SMS breaker with its declared fallback: refuse and tell the
-   * member to retry. Waving sign-in through when the provider is down would
-   * turn a supplier outage into an authentication bypass, which is why this
-   * throws rather than resolving quietly.
-   */
-  app.decorate('sendOtp', async ({ mobile, code }, { signal } = {}) => {
-    if (!app.integrations.sms.configured) {
-      // Loud rather than silent. A second factor that does not send is not a
-      // second factor, and in development this is the line that says so.
-      app.log.error({ mobile: `••••${String(mobile).slice(-4)}` }, 'SMSGlobal is not configured — no code was sent')
-      throw smsUnavailable()
-    }
-
-    try {
-      return await app.breakers.sms.run((s) => app.integrations.sms.sendCode({ mobile, code }, { signal: s ?? signal }))
-    } catch (err) {
-      // A 4xx from the provider (an unusable number) is already a business
-      // outcome and passes through; anything else becomes the declared refusal.
-      if (err.statusCode >= 400 && err.statusCode < 500) throw err
-      app.log.error({ err }, 'OTP delivery failed')
-      throw smsUnavailable()
-    }
-  })
+  registerContentSource(app, { contentSource })
+  registerAudit(app)
+  registerMediaDecorators(app, { storage, jobQueue, env })
+  registerIntegrations(app, { integrations, env })
+  registerShutdownHook(app)
+  registerSendOtp(app)
 
   /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves
@@ -317,7 +245,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
    * Publishing an empty shell is not a disclosure; publishing anything else
    * here would be (Principle VI).
    *
-   * It is still a *gated surface*. seo/surfaces.js declares `/konsole` gated
+   * It is still a *gated surface*. modules/seo/surfaces.js declares `/konsole` gated
    * and never indexed, which is what puts it in robots.txt's Disallow list and
    * stamps X-Robots-Tag on these responses via 02-security-headers.js.
    */
@@ -360,8 +288,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
 
   await app.register(health)
   await app.register(jobs)
-  await app.register(robots)
-  await app.register(sitemap)
+  await app.register(seoPublicRoutes)
   await app.register(authRoutes)
   await app.register(mediaRoutes)
   await app.register(mediaWorker)
@@ -373,9 +300,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   // The budget gate. Runs after every route is registered, alongside the
   // route-posture gate in 11-rbac.js — both must pass for the process to serve
   // traffic at all.
-  app.addHook('onReady', async () => {
-    assertBudgets(env.REQUEST_TIMEOUT_MS)
-  })
+  registerBudgetGate(app, env)
 
   return app
 }

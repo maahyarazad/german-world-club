@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, smallImage } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { deriveImage, breakpointsFor, BREAKPOINTS } from '../../src/media/derive-image.js'
+import { deriveImage, breakpointsFor, BREAKPOINTS } from '../../src/modules/media/derive-image.js'
 
 /**
  * FR-056, FR-061 — every breakpoint, with its own recorded dimensions and

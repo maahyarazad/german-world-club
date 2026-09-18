@@ -95,7 +95,7 @@ describe.skipIf(!hasDatabase)('and nothing lands in one at run time either', () 
      * seeded" from "does not work".
      */
     const { buildApp } = await import('../../src/app.js')
-    const { createFixtureContentSource } = await import('../../src/public/content.js')
+    const { createFixtureContentSource } = await import('../../src/modules/public/content.js')
     const { CREDENTIALS } = await import('../../src/seed/credentials.js')
 
     process.env.DATABASE_URL = db.url

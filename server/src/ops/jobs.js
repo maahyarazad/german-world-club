@@ -6,7 +6,7 @@ import { query } from '../db/query.js'
  * Scheduled jobs (FR-051, §11).
  *
  * `croner` is a **scheduler**: time-triggered, "it is 3am, run the cleanup".
- * `pg-boss` in media/queue.js is a **work queue**: event-triggered, "this
+ * `pg-boss` in modules/media/queue.js is a **work queue**: event-triggered, "this
  * upload happened, transcode it". They look similar and are not duplication —
  * a transcode must run once per upload whenever that happens, and a session
  * cleanup must run on a clock regardless of traffic.
