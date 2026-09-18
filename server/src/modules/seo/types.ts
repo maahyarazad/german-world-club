@@ -10,7 +10,16 @@ import type { ContentRecord, ShareImage } from '@gwc/contracts/seo'
  * They are all optional because `recordType` decides which apply, and the
  * builders already guard on it.
  */
-export type SeoRecord = ContentRecord & {
+export type SeoRecord = Partial<ContentRecord> &
+  /**
+   * The four the builders read without guarding — every page needs a type, a
+   * URL and something to say. The rest of ContentRecord is optional here
+   * because each structured-data builder reads a different subset and guards
+   * on `recordType` first, so a fixture exercising one builder should not
+   * have to supply fields it never touches.
+   */
+  Pick<ContentRecord, 'recordType' | 'slug' | 'title' | 'description'> & {
+
   // --- partner / outlet ---
   address?: { street?: string; city?: string; country?: string; postalCode?: string } | null
   geo?: { lat?: number; lng?: number } | null
