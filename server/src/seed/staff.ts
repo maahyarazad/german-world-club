@@ -2,7 +2,7 @@ import { safeEmail, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor } from './hashing.ts'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
 import type { Pool } from 'pg'
-import type { Faker } from '@faker-js/faker'
+import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 
 /**

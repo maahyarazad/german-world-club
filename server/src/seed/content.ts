@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { Pool } from 'pg'
-import type { Faker } from '@faker-js/faker'
+import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 
 /**

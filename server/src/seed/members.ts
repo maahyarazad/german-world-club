@@ -1,7 +1,7 @@
 import { safeEmail, safeMobile, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor, LEGACY_MD5_HASH } from './hashing.ts'
 import type { Pool } from 'pg'
-import type { Faker } from '@faker-js/faker'
+import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 
 /**

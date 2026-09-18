@@ -1,5 +1,5 @@
 import type { Pool } from 'pg'
-import type { Faker } from '@faker-js/faker'
+import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 /**
  * Push, jobs, devices — and history, under one rule.

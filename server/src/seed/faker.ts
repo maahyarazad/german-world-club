@@ -1,6 +1,15 @@
 import { Faker, de, en } from '@faker-js/faker'
 
 /**
+ * Re-exported so the generators can name the type without importing the
+ * package. `tests/seed/determinism` forbids that import anywhere else, because
+ * a module reaching for its own faker would not draw from the seeded instance
+ * and the run would stop being reproducible. The rule is about the value; the
+ * type has to come from somewhere, and this is the module that owns it.
+ */
+export type { Faker }
+
+/**
  * The one generator every seed module draws from.
  *
  * Shared deliberately: two modules each constructing their own instance would

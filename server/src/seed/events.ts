@@ -1,5 +1,5 @@
 import type { Pool } from 'pg'
-import type { Faker } from '@faker-js/faker'
+import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 /**
  * Club events across their state machine, with registrations
