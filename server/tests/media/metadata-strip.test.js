@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import sharp from 'sharp'
 import { buildMediaApp, uploader, resetMedia, upload, photographWithGps } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { stripMetadata, hasLocationMetadata } from '../../src/media/strip-metadata.js'
+import { stripMetadata, hasLocationMetadata } from '../../src/modules/media/strip-metadata.js'
 
 /**
  * SC-020, FR-054 — no location metadata survives ingest.

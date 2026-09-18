@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph, opaquePng, svgWithScript } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { validateUpload, extensionAgrees, MediaRejected, ALLOWED_MIME } from '../../src/media/validate.js'
+import { validateUpload, extensionAgrees, MediaRejected, ALLOWED_MIME } from '../../src/modules/media/validate.js'
 
 /**
  * SC-021, FR-052 — the type comes from the bytes, never from the name.

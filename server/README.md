@@ -3,6 +3,9 @@
 One API serving the member web client, the mobile app, and the staff console.
 Fastify 5 on Node 22, PostgreSQL, Redis.
 
+For how `server/src` is laid out — routes vs. controllers vs. application logic, and how that maps
+onto Fastify plugins/decorators/hooks — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
 ```bash
 npm install
 npm run -w server keys:generate       # paste the two keys into server/.env
@@ -147,7 +150,7 @@ it — registered last, the document comes out empty.
 and that is a deliberate posture rather than an oversight: the document
 describes the whole gated surface of an invite-only club, so publishing it
 publishes the shape of the admin API to anyone who finds the URL. `/admin` is
-already classified gated-and-never-indexed in `src/seo/surfaces.js`, which is
+already classified gated-and-never-indexed in `src/modules/seo/surfaces.js`, which is
 what gives the docs their `X-Robots-Tag: noindex, nofollow`, their
 `Cache-Control: private, no-store`, and their `Disallow` line in `robots.txt`
 without a second declaration anyone could forget to make.

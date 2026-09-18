@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { z } from 'zod'
 import { buildApp } from '../../src/app.js'
 import { loadEnv } from '../../src/config/env.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 import { buildAuthApp, createAdmin, createMember, grant, resetAuthTables, bearerFor } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
 

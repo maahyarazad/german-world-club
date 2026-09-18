@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   organization, localBusiness, event, article, breadcrumbs,
   eventAvailability, isContractLive, documentsFor,
-} from '../../src/seo/structured-data.js'
+} from '../../src/modules/seo/structured-data.js'
 
 /**
  * SC-007 / FR-022. §10.4: "publishing an Event as available after registration

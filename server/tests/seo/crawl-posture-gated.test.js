@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildAuthApp } from '../helpers/auth.js'
-import { SURFACES, disallowedPrefixes, postureFor } from '../../src/seo/surfaces.js'
+import { SURFACES, disallowedPrefixes, postureFor } from '../../src/modules/seo/surfaces.js'
 
 /**
  * SC-008, gated half — every gated surface is refused **and** marked
@@ -29,7 +29,7 @@ const probes = GATED.flatMap((surface) =>
     prefix,
     url: `${prefix}/probe`,
     // A gated surface whose prefix serves an empty client shell rather than
-    // refusing. See the typedef in src/seo/surfaces.js.
+    // refusing. See the typedef in src/modules/seo/surfaces.js.
     shell: surface.shell === true,
   })),
 )

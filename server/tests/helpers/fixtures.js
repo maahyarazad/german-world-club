@@ -1,5 +1,5 @@
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * A small but representative content set — one record per public route class,

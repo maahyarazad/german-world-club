@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildPageMeta } from '../../src/seo/build-page-meta.js'
-import { renderSitemap, shouldInclude } from '../../src/seo/sitemap.js'
+import { buildPageMeta } from '../../src/modules/seo/build-page-meta.js'
+import { renderSitemap, shouldInclude } from '../../src/modules/seo/application/sitemap.js'
 import { RECORDS } from '../helpers/fixtures.js'
 
 /**

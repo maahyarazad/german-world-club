@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { deriveImage } from '../../src/media/derive-image.js'
+import { deriveImage } from '../../src/modules/media/derive-image.js'
 
 /**
  * SC-019 — a 2 MB photograph yields `medium` ≤ 60 KB and `thumb` ≤ 8 KB.

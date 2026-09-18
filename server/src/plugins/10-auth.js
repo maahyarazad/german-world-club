@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { query } from '../db/query.js'
-import { createDenylist, loadSession } from '../auth/sessions.js'
+import { createDenylist, loadSession } from '../modules/auth/sessions.js'
 import { createPermissionResolver } from '../authz/permissions.js'
 import { makeRequirePermission, forbidden } from '../authz/require-permission.js'
 

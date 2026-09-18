@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import jwt from '@fastify/jwt'
 import { COOKIES, ACCESS_TOKEN_TTL_SECONDS } from '@gwc/contracts/auth'
-import { loadKeys, buildClaims } from '../auth/tokens.js'
+import { loadKeys, buildClaims } from '../modules/auth/tokens.js'
 
 /**
  * Token verification, one path for both faces (FR-002, FR-003).

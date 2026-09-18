@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, pixelBomb } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { validateUpload, readDeclaredDimensions } from '../../src/media/validate.js'
+import { validateUpload, readDeclaredDimensions } from '../../src/modules/media/validate.js'
 
 /**
  * FR-053 — the decompression bomb, refused **before** decode.

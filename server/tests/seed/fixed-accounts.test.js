@@ -151,7 +151,7 @@ describe.skipIf(!hasDatabase)('the demo seed leaves the fixed accounts exactly a
     // still authenticates — a demo-seeded permission row or a status change
     // elsewhere could break sign-in with the hash untouched.
     const { buildApp } = await import('../../src/app.js')
-    const { createFixtureContentSource } = await import('../../src/public/content.js')
+    const { createFixtureContentSource } = await import('../../src/modules/public/content.js')
 
     process.env.DATABASE_URL = url
     const app = await buildApp({ contentSource: createFixtureContentSource([]) })

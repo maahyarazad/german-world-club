@@ -4,7 +4,7 @@ import { withSeededDatabase } from './helpers.js'
 import { hasDatabase } from '../helpers/db.js'
 import { bearerFor } from '../helpers/auth.js'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * FR-003 and FR-012 — four principal kinds, and the walls between them.

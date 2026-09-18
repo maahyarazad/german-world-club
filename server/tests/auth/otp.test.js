@@ -4,7 +4,7 @@ import { hasDatabase } from '../helpers/db.js'
 import {
   issueChallenge, verifyChallenge, generateCode, hashCode, maskPhone,
   OTP_OUTCOME, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS,
-} from '../../src/auth/otp.js'
+} from '../../src/modules/auth/otp.js'
 
 /**
  * FR-012 / §6.2 — the three things that make a 4-digit code safe.

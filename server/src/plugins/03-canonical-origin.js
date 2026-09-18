@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin'
-import { postureFor } from '../seo/surfaces.js'
+import { postureFor } from '../modules/seo/surfaces.js'
 
 /**
  * One origin, one URL form (FR-028, §10.6).

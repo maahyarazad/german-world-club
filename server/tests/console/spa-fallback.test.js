@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
 
 /**
  * The console's SPA fallback (T010, research R9).

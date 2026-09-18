@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { buildApp } from '../../src/app.js'
-import { createFixtureContentSource } from '../../src/public/content.js'
-import { hashPassword } from '../../src/auth/passwords.js'
+import { createFixtureContentSource } from '../../src/modules/public/content.js'
+import { hashPassword } from '../../src/modules/auth/passwords.js'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
 
 /**

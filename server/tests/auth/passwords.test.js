@@ -3,7 +3,7 @@ import argon2 from 'argon2'
 import {
   hashPassword, verifyPassword, verifyAgainstDummy, dummyHash, stats,
   credentialState, looksLikeLegacyMd5, CREDENTIAL_STATE, ARGON2_OPTIONS,
-} from '../../src/auth/passwords.js'
+} from '../../src/modules/auth/passwords.js'
 
 /**
  * FR-014 — credential handling.

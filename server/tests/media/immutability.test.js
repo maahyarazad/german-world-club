@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildMediaApp, uploader, resetMedia, upload, photograph } from '../helpers/media.js'
 import { hasDatabase } from '../helpers/db.js'
-import { checksumOf, keyFor, hexOf } from '../../src/media/storage.js'
+import { checksumOf, keyFor, hexOf } from '../../src/modules/media/storage.js'
 
 /**
  * FR-062 — a variant URL is byte-identical across fetches, and says so.

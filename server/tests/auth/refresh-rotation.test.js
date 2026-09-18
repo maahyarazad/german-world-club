@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
-import { startSession, rotateRefreshToken, REFRESH_OUTCOME } from '../../src/auth/sessions.js'
+import { startSession, rotateRefreshToken, REFRESH_OUTCOME } from '../../src/modules/auth/sessions.js'
 
 /**
  * FR-005 — rotation, and the replay response.

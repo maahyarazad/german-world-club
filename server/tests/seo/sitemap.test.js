@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { renderSitemap, shouldInclude } from '../../src/seo/sitemap.js'
-import { renderRobots } from '../../src/seo/robots.js'
-import { disallowedPrefixes, SURFACES } from '../../src/seo/surfaces.js'
+import { renderSitemap, shouldInclude } from '../../src/modules/seo/application/sitemap.js'
+import { renderRobots } from '../../src/modules/seo/application/robots.js'
+import { disallowedPrefixes, SURFACES } from '../../src/modules/seo/surfaces.js'
 import { buildFixtureApp, RECORDS } from '../helpers/fixtures.js'
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { buildAuthApp } from '../helpers/auth.js'
-import { buildClaims } from '../../src/auth/tokens.js'
+import { buildClaims } from '../../src/modules/auth/tokens.js'
 import { ACCESS_TOKEN_CLAIMS, ACCESS_TOKEN_TTL_SECONDS, accessTokenClaimsSchema } from '@gwc/contracts/auth'
 
 /**

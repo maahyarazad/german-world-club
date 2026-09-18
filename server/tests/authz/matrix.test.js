@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { buildAuthApp, createMember, createAdmin, grant, resetAuthTables, bearerFor } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
-import { INSTITUTIONAL_SLUGS } from '../../src/public/routes.js'
+import { INSTITUTIONAL_SLUGS } from '../../src/modules/public/routes.js'
 
 /**
  * SC-002 — every route class × every principal kind, with zero permitted
@@ -102,7 +102,7 @@ const ROUTE_CLASSES = [
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // The console's SPA shell. Public because it IS public: an empty application
   // shell with no member content, no capability data and no principal in it.
-  // The surface it opens is gated — seo/surfaces.js declares /konsole gated and
+  // The surface it opens is gated — modules/seo/surfaces.js declares /konsole gated and
   // never indexed — but the shell itself discloses nothing, which is what
   // tests/console/spa-fallback.test.js asserts directly.
   { name: 'console shell', url: '/konsole', method: 'GET', audience: 'public' },

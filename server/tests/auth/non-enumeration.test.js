@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables, signIn } from '../helpers/auth.js'
 import { hasDatabase } from '../helpers/db.js'
-import { stats } from '../../src/auth/passwords.js'
+import { stats } from '../../src/modules/auth/passwords.js'
 
 /**
  * §3.1 — account existence is not a public fact.

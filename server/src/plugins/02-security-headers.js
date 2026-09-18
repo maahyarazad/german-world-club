@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin'
 import helmet from '@fastify/helmet'
-import { postureFor } from '../seo/surfaces.js'
+import { postureFor } from '../modules/seo/surfaces.js'
 
 /**
  * Security headers, and the crawl-directive half of FR-025.

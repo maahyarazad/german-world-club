@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildPageMeta, truncate, withSiteName, absolute, shareImageFromVariants } from '../../src/seo/build-page-meta.js'
+import { buildPageMeta, truncate, withSiteName, absolute, shareImageFromVariants } from '../../src/modules/seo/build-page-meta.js'
 import { SITE_NAME, DESCRIPTION_MAX, pageMetaSchema } from '@gwc/contracts/seo'
 
 /**
