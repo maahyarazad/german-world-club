@@ -1,6 +1,8 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react'
 import { get, ApiError } from './api'
 import { HOME_FOR_KIND } from '@gwc/contracts/capabilities'
+import type { ConsoleKind, GrantSnapshot } from '@gwc/contracts/capabilities'
+import type { ReactNode } from 'react'
 
 /**
  * The capability snapshot, fetched and kept fresh.
@@ -17,7 +19,35 @@ import { HOME_FOR_KIND } from '@gwc/contracts/capabilities'
  *      guess — a console that guessed would show a sidebar nobody granted.
  */
 
-const CapabilityContext = createContext(null)
+/**
+ * The snapshot as the console holds it.
+ *
+ * Deliberately loose about its payload: after feature 007 nothing validates
+ * the response at runtime, so a narrow type here would be a claim the wire
+ * cannot honour. What the console actually branches on — `kind`, `modules`,
+ * `available` — is typed; the rest is carried through untouched.
+ */
+export type Snapshot = NonNullable<GrantSnapshot> & {
+  kind: ConsoleKind
+  displayName?: string | null
+  /** Bypasses the module matrix entirely. Resolved by the server, never here. */
+  isSuperadmin?: boolean
+  /** Whatever else the payload carries; nothing validates it after 007. */
+  [key: string]: unknown
+}
+
+export type CapabilityState = {
+  status: Status
+  snapshot: Snapshot | null
+  error: ApiError | null
+}
+
+export type CapabilityContextValue = CapabilityState & {
+  refresh: (signal?: AbortSignal) => Promise<Snapshot | null>
+  clear: () => void
+}
+
+const CapabilityContext = createContext<CapabilityContextValue | null>(null)
 
 /** Distinguishes "not fetched yet" from "fetched, and the answer is nothing". */
 export const STATUS = Object.freeze({
@@ -25,7 +55,10 @@ export const STATUS = Object.freeze({
   READY: 'ready',
   ANONYMOUS: 'anonymous',
   FAILED: 'failed',
-})
+} as const)
+
+/** The four states, as a union. "loading" and "anonymous" are not the same. */
+export type Status = (typeof STATUS)[keyof typeof STATUS]
 
 /**
  * Members come from `/auth/me`, everyone else from `/auth/session`.
@@ -35,10 +68,10 @@ export const STATUS = Object.freeze({
  * member route first only because it is the cheaper guess for the common case;
  * the server's answer is what decides, not the order.
  */
-async function fetchSnapshot(signal) {
+async function fetchSnapshot(signal?: AbortSignal): Promise<Snapshot> {
   try {
-    const member = await get('/auth/me', { signal })
-    return { ...member, kind: 'member', available: [] }
+    const member = (await get('/auth/me', { signal })) as Record<string, unknown>
+    return { ...member, kind: 'member', available: [] } as Snapshot
   } catch (error) {
     if (!(error instanceof ApiError)) throw error
     // 401 means no credential at all — stop, do not try the other route.
@@ -46,20 +79,24 @@ async function fetchSnapshot(signal) {
     // 403 here means "valid credential, wrong audience", i.e. not a member.
     // Fall through and ask the staff/organisation route.
   }
-  return get('/auth/session', { signal })
+  return (await get('/auth/session', { signal })) as Snapshot
 }
 
-export function CapabilityProvider({ children }) {
-  const [state, setState] = useState({ status: STATUS.LOADING, snapshot: null, error: null })
+export function CapabilityProvider({ children }: { children?: ReactNode }) {
+  const [state, setState] = useState<CapabilityState>({
+    status: STATUS.LOADING,
+    snapshot: null,
+    error: null,
+  })
 
-  const refresh = useCallback(async (signal) => {
+  const refresh = useCallback(async (signal?: AbortSignal): Promise<Snapshot | null> => {
     setState((previous) => ({ ...previous, status: STATUS.LOADING }))
     try {
       const snapshot = await fetchSnapshot(signal)
       setState({ status: STATUS.READY, snapshot, error: null })
       return snapshot
     } catch (error) {
-      if (error?.name === 'AbortError') return null
+      if (error instanceof Error && error.name === 'AbortError') return null
       const anonymous = error instanceof ApiError && error.needsSignIn
       setState({
         status: anonymous ? STATUS.ANONYMOUS : STATUS.FAILED,
@@ -87,7 +124,7 @@ export function CapabilityProvider({ children }) {
   )
 }
 
-export function useCapabilities() {
+export function useCapabilities(): CapabilityContextValue {
   const context = useContext(CapabilityContext)
   if (!context) throw new Error('useCapabilities must be used inside a CapabilityProvider')
   return context
@@ -101,10 +138,10 @@ export function useCapabilities() {
  * disappear from the sidebar on the very next interaction rather than at the
  * next full page load (FR-016).
  */
-export function useRefusalHandler() {
+export function useRefusalHandler(): (error: unknown) => void {
   const { refresh, clear } = useCapabilities()
   return useCallback(
-    (error) => {
+    (error: unknown) => {
       if (!(error instanceof ApiError)) return
       if (error.needsSignIn) {
         clear()
@@ -116,4 +153,5 @@ export function useRefusalHandler() {
   )
 }
 
-export const homeFor = (kind) => HOME_FOR_KIND[kind] ?? HOME_FOR_KIND.member
+export const homeFor = (kind: ConsoleKind | undefined): string =>
+  (kind ? HOME_FOR_KIND[kind] : undefined) ?? HOME_FOR_KIND.member

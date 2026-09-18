@@ -1,3 +1,5 @@
+import type { Module } from '@gwc/contracts/permissions'
+import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { hasAnyGrant, isAvailable } from '@gwc/contracts/capabilities'
 import { useCapabilities } from '../lib/capabilities'
@@ -15,11 +17,23 @@ import { useTranslations } from '../i18n/index'
  * rendered as disabled with the reason attached. That is SC-001: a module is
  * either working or visibly marked unavailable, never silently missing.
  */
-export function Sidebar({ items, title }) {
+export type SidebarItem = {
+  to: string
+  /** Absent for items that need no grant at all (the dashboard root). */
+  module?: Module
+  /** Falls back to the translated module name. */
+  label?: ReactNode
+  /** Passed to NavLink: exact-match this route rather than prefix-match. */
+  end?: boolean
+}
+
+export type SidebarProps = { items?: readonly SidebarItem[]; title?: string }
+
+export function Sidebar({ items = [], title }: SidebarProps) {
   const t = useTranslations()
   const { snapshot } = useCapabilities()
 
-  const visible = items.filter((item) => !item.module || hasAnyGrant(snapshot, item.module))
+  const visible = items.filter((item: SidebarItem) => !item.module || hasAnyGrant(snapshot, item.module))
 
   return (
     <nav aria-label={title} className="flex h-full flex-col bg-ink py-4">
@@ -27,9 +41,9 @@ export function Sidebar({ items, title }) {
         {title}
       </p>
       <ul className="flex flex-col">
-        {visible.map((item) => {
+        {visible.map((item: SidebarItem) => {
           const ready = !item.module || isAvailable(snapshot, item.module)
-          const label = item.label ?? t.modules[item.module] ?? item.module
+          const label = item.label ?? (item.module ? t.modules[item.module] : undefined) ?? item.module
 
           if (!ready) {
             return (

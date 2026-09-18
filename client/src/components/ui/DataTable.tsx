@@ -9,7 +9,31 @@
  * `columns` is [{ key, header, render?, align? }]. `rows` must carry a stable
  * `id`.
  */
-export function DataTable({ columns, rows, empty = 'Keine Einträge.', caption }) {
+import type { ReactNode } from 'react'
+
+/** A row must carry a stable `id`; everything else is the caller's business. */
+export type DataRow = { id: string | number; [key: string]: unknown }
+
+export type DataColumn<Row extends DataRow = DataRow> = {
+  key: string
+  header: ReactNode
+  align?: 'left' | 'right'
+  render?: (row: Row) => ReactNode
+}
+
+export type DataTableProps<Row extends DataRow = DataRow> = {
+  columns: readonly DataColumn<Row>[]
+  rows: readonly Row[] | null | undefined
+  empty?: ReactNode
+  caption?: ReactNode
+}
+
+export function DataTable<Row extends DataRow = DataRow>({
+  columns,
+  rows,
+  empty = 'Keine Einträge.',
+  caption,
+}: DataTableProps<Row>) {
   if (!rows || rows.length === 0) {
     return <p className="py-6 text-center text-[13px] text-text-muted">{empty}</p>
   }
@@ -45,7 +69,7 @@ export function DataTable({ columns, rows, empty = 'Keine Einträge.', caption }
                     column.align === 'right' ? 'text-right' : ''
                   }`}
                 >
-                  {column.render ? column.render(row) : row[column.key]}
+                  {column.render ? column.render(row) : (row[column.key] as ReactNode)}
                 </td>
               ))}
             </tr>

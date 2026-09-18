@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import type { SidebarItem } from './Sidebar'
 import { Outlet } from 'react-router'
 import Sidebar from './Sidebar'
 import EmptyState from './EmptyState'
@@ -15,7 +17,15 @@ import LanguageSwitch from '../components/ui/LanguageSwitch'
  * KPI row, cards — and differ only in what fills it. Building three shells
  * would have produced three sets of drift.
  */
-export function ConsoleShell({ title, items, signOutPath = '/auth/sign-out' }) {
+export type ConsoleShellProps = {
+  title?: string
+  items?: readonly SidebarItem[]
+  children?: ReactNode
+  /** Where sign-out returns to, which differs per console face. */
+  signOutPath?: string
+}
+
+export function ConsoleShell({ title, items, signOutPath = '/auth/sign-out' }: ConsoleShellProps) {
   const t = useTranslations()
   const { snapshot, clear } = useCapabilities()
 

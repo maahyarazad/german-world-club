@@ -1,3 +1,5 @@
+import type { ChangeEvent, FormEvent } from 'react'
+import type { ProblemResponse } from '@gwc/contracts/errors'
 import { useState } from 'react'
 import { post, ApiError } from '../lib/api'
 import { describeProblem } from '../lib/problems'
@@ -32,7 +34,18 @@ const MIN_PASSWORD_LENGTH = 8
  * This is emphatically not an account-creation path. A reset link for an
  * address with no account does nothing.
  */
-export function PasswordReset({ token = null, hasTokenParam = false, onRequestNewLink }) {
+export type PasswordResetProps = {
+  token?: string | null
+  /**
+   * Distinguishes "no token in the link" from "not on the confirm step".
+   * A truncated link (`?token=` with nothing after) must not silently render
+   * the request form again.
+   */
+  hasTokenParam?: boolean
+  onRequestNewLink?: () => void
+}
+
+export function PasswordReset({ token = null, hasTokenParam = false, onRequestNewLink }: PasswordResetProps) {
   const confirming = Boolean(token) || hasTokenParam
 
   return confirming ? (
@@ -47,12 +60,12 @@ function RequestReset() {
   const t = useTranslations()
   const { locale } = useLocale()
   const [email, setEmail] = useState('')
-  const [fieldError, setFieldError] = useState(null)
-  const [problem, setProblem] = useState(null)
+  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const submit = async (event) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!email.trim()) {
       setFieldError(t.passwordReset.emailRequired)
@@ -100,7 +113,7 @@ function RequestReset() {
             name="email"
             autoComplete="username"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
             error={fieldError}
           />
 
@@ -116,13 +129,15 @@ function RequestReset() {
 }
 
 /** Step two: set the new password against the token from the link. */
-function ConfirmReset({ token, onRequestNewLink }) {
+type ConfirmResetProps = { token: string | null; onRequestNewLink?: () => void }
+
+function ConfirmReset({ token, onRequestNewLink }: ConfirmResetProps) {
   const t = useTranslations()
   const { locale } = useLocale()
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
-  const [problem, setProblem] = useState(null)
+  const [fieldErrors, setFieldErrors] = useState<{ password?: string; repeat?: string }>({})
+  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -150,10 +165,10 @@ function ConfirmReset({ token, onRequestNewLink }) {
     )
   }
 
-  const submit = async (event) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const errors = {}
+    const errors: { password?: string; repeat?: string } = {}
     if (password.length < MIN_PASSWORD_LENGTH) errors.password = t.passwordReset.tooShort
     else if (password !== repeat) errors.repeat = t.passwordReset.mismatch
     setFieldErrors(errors)
@@ -198,7 +213,7 @@ function ConfirmReset({ token, onRequestNewLink }) {
             name="new-password"
             autoComplete="new-password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
             error={fieldErrors.password}
             hint={t.passwordReset.tooShort}
           />
@@ -209,7 +224,7 @@ function ConfirmReset({ token, onRequestNewLink }) {
             name="repeat-password"
             autoComplete="new-password"
             value={repeat}
-            onChange={(event) => setRepeat(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setRepeat(event.target.value)}
             error={fieldErrors.repeat}
           />
 

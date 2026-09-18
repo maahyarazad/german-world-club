@@ -1,3 +1,5 @@
+import type { Module, Flag } from '@gwc/contracts/permissions'
+import type { ReactNode } from 'react'
 import { useCapabilities } from '../lib/capabilities'
 import { hasGrant, hasAnyGrant, isAvailable } from '@gwc/contracts/capabilities'
 import Callout from '../components/ui/Callout'
@@ -15,7 +17,15 @@ import { useTranslations } from '../i18n/index'
  * Read that twice before adding a `RequireGrant` around something and
  * concluding the thing inside is safe.
  */
-export function RequireGrant({ module, flag, children, fallback = null }) {
+export type RequireGrantProps = {
+  module: Module
+  flag?: Flag
+  children?: ReactNode
+  /** Rendered instead when the grant is absent. Null by design: absent, not disabled. */
+  fallback?: ReactNode
+}
+
+export function RequireGrant({ module, flag, children, fallback = null }: RequireGrantProps): ReactNode {
   const t = useTranslations()
   const { snapshot } = useCapabilities()
 
@@ -45,7 +55,7 @@ export function RequireGrant({ module, flag, children, fallback = null }) {
  * reader the action exists, and is a standing invitation to re-enable it in the
  * browser and find out what happens.
  */
-export function useCanEdit(module, flag = 'edit') {
+export function useCanEdit(module: Module, flag: Flag = 'edit'): boolean {
   const { snapshot } = useCapabilities()
   return hasGrant(snapshot, module, flag)
 }

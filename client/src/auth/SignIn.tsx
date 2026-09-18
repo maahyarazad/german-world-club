@@ -1,3 +1,6 @@
+import type { ChangeEvent, FormEvent } from 'react'
+import type { ProblemResponse } from '@gwc/contracts/errors'
+import type { Snapshot } from '../lib/capabilities'
 import { useState } from 'react'
 import { post, ApiError } from '../lib/api'
 import { useCapabilities } from '../lib/capabilities'
@@ -40,23 +43,28 @@ import { useLocale, useTranslations } from '../i18n/index'
  * and out of scope (FR-002); tests/no-registration.test.jsx is the standing
  * check that one does not reappear.
  */
-export function SignIn({ onSignedIn, onResetPassword }) {
+export type SignInProps = {
+  onSignedIn?: (snapshot: Snapshot | null) => void
+  onResetPassword?: () => void
+}
+
+export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
   const t = useTranslations()
   const { locale } = useLocale()
   const { refresh } = useCapabilities()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
-  const [problem, setProblem] = useState(null)
-  const [outcome, setOutcome] = useState(null)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const [problem, setProblem] = useState<ProblemResponse | null>(null)
+  const [outcome, setOutcome] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const submit = async (event) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     // Local checks are a courtesy, not a control: the server validates the same
     // things and refuses regardless of what happens here.
-    const errors = {}
+    const errors: { email?: string; password?: string } = {}
     if (!email.trim()) errors.email = t.signIn.emailRequired
     if (!password) errors.password = t.signIn.passwordRequired
     setFieldErrors(errors)
@@ -70,7 +78,9 @@ export function SignIn({ onSignedIn, onResetPassword }) {
       // No `deviceId`: that field is what marks a request as the mobile face,
       // and sending one would opt the browser into the device-approval and OTP
       // branches it has no way to complete.
-      const result = await post('/auth/sign-in', { email: email.trim(), password })
+      const result = (await post('/auth/sign-in', { email: email.trim(), password })) as
+        | { outcome?: string }
+        | null
 
       if (result?.outcome === 'authenticated') {
         // The session is already a cookie by this point. Re-fetching
@@ -108,7 +118,7 @@ export function SignIn({ onSignedIn, onResetPassword }) {
           name="email"
           autoComplete="username"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
           error={fieldErrors.email}
         />
 
@@ -118,7 +128,7 @@ export function SignIn({ onSignedIn, onResetPassword }) {
           name="password"
           autoComplete="current-password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
           error={fieldErrors.password}
         />
 
@@ -147,7 +157,9 @@ export function SignIn({ onSignedIn, onResetPassword }) {
  * it is the only outcome with a remedy inside this console, and offering it as
  * a button is the difference between a dead end and a path.
  */
-function OutcomeMessage({ outcome, onResetPassword }) {
+type OutcomeMessageProps = { outcome: string | null; onResetPassword?: () => void }
+
+function OutcomeMessage({ outcome, onResetPassword }: OutcomeMessageProps) {
   const copy = useTranslations().signIn.outcomes
 
   if (outcome === 'password_reset_required') {
@@ -169,13 +181,13 @@ function OutcomeMessage({ outcome, onResetPassword }) {
     )
   }
 
-  const messages = {
+  const messages: Record<string, readonly [string, string]> = {
     profile_incomplete: [copy.profileIncompleteTitle, copy.profileIncompleteBody],
     approval_pending: [copy.approvalPendingTitle, copy.approvalPendingBody],
     otp_required: [copy.otpRequiredTitle, copy.otpRequiredBody],
   }
 
-  const [title, body] = messages[outcome] ?? [copy.unknownTitle, copy.unknownBody]
+  const [title, body] = (outcome ? messages[outcome] : undefined) ?? [copy.unknownTitle, copy.unknownBody]
   return (
     <FormMessage tone="info" title={title}>
       {body}

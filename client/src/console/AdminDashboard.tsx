@@ -4,6 +4,7 @@ import Card from '../components/ui/Card'
 import KpiTile, { KpiRow } from '../components/ui/KpiTile'
 import Callout from '../components/ui/Callout'
 import { formatNumber } from '../lib/format'
+import type { Module, Flag } from '@gwc/contracts/permissions'
 import { FLAGS } from '@gwc/contracts/permissions'
 import { isAvailable } from '@gwc/contracts/capabilities'
 import { useLocale, useTranslations } from '../i18n/index'
@@ -20,7 +21,8 @@ export function AdminDashboard() {
   const t = useTranslations()
   const { locale } = useLocale()
   const { snapshot } = useCapabilities()
-  const modules = Object.entries(snapshot?.modules ?? {})
+  // Object.entries widens the key to string; the snapshot's keys are Modules.
+  const modules = Object.entries(snapshot?.modules ?? {}) as [Module, Partial<Record<Flag, boolean>>][]
   const ready = modules.filter(([module]) => isAvailable(snapshot, module))
 
   return (

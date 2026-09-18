@@ -1,3 +1,4 @@
+import type { SidebarItem } from '../Sidebar'
 import ConsoleShell from '../ConsoleShell'
 import { useTranslations } from '../../i18n/index'
 
@@ -9,7 +10,7 @@ import { useTranslations } from '../../i18n/index'
  * with it. An entry whose module has no server route yet renders as "noch nicht
  * verfügbar" — see Sidebar.jsx.
  */
-export const ADMIN_ITEMS = [
+export const ADMIN_ITEMS: readonly SidebarItem[] = [
   { to: '/konsole/admin', label: 'Dashboard', end: true },
   { to: '/konsole/admin/mitglieder', module: 'members' },
   { to: '/konsole/admin/angebote', module: 'marketplace_moderation' },

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import type { Snapshot } from './lib/capabilities'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router'
@@ -22,7 +24,7 @@ function SignInRoute() {
   const navigate = useNavigate()
   return (
     <SignIn
-      onSignedIn={(snapshot) => navigate(homeFor(snapshot?.kind), { replace: true })}
+      onSignedIn={(snapshot: Snapshot | null) => navigate(homeFor(snapshot?.kind), { replace: true })}
       onResetPassword={() => navigate('/konsole/passwort')}
     />
   )
@@ -52,7 +54,7 @@ function PasswordResetRoute() {
  * not a skeleton of the sidebar, not a guessed navigation. A console that
  * painted its chrome first would be showing a shape nobody had been granted.
  */
-function Authenticated({ children }) {
+function Authenticated({ children }: { children?: ReactNode }) {
   const t = useTranslations()
   const { status, refresh } = useCapabilities()
 
@@ -115,7 +117,13 @@ function App() {
   )
 }
 
-createRoot(document.getElementById('root')).render(
+// Throw rather than assert: konsole.html always carries #root, so its absence
+// is a broken build, and a non-null assertion would surface it as a confusing
+// null-render instead of naming the cause.
+const container = document.getElementById('root')
+if (!container) throw new Error('konsole.html is missing its #root element')
+
+createRoot(container).render(
   <StrictMode>
     <App />
   </StrictMode>,

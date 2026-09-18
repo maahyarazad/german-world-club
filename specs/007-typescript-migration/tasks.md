@@ -112,15 +112,15 @@ Three npm workspaces: `server/`, `client/`, `packages/contracts/`. `expo-client/
 - [X] T037 [P] [US2] Convert `packages/contracts/src/seo.js` → `seo.ts`. 4 schemas → 4 types. These are the easiest in the package: data-model.md §4d established they are wired to no route, so nothing at runtime changes.
 - [X] T038 [US2] Update `packages/contracts/package.json`: all seven `exports` subpaths point at `.ts`. Leave the `zod` dependency until T093.
 - [X] T039 [US2] Apply the naming rule across the package: `xxxSchema` → `Xxx` for all 41 types (`contracts/shared-types-contract.md`). No `Schema`-suffixed type name may survive — a surviving one means a schema survived.
-- [ ] T040 [P] [US2] Convert `client/src/lib/` (4 files: `api.js`, `capabilities.jsx`, `format.js`, `problems.js`) to `.ts`/`.tsx`. `ApiError extends Error` converts as a plain rename.
-- [ ] T041 [P] [US2] Convert `client/src/i18n/` (4 files: `de.js`, `en.js`, `index.jsx`, `locales.js`) to `.ts`/`.tsx`. Type the catalogue so `de.ts` and `en.ts` must agree on keys structurally — this makes `npm run -w client test:i18n` a compile error in one direction as well as a test failure.
-- [ ] T042 [P] [US2] Convert `client/src/components/ui/` (9 files) to `.tsx`, typing props.
-- [ ] T043 [P] [US2] Convert `client/src/auth/` (3 files) to `.tsx`.
-- [ ] T044 [US2] Convert `client/src/console/` (5 files) and `client/src/console/admin/` (1 file) to `.tsx`. `RequireGrant` and `Sidebar` consume `hasGrant`/`hasAnyGrant`/`isAvailable` and are where the contracts types first pay off.
-- [ ] T045 [US2] Convert `client/src/konsole.jsx` → `konsole.tsx` and update the entry reference in `client/konsole.html`.
-- [ ] T046 [P] [US2] Convert `client/scripts/check-tokens.mjs` and `check-i18n.mjs` to `.ts`, updating the `test:tokens` and `test:i18n` script paths in `client/package.json`.
-- [ ] T047 [US2] Convert `client/vite.config.js` → `vite.config.ts` and `client/dev-server.js` → `dev-server.ts`, keeping all three build entries (`index.html`, `en.html`, `konsole.html`) and the `consoleFallback` plugin and API proxy unchanged.
-- [ ] T048 [US2] Rewrite every client relative specifier: 28 `.js` and 70 `.jsx` become extensionless (research.md R2 — the client rule differs from the server's on purpose, because Vite resolves specifiers).
+- [X] T040 [P] [US2] Convert `client/src/lib/` (4 files: `api.js`, `capabilities.jsx`, `format.js`, `problems.js`) to `.ts`/`.tsx`. `ApiError extends Error` converts as a plain rename.
+- [X] T041 [P] [US2] Convert `client/src/i18n/` (4 files: `de.js`, `en.js`, `index.jsx`, `locales.js`) to `.ts`/`.tsx`. Type the catalogue so `de.ts` and `en.ts` must agree on keys structurally — this makes `npm run -w client test:i18n` a compile error in one direction as well as a test failure.
+- [X] T042 [P] [US2] Convert `client/src/components/ui/` (9 files) to `.tsx`, typing props.
+- [X] T043 [P] [US2] Convert `client/src/auth/` (3 files) to `.tsx`.
+- [X] T044 [US2] Convert `client/src/console/` (5 files) and `client/src/console/admin/` (1 file) to `.tsx`. `RequireGrant` and `Sidebar` consume `hasGrant`/`hasAnyGrant`/`isAvailable` and are where the contracts types first pay off.
+- [X] T045 [US2] Convert `client/src/konsole.jsx` → `konsole.tsx` and update the entry reference in `client/konsole.html`.
+- [X] T046 [P] [US2] Convert `client/scripts/check-tokens.mjs` and `check-i18n.mjs` to `.ts`, updating the `test:tokens` and `test:i18n` script paths in `client/package.json`.
+- [X] T047 [US2] Convert `client/vite.config.js` → `vite.config.ts` and `client/dev-server.js` → `dev-server.ts`, keeping all three build entries (`index.html`, `en.html`, `konsole.html`) and the `consoleFallback` plugin and API proxy unchanged.
+- [X] T048 [US2] Rewrite every client relative specifier: 28 `.js` and 70 `.jsx` become extensionless (research.md R2 — the client rule differs from the server's on purpose, because Vite resolves specifiers).
 - [ ] T049 [US2] Run `npm run typecheck` and confirm `packages/contracts` and `client` are clean.
 - [ ] T050 [US2] Verify the story: rename one exported field in `packages/contracts/src/auth.ts`, run `npm run typecheck`, confirm every consuming client file is named in the error output, revert. Then run `npm run -w client build` and confirm all three entries emit.
 
