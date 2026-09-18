@@ -1,5 +1,6 @@
 import { SITE_NAME } from '@gwc/contracts/seo'
 import { absolute, pathFor } from './build-page-meta.ts'
+import type { SeoRecord } from './types.ts'
 
 /**
  * JSON-LD, generated per request from live state (FR-022, §12.14).
@@ -13,7 +14,7 @@ import { absolute, pathFor } from './build-page-meta.ts'
  * timestamps at call time.
  */
 
-export function organization(origin) {
+export function organization(origin: string) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -23,11 +24,11 @@ export function organization(origin) {
   }
 }
 
-export function breadcrumbs(origin, trail) {
+export function breadcrumbs(origin: string, trail: readonly { name: string; path: string }[]) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: trail.map((t, i) => ({
+    itemListElement: trail.map((t: { name: string; path: string }, i: number) => ({
       '@type': 'ListItem',
       position: i + 1,
       name: t.name,
@@ -36,7 +37,7 @@ export function breadcrumbs(origin, trail) {
   }
 }
 
-export function article(origin, record) {
+export function article(origin: string, record: SeoRecord) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -56,7 +57,7 @@ export function article(origin, record) {
  * (§5, §10.5). A lapsed contract must stop being advertised — that is what the
  * sponsor stopped paying for.
  */
-export function localBusiness(origin, record, now = new Date()) {
+export function localBusiness(origin: string, record: SeoRecord, now: Date = new Date()) {
   if (!isContractLive(record, now)) return null
   return {
     '@context': 'https://schema.org',
@@ -91,7 +92,7 @@ export function localBusiness(origin, record, now = new Date()) {
 }
 
 /** `contract_start + duration + grace >= now` (§5). */
-export function isContractLive(record, now = new Date()) {
+export function isContractLive(record: SeoRecord, now: Date = new Date()): boolean {
   if (!record.contractStart || !record.contractYears) return true // no contract data → not gated
   const end = new Date(record.contractStart)
   end.setFullYear(end.getFullYear() + Number(record.contractYears))
@@ -103,7 +104,7 @@ export function isContractLive(record, now = new Date()) {
  * Event availability computed from the real registration window and remaining
  * capacity — never a stored copy (FR-022).
  */
-export function eventAvailability(record, now = new Date()) {
+export function eventAvailability(record: SeoRecord, now: Date = new Date()) {
   const opens = record.registrationOpensAt ? new Date(record.registrationOpensAt) : null
   const closes = record.registrationClosesAt ? new Date(record.registrationClosesAt) : null
   const capacity = Number(record.capacity ?? 0)
@@ -115,7 +116,7 @@ export function eventAvailability(record, now = new Date()) {
   return 'https://schema.org/InStock'
 }
 
-export function event(origin, record, now = new Date()) {
+export function event(origin: string, record: SeoRecord, now: Date = new Date()) {
   const startsAt = record.startsAt ? new Date(record.startsAt) : null
   return {
     '@context': 'https://schema.org',
@@ -152,8 +153,10 @@ export function event(origin, record, now = new Date()) {
 }
 
 /** Every document for one record, in emission order. */
-export function documentsFor(origin, record, now = new Date()) {
-  const docs = [organization(origin)]
+export function documentsFor(origin: string, record: SeoRecord, now: Date = new Date()) {
+  // Heterogeneous by design: each @type is a different JSON-LD document, and
+  // inferring the array from the first push would pin it to Organization.
+  const docs: Record<string, unknown>[] = [organization(origin)]
   switch (record.recordType) {
     case 'partner':
     case 'outlet': {

@@ -1,5 +1,6 @@
 import { OG_TYPES, SITE_NAME, DEFAULT_LOCALE, TITLE_MAX, DESCRIPTION_MAX } from '@gwc/contracts/seo'
 import { postureFor } from './surfaces.ts'
+import type { SeoRecord, VariantRow } from './types.ts'
 
 /**
  * THE metadata resolver (FR-019).
@@ -13,10 +14,10 @@ import { postureFor } from './surfaces.ts'
  * hand-written tags, but one resolver plus one serializer, with per-route input.
  */
 
-const LOCALES = Object.freeze({ de: 'de_DE', en: 'en_GB' })
+const LOCALES: Readonly<Record<string, string>> = Object.freeze({ de: 'de_DE', en: 'en_GB' })
 
 /** Truncate at a word boundary, never mid-word. */
-export function truncate(text, max) {
+export function truncate(text: string, max: number): string {
   const s = String(text ?? '').replace(/\s+/g, ' ').trim()
   if (s.length <= max) return s
   const cut = s.slice(0, max - 1)
@@ -25,7 +26,7 @@ export function truncate(text, max) {
 }
 
 /** Append the site name once — never twice on a title that already carries it. */
-export function withSiteName(title) {
+export function withSiteName(title: string): string {
   const t = String(title ?? '').trim()
   if (!t) return SITE_NAME
   if (t === SITE_NAME || t.endsWith(`— ${SITE_NAME}`) || t.endsWith(`- ${SITE_NAME}`)) return t
@@ -33,17 +34,20 @@ export function withSiteName(title) {
 }
 
 /** Absolutize against the one canonical origin. A relative og:image breaks every preview bot. */
-export function absolute(origin, pathOrUrl) {
+export function absolute(origin: string, pathOrUrl: string | null | undefined): string | null {
   if (!pathOrUrl) return null
   return /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : new URL(pathOrUrl, origin).toString()
 }
 
 /** Public path for a record type. Slug-based, never a bare numeric id (FR-027). */
-export function pathFor(recordType, slug) {
-  const prefix = {
-    page: '', partner: '/partners', outlet: '/outlets',
-    event: '/events', article: '/magazine', committee: '/committees',
-  }[recordType] ?? ''
+export function pathFor(recordType: string, slug: string): string {
+  const prefix =
+    (
+      {
+        page: '', partner: '/partners', outlet: '/outlets',
+        event: '/events', article: '/magazine', committee: '/committees',
+      } as Record<string, string>
+    )[recordType] ?? ''
   return slug === 'home' || slug === '' ? '/' : `${prefix}/${slug}`
 }
 
@@ -51,7 +55,14 @@ export function pathFor(recordType, slug) {
  * @param {import('@gwc/contracts/seo').contentRecordSchema} record
  * @param {{ origin: string, surfaceAuth?: object, alternates?: Array<{language: string, slug: string, recordType: string}> }} context
  */
-export function buildPageMeta(record, context) {
+/** Everything buildPageMeta needs that is not on the record itself. */
+export type PageMetaContext = {
+  origin: string
+  alternates?: { language?: string; href?: string; recordType?: string; slug: string }[]
+  [key: string]: unknown
+}
+
+export function buildPageMeta(record: SeoRecord, context: PageMetaContext) {
   const { origin } = context
   if (!origin) throw new Error('buildPageMeta requires a canonical origin')
 
@@ -87,13 +98,13 @@ export function buildPageMeta(record, context) {
   // translations then compete as duplicates, suppressing both (§10.7).
   const alternates = []
   if ((context.alternates ?? []).length > 0) {
-    for (const alt of context.alternates) {
+    for (const alt of context.alternates ?? []) {
       alternates.push({
         hreflang: alt.language,
         href: absolute(origin, pathFor(alt.recordType ?? record.recordType, alt.slug)),
       })
     }
-    const german = context.alternates.find((a) => a.language === DEFAULT_LOCALE)
+    const german = (context.alternates ?? []).find((a) => a.language === DEFAULT_LOCALE)
     if (german) {
       alternates.push({
         hreflang: 'x-default',
@@ -141,13 +152,13 @@ export function buildPageMeta(record, context) {
  * choice — and never the stored original, which Principle VI forbids as a
  * rendering path (FR-060).
  */
-export function shareImageFromVariants(variants, alt) {
+export function shareImageFromVariants(variants: readonly VariantRow[], alt: string) {
   if (!variants?.length) return null
   const preferred =
-    variants.find((v) => v.variant === 'large' && v.format === 'webp') ??
-    variants.find((v) => v.variant === 'large') ??
-    variants.find((v) => v.variant === 'medium' && v.format === 'webp') ??
-    variants.find((v) => v.variant === 'medium')
+    variants.find((v: VariantRow) => v.variant === 'large' && v.format === 'webp') ??
+    variants.find((v: VariantRow) => v.variant === 'large') ??
+    variants.find((v: VariantRow) => v.variant === 'medium' && v.format === 'webp') ??
+    variants.find((v: VariantRow) => v.variant === 'medium')
   if (!preferred) return null
   return {
     url: `/media/${preferred.checksumHex}/${preferred.variant}.${preferred.format}`,
@@ -162,7 +173,7 @@ export function shareImageFromVariants(variants, alt) {
 }
 
 /** The extension a format is served under, mirroring modules/media/storage.js. */
-const EXTENSION = Object.freeze({ webp: 'webp', png: 'png', jpeg: 'jpg', webm: 'webm' })
+const EXTENSION: Readonly<Record<string, string>> = Object.freeze({ webp: 'webp', png: 'png', jpeg: 'jpg', webm: 'webm' })
 
 /**
  * Group an asset's variants into one `<source>` per format, widest last.
@@ -175,14 +186,14 @@ const EXTENSION = Object.freeze({ webp: 'webp', png: 'png', jpeg: 'jpg', webm: '
  * alternative sizes of the same still, and putting them in a srcset would offer
  * the browser a choice it cannot render.
  */
-export function sourcesFromVariants(variants = []) {
+export function sourcesFromVariants(variants: readonly VariantRow[] = []) {
   const IMAGE_VARIANTS = ['thumb', 'small', 'medium', 'large']
-  const byFormat = new Map()
+  const byFormat = new Map<string, VariantRow[]>()
 
   for (const v of variants) {
     if (!IMAGE_VARIANTS.includes(v.variant)) continue
     if (!byFormat.has(v.format)) byFormat.set(v.format, [])
-    byFormat.get(v.format).push(v)
+    byFormat.get(v.format)!.push(v)
   }
 
   const order = ['webp', 'png', 'jpeg']
@@ -193,8 +204,8 @@ export function sourcesFromVariants(variants = []) {
       type: format === 'jpeg' ? 'image/jpeg' : `image/${format}`,
       srcset: list
         .slice()
-        .sort((a, b) => a.width - b.width)
-        .map((v) => `/media/${v.checksumHex}/${v.variant}.${EXTENSION[v.format] ?? v.format} ${v.width}w`)
+        .sort((a: VariantRow, b: VariantRow) => a.width - b.width)
+        .map((v: VariantRow) => `/media/${v.checksumHex}/${v.variant}.${EXTENSION[v.format] ?? v.format} ${v.width}w`)
         .join(', '),
     }))
 }
