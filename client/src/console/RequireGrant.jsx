@@ -1,7 +1,7 @@
 import { useCapabilities } from '../lib/capabilities.jsx'
 import { hasGrant, hasAnyGrant, isAvailable } from '@gwc/contracts/capabilities'
-import { t } from '../i18n/de.js'
 import Callout from '../components/ui/Callout.jsx'
+import { useTranslations } from '../i18n/index.jsx'
 
 /**
  * A DISPLAY gate. Not an authorization gate.
@@ -16,6 +16,7 @@ import Callout from '../components/ui/Callout.jsx'
  * concluding the thing inside is safe.
  */
 export function RequireGrant({ module, flag, children, fallback = null }) {
+  const t = useTranslations()
   const { snapshot } = useCapabilities()
 
   const permitted = flag ? hasGrant(snapshot, module, flag) : hasAnyGrant(snapshot, module)

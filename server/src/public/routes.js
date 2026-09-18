@@ -77,23 +77,24 @@ const BODIES = {
   page: legalBody,
 }
 
-/** Read the feature-001 boot shell once, preferring a production build. */
-async function loadLandingShell(log) {
-  for (const candidate of [path.join(CLIENT_DIR, 'dist', 'index.html'), path.join(CLIENT_DIR, 'index.html')]) {
+/** Read one landing document once, preferring a production build. */
+async function loadLandingShell(log, file = 'index.html') {
+  for (const candidate of [path.join(CLIENT_DIR, 'dist', file), path.join(CLIENT_DIR, file)]) {
     try {
       return await readFile(candidate, 'utf8')
     } catch {
       // Try the next candidate; the absence of a build is normal in development.
     }
   }
-  log?.warn('no client shell found — the landing route will render the fallback page')
+  log?.warn({ file }, 'no client shell found — this landing route will render the fallback page')
   return null
 }
 
 export default fp(
   async function publicRoutes(app) {
     const origin = app.env.canonicalOrigin
-    const landingShell = await loadLandingShell(app.log)
+    const landingShell = await loadLandingShell(app.log, 'index.html')
+    const landingShellEn = await loadLandingShell(app.log, 'en.html')
 
     /**
      * Render one record, or throw a real 404.
@@ -144,26 +145,72 @@ export default fp(
     // for, so it is served as-is rather than re-rendered through a template.
     const LANDING_RECORD = Object.freeze({
       recordType: 'page', recordId: 'landing', slug: 'home',
-      title: 'German World Club',
-      description: 'Ein privates Netzwerk deutschsprachiger Expatriates in den Vereinigten Arabischen Emiraten.',
+      title: 'German World Club — Ein globales Vertrauensnetz',
+      description:
+        'Ein globales Netzwerk für deutschsprachige Menschen mit internationalem Leben: reale '
+        + 'Beziehungen, geprüfte Experten, Veranstaltungen, lokale Vorteile und globale Kontinuität.',
       language: 'de', indexable: true, published: true, sections: [],
     })
 
-    app.get('/', publicConfig, async (request, reply) => {
+    /**
+     * The English landing page.
+     *
+     * `slug: 'en'` rather than a new routing concept: `pathFor` already maps a
+     * `page` record to `/${slug}`, so this resolves to `/en` with no change to
+     * it — the same way `about-us` and `imprint` already work.
+     */
+    const LANDING_RECORD_EN = Object.freeze({
+      recordType: 'page', recordId: 'landing-en', slug: 'en',
+      title: 'German World Club — A Global Network of Trust',
+      description:
+        'A global network for German-speaking people with international lives: real relationships, '
+        + 'verified experts, events, local benefits and continuity across borders.',
+      language: 'en', indexable: true, published: true, sections: [],
+    })
+
+    /**
+     * The alternates for the pair.
+     *
+     * Written once and handed to both routes, so neither page can name the
+     * other without the other naming it back. A one-directional hreflang is
+     * ignored by search engines and leaves the two competing as duplicates —
+     * deriving the set from one place makes that inexpressible rather than
+     * merely discouraged.
+     */
+    const LANDING_ALTERNATES = Object.freeze([
+      { language: 'de', slug: 'home', recordType: 'page' },
+      { language: 'en', slug: 'en', recordType: 'page' },
+    ])
+
+    /**
+     * One handler shape for both languages.
+     *
+     * The URL decides the language — never `Accept-Language`. Two URLs that can
+     * serve the same body compete as duplicates, cache badly, and answer a
+     * crawler differently from a visitor.
+     */
+    const landingHandler = (shell, record) => async (request, reply) => {
       reply
         .type('text/html; charset=utf-8')
         .header('cache-control', PUBLIC_CACHE)
         .header('vary', VARY)
 
-      if (landingShell) return reply.send(landingShell)
+      if (shell) return reply.send(shell)
 
       // No client build present. Rather than serve nothing, render the same
       // content through the normal path — so even this fallback satisfies
       // FR-016 instead of shipping an empty shell.
-      const pageMeta = buildPageMeta(LANDING_RECORD, { origin, surfaceAuth: { audience: 'public' } })
-      pageMeta.jsonLd = documentsFor(origin, LANDING_RECORD, new Date())
-      return reply.send(renderPage({ pageMeta, body: legalBody(LANDING_RECORD), nonce: reply.cspNonce?.style }))
-    })
+      const pageMeta = buildPageMeta(record, {
+        origin,
+        surfaceAuth: { audience: 'public' },
+        alternates: LANDING_ALTERNATES,
+      })
+      pageMeta.jsonLd = documentsFor(origin, record, new Date())
+      return reply.send(renderPage({ pageMeta, body: legalBody(record), nonce: reply.cspNonce?.style }))
+    }
+
+    app.get('/', publicConfig, landingHandler(landingShell, LANDING_RECORD))
+    app.get('/en', publicConfig, landingHandler(landingShellEn, LANDING_RECORD_EN))
 
     // --- 2..6. Record-backed surfaces ---------------------------------------
     const slugParams = {

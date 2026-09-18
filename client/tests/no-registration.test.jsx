@@ -27,11 +27,13 @@ const SRC = join(process.cwd(), 'src')
 /**
  * The HTML entries are scanned too.
  *
- * index.html is the public landing page and the single most likely place for a
- * "Jetzt Mitglied werden" button to be added by someone who has not read
- * FR-002 — it is exactly what a marketing page normally ends with.
+ * The landing pages are the single most likely place for a "become a member"
+ * button to be added by someone who has not read FR-002 — it is exactly what a
+ * marketing page normally ends with. Both languages are scanned: an English
+ * page is no less tempting, and English sign-up vocabulary is the likelier
+ * slip of the two.
  */
-const ENTRY_HTML = ['index.html', 'konsole.html'].map((f) => join(process.cwd(), f))
+const ENTRY_HTML = ['index.html', 'en.html', 'konsole.html'].map((f) => join(process.cwd(), f))
 
 /** German and English, because a stray English label is the likelier slip. */
 const REGISTRATION_WORDS = [
@@ -126,10 +128,10 @@ describe('no source file references a registration route or screen', () => {
     }
   })
 
-  it('the landing page offers no sign-up affordance', () => {
-    const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8')
+  it.each([['index.html'], ['en.html']])('%s offers no account-creation affordance', (file) => {
+    const html = readFileSync(join(process.cwd(), file), 'utf8')
     for (const pattern of REGISTRATION_WORDS) {
-      expect(html, `index.html matches ${pattern}`).not.toMatch(pattern)
+      expect(html, `${file} matches ${pattern}`).not.toMatch(pattern)
     }
     // Counter-assertion: it DOES offer the sign-in, so this is not passing
     // because the page is empty or the scan is looking at the wrong file.

@@ -32,6 +32,8 @@ const ROUTE_CLASSES = [
   { name: 'article page', url: '/magazine/:slug', probe: '/magazine/anything', method: 'GET', audience: 'public' },
   { name: 'committee page', url: '/committees/:slug', probe: '/committees/anything', method: 'GET', audience: 'public' },
   { name: 'landing', url: '/', method: 'GET', audience: 'public' },
+  // The English half of the landing pair. Public and indexed, like its twin.
+  { name: 'landing (en)', url: '/en', method: 'GET', audience: 'public' },
   { name: 'robots.txt', url: '/robots.txt', method: 'GET', audience: 'public' },
   { name: 'sitemap.xml', url: '/sitemap.xml', method: 'GET', audience: 'public' },
   { name: 'liveness', url: '/health/live', method: 'GET', audience: 'public' },
@@ -42,6 +44,11 @@ const ROUTE_CLASSES = [
   { name: 'refresh', url: '/auth/refresh', method: 'POST', audience: 'public' },
   { name: 'reset request', url: '/auth/password-reset/request', method: 'POST', audience: 'public' },
   { name: 'reset confirm', url: '/auth/password-reset/confirm', method: 'POST', audience: 'public' },
+  // Public deliberately: the console needs a token after a page reload, before
+  // it knows whether it is signed in. The token is worthless without the secret
+  // cookie the same response sets, and a cross-site page can send that cookie
+  // but cannot read it — which is the whole point of a double submit.
+  { name: 'csrf token', url: '/auth/csrf', method: 'GET', audience: 'public' },
   { name: 'member profile', url: '/auth/me', method: 'GET', audience: 'member' },
   { name: 'member sign-out', url: '/auth/sign-out', method: 'POST', audience: 'member' },
   { name: 'staff profile', url: '/auth/staff/me', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
@@ -50,7 +57,8 @@ const ROUTE_CLASSES = [
   // The `anyStaff` exemption is affirmative and the posture gate refuses a
   // staff route that merely omits module and flag — see 11-rbac.js.
   { name: 'capability snapshot', url: '/auth/session', method: 'GET', audience: 'staff', anyStaff: true },
-  { name: 'staff sign-out', url: '/auth/staff/sign-out', method: 'POST', audience: 'staff', module: 'settings', flag: 'read' },
+  // anyStaff: ending your own session cannot depend on a module grant.
+  { name: 'staff sign-out', url: '/auth/staff/sign-out', method: 'POST', audience: 'staff', anyStaff: true },
   // Media delivery is public — a crawler must be able to fetch the images a
   // partner page references — while ingest and management are member-gated.
   { name: 'media variant', url: '/media/:checksum/:variant.:ext', probe: '/media/deadbeef/medium.webp', method: 'GET', audience: 'public' },
@@ -80,6 +88,16 @@ const ROUTE_CLASSES = [
   { name: 'docs document', url: '/admin/docs/json', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'docs document (yaml)', url: '/admin/docs/yaml', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
   { name: 'docs bundle', url: '/admin/docs/static/*', probe: '/admin/docs/static/swagger-ui.css', method: 'GET', audience: 'staff', module: 'settings', flag: 'read' },
+  // Organisation principals. Two audiences that are neither members nor staff:
+  // a merchant token is refused at a partner route at verification time, before
+  // any handler, which is why these are four routes rather than two with a
+  // branch inside. The `:id` pair carries the object guard — see
+  // tests/seed/audiences.test.js for the scoping half, which a route table
+  // cannot express.
+  { name: 'merchant organisation', url: '/merchant/organisation', method: 'GET', audience: 'merchant' },
+  { name: 'merchant organisation by id', url: '/merchant/organisations/:id', probe: `/merchant/organisations/${randomUUID()}`, method: 'GET', audience: 'merchant' },
+  { name: 'partner organisation', url: '/partner/organisation', method: 'GET', audience: 'partner' },
+  { name: 'partner organisation by id', url: '/partner/organisations/:id', probe: `/partner/organisations/${randomUUID()}`, method: 'GET', audience: 'partner' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
   // The console's SPA shell. Public because it IS public: an empty application
@@ -164,18 +182,25 @@ describe('the declared matrix', () => {
   /**
    * The exemption must stay rare and must stay deliberate.
    *
-   * There is exactly one route that genuinely has no module — the capability
-   * snapshot — and if that number starts growing, `anyStaff` has become the
-   * easy way past the gate rather than the narrow answer to one problem.
+   * Two routes genuinely have no module, and both are about the caller's own
+   * session rather than about any part of the system: reading what you may do,
+   * and stopping being signed in. Gating either on a module means a staff
+   * member can be locked out of their own session by a grant somebody else
+   * controls.
+   *
+   * This list is written out in full so growing it is a decision, not a drift.
+   * If a third route appears here, `anyStaff` has become the easy way past the
+   * gate rather than the narrow answer to two specific problems.
    */
-  it('uses the anyStaff exemption on exactly one route', () => {
+  it('uses the anyStaff exemption on exactly two routes, both about the caller\'s own session', () => {
     const exempt = app
       .routePostures()
       .filter((r) => r.auth.anyStaff === true)
       .flatMap((r) => [].concat(r.method).map((m) => `${m} ${r.url}`))
       .filter((k) => !k.startsWith('HEAD '))
+      .sort()
 
-    expect(exempt).toEqual(['GET /auth/session'])
+    expect(exempt).toEqual(['GET /auth/session', 'POST /auth/staff/sign-out'])
   })
 })
 

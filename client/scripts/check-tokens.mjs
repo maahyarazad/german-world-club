@@ -14,11 +14,12 @@
  * Two scopes, checked differently.
  *
  *   - The console source (SCANNED below) must use tokens and nothing else.
- *   - `index.html` is the public landing page. It carries its colours inline as
- *     CSS custom properties rather than as tokens, because it must render
- *     without a stylesheet or a bundle (Constitution "Public rendering"). That
- *     duplication is deliberate and would otherwise rot silently, so the second
- *     check below compares its `:root` block against theme.css value by value.
+ *   - `index.html` and `en.html` are the public landing pages. They carry their
+ *     colours inline as CSS custom properties rather than as tokens, because
+ *     they must render without a stylesheet or a bundle (Constitution "Public
+ *     rendering"). That duplication is deliberate and would otherwise rot
+ *     silently, so the second check below compares each `:root` block against
+ *     theme.css value by value.
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -68,13 +69,20 @@ function* walk(dir) {
  * drifted from the token, fails here — which is the only thing standing between
  * "one palette" and "two palettes that used to agree".
  */
+/** Every static page that carries the palette inline. */
+const INLINE_PALETTE_PAGES = ['index.html', 'en.html']
+
 function checkLandingPalette(root) {
+  return INLINE_PALETTE_PAGES.flatMap((page) => checkOnePagePalette(root, page))
+}
+
+function checkOnePagePalette(root, page) {
   const violations = []
   let html
   try {
-    html = readFileSync(join(root, 'index.html'), 'utf8')
+    html = readFileSync(join(root, page), 'utf8')
   } catch {
-    return violations // no landing page is not a palette violation
+    return violations // a page that does not exist yet is not a palette violation
   }
 
   const theme = readFileSync(join(root, 'src/styles/theme.css'), 'utf8')
@@ -85,7 +93,7 @@ function checkLandingPalette(root) {
 
   const rootBlock = html.match(/:root\s*\{([\s\S]*?)\}/)
   if (!rootBlock) {
-    violations.push({ file: 'index.html', line: 0, value: ':root', kind: 'no inline palette found' })
+    violations.push({ file: page, line: 0, value: ':root', kind: 'no inline palette found' })
     return violations
   }
 
@@ -94,14 +102,14 @@ function checkLandingPalette(root) {
     const expected = tokens.get(name)
     if (expected === undefined) {
       violations.push({
-        file: 'index.html',
+        file: page,
         line: 0,
         value: `--${name}`,
         kind: 'colour not defined in theme.css',
       })
     } else if (expected !== value.toLowerCase()) {
       violations.push({
-        file: 'index.html',
+        file: page,
         line: 0,
         value: `--${name}: ${value} (theme.css says ${expected})`,
         kind: 'drifted from token',

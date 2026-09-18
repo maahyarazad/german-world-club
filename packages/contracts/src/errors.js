@@ -24,6 +24,22 @@ export const PROBLEMS = {
   OTP_EXPIRED: { type: `${BASE}/otp-expired`, title: 'One-time code expired', status: 410 },
   OTP_ATTEMPTS_EXCEEDED: { type: `${BASE}/otp-attempts-exceeded`, title: 'Too many attempts', status: 429 },
   INVALID_REFRESH_TOKEN: { type: `${BASE}/invalid-refresh-token`, title: 'Invalid refresh token', status: 401 },
+  /**
+   * A password-reset link that is unknown, already consumed or expired.
+   *
+   * Distinct from INVALID_REFRESH_TOKEN, which it used to share. They are both
+   * "a single-use credential did not check out", but they mean opposite things
+   * to a client: an invalid refresh token means the session is over and
+   * sign-in is the remedy, while an invalid reset link means the link is stale
+   * and a NEW link is the remedy. A console branching on the shared type sent
+   * the user back to sign-in — the one place that cannot help someone who
+   * cannot remember their password.
+   *
+   * The three causes are deliberately one type. Distinguishing "expired" from
+   * "already used" from "never existed" would tell an attacker which reset
+   * tokens have existed.
+   */
+  INVALID_RESET_TOKEN: { type: `${BASE}/invalid-reset-token`, title: 'Invalid reset link', status: 401 },
   SESSION_REVOKED: { type: `${BASE}/session-revoked`, title: 'Session revoked', status: 401 },
   UNAUTHENTICATED: { type: `${BASE}/unauthenticated`, title: 'Authentication required', status: 401 },
 
@@ -36,6 +52,16 @@ export const PROBLEMS = {
 
   // --- Authorization --------------------------------------------------------
   INSUFFICIENT_PERMISSION: { type: `${BASE}/insufficient-permission`, title: 'Insufficient permission', status: 403 },
+  /**
+   * A cookie-borne state-changing request arrived without a usable CSRF token.
+   *
+   * Distinct from INSUFFICIENT_PERMISSION, which it used to be flattened into.
+   * They mean opposite things to a client: missing permission is final, while a
+   * missing or stale CSRF token is fixed by fetching a fresh one and retrying —
+   * and a client cannot tell them apart without branching on `detail`, which
+   * `contracts/http-conventions.md` forbids.
+   */
+  CSRF_TOKEN_INVALID: { type: `${BASE}/csrf-token-invalid`, title: 'CSRF token missing or invalid', status: 403 },
   CANNOT_MANAGE_ADMIN: { type: `${BASE}/cannot-manage-admin`, title: 'Cannot manage an administrator', status: 403 },
   PERMISSION_REQUIRED: { type: `${BASE}/permission-required`, title: 'Permission required', status: 403 },
 

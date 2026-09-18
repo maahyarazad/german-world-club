@@ -34,16 +34,40 @@ export default fp(
     app.decorateRequest('deadlineSignal', null)
     app.decorateRequest('deadlineMs', null)
     app.decorateRequest('routeClass', null)
+    /**
+     * Aborted when the client genuinely goes away.
+     *
+     * NOT `request.signal`, which was the original composition here and was
+     * wrong in a way no test could see. Fastify's `request.signal` is tied to
+     * the raw request stream, and for any request with a body that stream ends
+     * — and fires `close` — as soon as the body has been parsed, which is
+     * *before* the handler runs. Composing it into the deadline meant every
+     * POST with a JSON body aborted its own deadline instantly and answered
+     * 503: sign-in, password reset, every write in the API.
+     *
+     * It never showed up because `app.inject` does not emit that `close`, so
+     * the entire suite passed against a server that could not log anyone in
+     * over real HTTP. tests/ops/deadline-over-http.test.js now drives a real
+     * socket for exactly this reason.
+     *
+     * Fastify's `onRequestAbort` hook fires only for a genuine client abort, so
+     * that is what feeds this controller.
+     */
+    app.decorateRequest('clientGone', null)
 
     app.addHook('onRequest', async (request) => {
       const routeClass = request.routeOptions?.config?.budget ?? DEFAULT_ROUTE_CLASS
       const budget = ROUTE_BUDGETS[routeClass] ?? ROUTE_BUDGETS[DEFAULT_ROUTE_CLASS]
 
       const timeout = AbortSignal.timeout(budget.deadlineMs)
+      const clientGone = new AbortController()
+
       request.routeClass = routeClass
       request.deadlineMs = budget.deadlineMs
-      // request.signal aborts on client disconnect; timeout aborts on budget.
-      request.deadlineSignal = AbortSignal.any([timeout, request.signal])
+      request.clientGone = clientGone
+      // Two ways to stop work: the budget expired, or the client hung up.
+      // Normal completion of the request body is neither.
+      request.deadlineSignal = AbortSignal.any([timeout, clientGone.signal])
 
       request.deadlineSignal.addEventListener(
         'abort',
@@ -130,7 +154,14 @@ export default fp(
       app.metrics?.requestTimeout?.(request.routeClass)
     })
 
+    /**
+     * The one place a client disconnect becomes an abort.
+     *
+     * Fastify fires this only when the client actually went away, which is the
+     * distinction `request.signal` does not draw.
+     */
     app.addHook('onRequestAbort', async (request) => {
+      request.clientGone?.abort()
       request.log.info({ routeClass: request.routeClass }, 'client aborted; in-flight work cancelled')
     })
   },

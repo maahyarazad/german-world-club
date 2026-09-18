@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router'
 import { hasAnyGrant, isAvailable } from '@gwc/contracts/capabilities'
 import { useCapabilities } from '../lib/capabilities.jsx'
-import { t } from '../i18n/de.js'
+import { useTranslations } from '../i18n/index.jsx'
 
 /**
  * The dark sidebar from every portal mockup.
@@ -16,6 +16,7 @@ import { t } from '../i18n/de.js'
  * either working or visibly marked unavailable, never silently missing.
  */
 export function Sidebar({ items, title }) {
+  const t = useTranslations()
   const { snapshot } = useCapabilities()
 
   const visible = items.filter((item) => !item.module || hasAnyGrant(snapshot, item.module))

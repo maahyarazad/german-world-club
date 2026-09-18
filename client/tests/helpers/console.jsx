@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { CapabilityProvider } from '../../src/lib/capabilities.jsx'
+import { LocaleProvider } from '../../src/i18n/index.jsx'
 import { FLAGS, MODULES } from '@gwc/contracts/permissions'
 
 /**
@@ -59,6 +60,16 @@ export function mockCapabilityFetch(snapshot, { extraRoutes = {} } = {}) {
   const fetchMock = vi.fn(async (url, options = {}) => {
     const path = String(url)
 
+    // Every unsafe request fetches one of these first, so a helper that did not
+    // serve it would make each test exercise the CSRF failure path instead of
+    // whatever it meant to test.
+    if (path === '/auth/csrf') {
+      return new Response(JSON.stringify({ csrfToken: 'test-csrf-token' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
     for (const [route, handler] of Object.entries(extraRoutes)) {
       if (path === route || path.startsWith(`${route}?`)) {
         const result = await handler(options)
@@ -100,11 +111,19 @@ export function mockCapabilityFetch(snapshot, { extraRoutes = {} } = {}) {
   return fetchMock
 }
 
-/** Render inside the provider and a router, at `route`. */
-export function renderConsole(ui, { route = '/konsole/admin' } = {}) {
+/**
+ * Render inside the providers and a router, at `route`.
+ *
+ * `locale` defaults to German so every suite written before the language switch
+ * keeps asserting what it always did. A suite that cares about English passes
+ * it explicitly, which also makes the intent visible at the call site.
+ */
+export function renderConsole(ui, { route = '/konsole/admin', locale = 'de' } = {}) {
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <CapabilityProvider>{ui}</CapabilityProvider>
+      <LocaleProvider initialLocale={locale}>
+        <CapabilityProvider>{ui}</CapabilityProvider>
+      </LocaleProvider>
     </MemoryRouter>,
   )
 }

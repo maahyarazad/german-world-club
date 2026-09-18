@@ -132,3 +132,35 @@ export async function guardSeoEdit(app, request, snapshot, recordType, flag = 'e
     }
   }
 }
+
+/**
+ * FR-012: an organisation principal reaches its own organisation and nothing
+ * else.
+ *
+ * This is the clearest case for Layer 2 there is. `{ audience: 'merchant' }`
+ * says "a merchant may use this route"; it cannot say "on their own row", and
+ * a reviewer reading the route declaration sees a guarded route either way.
+ * The scope is a property of the *target*, so it is checked against the loaded
+ * row inside the transaction.
+ *
+ * It answers **404, not 403** (SC-009). A 403 on another organisation's id and
+ * a 404 on an unused one together confirm which ids exist, turning the route
+ * into a directory of the club's commercial partners for anyone holding one
+ * merchant login. The two answers are deliberately identical, byte for byte —
+ * `tests/seed/audiences.test.js` compares the whole body rather than the status
+ * alone, because a `detail` that differs leaks exactly what the status hid.
+ */
+export async function guardOrganisationScope(app, request, target) {
+  const principal = request.principal
+  if (target && principal?.organisationId === target.id) return
+
+  // Audited whether or not the row exists: "someone probed for an organisation
+  // that is not theirs" is the interesting event, and it is the same event in
+  // both cases.
+  await app.auditDenial(request, {
+    requiredPermission: 'organisation-scope',
+    targetType: 'organisation',
+    targetId: target?.id ?? request.params?.id ?? null,
+  })
+  throw forbidden(PROBLEMS.NOT_FOUND, 'No such organisation.')
+}

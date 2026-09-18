@@ -22,12 +22,30 @@ npm run -w server seed:dev
 
 ```bash
 npm run -w server dev      # API on :3000
-npm run -w client dev      # Vite dev server, proxying /auth, /admin, /media to :3000
+npm run -w client dev      # Vite on :5173, proxying /auth, /admin, /media, /push, /health to :3000
 ```
 
-The console is at `/konsole`. Production serves the built client through the server's static root,
-plus the `/konsole/*` SPA fallback of research R9 — without that fallback every deep link and every
-refresh 404s, because `@fastify/static` is registered `wildcard: false`.
+Open the Vite origin, not `:3000` — the landing page links to `/konsole/anmelden` and the dev
+server serves the console there.
+
+**Both origins do the same two jobs, by different means**, and the console is unreachable without
+each:
+
+| | Production (`:3000`) | Development (Vite) |
+|---|---|---|
+| `/konsole/*` serves the console shell | `server/src/app.js` SPA fallback (research R9) | `consoleFallback()` in `client/dev-server.js` |
+| API on the same origin as the page | it *is* the API | `apiProxy()` in `client/dev-server.js` |
+
+The production fallback is needed because `@fastify/static` is registered `wildcard: false`, so
+every deep link and refresh would otherwise 404. The Vite one is needed for the opposite reason:
+Vite's default `appType: 'spa'` answers *every* unmatched path with `/index.html`, so `/konsole/…`
+silently served the landing page and `/auth/…` served HTML to a JSON client. Same-origin matters
+because the session is a cookie — point the console at `:3000` directly and the cookie is set for
+an origin the page is not on, so it never comes back.
+
+`client/tests/dev-server.test.js` boots a real Vite server and follows the landing page's own
+links, because the failure mode here was middleware ordering and nothing short of a real server
+catches that.
 
 ## Seed accounts
 

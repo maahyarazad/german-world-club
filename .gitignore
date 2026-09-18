@@ -38,3 +38,7 @@ server/var/
 
 # Speckit implementation worktrees
 .claude/worktrees/
+expo-client/
+# Demo-seed credentials. Publishing them on a terminal is the point of the
+# seed; committing them is not.
+server/.seed-credentials.md

@@ -11,6 +11,8 @@ import Callout from '../../src/components/ui/Callout.jsx'
 import Button from '../../src/components/ui/Button.jsx'
 import DataTable from '../../src/components/ui/DataTable.jsx'
 import PageHeader from '../../src/components/ui/PageHeader.jsx'
+import LanguageSwitch from '../../src/components/ui/LanguageSwitch.jsx'
+import { LocaleProvider } from '../../src/i18n/index.jsx'
 
 /**
  * SC-006 — zero accessibility violations, on light surfaces and dark chrome.
@@ -105,6 +107,33 @@ describe('every console component is structurally accessible', () => {
   it('PageHeader', async () => {
     const { container } = render(
       <PageHeader title="Admin Panel" subtitle="Zentrale Qualitätskontrolle" />,
+    )
+    await expectNoA11yViolations(container)
+  })
+
+  /**
+   * The language control, in both states and on both backgrounds.
+   *
+   * Checked in each locale rather than only the default: a control that was
+   * accessible in German and broken in English would pass a single-locale suite
+   * and fail exactly the people it exists for.
+   */
+  it.each([['de'], ['en']])('LanguageSwitch in %s', async (locale) => {
+    const { container } = render(
+      <LocaleProvider initialLocale={locale}>
+        <LanguageSwitch />
+      </LocaleProvider>,
+    )
+    await expectNoA11yViolations(container)
+  })
+
+  it.each([['de'], ['en']])('LanguageSwitch on dark chrome in %s', async (locale) => {
+    const { container } = render(
+      <LocaleProvider initialLocale={locale}>
+        <div className="bg-ink p-4">
+          <LanguageSwitch onDark />
+        </div>
+      </LocaleProvider>,
     )
     await expectNoA11yViolations(container)
   })

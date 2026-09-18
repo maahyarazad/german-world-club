@@ -1,5 +1,5 @@
 import ConsoleShell from '../ConsoleShell.jsx'
-import { t } from '../../i18n/de.js'
+import { useTranslations } from '../../i18n/index.jsx'
 
 /**
  * The Admin Panel's sidebar, in the order of the page-10 mockup.
@@ -25,6 +25,7 @@ export const ADMIN_ITEMS = [
 ]
 
 export function AdminLayout() {
+  const t = useTranslations()
   return <ConsoleShell title={t.portals.staff} items={ADMIN_ITEMS} signOutPath="/auth/staff/sign-out" />
 }
 

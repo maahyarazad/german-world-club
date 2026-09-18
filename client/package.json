@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:tokens": "node scripts/check-tokens.mjs",
+    "test:i18n": "node scripts/check-i18n.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

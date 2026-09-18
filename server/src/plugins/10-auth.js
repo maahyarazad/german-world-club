@@ -19,7 +19,15 @@ import { makeRequirePermission, forbidden } from '../authz/require-permission.js
  */
 
 /** The token audience each route audience expects. */
-const TOKEN_AUDIENCE = Object.freeze({ member: 'member', staff: 'admin' })
+const TOKEN_AUDIENCE = Object.freeze({
+  member: 'member',
+  staff: 'admin',
+  // Organisation principals ride the same session machinery — one map entry
+  // each, rather than a parallel auth system that would duplicate session
+  // uniqueness, the denylist and the revocation window.
+  merchant: 'merchant',
+  partner: 'partner',
+})
 
 /** §3.2's state machine, with the remedy each refusal carries. */
 const STATUS_REFUSAL = Object.freeze({
@@ -132,8 +140,62 @@ export default fp(
 
       if (claims.aud === 'member') {
         await applyMemberGates(request, auth)
+      } else if (claims.aud === 'merchant' || claims.aud === 'partner') {
+        await applyOrganisationGates(request)
       }
     })
+
+    /**
+     * The organisation equivalent of the member state gates.
+     *
+     * It exists for the same reason: an access token outlives the state it was
+     * issued against. A principal suspended, or an organisation whose contract
+     * ended, five minutes after signing in still holds a valid token for
+     * another ten, and sign-in checks alone would honour it.
+     *
+     * It also attaches `organisationId`, which every organisation-scoped query
+     * filters on. Reading it here — from the database, per request — rather
+     * than from the token is the same rule the rest of the server follows:
+     * authorization is never read from the token.
+     */
+    async function applyOrganisationGates(request) {
+      const { rows } = await query(
+        app.pg,
+        `SELECT ou.id, ou.status, ou.role, ou.display_name,
+                o.id AS organisation_id, o.kind, o.status AS organisation_status
+           FROM organisation_users ou
+           JOIN organisations o ON o.id = ou.organisation_id
+          WHERE ou.id = $1`,
+        [request.principal.id],
+        { signal: request.deadlineSignal },
+      )
+      const row = rows[0]
+      if (!row) throw forbidden(PROBLEMS.SESSION_REVOKED, 'This account no longer exists.')
+
+      const refusal = STATUS_REFUSAL[row.status]
+      if (refusal) throw forbidden(refusal.problem, refusal.detail)
+
+      // A suspended or ended organisation takes its people with it. The
+      // alternative — leaving them signed in against a dead contract — is the
+      // state §5 says must not exist.
+      if (row.organisation_status !== 'active') {
+        throw forbidden(
+          PROBLEMS.ACCOUNT_INACTIVE,
+          'This organisation is not active. Please contact your GWC contact.',
+        )
+      }
+
+      // The token's audience and the organisation's kind are two independent
+      // facts, and a mismatch means one of them is wrong. Refusing beats
+      // guessing which.
+      if (row.kind !== request.principal.kind) {
+        throw forbidden(PROBLEMS.INSUFFICIENT_PERMISSION, 'This credential is not valid for this interface.')
+      }
+
+      request.principal.organisationId = row.organisation_id
+      request.principal.role = row.role
+      request.permissions = { kind: row.kind, role: row.role, displayName: row.display_name }
+    }
 
     /** FR-010, FR-011, FR-012 — state gates, not permissions. */
     async function applyMemberGates(request, auth) {

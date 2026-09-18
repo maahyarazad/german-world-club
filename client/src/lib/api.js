@@ -1,3 +1,4 @@
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { describeProblem, isRetryable, requiresReauthentication, invalidatesCapabilities } from './problems.js'
 
 /**
@@ -52,6 +53,47 @@ function readRetryAfter(response) {
 
 const PROBLEM_TYPE = 'application/problem+json'
 
+/**
+ * The CSRF token, cached for the life of the page.
+ *
+ * The browser face authenticates by cookie, so every state-changing request
+ * needs a double-submit token: the server holds a secret in a cookie the page
+ * cannot read, and the page echoes the matching token in `x-csrf-token`. An
+ * attacker's page can cause the cookie to be sent but cannot read it, which is
+ * what makes the pair meaningful.
+ *
+ * Held in memory rather than storage: it is per-page-load by design, and a
+ * token in localStorage on a shared staff workstation outlives the session it
+ * belongs to.
+ */
+let csrfToken = null
+let csrfInFlight = null
+
+async function fetchCsrfToken() {
+  // Coalesced: several writes firing at once must not mint several secrets,
+  // because each call replaces the cookie and would invalidate the others.
+  csrfInFlight ??= fetch('/auth/csrf', { credentials: 'include', cache: 'no-store' })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((body) => {
+      csrfToken = body?.csrfToken ?? null
+      return csrfToken
+    })
+    // Never throws. A failure here must not become an opaque error thrown from
+    // whatever write happened to be first: the request proceeds without a
+    // token and is refused as CSRF_TOKEN_INVALID, which the caller already
+    // knows how to render.
+    .catch(() => null)
+    .finally(() => { csrfInFlight = null })
+  return csrfInFlight
+}
+
+/** Forget the cached token. Used after the server rejects it. */
+export function clearCsrfToken() {
+  csrfToken = null
+}
+
+const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
 async function readProblem(response) {
   const contentType = response.headers.get('content-type') ?? ''
   if (contentType.includes(PROBLEM_TYPE) || contentType.includes('application/json')) {
@@ -76,18 +118,47 @@ async function readProblem(response) {
  * routes too; this is the client half of the same rule.
  */
 export async function request(path, { method = 'GET', body, signal, headers = {} } = {}) {
-  const response = await fetch(path, {
-    method,
-    credentials: 'include',
-    cache: 'no-store',
-    signal,
-    headers: {
-      accept: `${PROBLEM_TYPE}, application/json`,
-      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      ...headers,
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  })
+  const unsafe = UNSAFE.has(method)
+
+  const send = async () => {
+    const token = unsafe ? (csrfToken ?? (await fetchCsrfToken())) : null
+
+    return fetch(path, {
+      method,
+      credentials: 'include',
+      cache: 'no-store',
+      signal,
+      headers: {
+        accept: `${PROBLEM_TYPE}, application/json`,
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(token ? { 'x-csrf-token': token } : {}),
+        ...headers,
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    })
+  }
+
+  let response = await send()
+
+  /**
+   * One retry, and only for a stale CSRF token.
+   *
+   * The secret is rotated whenever a new one is minted, so a token cached from
+   * before a sign-in — or from another tab that fetched one — is refused. That
+   * is a mechanical staleness the user cannot act on and should never see, so
+   * it is fixed here rather than surfaced.
+   *
+   * Exactly once: a second failure means something real is wrong, and retrying
+   * a write in a loop is how a double submit becomes a double booking.
+   */
+  if (response.status === 403 && unsafe) {
+    const problem = await readProblem(response.clone())
+    if (problem?.type === PROBLEMS.CSRF_TOKEN_INVALID.type) {
+      clearCsrfToken()
+      await fetchCsrfToken()
+      response = await send()
+    }
+  }
 
   if (!response.ok) throw new ApiError(await readProblem(response), response)
 

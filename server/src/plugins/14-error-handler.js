@@ -24,6 +24,12 @@ function problemFor(error) {
   if (error.statusCode === 404) return PROBLEMS.NOT_FOUND
   if (error.statusCode === 429) return PROBLEMS.RATE_LIMITED
   if (error.statusCode === 401) return PROBLEMS.UNAUTHENTICATED
+  // @fastify/csrf-protection throws a bare 403. Left as INSUFFICIENT_PERMISSION
+  // it was indistinguishable from "you lack the grant", so a browser client had
+  // no way to know that fetching a fresh token and retrying would work.
+  if (error.code === 'FST_CSRF_MISSING_SECRET' || error.code === 'FST_CSRF_INVALID_TOKEN') {
+    return PROBLEMS.CSRF_TOKEN_INVALID
+  }
   if (error.statusCode === 403) return PROBLEMS.INSUFFICIENT_PERMISSION
   if (error.statusCode === 413) return PROBLEMS.MEDIA_TOO_LARGE
   if (error.statusCode === 503) return PROBLEMS.SERVICE_UNAVAILABLE

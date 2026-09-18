@@ -176,6 +176,30 @@ describe('share metadata is complete and honest', () => {
   })
 })
 
+describe('the language control', () => {
+  it('is a real link, not a script-driven toggle', () => {
+    // This page runs no JavaScript. A toggle would simply not work.
+    const link = page.querySelector('nav.lang a')
+    expect(link).not.toBeNull()
+    expect(link.getAttribute('href')).toBe('/en')
+  })
+
+  it('marks the current language with aria-current, not colour alone', () => {
+    const current = page.querySelector('nav.lang [aria-current="true"]')
+    expect(current.textContent.trim()).toBe('Deutsch')
+  })
+
+  it('names both languages, each in its own language', () => {
+    const nav = page.querySelector('nav.lang').textContent
+    expect(nav).toContain('Deutsch')
+    expect(nav).toContain('English')
+  })
+
+  it('gives the control an accessible name', () => {
+    expect(page.querySelector('nav.lang').getAttribute('aria-label')).toBeTruthy()
+  })
+})
+
 describe('accessibility', () => {
   it('has zero WCAG 2.1 A/AA violations', async () => {
     // NOTE: jsdom has no layout engine, so axe reports `color-contrast` as

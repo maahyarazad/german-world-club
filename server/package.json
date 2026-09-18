@@ -13,12 +13,14 @@
     "lint": "eslint .",
     "migrate": "node --env-file-if-exists=.env src/db/migrate.js up",
     "migrate:down": "node --env-file-if-exists=.env src/db/migrate.js down",
+    "seed:demo": "node --env-file-if-exists=.env src/scripts/seed-demo.js",
     "seed:dev": "node --env-file-if-exists=.env src/scripts/seed-dev.js",
     "keys:generate": "node --env-file-if-exists=.env src/scripts/keys-generate.js",
     "token:mint": "node --env-file-if-exists=.env src/scripts/token-mint.js",
     "verify:seo": "node --env-file-if-exists=.env src/scripts/verify-seo.js"
   },
   "dependencies": {
+    "@faker-js/faker": "10.6.0",
     "@fastify/compress": "^9.2.0",
     "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",

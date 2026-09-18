@@ -48,6 +48,40 @@ describe('the inclusion predicate', () => {
   })
 })
 
+/**
+ * The landing pair belongs in the sitemap.
+ *
+ * Note what this fixes: `/` was **absent from the sitemap entirely** before
+ * feature 004. The landing page had no `seo_metadata` row — the route used a
+ * hard-coded fallback record — so `buildSitemap` had nothing to list. Seeding
+ * the pair to get `/en` in fixes the German page as a side effect.
+ */
+describe('the landing pair appears in the sitemap', () => {
+  const landing = [
+    { recordType: 'page', recordId: 'l-de', slug: 'home', language: 'de', indexable: true, published: true, updatedAt: '2026-09-17T00:00:00.000Z' },
+    { recordType: 'page', recordId: 'l-en', slug: 'en', language: 'en', indexable: true, published: true, updatedAt: '2026-09-17T00:00:00.000Z' },
+  ]
+
+  it('lists both URLs', () => {
+    const { xml } = renderSitemap(ORIGIN, landing, { now: NOW })
+    expect(xml).toContain(`<loc>${ORIGIN}/</loc>`)
+    expect(xml).toContain(`<loc>${ORIGIN}/en</loc>`)
+  })
+
+  it('lists them as two entries, not one', () => {
+    // Counter-assertion: a sitemap that collapsed the pair would be telling a
+    // crawler there is one page, which is what hreflang exists to deny.
+    const { xml } = renderSitemap(ORIGIN, landing, { now: NOW })
+    expect(xml.match(/<url>/g)).toHaveLength(2)
+  })
+
+  it('still omits an unpublished landing translation', () => {
+    const { xml } = renderSitemap(ORIGIN, [landing[0], { ...landing[1], published: false }], { now: NOW })
+    expect(xml).toContain(`<loc>${ORIGIN}/</loc>`)
+    expect(xml).not.toContain(`<loc>${ORIGIN}/en</loc>`)
+  })
+})
+
 describe('the generated document', () => {
   it('is well-formed sitemap XML', () => {
     const { xml } = renderSitemap(ORIGIN, RECORDS, { now: NOW })

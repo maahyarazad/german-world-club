@@ -38,6 +38,7 @@ import jobs from './ops/jobs.js'
 import robots from './seo/robots.js'
 import sitemap from './seo/sitemap.js'
 import seoStaffRoutes from './seo/staff-routes.js'
+import organisationRoutes from './organisations/routes.js'
 import authRoutes from './auth/routes.js'
 import mediaRoutes from './media/routes.js'
 import mediaWorker from './media/worker.js'
@@ -366,6 +367,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
   await app.register(mediaWorker)
   await app.register(pushRoutes)
   await app.register(seoStaffRoutes)
+  await app.register(organisationRoutes)
   await app.register(publicRoutes)
 
   // The budget gate. Runs after every route is registered, alongside the

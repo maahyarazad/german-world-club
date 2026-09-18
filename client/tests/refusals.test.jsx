@@ -164,3 +164,218 @@ describe('the api layer parses refusals rather than throwing on them', () => {
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include', cache: 'no-store' })
   })
 })
+
+/**
+ * CSRF, the double-submit half of the cookie face.
+ *
+ * The server holds a secret in a cookie the page cannot read and expects the
+ * matching token in `x-csrf-token`. Nothing minted one before `GET /auth/csrf`
+ * existed, so every cookie-borne write was refused with "Missing csrf secret" —
+ * the check working correctly against a client that had no way to satisfy it.
+ */
+describe('state-changing requests carry a CSRF token', () => {
+  const stub = () => {
+    const calls = { csrf: 0, writes: [] }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, options = {}) => {
+        if (String(url) === '/auth/csrf') {
+          calls.csrf += 1
+          return new Response(JSON.stringify({ csrfToken: `token-${calls.csrf}` }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        calls.writes.push({ url: String(url), options })
+        return new Response(null, { status: 204 })
+      }),
+    )
+    return calls
+  }
+
+  it('fetches a token and sends it on a POST', async () => {
+    const calls = stub()
+    const { post, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    await post('/auth/staff/sign-out')
+
+    expect(calls.csrf).toBe(1)
+    expect(calls.writes[0].options.headers['x-csrf-token']).toBe('token-1')
+  })
+
+  it('does NOT fetch or send one on a GET', async () => {
+    // Counter-assertion: a safe method needs no token, and requiring one would
+    // add a round trip to every read for no security.
+    const calls = stub()
+    const { get, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    await get('/auth/session')
+
+    expect(calls.csrf).toBe(0)
+    expect(calls.writes[0].options.headers['x-csrf-token']).toBeUndefined()
+  })
+
+  it('reuses one token across several writes', async () => {
+    // Each mint replaces the secret cookie, so minting per request would
+    // invalidate the request before it arrived.
+    const calls = stub()
+    const { post, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    await Promise.all([post('/push/campaigns', {}), post('/push/campaigns', {}), post('/push/campaigns', {})])
+
+    expect(calls.csrf).toBe(1)
+    expect(calls.writes).toHaveLength(3)
+  })
+
+  it('refreshes a stale token once and retries, without surfacing it', async () => {
+    let served = 0
+    let csrfCalls = 0
+    const attempts = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url, options = {}) => {
+        if (String(url) === '/auth/csrf') {
+          csrfCalls += 1
+          return new Response(JSON.stringify({ csrfToken: `token-${csrfCalls}` }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        attempts.push(options.headers['x-csrf-token'])
+        served += 1
+        // The first attempt is rejected as stale; the retry succeeds.
+        if (served === 1) {
+          return new Response(JSON.stringify(PROBLEMS.CSRF_TOKEN_INVALID), {
+            status: 403,
+            headers: { 'content-type': 'application/problem+json' },
+          })
+        }
+        return new Response(null, { status: 204 })
+      }),
+    )
+
+    const { post, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    // Resolves rather than throwing: the staleness is mechanical and the user
+    // can do nothing about it, so it is fixed rather than reported.
+    await expect(post('/auth/staff/sign-out')).resolves.toBeNull()
+    expect(attempts).toEqual(['token-1', 'token-2'])
+  })
+
+  it('gives up after ONE retry rather than looping', async () => {
+    // Counter-assertion: retrying a write forever is how a double submit
+    // becomes a double booking.
+    let writes = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        if (String(url) === '/auth/csrf') {
+          return new Response(JSON.stringify({ csrfToken: 'token' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        writes += 1
+        return new Response(JSON.stringify(PROBLEMS.CSRF_TOKEN_INVALID), {
+          status: 403,
+          headers: { 'content-type': 'application/problem+json' },
+        })
+      }),
+    )
+
+    const { post, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    await expect(post('/auth/staff/sign-out')).rejects.toMatchObject({ name: 'ApiError', status: 403 })
+    expect(writes).toBe(2)
+  })
+
+  it('does not retry a permission refusal — that is not a CSRF problem', async () => {
+    // The two used to share INSUFFICIENT_PERMISSION, which is exactly why
+    // CSRF_TOKEN_INVALID exists as a type of its own: a client cannot tell them
+    // apart without branching on `detail`, and retrying a real refusal is noise.
+    let writes = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => {
+        if (String(url) === '/auth/csrf') {
+          return new Response(JSON.stringify({ csrfToken: 'token' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        writes += 1
+        return new Response(JSON.stringify(PROBLEMS.INSUFFICIENT_PERMISSION), {
+          status: 403,
+          headers: { 'content-type': 'application/problem+json' },
+        })
+      }),
+    )
+
+    const { post, clearCsrfToken } = await import('../src/lib/api.js')
+    clearCsrfToken()
+
+    await expect(post('/admin/anything', {})).rejects.toMatchObject({ status: 403 })
+    expect(writes).toBe(1)
+  })
+})
+
+/**
+ * Refusals in both languages, from the same problem `type`.
+ *
+ * This is the clearest payoff of the "clients branch on `type`, never on
+ * `detail`" rule: the server sends English `detail` strings the console never
+ * renders, so a second language costs a second copy table and **no server
+ * change at all** (FR-019, and SC-010 proves the server side of it).
+ */
+describe('a problem renders in the selected language', () => {
+  it.each([
+    [PROBLEMS.ACCOUNT_LOCKED],
+    [PROBLEMS.INSUFFICIENT_PERMISSION],
+    [PROBLEMS.QUOTA_EXCEEDED],
+    [PROBLEMS.INVALID_RESET_TOKEN],
+    [PROBLEMS.RATE_LIMITED],
+  ])('translates %#', (problem) => {
+    const de = describeProblem(problem, 'de')
+    const en = describeProblem(problem, 'en')
+
+    expect(de.title).toBeTruthy()
+    expect(en.title).toBeTruthy()
+    // Counter-assertion: an `en` catalogue copied from `de` would give the same
+    // string and satisfy every "is truthy" check above.
+    expect(en.title, `${problem.type} was not translated`).not.toBe(de.title)
+  })
+
+  it('keeps the RETRY policy identical across languages', () => {
+    // What the console DOES about a refusal must not depend on which language
+    // it happens to be showing.
+    for (const problem of [PROBLEMS.QUOTA_EXCEEDED, PROBLEMS.RATE_LIMITED, PROBLEMS.SESSION_REVOKED]) {
+      expect(describeProblem(problem, 'en').retry).toBe(describeProblem(problem, 'de').retry)
+    }
+    expect(isRetryable(PROBLEMS.QUOTA_EXCEEDED)).toBe(false)
+    expect(isRetryable(PROBLEMS.RATE_LIMITED)).toBe(true)
+  })
+
+  it('does not suggest waiting for a quota, in either language', () => {
+    // The copy must not contradict the retry policy in either language.
+    expect(describeProblem(PROBLEMS.QUOTA_EXCEEDED, 'de').body).not.toMatch(/warten|später/i)
+    expect(describeProblem(PROBLEMS.QUOTA_EXCEEDED, 'en').body).not.toMatch(/\bwait\b|\blater\b/i)
+  })
+
+  it('falls back to German for a locale it does not have', () => {
+    expect(describeProblem(PROBLEMS.ACCOUNT_LOCKED, 'fr')).toEqual(
+      describeProblem(PROBLEMS.ACCOUNT_LOCKED, 'de'),
+    )
+  })
+
+  it('uses the server title for an unknown type, in both', () => {
+    const unknown = { type: 'https://example.test/problems/new', title: 'Brand new', status: 409 }
+    // The fallback IS the server's string, so it is the same in every language.
+    expect(describeProblem(unknown, 'de').title).toBe('Brand new')
+    expect(describeProblem(unknown, 'en').title).toBe('Brand new')
+  })
+})

@@ -10,6 +10,7 @@ import {
   OTP_TTL_SECONDS, OTP_RESEND_COOLDOWN_SECONDS, PASSWORD_RESET_TTL_SECONDS,
 } from '@gwc/contracts/auth'
 import { sessionResponseSchema } from '@gwc/contracts/capabilities'
+import { csrfTokenResponseSchema } from '@gwc/contracts/auth'
 import { FLAGS, MODULES } from '@gwc/contracts/permissions'
 import { z } from 'zod'
 
@@ -159,11 +160,74 @@ export default fp(
         { signal },
       )
       if (admins.length > 0) return { kind: 'admin', row: admins[0] }
+
+      /**
+       * Organisation principals — club merchants and corporate club partners.
+       *
+       * Looked up last because they are the smallest population, and resolved
+       * here rather than through a parallel auth path: they ride the same
+       * sessions, the same refresh rotation and the same denylist, each of
+       * which is already correct once.
+       *
+       * `email` is unique per organisation rather than globally, so the same
+       * address could in principle act for two. The first active row wins for
+       * sign-in; picking an organisation is a later problem and not one a
+       * credential should silently answer.
+       */
+      const { rows: orgUsers } = await query(
+        app.pg,
+        `SELECT ou.id, ou.email, ou.password_hash, ou.status, ou.role, ou.display_name,
+                ou.organisation_id, o.kind AS organisation_kind, o.status AS organisation_status,
+                o.legal_name AS organisation_name
+           FROM organisation_users ou
+           JOIN organisations o ON o.id = ou.organisation_id
+          WHERE ou.email = $1
+          ORDER BY (ou.status = 'active') DESC, ou.created_at ASC
+          LIMIT 1`,
+        [email],
+        { signal },
+      )
+      if (orgUsers.length > 0) {
+        return { kind: orgUsers[0].organisation_kind, row: orgUsers[0] }
+      }
+
       return null
     }
 
     const invalidCredentials = () =>
       forbidden(PROBLEMS.INVALID_CREDENTIALS, 'Those credentials are not valid.')
+
+    // ---- GET /auth/csrf -----------------------------------------------------
+
+    /**
+     * Mints the CSRF secret cookie and returns the matching token.
+     *
+     * Without this the double-submit check in app.js could never pass from a
+     * browser: the secret cookie was configured but nothing ever called
+     * `reply.generateCsrf()`, so every cookie-borne POST — sign-out, every
+     * write in the console — was refused with "Missing csrf secret". The check
+     * was doing its job; there was simply no way to satisfy it.
+     *
+     * Public, because it has to be: the console needs a token after a page
+     * reload, before it knows whether it is signed in. That is safe. The token
+     * is worthless without the secret cookie set by this same response, and an
+     * attacker's page cannot read either — the point of a double submit is that
+     * the attacker can send the cookie but cannot read it to echo it back.
+     *
+     * `no-store`, and a fresh secret each call: a token left in a shared cache
+     * would let one visitor's token be replayed by the next.
+     */
+    app.get(
+      '/auth/csrf',
+      {
+        config: { auth: { audience: 'public' }, budget: 'auth' },
+        schema: { response: { 200: csrfTokenResponseSchema } },
+      },
+      async (request, reply) => {
+        reply.header('cache-control', NO_STORE)
+        return reply.send({ csrfToken: reply.generateCsrf() })
+      },
+    )
 
     // ---- POST /auth/sign-in -------------------------------------------------
 
@@ -245,6 +309,17 @@ export default fp(
                 sentTo: maskPhone(row.mobile),
               })
             }
+          }
+        } else if (kind === 'merchant' || kind === 'partner') {
+          // The same status vocabulary members use, and the same refusals — an
+          // organisation principal is a person with an account, not a special
+          // case with its own rules.
+          if (row.status === 'locked') throw forbidden(PROBLEMS.ACCOUNT_LOCKED, 'This account is locked. Please contact support.')
+          if (row.status !== 'active') throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This account is not active.')
+          // An organisation that is suspended or ended cannot be worked on,
+          // whatever the state of the person's own account.
+          if (row.organisation_status !== 'active' && row.organisation_status !== 'pending') {
+            throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This organisation is not active.')
           }
         } else if (!row.is_active) {
           throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This staff account is not active.')
@@ -458,12 +533,24 @@ export default fp(
       },
     )
 
-    // Staff sign out through the same mechanism, declared separately because a
-    // route's audience is part of its posture and cannot be two things at once.
+    /**
+     * Staff sign out through the same mechanism, declared separately because a
+     * route's audience is part of its posture and cannot be two things at once.
+     *
+     * `anyStaff`, not `settings.read`. Ending your own session is not a
+     * privilege on the settings module, and gating it there meant a staff
+     * member holding `seo.read` and nothing else could sign in, do their work,
+     * and then be refused when they tried to leave — with no way out but
+     * waiting for the token to expire. A grant somebody else controls must
+     * never be what keeps you signed in.
+     *
+     * The route still authenticates as staff and still ends only the caller's
+     * own session; what it drops is a module check that never belonged here.
+     */
     app.post(
       '/auth/staff/sign-out',
       {
-        config: { auth: { audience: 'staff', module: 'settings', flag: 'read' }, budget: 'auth' },
+        config: { auth: { audience: 'staff', anyStaff: true }, budget: 'auth' },
         onRequest: app.guard,
         schema: { response: { 204: z.null() } },
       },
@@ -637,7 +724,11 @@ export default fp(
           return token
         })
 
-        if (!result) throw forbidden(PROBLEMS.INVALID_REFRESH_TOKEN, 'That reset link is not valid or has expired.')
+        // INVALID_RESET_TOKEN, not INVALID_REFRESH_TOKEN: the remedy for a stale
+        // reset link is a new link, not a sign-in. The two used to share a type
+        // and a console branching on it sent the user to the one place that
+        // cannot help someone who has forgotten their password.
+        if (!result) throw forbidden(PROBLEMS.INVALID_RESET_TOKEN, 'That reset link is not valid or has expired.')
 
         // Revoking every session is the POINT of a reset: the likely reason for
         // one is that the old credential is compromised.

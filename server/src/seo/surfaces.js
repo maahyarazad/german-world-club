@@ -34,6 +34,11 @@
 export const SURFACES = Object.freeze([
   // --- Public and indexed ---------------------------------------------------
   { name: 'landing', prefixes: ['/'], public: true, indexed: true, why: 'First point of contact for all audiences' },
+  // The English landing page. Declared separately because the table is matched
+  // by prefix and '/' matches only the root exactly — without this row, /en
+  // would fall through to the gated default and be marked noindex, which would
+  // delist the very page it exists to publish.
+  { name: 'landing-en', prefixes: ['/en'], public: true, indexed: true, why: 'English half of the landing translation pair' },
   { name: 'magazine', prefixes: ['/magazine', '/news'], public: true, indexed: true, why: 'Primary organic-traffic driver' },
   { name: 'partners', prefixes: ['/partners'], public: true, indexed: true, why: 'Monetized — sponsors pay for this visibility' },
   { name: 'outlets', prefixes: ['/outlets'], public: true, indexed: true, why: 'Monetized — local-business presence per branch' },

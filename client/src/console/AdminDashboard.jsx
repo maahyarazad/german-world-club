@@ -1,5 +1,4 @@
 import { useCapabilities } from '../lib/capabilities.jsx'
-import { t } from '../i18n/de.js'
 import PageHeader from '../components/ui/PageHeader.jsx'
 import Card from '../components/ui/Card.jsx'
 import KpiTile, { KpiRow } from '../components/ui/KpiTile.jsx'
@@ -7,6 +6,7 @@ import Callout from '../components/ui/Callout.jsx'
 import { formatNumber } from '../lib/format.js'
 import { FLAGS } from '@gwc/contracts/permissions'
 import { isAvailable } from '@gwc/contracts/capabilities'
+import { useLocale, useTranslations } from '../i18n/index.jsx'
 
 /**
  * The Admin Panel landing page.
@@ -17,6 +17,8 @@ import { isAvailable } from '@gwc/contracts/capabilities'
  * counts arrive with the modules that produce them.
  */
 export function AdminDashboard() {
+  const t = useTranslations()
+  const { locale } = useLocale()
   const { snapshot } = useCapabilities()
   const modules = Object.entries(snapshot?.modules ?? {})
   const ready = modules.filter(([module]) => isAvailable(snapshot, module))
@@ -25,17 +27,20 @@ export function AdminDashboard() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Admin Panel"
-        subtitle="Zentrale Qualitätskontrolle für Mitglieder, Merchants, Partner, Experten, Inhalte und Beschwerden"
+        subtitle={t.adminDashboard.subtitle}
       />
 
       <KpiRow>
-        <KpiTile value={formatNumber(modules.length)} caption="freigegebene Bereiche" />
-        <KpiTile value={formatNumber(ready.length)} caption="davon nutzbar" />
-        <KpiTile value={formatNumber(modules.length - ready.length)} caption="noch nicht verfügbar" />
-        <KpiTile value={snapshot?.isSuperadmin ? 'Ja' : 'Nein'} caption="Superadmin" />
+        <KpiTile value={formatNumber(modules.length, locale)} caption={t.adminDashboard.grantedAreas} />
+        <KpiTile value={formatNumber(ready.length, locale)} caption={t.adminDashboard.usableAreas} />
+        <KpiTile value={formatNumber(modules.length - ready.length, locale)} caption={t.adminDashboard.pendingAreas} />
+        <KpiTile
+          value={snapshot?.isSuperadmin ? t.adminDashboard.yes : t.adminDashboard.no}
+          caption={t.adminDashboard.superadmin}
+        />
       </KpiRow>
 
-      <Card title="Ihre Bereiche">
+      <Card title={t.adminDashboard.yourAreas}>
         <ul className="flex flex-col gap-2">
           {modules.map(([module, grant]) => (
             <li
@@ -52,9 +57,8 @@ export function AdminDashboard() {
         </ul>
       </Card>
 
-      <Callout variant="gold" title="Governance ist Produktbestandteil">
-        GWC darf nicht nur Technik bereitstellen. Der zentrale operative Layer schützt die Marke vor
-        Spam, Pay-to-play, schlechten Merchants und unzuverlässigen Experten.
+      <Callout variant="gold" title={t.adminDashboard.governanceTitle}>
+        {t.adminDashboard.governanceBody}
       </Callout>
     </div>
   )

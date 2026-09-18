@@ -9,11 +9,20 @@
  * module cannot exist in the UI but not the server (Constitution Principle I).
  */
 
-/** Principal audiences. A token for one can never satisfy a route for the other. */
-export const AUDIENCES = Object.freeze(['public', 'member', 'staff'])
+/**
+ * Principal audiences. A token for one can never satisfy a route for another.
+ *
+ * `merchant` and `partner` are commercial counterparties, not members and not
+ * staff: the design document is emphatic that "Merchant ist kein Mitglied" and
+ * that a corporate partnership "ist ausdrücklich keine Mitgliedschaft".
+ * Modelling either as a member would put an external party in the member
+ * directory; modelling them as staff would put them one grant edit from the
+ * admin console.
+ */
+export const AUDIENCES = Object.freeze(['public', 'member', 'staff', 'merchant', 'partner'])
 
 /** Token audiences as they appear in the `aud` claim. */
-export const TOKEN_AUDIENCES = Object.freeze(['member', 'admin'])
+export const TOKEN_AUDIENCES = Object.freeze(['member', 'admin', 'merchant', 'partner'])
 
 /** The five flags, per §11. */
 export const FLAGS = Object.freeze(['read', 'write', 'edit', 'delete', 'status'])

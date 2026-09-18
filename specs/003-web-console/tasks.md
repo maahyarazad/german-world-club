@@ -190,6 +190,13 @@ this phase; it is stated separately rather than buried in US5 so the dependency 
 
 **⚠️ BLOCKS**: User Stories 5, 6 and 7.
 
+**Status: unblocked.** Feature 005 (`005-demo-seed`) built the organisation principals to seed them
+— migrations 013–016, the `merchant`/`partner` audiences, sign-in over the existing session
+machinery, `guardOrganisationScope`, and the merchant/partner domain tables (`merchant_locations`,
+`offers`, `redemptions`, `redemption_feedback`, `events`, `event_registrations`). US5 and US6 now
+build portals over tables that exist and hold data, rather than starting from an empty schema.
+What remains from this phase is the approval mechanism and the three partner tables in T101.
+
 ### Tests
 
 - [ ] T065 [P] Create `server/tests/authz/organisation-scoping.test.js`: a merchant principal reaches only their own organisation's rows; counter-assertion — a request for another organisation's row is refused identically to a request for a row that does not exist (FR-007)
@@ -198,9 +205,9 @@ this phase; it is stated separately rather than buried in US5 so the dependency 
 
 ### Implementation
 
-- [ ] T068 Add `merchant` and `partner` to `AUDIENCES` and `TOKEN_AUDIENCES` in `packages/contracts/src/permissions.js`
+- [X] T068 Add `merchant` and `partner` to `AUDIENCES` and `TOKEN_AUDIENCES` in `packages/contracts/src/permissions.js` — **delivered by feature 005** (005/T019, T020). Also in `10-auth.js`'s `TOKEN_AUDIENCE` map, so the isolation is the existing mechanism extended rather than a parallel one
 - [ ] T069 Add `merchant` and `partner` to the `TOKEN_AUDIENCE` map in `server/src/plugins/10-auth.js` so a credential for one kind can never satisfy a route for another
-- [ ] T070 Create `server/migrations/013_organisations.sql` with `organisations` and `organisation_users` per `data-model.md` §1, including the kind/count constraints, the `(id, kind)` unique index for composite foreign keys, the last-active-owner trigger and the refuse-delete trigger
+- [X] T070 Create `server/migrations/013_organisations.sql` with `organisations` and `organisation_users` per `data-model.md` §1, including the kind/count constraints, the `(id, kind)` unique index for composite foreign keys, the last-active-owner trigger and the refuse-delete trigger — **delivered by feature 005** as `014_organisations.sql`, because `013` had to be the enum-only migration: a new `account_kind` value cannot be used in the transaction that adds it. Constraints proved by violation in `server/tests/seed/organisation-constraints.test.js`
 - [ ] T071 [P] Create `packages/contracts/src/organisations.js` with organisation, organisation-user and entitlement schemas
 - [ ] T072 Add an organisation-scoping object guard to `server/src/authz/object-guards.js` enforcing `organisation_id` against the loaded target inside the transaction
 - [ ] T073 Extend `GET /auth/session` in `server/src/auth/routes.js` to answer merchant and partner principals with `organisationId`, `role` and organisation status, branching on the verified token audience only
@@ -265,7 +272,7 @@ through approval, and read aggregate activation analytics.
 
 ### Implementation for User Story 6
 
-- [ ] T101 [US6] Create `server/migrations/016_partner_domain.sql` with `employee_entitlements`, `vacancies` and `partner_articles` per `data-model.md` §§1,4, including the composite foreign key onto `(organisations.id, kind)` that makes attaching an entitlement to a merchant impossible
+- [X] T101 [US6] Create `server/migrations/016_partner_domain.sql` with `employee_entitlements`, `vacancies` and `partner_articles` per `data-model.md` §§1,4, including the composite foreign key onto `(organisations.id, kind)` that makes attaching an entitlement to a merchant impossible — **partially delivered by feature 005**: the `UNIQUE (organisations.id, kind)` index the composite key depends on exists and is asserted (005/T018). The three partner tables themselves are still to build; the index is what they were blocked on
 - [ ] T102 [US6] Create `server/src/partner/routes.js` with profile and entitlement endpoints, declared `{ audience: 'partner' }` and scoped by the T072 guard
 - [ ] T103 [US6] Enforce the entitlement count against the contracted `employee_count` through `server/src/db/counters.js` under a row lock — exact under concurrency, surviving a Redis flush
 - [ ] T104 [US6] Add vacancy and article endpoints to `server/src/partner/routes.js`, routing publication through `server/src/submissions/routes.js`
@@ -349,9 +356,61 @@ it names the German World Club and nothing else, and that its sign-in link reach
 
 ---
 
+## Phase 3c: Sign-in and Password Reset, Completed (added 2026-09-17)
+
+**Purpose**: Make the two unauthenticated screens actually work, and supply the server endpoints
+they turned out to need.
+
+**What this phase found**: the endpoints mostly existed, but three defects made the console
+unusable over real HTTP, and none of them could be seen from `app.inject`.
+
+**Independent Test**: Run the server, `npm run -w server seed:dev`, and sign in at
+`/konsole/anmelden` as each seeded account; complete a password reset end to end.
+
+- [X] T146 Create `server/tests/auth/console-sign-in.test.js` pinning all five `POST /auth/sign-in` outcomes, the sign-out posture and the reset flow, with counter-assertions that a 200 carrying no session is not a session
+- [X] T147 Fix `POST /auth/staff/sign-out` in `server/src/auth/routes.js`: it required `settings.read`, so a staff member holding only `seo.read` could sign in and then be refused when trying to leave. Now `anyStaff` — ending your own session cannot depend on a grant somebody else controls
+- [X] T148 Update `server/tests/authz/matrix.test.js` for the new posture and widen the exemption assertion to exactly two routes, both about the caller's own session
+- [X] T149 **Fix the deadline signal in `server/src/plugins/12-deadline.js`.** It composed `AbortSignal.any([timeout, request.signal])`; Fastify's `request.signal` aborts when the request body finishes being read, which is *before* the handler runs — so over real HTTP every POST with a JSON body answered 503. Now composed from the timeout plus a controller aborted only by `onRequestAbort`
+- [X] T150 Create `server/tests/ops/deadline-over-http.test.js`, which listens on a real port, because `app.inject` never emits the event that hid T149. Includes the counter-assertion that a genuinely slow handler is still cut off
+- [X] T151 Add `GET /auth/csrf` in `server/src/auth/routes.js`. CSRF double-submit was configured but nothing ever called `reply.generateCsrf()`, so every cookie-borne write was refused with "Missing csrf secret" — the check working correctly against a client with no way to satisfy it
+- [X] T152 Add `PROBLEMS.CSRF_TOKEN_INVALID` in `packages/contracts/src/errors.js` and map `FST_CSRF_*` onto it in `server/src/plugins/14-error-handler.js`, so a client can tell "fetch a fresh token and retry" from "you lack the grant" without branching on `detail`
+- [X] T153 Add `PROBLEMS.INVALID_RESET_TOKEN` and use it in the reset-confirm handler. It shared `INVALID_REFRESH_TOKEN`, whose remedy is a sign-in — the one place that cannot help someone who has forgotten their password
+- [X] T154 Teach `client/src/lib/api.js` to fetch, attach, cache and refresh the CSRF token, retrying exactly once on a stale one and failing soft if `/auth/csrf` is unreachable
+- [X] T155 Rewrite `client/src/auth/SignIn.jsx` to switch on the outcome rather than on the status code, with a one-click remedy for `password_reset_required`
+- [X] T156 Rewrite `client/src/auth/PasswordReset.jsx` as request and confirm steps, with confirmation matching, the documented minimum length, and an explicit branch for a link that carries no token
+- [X] T157 [P] Add `client/src/components/ui/Field.jsx` (label, `aria-describedby`, `aria-invalid`) and `client/src/auth/AuthCard.jsx`, shared by both screens
+- [X] T158 [P] Create `client/tests/console/auth-screens.test.jsx` covering every outcome, and extend `client/tests/refusals.test.jsx` with the CSRF cases
+- [X] T159 Seed sign-in accounts in `server/src/scripts/seed-dev.js` (this is T127, pulled forward), with a guard that refuses to run outside `NODE_ENV=development`
+
+**Checkpoint**: A seeded account can sign in through the browser, reach a capability-scoped console, sign out, and reset its password.
+
+---
+
+## Phase 3d: The Dev Server Reaches the Console (added 2026-09-17)
+
+**Purpose**: Make the console reachable from the landing page when running `npm run dev`.
+
+**What was wrong**: `client/vite.config.js` had no dev-server configuration at all, so Vite's
+default `appType: 'spa'` answered every unmatched path with `/index.html`. `/konsole/anmelden`
+returned **200 with the landing page** — clicking "Anmelden" reloaded the page you were already on
+— and `/auth/*` fell through the same way, answering HTML to a JSON client. Production was
+unaffected; this was development-only, which is why nothing caught it.
+
+**Independent Test**: Run `npm run -w client dev`, open the Vite origin, and follow the landing
+page's "Anmelden" link to the sign-in screen.
+
+- [X] T160 Create `client/dev-server.js` with `consoleFallback()` and `apiProxy()` — the dev-time equivalents of the Fastify SPA fallback and same-origin API, exported separately so they can be asserted on
+- [X] T161 Register both in `client/vite.config.js`. The middleware is added in `configureServer`'s **body**, not in a returned function: returning one defers registration until after Vite's own middlewares, by which point the SPA fallback has already rewritten the URL — which is exactly how the first attempt at this fix still failed
+- [X] T162 Create `client/tests/dev-server.test.js`: unit assertions on the path logic, plus a **real Vite server** that follows every `/konsole` link on the landing page. A unit test could not have caught a middleware-ordering defect
+- [X] T163 Update the Run section of `specs/003-web-console/quickstart.md` to say which origin to open, and to state the two jobs both origins must do and why same-origin matters for a cookie session
+
+**Checkpoint**: `npm run dev` + `npm run -w server dev` gives a landing page whose sign-in link works, with the API on the same origin.
+
+---
+
 ## Phase 12: Polish & Cross-Cutting Concerns
 
-- [ ] T127 [P] Add the seed accounts of `quickstart.md` to `server/src/scripts/seed-dev.js`, including `nogrants@test.invalid` — the counter-assertion account for the whole capability mechanism
+- [X] T127 [P] Add the seed accounts of `quickstart.md` to `server/src/scripts/seed-dev.js`, including `nogrants@test.invalid` — the counter-assertion account for the whole capability mechanism
 - [ ] T128 [P] Create `client/tests/responsive.test.jsx` asserting no horizontal page scroll at 320px on every console screen (SC-011)
 - [ ] T129 [P] Extend `client/tests/a11y/` to cover every completed screen, not only the components (SC-006)
 - [ ] T130 Extend `server/src/scripts/verify-seo.js` to assert `/konsole/*` is `noindex` and that no member content reaches an anonymous requester (SC-010)

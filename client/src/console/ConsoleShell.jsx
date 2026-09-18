@@ -3,8 +3,9 @@ import Sidebar from './Sidebar.jsx'
 import EmptyState from './EmptyState.jsx'
 import { useCapabilities } from '../lib/capabilities.jsx'
 import { post } from '../lib/api.js'
-import { t } from '../i18n/de.js'
 import Button from '../components/ui/Button.jsx'
+import { useTranslations } from '../i18n/index.jsx'
+import LanguageSwitch from '../components/ui/LanguageSwitch.jsx'
 
 /**
  * The portal frame: dark sidebar, content on the page ground.
@@ -15,6 +16,7 @@ import Button from '../components/ui/Button.jsx'
  * would have produced three sets of drift.
  */
 export function ConsoleShell({ title, items, signOutPath = '/auth/sign-out' }) {
+  const t = useTranslations()
   const { snapshot, clear } = useCapabilities()
 
   const signOut = async () => {
@@ -54,9 +56,12 @@ export function ConsoleShell({ title, items, signOutPath = '/auth/sign-out' }) {
                 {snapshot?.displayName ?? ''}
               </span>
             </div>
-            <Button variant="secondary" onClick={signOut}>
-              {t.console.signOut}
-            </Button>
+            <div className="flex items-center gap-3">
+              <LanguageSwitch />
+              <Button variant="secondary" onClick={signOut}>
+                {t.console.signOut}
+              </Button>
+            </div>
           </header>
 
           <main className="px-4 py-6 sm:px-6">

@@ -4,12 +4,12 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } 
 
 import './styles/theme.css'
 import { CapabilityProvider, useCapabilities, STATUS, homeFor } from './lib/capabilities.jsx'
+import { LocaleProvider, useTranslations } from './i18n/index.jsx'
 import SignIn from './auth/SignIn.jsx'
 import PasswordReset from './auth/PasswordReset.jsx'
 import AdminLayout from './console/admin/AdminLayout.jsx'
 import AdminDashboard from './console/AdminDashboard.jsx'
 import EmptyState from './console/EmptyState.jsx'
-import { t } from './i18n/de.js'
 import Button from './components/ui/Button.jsx'
 
 /**
@@ -20,12 +20,29 @@ import Button from './components/ui/Button.jsx'
 /** Sign-in, and the redirect to wherever this principal belongs. */
 function SignInRoute() {
   const navigate = useNavigate()
-  return <SignIn onSignedIn={(snapshot) => navigate(homeFor(snapshot?.kind), { replace: true })} />
+  return (
+    <SignIn
+      onSignedIn={(snapshot) => navigate(homeFor(snapshot?.kind), { replace: true })}
+      onResetPassword={() => navigate('/konsole/passwort')}
+    />
+  )
 }
 
 function PasswordResetRoute() {
   const [params] = useSearchParams()
-  return <PasswordReset token={params.get('token')} />
+  const navigate = useNavigate()
+
+  // `hasTokenParam` distinguishes "no token in the link" from "not on the
+  // confirm step at all". Without it, a truncated reset link — `?token=` with
+  // nothing after it — would silently render the request form again, and the
+  // user would keep asking for links that keep arriving broken.
+  return (
+    <PasswordReset
+      token={params.get('token')}
+      hasTokenParam={params.has('token')}
+      onRequestNewLink={() => navigate('/konsole/passwort', { replace: true })}
+    />
+  )
 }
 
 /**
@@ -36,6 +53,7 @@ function PasswordResetRoute() {
  * painted its chrome first would be showing a shape nobody had been granted.
  */
 function Authenticated({ children }) {
+  const t = useTranslations()
   const { status, refresh } = useCapabilities()
 
   if (status === STATUS.LOADING) {
@@ -69,7 +87,10 @@ function Authenticated({ children }) {
 function App() {
   return (
     <BrowserRouter>
-      <CapabilityProvider>
+      {/* Above the router and above capabilities: the sign-in screen needs the
+          language before there is a principal to have a preference. */}
+      <LocaleProvider>
+        <CapabilityProvider>
         <Routes>
           <Route path="/konsole/anmelden" element={<SignInRoute />} />
           <Route path="/konsole/passwort" element={<PasswordResetRoute />} />
@@ -87,8 +108,9 @@ function App() {
 
           <Route path="/konsole" element={<Navigate to="/konsole/anmelden" replace />} />
           <Route path="*" element={<Navigate to="/konsole/anmelden" replace />} />
-        </Routes>
-      </CapabilityProvider>
+          </Routes>
+        </CapabilityProvider>
+      </LocaleProvider>
     </BrowserRouter>
   )
 }

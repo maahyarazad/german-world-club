@@ -96,6 +96,16 @@ export const passwordResetAcceptedSchema = z.object({
   requested: z.literal(true),
 })
 
+/**
+ * The double-submit token a browser echoes in `x-csrf-token`.
+ *
+ * Only the cookie face needs it. A bearer client has no ambient credential to
+ * forge, so requiring one there would be a round trip for no security.
+ */
+export const csrfTokenResponseSchema = z.object({
+  csrfToken: z.string().min(1),
+})
+
 const moduleGrantSchema = z.object(Object.fromEntries(FLAGS.map((f) => [f, z.boolean()])))
 
 /**

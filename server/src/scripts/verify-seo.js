@@ -140,6 +140,84 @@ async function main() {
       if (response.statusCode !== 404) note('error', path, `expected 404, got ${response.statusCode}`)
     }
 
+    /**
+     * The landing translation pair (feature 004).
+     *
+     * Three things go wrong here and only one of them is visible without
+     * checking: canonicalising `/en` onto `/` delists the English page, a
+     * one-directional hreflang suppresses both as duplicates, and negotiating
+     * on `Accept-Language` makes the two URLs serve the same body.
+     */
+    const pair = [['/', 'de'], ['/en', 'en']]
+    const pairHtml = {}
+
+    for (const [path, language] of pair) {
+      const response = await fetchPath(path)
+      pairHtml[path] = response.body
+
+      if (response.statusCode !== 200) {
+        note('error', path, `landing page returned ${response.statusCode}`)
+        continue
+      }
+      if (!response.body.includes(`<html lang="${language}">`)) {
+        note('error', path, `expected <html lang="${language}">`)
+      }
+
+      /**
+       * Canonical for ITSELF. Pointing at the other page delists this one.
+       *
+       * The PATH is what this feature can get wrong, and it is checked
+       * unconditionally. The ORIGIN is baked into the static file at build
+       * time, so it cannot match a development canonical origin — a mismatch
+       * there is an error only in production, where the two really must agree.
+       */
+      const canonical = canonicalOf(response.body)
+      if (canonical) {
+        const declared = new URL(canonical)
+        const trim = (p) => (p === '/' ? '/' : p.replace(/\/$/, ''))
+        if (trim(declared.pathname) !== trim(path)) {
+          note('error', path, `canonical points at ${declared.pathname}, not ${path}`)
+        }
+        if (declared.origin !== new URL(env.canonicalOrigin).origin) {
+          note(
+            env.isProduction ? 'error' : 'warn',
+            path,
+            `canonical origin ${declared.origin} differs from CANONICAL_ORIGIN ${env.canonicalOrigin}`,
+          )
+        }
+      }
+
+      // Both pages must be listed, or only one of the pair is discoverable.
+      if (!urls.some((u) => new URL(u).pathname === path)) {
+        note('error', path, 'missing from the sitemap')
+      }
+
+      // The URL decides the language, never the header.
+      const negotiated = await app.inject({
+        method: 'GET',
+        url: path,
+        headers: { host, 'accept-language': language === 'de' ? 'en-GB,en' : 'de-DE,de' },
+      })
+      if (!negotiated.body.includes(`<html lang="${language}">`)) {
+        note('error', path, 'language changed with Accept-Language — the URL must decide')
+      }
+    }
+
+    // Reciprocity: a one-directional hreflang is ignored and suppresses both.
+    const alternatesOf = (html) =>
+      [...html.matchAll(/<link[^>]+rel="alternate"[^>]*>/g)]
+        .map((m) => m[0].match(/hreflang="([^"]+)"/)?.[1])
+        .filter(Boolean)
+        .sort()
+
+    const de = alternatesOf(pairHtml['/'] ?? '')
+    const en = alternatesOf(pairHtml['/en'] ?? '')
+    if (de.length === 0) note('error', '/', 'declares no hreflang alternates')
+    if (JSON.stringify(de) !== JSON.stringify(en)) {
+      note('error', '/en', `hreflang is not reciprocal: / has [${de}], /en has [${en}]`)
+    }
+    if (!de.includes('x-default')) note('warn', '/', 'no x-default alternate')
+
     process.stdout.write(`\nChecked ${urls.length} URL(s) from the sitemap.\n`)
   } finally {
     await app.close()
