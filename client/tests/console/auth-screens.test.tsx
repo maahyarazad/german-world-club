@@ -19,7 +19,7 @@ import { renderConsole, mockCapabilityFetch, staffSnapshot } from '../helpers/co
 
 afterEach(() => vi.unstubAllGlobals())
 
-const json = (body, status = 200) =>
+const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': status >= 400 ? 'application/problem+json' : 'application/json' },
@@ -34,7 +34,7 @@ const json = (body, status = 200) =>
  * compares against a baseline taken at submit time rather than against zero —
  * an absolute count would be measuring the mount, not the sign-in.
  */
-function mockSignIn(reply) {
+function mockSignIn(reply?: Response | (() => Response)) {
   const calls = { signIn: 0, session: 0 }
   vi.stubGlobal(
     'fetch',
@@ -176,7 +176,9 @@ describe('sign-in surfaces refusals as refusals', () => {
     await fillAndSubmit()
     await waitFor(() => expect(fetch).toHaveBeenCalled())
 
-    const body = JSON.parse(fetch.mock.calls.find(([url]) => url === '/auth/sign-in')[1].body)
+    const signInCall = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls
+      .find(([url]) => url === '/auth/sign-in')
+    const body = JSON.parse(String(signInCall![1].body))
     // Sending one would opt the browser into the device-approval and OTP
     // branches it has no way to complete.
     expect(body).not.toHaveProperty('deviceId')
@@ -195,7 +197,7 @@ describe('sign-in surfaces refusals as refusals', () => {
 })
 
 describe('password reset — requesting a link', () => {
-  const stub = (reply) => {
+  const stub = (reply?: Response) => {
     const calls = { request: 0, confirm: 0, body: null }
     vi.stubGlobal(
       'fetch',
@@ -253,7 +255,7 @@ describe('password reset — requesting a link', () => {
 })
 
 describe('password reset — setting the new password', () => {
-  const stub = (reply) => {
+  const stub = (reply?: Response) => {
     const calls = { confirm: 0, body: null }
     vi.stubGlobal(
       'fetch',
@@ -272,7 +274,7 @@ describe('password reset — setting the new password', () => {
 
   const TOKEN = 'a'.repeat(64)
 
-  const fill = (password, repeat = password) => {
+  const fill = (password: string, repeat: string = password) => {
     fireEvent.change(screen.getByLabelText(de.passwordReset.newPassword), {
       target: { value: password },
     })

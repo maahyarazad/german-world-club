@@ -1,3 +1,4 @@
+import type { Locale } from '../src/i18n/locales'
 import { describe, it, expect } from 'vitest'
 import {
   formatDate, formatDateTime, formatNumber, formatMoney, formatPercent,
@@ -32,7 +33,7 @@ describe('dates', () => {
   })
 
   it('returns empty for a value that is not a date, in both', () => {
-    for (const locale of ['de', 'en']) {
+    for (const locale of ['de', 'en'] as const) {
       expect(formatDate(null, locale)).toBe('')
       expect(formatDate('not a date', locale)).toBe('')
     }
@@ -54,7 +55,7 @@ describe('numbers and money', () => {
   })
 
   it('handles a currency that is not the euro, in both', () => {
-    for (const locale of ['de', 'en']) {
+    for (const locale of ['de', 'en'] as const) {
       expect(formatMoney(35000, 'AED', locale)).toMatch(/350/)
       expect(formatMoney(50000, 'USD', locale)).toMatch(/500/)
     }
@@ -72,7 +73,7 @@ describe('numbers and money', () => {
   })
 
   it('returns empty for a non-number, in both', () => {
-    for (const locale of ['de', 'en']) {
+    for (const locale of ['de', 'en'] as const) {
       expect(formatNumber('x', locale)).toBe('')
       expect(formatMoney(undefined, 'EUR', locale)).toBe('')
     }
@@ -93,7 +94,7 @@ describe('lists and sorting', () => {
   })
 
   it('returns empty for an empty list, in both', () => {
-    for (const locale of ['de', 'en']) {
+    for (const locale of ['de', 'en'] as const) {
       expect(formatList([], locale)).toBe('')
       expect(formatList(null, locale)).toBe('')
     }
@@ -116,6 +117,8 @@ describe('formattersFor binds one locale', () => {
   })
 
   it('falls back to German for an unknown locale rather than throwing', () => {
-    expect(formatDate(DATE, 'fr')).toBe(formatDate(DATE, 'de'))
+    // 'fr' is not an offered locale: this asserts the runtime fallback, so the
+    // cast is the point of the test rather than a workaround for it.
+    expect(formatDate(DATE, 'fr' as Locale)).toBe(formatDate(DATE, 'de'))
   })
 })

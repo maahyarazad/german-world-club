@@ -27,6 +27,16 @@ const CATALOGUES = { de, en }
  */
 export type Catalogue = typeof de
 
+/**
+ * What this module actually needs from a storage.
+ *
+ * Narrower than `Storage` on purpose: only getItem and setItem are ever
+ * called, and a full Storage would force every caller — including the tests
+ * that exercise the throwing and blocked cases — to fake six members that are
+ * never touched.
+ */
+export type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
+
 /** Where the browser's choice lives. Per-browser by decision (FR-023). */
 export const STORAGE_KEY = 'gwc.locale'
 
@@ -37,7 +47,7 @@ export const STORAGE_KEY = 'gwc.locale'
  * A language preference is a convenience, not state anything depends on, so it
  * must degrade rather than break (FR-021).
  */
-export function readStoredLocale(storage: Storage | null = safeStorage()): Locale | null {
+export function readStoredLocale(storage: StorageLike | null = safeStorage()): Locale | null {
   try {
     const value = storage?.getItem(STORAGE_KEY)
     return isLocale(value) ? value : null
@@ -46,7 +56,7 @@ export function readStoredLocale(storage: Storage | null = safeStorage()): Local
   }
 }
 
-export function writeStoredLocale(locale: Locale, storage: Storage | null = safeStorage()): boolean {
+export function writeStoredLocale(locale: Locale, storage: StorageLike | null = safeStorage()): boolean {
   try {
     storage?.setItem(STORAGE_KEY, locale)
     return true
@@ -57,7 +67,7 @@ export function writeStoredLocale(locale: Locale, storage: Storage | null = safe
 }
 
 /** `localStorage` itself can throw on *access*, not only on use. */
-function safeStorage(): Storage | null {
+function safeStorage(): StorageLike | null {
   try {
     return globalThis.localStorage ?? null
   } catch {
@@ -81,8 +91,13 @@ function safeStorage(): Storage | null {
  * ever revisited: one more branch above `stored`, and nothing else changes.
  */
 export type ResolveLocaleOptions = {
-  stored?: Locale | null
-  navigatorLanguages?: readonly (string | undefined)[]
+  /**
+   * Deliberately `string`, not `Locale`: a value stored by an older release
+   * may name a locale no longer offered, and falling back rather than
+   * rendering blanks is the behaviour this function exists to provide.
+   */
+  stored?: string | null
+  navigatorLanguages?: readonly (string | undefined)[] | null
 }
 
 export function resolveLocale({

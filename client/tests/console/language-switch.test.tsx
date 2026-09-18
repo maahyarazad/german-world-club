@@ -59,8 +59,8 @@ describe('the control itself', () => {
     mockCapabilityFetch(null)
     const { container } = renderConsole(<LanguageSwitch />)
     const group = container.querySelector('[role="group"]')
-    expect(group.querySelectorAll('img, svg')).toHaveLength(0)
-    expect(group.textContent).not.toMatch(/[\u{1F1E6}-\u{1F1FF}]/u)
+    expect(group!.querySelectorAll('img, svg')).toHaveLength(0)
+    expect(group!.textContent).not.toMatch(/[\u{1F1E6}-\u{1F1FF}]/u)
   })
 
   it('is operable by keyboard', async () => {
@@ -145,7 +145,8 @@ describe('the two catalogues really differ', () => {
     // `de.js` would satisfy the key-parity check and every render test that
     // only looked for "a string".
     for (const key of ['signIn.title', 'signIn.submit', 'console.signOut', 'modules.members']) {
-      const read = (cat) => key.split('.').reduce((o, k) => o[k], cat)
+      const read = (cat: Record<string, unknown>): unknown =>
+        key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)[k], cat)
       expect(read(en), `${key} was not translated`).not.toBe(read(de))
     }
   })

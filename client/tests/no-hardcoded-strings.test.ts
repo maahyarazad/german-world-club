@@ -16,8 +16,8 @@ import { join } from 'node:path'
 const SRC = join(process.cwd(), 'src')
 const SCANNED = ['console', 'auth', 'components/ui']
 
-function* sourceFiles(dir) {
-  let entries
+function* sourceFiles(dir: string): Generator<string> {
+  let entries: string[]
   try { entries = readdirSync(dir) } catch { return }
   for (const entry of entries) {
     const full = join(dir, entry)
@@ -64,10 +64,10 @@ describe('components read strings through the hook', () => {
       const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
       for (const [, text] of code.matchAll(/>\s*([A-Za-zÄÖÜäöüß][^<>{}]{4,})\s*</g)) {
-        if (GERMAN.test(text)) offenders.push(`${file.replace(`${process.cwd()}/`, '')}: ${text.trim()}`)
+        if (text && GERMAN.test(text)) offenders.push(`${file.replace(`${process.cwd()}/`, '')}: ${text.trim()}`)
       }
       for (const [, text] of code.matchAll(/(?:aria-label|alt|placeholder|title)="([^"{}]{4,})"/g)) {
-        if (GERMAN.test(text)) offenders.push(`${file.replace(`${process.cwd()}/`, '')}: ${text}`)
+        if (text && GERMAN.test(text)) offenders.push(`${file.replace(`${process.cwd()}/`, '')}: ${text}`)
       }
     }
 
@@ -83,7 +83,7 @@ describe('components read strings through the hook', () => {
     const planted = `<p>Bitte melden Sie sich an</p>`
     const matches = [...planted.matchAll(/>\s*([A-Za-zÄÖÜäöüß][^<>{}]{4,})\s*</g)]
     expect(matches.length).toBeGreaterThan(0)
-    expect(GERMAN.test(matches[0][1])).toBe(true)
+    expect(GERMAN.test(matches[0]![1]!)).toBe(true)
   })
 
   it('STILL CATCHES a planted direct import', () => {

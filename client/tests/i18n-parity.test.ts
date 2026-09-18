@@ -16,7 +16,8 @@ import { checkCatalogues, compareCatalogues } from '../scripts/check-i18n'
  * Not temp files: the comparison is the half with the logic in it, and reading
  * files off disk is covered by running the real directory in the first test.
  */
-const compare = (catalogues) => compareCatalogues(new Map(Object.entries(catalogues)))
+const compare = (catalogues: Record<string, unknown>) =>
+  compareCatalogues(new Map(Object.entries(catalogues)))
 
 describe('the real catalogues agree', () => {
   it('finds no problem in client/src/i18n', async () => {
@@ -29,9 +30,9 @@ describe('STILL CATCHES catalogues that have drifted apart', () => {
   it('catches a key present in German and missing from English', () => {
     const problems = compare({ de: { a: 'eins', b: 'zwei' }, en: { a: 'one' } })
     expect(problems).toHaveLength(1)
-    expect(problems[0].kind).toBe('missing key')
-    expect(problems[0].key).toBe('b')
-    expect(problems[0].locale).toBe('en')
+    expect(problems[0]!.kind).toBe('missing key')
+    expect(problems[0]!.key).toBe('b')
+    expect(problems[0]!.locale).toBe('en')
   })
 
   /**
@@ -42,8 +43,8 @@ describe('STILL CATCHES catalogues that have drifted apart', () => {
   it('catches a key present in English and missing from German', () => {
     const problems = compare({ de: { a: 'eins' }, en: { a: 'one', b: 'two' } })
     expect(problems).toHaveLength(1)
-    expect(problems[0].kind).toBe('missing key')
-    expect(problems[0].locale).toBe('de')
+    expect(problems[0]!.kind).toBe('missing key')
+    expect(problems[0]!.locale).toBe('de')
   })
 
   it('catches a string in one catalogue where the other has an object', () => {
@@ -57,8 +58,8 @@ describe('STILL CATCHES catalogues that have drifted apart', () => {
   it('catches a type mismatch at the same path', () => {
     const problems = compare({ de: { a: 'eins', n: 1 }, en: { a: 'one', n: 'one' } })
     expect(problems).toHaveLength(1)
-    expect(problems[0].kind).toBe('type mismatch')
-    expect(problems[0].key).toBe('n')
+    expect(problems[0]!.kind).toBe('type mismatch')
+    expect(problems[0]!.key).toBe('n')
   })
 
   it('reaches into nested keys, not only the top level', () => {
@@ -67,7 +68,7 @@ describe('STILL CATCHES catalogues that have drifted apart', () => {
       en: { signIn: { title: 'Sign in' } },
     })
     expect(problems).toHaveLength(1)
-    expect(problems[0].key).toBe('signIn.submit')
+    expect(problems[0]!.key).toBe('signIn.submit')
   })
 
   /**

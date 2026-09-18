@@ -1,3 +1,5 @@
+import type { ViteDevServer } from 'vite'
+import type { AddressInfo } from 'node:net'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createServer } from 'vite'
 import {
@@ -66,7 +68,7 @@ describe('which requests belong to the console', () => {
     // changeOrigin stays false: the session cookie is set for the dev-server
     // origin, and rewriting the Host would set it for :3000 instead — where the
     // browser would never send it back.
-    expect(proxy['/auth'].changeOrigin).toBe(false)
+    expect(proxy['/auth']!.changeOrigin).toBe(false)
   })
 })
 
@@ -78,8 +80,8 @@ describe('which requests belong to the console', () => {
  * the wrong place.
  */
 describe('a real dev server serves the console, not the landing page', () => {
-  let server
-  let origin
+  let server: ViteDevServer
+  let origin: string
 
   beforeAll(async () => {
     server = await createServer({
@@ -93,7 +95,7 @@ describe('a real dev server serves the console, not the landing page', () => {
       logLevel: 'error',
     })
     await server.listen()
-    const { port } = server.httpServer.address()
+    const { port } = server.httpServer!.address() as AddressInfo
     origin = `http://127.0.0.1:${port}`
   }, 60_000)
 
@@ -101,11 +103,13 @@ describe('a real dev server serves the console, not the landing page', () => {
     // `fetch` keeps its sockets alive, and Vite's close() waits for the HTTP
     // server to drain — so without this the teardown hangs until the hook
     // times out and vitest reports a failure on a suite that fully passed.
-    server?.httpServer?.closeAllConnections?.()
+    // Node's closeAllConnections is not on Vite's HttpServer type, but it is
+    // there at runtime and the teardown hangs without it.
+    ;(server?.httpServer as { closeAllConnections?: () => void } | null)?.closeAllConnections?.()
     await server?.close()
   }, 60_000)
 
-  const titleOf = async (path) => {
+  const titleOf = async (path: string) => {
     const html = await (await fetch(`${origin}${path}`)).text()
     return html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ''
   }
@@ -143,7 +147,7 @@ describe('a real dev server serves the console, not the landing page', () => {
     expect(links.length, 'the landing page offers no console links at all').toBeGreaterThan(0)
 
     for (const link of new Set(links)) {
-      expect(await titleOf(link), `${link} did not reach the console`).toMatch(/Konsole/)
+      expect(await titleOf(link!), `${link} did not reach the console`).toMatch(/Konsole/)
     }
   })
 })

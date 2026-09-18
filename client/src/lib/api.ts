@@ -13,6 +13,15 @@ import type { DescribedProblem } from './problems'
  */
 
 /** Thrown for any non-2xx. Carries the parsed problem, never a bare message. */
+/**
+ * What ApiError needs from a response.
+ *
+ * Narrower than `Response` on purpose: only `status` and `headers.get` are
+ * read. Demanding a full Response would force every suite that exercises a
+ * refusal to build one, which is a lot of ceremony for two fields.
+ */
+export type ResponseLike = { status?: number; headers?: { get(name: string): string | null } }
+
 export class ApiError extends Error {
   readonly problem: ProblemResponse
   readonly status: number
@@ -20,7 +29,7 @@ export class ApiError extends Error {
   /** Seconds to wait, from `retry-after`. Null when the server did not say. */
   readonly retryAfter: number | null
 
-  constructor(problem: ProblemResponse, response?: Response) {
+  constructor(problem: ProblemResponse, response?: ResponseLike) {
     const described = describeProblem(problem)
     super(described.title)
     this.name = 'ApiError'
@@ -51,7 +60,7 @@ export class ApiError extends Error {
   }
 }
 
-function readRetryAfter(response?: Response): number | null {
+function readRetryAfter(response?: ResponseLike): number | null {
   const header = response?.headers?.get?.('retry-after')
   if (!header) return null
   const seconds = Number(header)

@@ -118,7 +118,7 @@ describe('every console component is structurally accessible', () => {
    * accessible in German and broken in English would pass a single-locale suite
    * and fail exactly the people it exists for.
    */
-  it.each([['de'], ['en']])('LanguageSwitch in %s', async (locale) => {
+  it.each([['de'], ['en']] as const)('LanguageSwitch in %s', async (locale) => {
     const { container } = render(
       <LocaleProvider initialLocale={locale}>
         <LanguageSwitch />
@@ -127,7 +127,7 @@ describe('every console component is structurally accessible', () => {
     await expectNoA11yViolations(container)
   })
 
-  it.each([['de'], ['en']])('LanguageSwitch on dark chrome in %s', async (locale) => {
+  it.each([['de'], ['en']] as const)('LanguageSwitch on dark chrome in %s', async (locale) => {
     const { container } = render(
       <LocaleProvider initialLocale={locale}>
         <div className="bg-ink p-4">
@@ -149,22 +149,22 @@ describe('every console component is structurally accessible', () => {
 describe('every token pairing meets WCAG 2.2 AA', () => {
   const css = readFileSync(join(process.cwd(), 'src/styles/theme.css'), 'utf8')
 
-  const token = (name) => {
+  const token = (name: string): string => {
     const match = css.match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`))
     if (!match) throw new Error(`token --color-${name} not found in theme.css`)
-    return match[1]
+    return match[1]!
   }
 
   /** WCAG relative luminance. */
-  const luminance = (hex) => {
+  const luminance = (hex: string): number => {
     const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
     const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
   }
 
-  const ratio = (a, b) => {
+  const ratio = (a: string, b: string): number => {
     const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
-    return (x + 0.05) / (y + 0.05)
+    return (x! + 0.05) / (y! + 0.05)
   }
 
   // [foreground, background, minimum]. 4.5 for body text, 3.0 for large text
@@ -193,8 +193,8 @@ describe('every token pairing meets WCAG 2.2 AA', () => {
   ]
 
   it.each(PAIRINGS)('%s on %s reaches %s:1', (foreground, background, minimum) => {
-    const measured = ratio(token(foreground), token(background))
-    expect(measured, `${foreground} on ${background} is ${measured.toFixed(2)}:1`).toBeGreaterThanOrEqual(minimum)
+    const measured = ratio(token(String(foreground)), token(String(background)))
+    expect(measured, `${foreground} on ${background} is ${measured.toFixed(2)}:1`).toBeGreaterThanOrEqual(Number(minimum))
   })
 
   /**

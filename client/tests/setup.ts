@@ -7,7 +7,7 @@ import { expect } from 'vitest'
  * Used in place of `vitest-axe`, whose only stable release (0.1.0) is long
  * unmaintained; axe-core is the engine that package wraps.
  */
-export async function expectNoA11yViolations(container) {
+export async function expectNoA11yViolations(container: HTMLElement) {
   const results = await axe.run(container, {
     runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
   })

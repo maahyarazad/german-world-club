@@ -96,10 +96,10 @@ Three npm workspaces: `server/`, `client/`, `packages/contracts/`. `expo-client/
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Convert `client/tests/helpers/` (1 file) to TypeScript so the remaining client test conversions have typed helpers to build on.
-- [ ] T028 [P] [US2] Convert `client/tests/` root suites (14 files) to `.ts`/`.tsx`, rewriting relative specifiers to extensionless form.
-- [ ] T029 [P] [US2] Convert `client/tests/console/` (2 files) and `client/tests/a11y/` (1 file) to `.tsx`.
-- [ ] T030 [US2] Run `npm run -w client test` and diff against `/tmp/baseline-tests.txt` from T001. Expect zero differences — the client has no runtime validation to lose, so any change here is a conversion defect.
+- [X] T027 [P] [US2] Convert `client/tests/helpers/` (1 file) to TypeScript so the remaining client test conversions have typed helpers to build on.
+- [X] T028 [P] [US2] Convert `client/tests/` root suites (14 files) to `.ts`/`.tsx`, rewriting relative specifiers to extensionless form.
+- [X] T029 [P] [US2] Convert `client/tests/console/` (2 files) and `client/tests/a11y/` (1 file) to `.tsx`.
+- [X] T030 [US2] Run `npm run -w client test` and diff against `/tmp/baseline-tests.txt` from T001. Expect zero differences — the client has no runtime validation to lose, so any change here is a conversion defect.
 
 ### Implementation for User Story 2
 
@@ -121,8 +121,8 @@ Three npm workspaces: `server/`, `client/`, `packages/contracts/`. `expo-client/
 - [X] T046 [P] [US2] Convert `client/scripts/check-tokens.mjs` and `check-i18n.mjs` to `.ts`, updating the `test:tokens` and `test:i18n` script paths in `client/package.json`.
 - [X] T047 [US2] Convert `client/vite.config.js` → `vite.config.ts` and `client/dev-server.js` → `dev-server.ts`, keeping all three build entries (`index.html`, `en.html`, `konsole.html`) and the `consoleFallback` plugin and API proxy unchanged.
 - [X] T048 [US2] Rewrite every client relative specifier: 28 `.js` and 70 `.jsx` become extensionless (research.md R2 — the client rule differs from the server's on purpose, because Vite resolves specifiers).
-- [ ] T049 [US2] Run `npm run typecheck` and confirm `packages/contracts` and `client` are clean.
-- [ ] T050 [US2] Verify the story: rename one exported field in `packages/contracts/src/auth.ts`, run `npm run typecheck`, confirm every consuming client file is named in the error output, revert. Then run `npm run -w client build` and confirm all three entries emit.
+- [X] T049 [US2] Run `npm run typecheck` and confirm `packages/contracts` and `client` are clean.
+- [X] T050 [US2] Verify the story: rename one exported field in `packages/contracts/src/auth.ts`, run `npm run typecheck`, confirm every consuming client file is named in the error output, revert. Then run `npm run -w client build` and confirm all three entries emit.
 
 **Checkpoint**: Two of three workspaces are TypeScript. The compiler enforces the shared contract. This is a shippable increment — the server is untouched and still runs.
 

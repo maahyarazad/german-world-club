@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react'
+import type { Flag, Module } from '@gwc/contracts/permissions'
+import type { Locale } from '../../src/i18n/locales'
 import { vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
@@ -15,11 +18,21 @@ import { FLAGS, MODULES } from '@gwc/contracts/permissions'
  */
 
 /** A staff snapshot holding exactly the grants named. */
-export function staffSnapshot({ grants = {}, available = null, isSuperadmin = false } = {}) {
-  const modules = {}
+/** `true` means every flag; otherwise name the flags that are held. */
+export type GrantSpec = Record<string, true | Partial<Record<Flag, boolean>>>
+
+export type StaffSnapshotOptions = {
+  grants?: GrantSpec
+  available?: readonly Module[] | null
+  isSuperadmin?: boolean
+}
+
+export function staffSnapshot({ grants = {}, available = null, isSuperadmin = false }: StaffSnapshotOptions = {}) {
+  const modules: Record<string, Record<Flag, boolean>> = {}
   for (const [module, flags] of Object.entries(grants)) {
-    const set = flags === true ? Object.fromEntries(FLAGS.map((f) => [f, true])) : flags
-    modules[module] = Object.fromEntries(FLAGS.map((f) => [f, set[f] === true]))
+    const set: Partial<Record<Flag, boolean>> =
+      flags === true ? Object.fromEntries(FLAGS.map((f) => [f, true])) : flags
+    modules[module] = Object.fromEntries(FLAGS.map((f) => [f, set[f] === true])) as Record<Flag, boolean>
   }
   return {
     kind: 'staff',
@@ -43,7 +56,7 @@ export const memberSnapshot = () => ({
   available: [],
 })
 
-const problem = (type, status) => ({
+const problem = (type: string, status: number) => ({
   body: JSON.stringify({ type, title: type, status }),
   status,
   headers: { 'content-type': 'application/problem+json' },
@@ -56,8 +69,15 @@ const problem = (type, status) => ({
  * `/auth/session`, which is exactly what the real server does: a staff token on
  * a member route fails its audience check.
  */
-export function mockCapabilityFetch(snapshot, { extraRoutes = {} } = {}) {
-  const fetchMock = vi.fn(async (url, options = {}) => {
+/** What an extraRoutes handler returns: a raw Response body plus its metadata. */
+export type RouteResult = { body?: BodyInit | null; status?: number; headers?: HeadersInit }
+export type RouteHandler = (options: RequestInit) => RouteResult | Promise<RouteResult>
+
+export function mockCapabilityFetch(
+  snapshot: { kind?: string } | null | undefined,
+  { extraRoutes = {} }: { extraRoutes?: Record<string, RouteHandler> } = {},
+) {
+  const fetchMock = vi.fn(async (url: RequestInfo | URL, options: RequestInit = {}) => {
     const path = String(url)
 
     // Every unsafe request fetches one of these first, so a helper that did not
@@ -118,7 +138,9 @@ export function mockCapabilityFetch(snapshot, { extraRoutes = {} } = {}) {
  * keeps asserting what it always did. A suite that cares about English passes
  * it explicitly, which also makes the intent visible at the call site.
  */
-export function renderConsole(ui, { route = '/konsole/admin', locale = 'de' } = {}) {
+export type RenderConsoleOptions = { route?: string; locale?: Locale }
+
+export function renderConsole(ui: ReactNode, { route = '/konsole/admin', locale = 'de' }: RenderConsoleOptions = {}) {
   return render(
     <MemoryRouter initialEntries={[route]}>
       <LocaleProvider initialLocale={locale}>

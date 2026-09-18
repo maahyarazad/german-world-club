@@ -58,7 +58,7 @@ const REGISTRATION_ROUTES = [
   '/konsole/bewerben',
 ]
 
-function* sourceFiles(dir) {
+function* sourceFiles(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
     if (statSync(full).isDirectory()) yield* sourceFiles(full)

@@ -1,3 +1,4 @@
+import type { Locale } from '../src/i18n/locales'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { ApiError } from '../src/lib/api'
@@ -20,9 +21,9 @@ import {
 
 afterEach(() => vi.unstubAllGlobals())
 
-const response = (status, headers = {}) => ({
+const response = (status: number, headers: Record<string, string> = {}) => ({
   status,
-  headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+  headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
 })
 
 describe('a rate limit and a quota are not the same refusal', () => {
@@ -157,11 +158,11 @@ describe('the api layer parses refusals rather than throwing on them', () => {
   })
 
   it('sends cookies — the browser face authenticates by cookie', async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    const fetchMock = vi.fn(async (_url?: unknown, _init?: RequestInit) => new Response(null, { status: 204 }))
     vi.stubGlobal('fetch', fetchMock)
     const { get } = await import('../src/lib/api')
     await get('/auth/session')
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include', cache: 'no-store' })
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ credentials: 'include', cache: 'no-store' })
   })
 })
 
@@ -175,7 +176,7 @@ describe('the api layer parses refusals rather than throwing on them', () => {
  */
 describe('state-changing requests carry a CSRF token', () => {
   const stub = () => {
-    const calls = { csrf: 0, writes: [] }
+    const calls: { csrf: number; writes: { url: string; options: RequestInit }[] } = { csrf: 0, writes: [] }
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url, options = {}) => {
@@ -201,7 +202,7 @@ describe('state-changing requests carry a CSRF token', () => {
     await post('/auth/staff/sign-out')
 
     expect(calls.csrf).toBe(1)
-    expect(calls.writes[0].options.headers['x-csrf-token']).toBe('token-1')
+    expect((calls.writes[0]!.options.headers as Record<string, string>)['x-csrf-token']).toBe('token-1')
   })
 
   it('does NOT fetch or send one on a GET', async () => {
@@ -214,7 +215,7 @@ describe('state-changing requests carry a CSRF token', () => {
     await get('/auth/session')
 
     expect(calls.csrf).toBe(0)
-    expect(calls.writes[0].options.headers['x-csrf-token']).toBeUndefined()
+    expect((calls.writes[0]!.options.headers as Record<string, string>)['x-csrf-token']).toBeUndefined()
   })
 
   it('reuses one token across several writes', async () => {
@@ -233,7 +234,7 @@ describe('state-changing requests carry a CSRF token', () => {
   it('refreshes a stale token once and retries, without surfacing it', async () => {
     let served = 0
     let csrfCalls = 0
-    const attempts = []
+    const attempts: RequestInit[] = []
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url, options = {}) => {
@@ -367,7 +368,8 @@ describe('a problem renders in the selected language', () => {
   })
 
   it('falls back to German for a locale it does not have', () => {
-    expect(describeProblem(PROBLEMS.ACCOUNT_LOCKED, 'fr')).toEqual(
+    expect(// 'fr' is not offered: this asserts the fallback, so the cast is the test.
+      describeProblem(PROBLEMS.ACCOUNT_LOCKED, 'fr' as Locale)).toEqual(
       describeProblem(PROBLEMS.ACCOUNT_LOCKED, 'de'),
     )
   })

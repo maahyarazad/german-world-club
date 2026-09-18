@@ -22,7 +22,7 @@ describe('the console uses only tokens from theme.css', () => {
 
 describe('STILL CATCHES a colour that bypasses the token set', () => {
   /** Builds a throwaway client tree with a real theme.css and one bad file. */
-  const withFixture = (contents, run) => {
+  const withFixture = (contents: string, run: (root: string) => void) => {
     const root = mkdtempSync(join(tmpdir(), 'gwc-tokens-'))
     try {
       mkdirSync(join(root, 'src/styles'), { recursive: true })
@@ -39,16 +39,16 @@ describe('STILL CATCHES a colour that bypasses the token set', () => {
   }
 
   it('catches a hard-coded hex literal', () => {
-    withFixture(`export const bad = { color: '#123456' }\n`, (root) => {
+    withFixture(`export const bad = { color: '#123456' }\n`, (root: string) => {
       const violations = checkTokens({ root, dirs: ['src/console'] })
       expect(violations).toHaveLength(1)
-      expect(violations[0].value).toBe('#123456')
-      expect(violations[0].kind).toBe('hex literal')
+      expect(violations[0]!.value).toBe('#123456')
+      expect(violations[0]!.kind).toBe('hex literal')
     })
   })
 
   it('catches a Tailwind arbitrary colour value', () => {
-    withFixture(`export const Bad = () => <div className="bg-[#d49626]" />\n`, (root) => {
+    withFixture(`export const Bad = () => <div className="bg-[#d49626]" />\n`, (root: string) => {
       const violations = checkTokens({ root, dirs: ['src/console'] })
       // Both rules fire: it is an arbitrary value AND the hex is inside it.
       expect(violations.some((v) => v.kind === 'arbitrary colour')).toBe(true)
@@ -59,7 +59,7 @@ describe('STILL CATCHES a colour that bypasses the token set', () => {
     // The subtle one. `#0a2457` is the navy token, so a naive checker that only
     // compared values would pass this — and the call site would then be left
     // behind the day the token changes.
-    withFixture(`export const Bad = () => <div className="text-[#0a2457]" />\n`, (root) => {
+    withFixture(`export const Bad = () => <div className="text-[#0a2457]" />\n`, (root: string) => {
       const violations = checkTokens({ root, dirs: ['src/console'] })
       expect(violations.some((v) => v.kind === 'arbitrary colour')).toBe(true)
     })
@@ -68,7 +68,7 @@ describe('STILL CATCHES a colour that bypasses the token set', () => {
   it('accepts a colour that theme.css defines', () => {
     // The counter-counter-assertion: the checker must not simply reject
     // everything, or the suite above would pass against a broken check.
-    withFixture(`/* nothing but a token reference */\nexport const ok = 'text-navy'\n`, (root) => {
+    withFixture(`/* nothing but a token reference */\nexport const ok = 'text-navy'\n`, (root: string) => {
       expect(checkTokens({ root, dirs: ['src/console'] })).toEqual([])
     })
   })

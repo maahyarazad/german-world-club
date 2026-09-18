@@ -1,3 +1,5 @@
+import type { Module } from '@gwc/contracts/permissions'
+import type { SidebarItem } from '../src/console/Sidebar'
 import { describe, it, expect, afterEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
@@ -22,7 +24,11 @@ afterEach(() => vi.unstubAllGlobals())
 const sidebar = () => <Sidebar items={ADMIN_ITEMS} title={t.portals.staff} />
 
 /** Every admin sidebar entry that is gated on a module. */
-const GATED_ITEMS = ADMIN_ITEMS.filter((item) => item.module)
+// Narrowed with a predicate so `module` is a Module, not Module|undefined,
+// at every use below.
+const GATED_ITEMS = ADMIN_ITEMS.filter(
+  (item): item is SidebarItem & { module: Module } => Boolean(item.module),
+)
 
 describe('every module/flag pair renders for a holder and not for a non-holder', () => {
   it.each(GATED_ITEMS.map((item) => [item.module]))(
@@ -41,7 +47,7 @@ describe('every module/flag pair renders for a holder and not for a non-holder',
     async (module) => {
       // Grant one unrelated module so the sidebar renders at all — otherwise
       // this would pass against a component that rendered nothing ever.
-      const other = GATED_ITEMS.find((item) => item.module !== module).module
+      const other = GATED_ITEMS.find((item) => item.module !== module)!.module
 
       // `available: MODULES` is load-bearing. With the default (only granted
       // modules servable), an ungranted module would also be un-servable, and
