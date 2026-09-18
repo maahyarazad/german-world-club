@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { useTranslations } from '../i18n/index'
 import LanguageSwitch from '../components/ui/LanguageSwitch'
 
@@ -9,7 +11,14 @@ import LanguageSwitch from '../components/ui/LanguageSwitch'
  * sees before the console exists, and two subtly different versions of the same
  * card is exactly the drift a design system is meant to prevent.
  */
-export function AuthCard({ title, subtitle, children, footer }) {
+export type AuthCardProps = {
+  title?: ReactNode
+  subtitle?: ReactNode
+  children?: ReactNode
+  footer?: ReactNode
+}
+
+export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
   const t = useTranslations()
   return (
     <main className="flex min-h-svh items-center justify-center bg-ground px-4 py-10 font-sans">

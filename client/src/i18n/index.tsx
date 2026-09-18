@@ -2,6 +2,8 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useState } 
 import { de } from './de'
 import { en } from './en'
 import { DEFAULT_LOCALE, LOCALES, isLocale, matchLocale } from './locales'
+import type { Locale } from './locales'
+import type { ReactNode } from 'react'
 
 /**
  * The active locale, and the catalogue that follows from it.
@@ -15,6 +17,16 @@ import { DEFAULT_LOCALE, LOCALES, isLocale, matchLocale } from './locales'
 
 const CATALOGUES = { de, en }
 
+/**
+ * The catalogue shape, taken from the German one.
+ *
+ * German is the source of truth for the key set, so a key present in `en` but
+ * missing from `de` is a type error here as well as a check-i18n failure. The
+ * parity script still runs: it catches the other direction and reports both
+ * sides at once, which a structural type cannot.
+ */
+export type Catalogue = typeof de
+
 /** Where the browser's choice lives. Per-browser by decision (FR-023). */
 export const STORAGE_KEY = 'gwc.locale'
 
@@ -25,7 +37,7 @@ export const STORAGE_KEY = 'gwc.locale'
  * A language preference is a convenience, not state anything depends on, so it
  * must degrade rather than break (FR-021).
  */
-export function readStoredLocale(storage = safeStorage()) {
+export function readStoredLocale(storage: Storage | null = safeStorage()): Locale | null {
   try {
     const value = storage?.getItem(STORAGE_KEY)
     return isLocale(value) ? value : null
@@ -34,7 +46,7 @@ export function readStoredLocale(storage = safeStorage()) {
   }
 }
 
-export function writeStoredLocale(locale, storage = safeStorage()) {
+export function writeStoredLocale(locale: Locale, storage: Storage | null = safeStorage()): boolean {
   try {
     storage?.setItem(STORAGE_KEY, locale)
     return true
@@ -45,7 +57,7 @@ export function writeStoredLocale(locale, storage = safeStorage()) {
 }
 
 /** `localStorage` itself can throw on *access*, not only on use. */
-function safeStorage() {
+function safeStorage(): Storage | null {
   try {
     return globalThis.localStorage ?? null
   } catch {
@@ -68,10 +80,15 @@ function safeStorage() {
  * This is also the seam a per-account preference would attach to if FR-023 is
  * ever revisited: one more branch above `stored`, and nothing else changes.
  */
+export type ResolveLocaleOptions = {
+  stored?: Locale | null
+  navigatorLanguages?: readonly (string | undefined)[]
+}
+
 export function resolveLocale({
   stored = readStoredLocale(),
   navigatorLanguages = globalThis.navigator?.languages ?? [globalThis.navigator?.language],
-} = {}) {
+}: ResolveLocaleOptions = {}): Locale {
   if (isLocale(stored)) return stored
 
   for (const tag of navigatorLanguages ?? []) {
@@ -82,10 +99,20 @@ export function resolveLocale({
   return DEFAULT_LOCALE
 }
 
-const LocaleContext = createContext(null)
+/** What `useLocale` hands back. */
+export type LocaleContextValue = {
+  locale: Locale
+  setLocale: (next: Locale) => void
+  locales: readonly Locale[]
+  t: Catalogue
+}
 
-export function LocaleProvider({ children, initialLocale }) {
-  const [locale, setLocaleState] = useState(() => initialLocale ?? resolveLocale())
+const LocaleContext = createContext<LocaleContextValue | null>(null)
+
+export type LocaleProviderProps = { children?: ReactNode; initialLocale?: Locale }
+
+export function LocaleProvider({ children, initialLocale }: LocaleProviderProps) {
+  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? resolveLocale())
 
   /**
    * Keep the document's language in step (FR-020).
@@ -99,13 +126,13 @@ export function LocaleProvider({ children, initialLocale }) {
     }
   }, [locale])
 
-  const setLocale = useCallback((next) => {
+  const setLocale = useCallback((next: Locale) => {
     if (!isLocale(next)) return
     setLocaleState(next)
     writeStoredLocale(next)
   }, [])
 
-  const value = useMemo(
+  const value = useMemo<LocaleContextValue>(
     () => ({ locale, setLocale, locales: LOCALES, t: CATALOGUES[locale] ?? CATALOGUES[DEFAULT_LOCALE] }),
     [locale, setLocale],
   )
@@ -113,7 +140,7 @@ export function LocaleProvider({ children, initialLocale }) {
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
 }
 
-export function useLocale() {
+export function useLocale(): LocaleContextValue {
   const context = useContext(LocaleContext)
   if (!context) throw new Error('useLocale must be used inside a LocaleProvider')
   return context
@@ -126,7 +153,7 @@ export function useLocale() {
  * to echoing its argument hides a missing key; `t.signIn.title` being
  * `undefined` shows up in a test and in the rendered output immediately.
  */
-export function useTranslations() {
+export function useTranslations(): Catalogue {
   return useLocale().t
 }
 

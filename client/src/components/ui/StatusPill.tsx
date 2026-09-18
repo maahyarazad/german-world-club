@@ -7,15 +7,26 @@
  * unreadable to anyone who cannot separate the tints from each other, and the
  * mockups always show the word.
  */
+import type { ReactNode } from 'react'
+
 const TONES = {
   success: 'bg-tint-success text-tint-success-fg',
   pending: 'bg-tint-gold text-tint-gold-fg',
   danger: 'bg-tint-danger text-tint-danger-fg',
   info: 'bg-tint-info text-tint-info-fg',
   neutral: 'bg-ground text-text-muted',
+} as const
+
+export type StatusTone = keyof typeof TONES
+
+export type StatusPillProps = {
+  tone?: StatusTone
+  /** Required: the pill carries its meaning in its word, not in its tint. */
+  children: ReactNode
+  className?: string
 }
 
-export function StatusPill({ tone = 'neutral', children, className = '' }) {
+export function StatusPill({ tone = 'neutral', children, className = '' }: StatusPillProps) {
   return (
     <span
       className={`inline-flex items-center rounded-pill px-2.5 py-1 text-[12px] font-medium ${

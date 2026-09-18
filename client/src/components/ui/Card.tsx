@@ -7,7 +7,15 @@
  * surfaces by hairline rather than by elevation is what produces it. A shadow
  * here would work against the whole system.
  */
-export function Card({ title, actions, children, className = '', ...rest }) {
+import type { HTMLAttributes, ReactNode } from 'react'
+
+export type CardProps = HTMLAttributes<HTMLElement> & {
+  title?: ReactNode
+  actions?: ReactNode
+  children?: ReactNode
+}
+
+export function Card({ title, actions, children, className = '', ...rest }: CardProps) {
   return (
     <section
       className={`rounded-card border border-hairline bg-surface p-5 sm:p-6 ${className}`}

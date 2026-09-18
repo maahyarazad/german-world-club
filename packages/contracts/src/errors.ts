@@ -99,3 +99,19 @@ export type ProblemKey = keyof typeof PROBLEMS
 
 /** Every problem `type` URI, as a union. Clients branch on this, never on `detail`. */
 export type ProblemType = (typeof PROBLEMS)[ProblemKey]['type']
+
+/**
+ * An RFC 9457 problem as it appears on the wire.
+ *
+ * Lives here rather than in a client because both faces parse it and the
+ * server emits it — three places, one definition (Principle I). `detail` is
+ * deliberately present and deliberately never branched on: it is specific to
+ * one occurrence and may change between releases.
+ */
+export type ProblemResponse = {
+  type: string
+  title: string
+  status: number
+  detail?: string
+  instance?: string
+}

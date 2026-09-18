@@ -1,5 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { ProblemResponse } from '@gwc/contracts/errors'
 import { DEFAULT_LOCALE } from '../i18n/locales'
+import type { Locale } from '../i18n/locales'
 
 /**
  * RFC 9457 problems, rendered.
@@ -25,7 +27,25 @@ export const RETRY = Object.freeze({
   AFTER_WAIT: 'after-wait',
   IMMEDIATE: 'immediate',
   REAUTHENTICATE: 'reauthenticate',
-})
+} as const)
+
+/** What the console may offer the user in response to a refusal. */
+export type RetryPolicy = (typeof RETRY)[keyof typeof RETRY]
+
+/** One locale's rendering of a problem. */
+type Copy = { title: string; body: string }
+
+/** A registered problem: its identity, its policy, and its copy per locale. */
+type Entry = {
+  type: string
+  status: number
+  retry: RetryPolicy
+  staleCapabilities?: boolean
+  copy: Record<Locale, Copy>
+}
+
+/** What `register` is given: both locales' copy plus the locale-independent policy. */
+type Registration = { de: Copy; en: Copy; retry: RetryPolicy; staleCapabilities?: boolean }
 
 /**
  * Copy per locale, keyed on problem `type`.
@@ -35,9 +55,9 @@ export const RETRY = Object.freeze({
  * copy table against the same keys rather than a change to any response. That
  * is the payoff of "clients branch on `type`, never on `detail`".
  */
-const byType = new Map()
+const byType = new Map<string, Entry>()
 
-function register(problem, { de, en, ...shared }) {
+function register(problem: { type: string; status: number }, { de, en, ...shared }: Registration): void {
   byType.set(problem.type, {
     ...shared,
     type: problem.type,
@@ -212,22 +232,39 @@ register(PROBLEMS.INTERNAL, {
  * which RFC 9457 requires the server to send. That fallback is the same in
  * every language, because it IS the server's string.
  */
-export function describeProblem(problem, locale = DEFAULT_LOCALE) {
-  const pick = (entry) => entry.copy[locale] ?? entry.copy[DEFAULT_LOCALE]
+export type DescribedProblem = {
+  title: string
+  body: string
+  retry: RetryPolicy
+  known: boolean
+  type?: string
+  status?: number
+  staleCapabilities?: boolean
+  instance?: string
+}
+
+export function describeProblem(
+  problem: ProblemResponse | null | undefined,
+  locale: Locale = DEFAULT_LOCALE,
+): DescribedProblem {
+  const pick = (entry: Entry): Copy => entry.copy[locale] ?? entry.copy[DEFAULT_LOCALE]
+
+  // Non-null assertions here and below are safe by construction: INTERNAL is
+  // registered unconditionally at module load, a few dozen lines above.
+  const internal = byType.get(PROBLEMS.INTERNAL.type)!
 
   if (!problem) {
-    const internal = byType.get(PROBLEMS.INTERNAL.type)
     return { ...pick(internal), retry: RETRY.AFTER_WAIT, known: false }
   }
 
   const known = byType.get(problem.type)
   if (known) {
-    const { copy, ...rest } = known
+    const { copy: _copy, ...rest } = known
     return { ...rest, ...pick(known), known: true, instance: problem.instance }
   }
 
   return {
-    title: problem.title || pick(byType.get(PROBLEMS.INTERNAL.type)).title,
+    title: problem.title || pick(internal).title,
     body: '',
     retry: problem.status >= 500 ? RETRY.AFTER_WAIT : RETRY.NEVER,
     known: false,
@@ -241,23 +278,23 @@ export function describeProblem(problem, locale = DEFAULT_LOCALE) {
  * Locale-independent, like every other decision below: what the console DOES
  * about a refusal must not depend on which language it is showing.
  */
-export function invalidatesCapabilities(problem) {
-  return byType.get(problem?.type)?.staleCapabilities === true
+export function invalidatesCapabilities(problem: ProblemResponse | null | undefined): boolean {
+  return (problem ? byType.get(problem.type)?.staleCapabilities : false) === true
 }
 
 /** Whether this refusal means the credential is gone and sign-in is the remedy. */
-export function requiresReauthentication(problem) {
+export function requiresReauthentication(problem: ProblemResponse | null | undefined): boolean {
   return retryFor(problem) === RETRY.REAUTHENTICATE
 }
 
 /** Whether the console may offer a retry control at all (FR-019). */
-export function isRetryable(problem) {
+export function isRetryable(problem: ProblemResponse | null | undefined): boolean {
   const retry = retryFor(problem)
   return retry === RETRY.AFTER_WAIT || retry === RETRY.IMMEDIATE
 }
 
 /** The retry policy for a problem, independent of language. */
-function retryFor(problem) {
+function retryFor(problem: ProblemResponse | null | undefined): RetryPolicy {
   if (!problem) return RETRY.AFTER_WAIT
   const known = byType.get(problem.type)
   if (known) return known.retry

@@ -10,11 +10,21 @@
  * secondary button behind a confirmation (FR-020), not a red button that
  * invites the click it is warning about.
  */
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+
 const VARIANTS = {
   primary: 'bg-navy text-text-on-dark hover:bg-navy-2',
   accent: 'bg-accent text-ink hover:brightness-95',
   secondary: 'bg-surface text-text border border-hairline hover:bg-ground',
   quiet: 'bg-transparent text-navy hover:bg-ground',
+} as const
+
+export type ButtonVariant = keyof typeof VARIANTS
+
+export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> & {
+  variant?: ButtonVariant
+  type?: 'button' | 'submit' | 'reset'
+  children?: ReactNode
 }
 
 export function Button({
@@ -24,7 +34,7 @@ export function Button({
   children,
   className = '',
   ...rest
-}) {
+}: ButtonProps) {
   return (
     <button
       type={type}

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 /**
  * One tile in the four-across KPI row every portal dashboard opens with.
  *
@@ -6,7 +8,9 @@
  * it second, because a dashboard that leads with its labels makes the reader
  * do the scanning.
  */
-export function KpiTile({ value, caption, className = '' }) {
+export type KpiTileProps = { value: ReactNode; caption: ReactNode; className?: string }
+
+export function KpiTile({ value, caption, className = '' }: KpiTileProps) {
   return (
     <div className={`rounded-card border border-hairline bg-ground px-5 py-4 ${className}`}>
       <div className="text-[28px] font-bold leading-none text-navy">{value}</div>
@@ -16,7 +20,9 @@ export function KpiTile({ value, caption, className = '' }) {
 }
 
 /** The row itself. One column on a phone, four on a wide screen. */
-export function KpiRow({ children, className = '' }) {
+export type KpiRowProps = { children?: ReactNode; className?: string }
+
+export function KpiRow({ children, className = '' }: KpiRowProps) {
   return (
     <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 ${className}`}>
       {children}

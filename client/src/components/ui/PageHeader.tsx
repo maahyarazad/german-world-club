@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 /**
  * The page header from every mockup: title, one explanatory line, and the 3px
  * gold rule beneath the whole thing.
@@ -6,7 +8,9 @@
  * accent reads as a brand mark rather than as decoration — it appears once per
  * page, always in the same place.
  */
-export function PageHeader({ title, subtitle, actions }) {
+export type PageHeaderProps = { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }
+
+export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
     <header className="border-b-[3px] border-accent pb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">

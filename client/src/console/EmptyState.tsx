@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import Callout from '../components/ui/Callout'
 
 /**
@@ -8,7 +10,9 @@ import Callout from '../components/ui/Callout'
  * anyone has granted them anything — and the console must say so and name the
  * remedy, not behave as though something broke.
  */
-export function EmptyState({ title, children }) {
+export type EmptyStateProps = { title?: ReactNode; children?: ReactNode }
+
+export function EmptyState({ title, children }: EmptyStateProps) {
   return (
     <div className="mx-auto max-w-2xl py-12">
       <Callout variant="neutral" title={title}>

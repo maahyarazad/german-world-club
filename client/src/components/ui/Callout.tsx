@@ -7,14 +7,25 @@
  * statement the design document itself emphasises, because a page where
  * everything is emphatic emphasises nothing.
  */
+import type { ReactNode } from 'react'
+
 const VARIANTS = {
   gold: 'bg-tint-gold border-l-accent text-text',
   neutral: 'bg-ground border-l-navy text-text',
   info: 'bg-tint-info border-l-navy-2 text-text',
   emphatic: 'bg-ink border-l-accent text-text-on-dark',
+} as const
+
+export type CalloutVariant = keyof typeof VARIANTS
+
+export type CalloutProps = {
+  variant?: CalloutVariant
+  title?: ReactNode
+  children?: ReactNode
+  className?: string
 }
 
-export function Callout({ variant = 'neutral', title, children, className = '' }) {
+export function Callout({ variant = 'neutral', title, children, className = '' }: CalloutProps) {
   const emphatic = variant === 'emphatic'
   return (
     <div

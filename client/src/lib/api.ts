@@ -1,5 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { ProblemResponse } from '@gwc/contracts/errors'
 import { describeProblem, isRetryable, requiresReauthentication, invalidatesCapabilities } from './problems'
+import type { DescribedProblem } from './problems'
 
 /**
  * The one way the console talks to the API.
@@ -12,22 +14,27 @@ import { describeProblem, isRetryable, requiresReauthentication, invalidatesCapa
 
 /** Thrown for any non-2xx. Carries the parsed problem, never a bare message. */
 export class ApiError extends Error {
-  constructor(problem, response) {
+  readonly problem: ProblemResponse
+  readonly status: number
+  readonly described: DescribedProblem
+  /** Seconds to wait, from `retry-after`. Null when the server did not say. */
+  readonly retryAfter: number | null
+
+  constructor(problem: ProblemResponse, response?: Response) {
     const described = describeProblem(problem)
     super(described.title)
     this.name = 'ApiError'
     this.problem = problem
     this.status = response?.status ?? problem?.status ?? 0
     this.described = described
-    /** Seconds to wait, from `retry-after`. Null when the server did not say. */
     this.retryAfter = readRetryAfter(response)
   }
 
-  get retryable() {
+  get retryable(): boolean {
     return isRetryable(this.problem)
   }
 
-  get needsSignIn() {
+  get needsSignIn(): boolean {
     return requiresReauthentication(this.problem)
   }
 
@@ -39,12 +46,12 @@ export class ApiError extends Error {
    * correct response is to re-fetch it — not to show a broken screen and not
    * to keep rendering a link the server will keep refusing (FR-016).
    */
-  get capabilitiesStale() {
+  get capabilitiesStale(): boolean {
     return invalidatesCapabilities(this.problem)
   }
 }
 
-function readRetryAfter(response) {
+function readRetryAfter(response?: Response): number | null {
   const header = response?.headers?.get?.('retry-after')
   if (!header) return null
   const seconds = Number(header)
@@ -66,10 +73,10 @@ const PROBLEM_TYPE = 'application/problem+json'
  * token in localStorage on a shared staff workstation outlives the session it
  * belongs to.
  */
-let csrfToken = null
-let csrfInFlight = null
+let csrfToken: string | null = null
+let csrfInFlight: Promise<string | null> | null = null
 
-async function fetchCsrfToken() {
+async function fetchCsrfToken(): Promise<string | null> {
   // Coalesced: several writes firing at once must not mint several secrets,
   // because each call replaces the cookie and would invalidate the others.
   csrfInFlight ??= fetch('/auth/csrf', { credentials: 'include', cache: 'no-store' })
@@ -88,17 +95,17 @@ async function fetchCsrfToken() {
 }
 
 /** Forget the cached token. Used after the server rejects it. */
-export function clearCsrfToken() {
+export function clearCsrfToken(): void {
   csrfToken = null
 }
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
-async function readProblem(response) {
+async function readProblem(response: Response): Promise<ProblemResponse> {
   const contentType = response.headers.get('content-type') ?? ''
   if (contentType.includes(PROBLEM_TYPE) || contentType.includes('application/json')) {
     try {
-      return await response.json()
+      return (await response.json()) as ProblemResponse
     } catch {
       // A refusal whose body did not parse is still a refusal. Falling through
       // to the synthetic problem below keeps the caller's error handling
@@ -117,7 +124,17 @@ async function readProblem(response) {
  * disclosure, not a performance win. The server sends `no-store` on the gated
  * routes too; this is the client half of the same rule.
  */
-export async function request(path, { method = 'GET', body, signal, headers = {} } = {}) {
+export type RequestOptions = {
+  method?: string
+  body?: unknown
+  signal?: AbortSignal
+  headers?: Record<string, string>
+}
+
+export async function request(
+  path: string,
+  { method = 'GET', body, signal, headers = {} }: RequestOptions = {},
+): Promise<unknown> {
   const unsafe = UNSAFE.has(method)
 
   const send = async () => {
@@ -168,8 +185,11 @@ export async function request(path, { method = 'GET', body, signal, headers = {}
   return contentType.includes('application/json') ? response.json() : response.text()
 }
 
-export const get = (path, options) => request(path, { ...options, method: 'GET' })
-export const post = (path, body, options) => request(path, { ...options, method: 'POST', body })
-export const patch = (path, body, options) => request(path, { ...options, method: 'PATCH', body })
-export const put = (path, body, options) => request(path, { ...options, method: 'PUT', body })
-export const del = (path, options) => request(path, { ...options, method: 'DELETE' })
+type BodylessOptions = Omit<RequestOptions, 'method' | 'body'>
+type BodyOptions = Omit<RequestOptions, 'method' | 'body'>
+
+export const get = (path: string, options?: BodylessOptions) => request(path, { ...options, method: 'GET' })
+export const post = (path: string, body?: unknown, options?: BodyOptions) => request(path, { ...options, method: 'POST', body })
+export const patch = (path: string, body?: unknown, options?: BodyOptions) => request(path, { ...options, method: 'PATCH', body })
+export const put = (path: string, body?: unknown, options?: BodyOptions) => request(path, { ...options, method: 'PUT', body })
+export const del = (path: string, options?: BodylessOptions) => request(path, { ...options, method: 'DELETE' })
