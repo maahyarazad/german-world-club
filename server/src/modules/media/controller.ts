@@ -3,6 +3,8 @@ import { altSchema, DELIVERY_CACHE_CONTROL } from '@gwc/contracts/media'
 import { MediaRejected, extensionAgrees, validateUpload } from './validate.ts'
 import { ingestImage, ingestVideo } from './application/upload.ts'
 import { getAsset, deleteAsset, getVariant } from './application/deliver.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * Every handler here pulls plain data out of `request` — including parsing
@@ -11,9 +13,9 @@ import { getAsset, deleteAsset, getVariant } from './application/deliver.ts'
  * onto `reply`. The actual pipeline rules (validation, storage, quota,
  * dedupe) live in `application/`.
  */
-export function createMediaController(app, { storage, queue, maxBytes, maxPixels, storedByteQuota }) {
+export function createMediaController(app: GwcApp, { storage, queue, maxBytes, maxPixels, storedByteQuota }) {
   return {
-    upload: async (request, reply) => {
+    upload: async (request: FastifyRequest, reply: FastifyReply) => {
       const uploaded = await request.file().catch((err) => {
         if (err.code === 'FST_REQ_FILE_TOO_LARGE') {
           throw new MediaRejected(PROBLEMS.MEDIA_TOO_LARGE, `The upload exceeds the ${Math.floor(maxBytes / 1048576)} MB limit.`)
@@ -57,12 +59,12 @@ export function createMediaController(app, { storage, queue, maxBytes, maxPixels
       return reply.code(status).send(body)
     },
 
-    getAsset: async (request, reply) => {
+    getAsset: async (request: FastifyRequest, reply: FastifyReply) => {
       const body = await getAsset(app, { id: request.params.id, signal: request.deadlineSignal })
       return reply.send(body)
     },
 
-    deleteAsset: async (request, reply) => {
+    deleteAsset: async (request: FastifyRequest, reply: FastifyReply) => {
       const body = await deleteAsset(app, {
         storage,
         id: request.params.id,
@@ -73,7 +75,7 @@ export function createMediaController(app, { storage, queue, maxBytes, maxPixels
       return reply.send(body)
     },
 
-    getVariant: async (request, reply) => {
+    getVariant: async (request: FastifyRequest, reply: FastifyReply) => {
       const { checksum, variant, ext } = request.params
       const { body, contentType } = await getVariant(app, { storage, checksum, variant, ext, signal: request.deadlineSignal })
 

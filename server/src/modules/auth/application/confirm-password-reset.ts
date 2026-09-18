@@ -4,12 +4,14 @@ import { forbidden } from '../../../authz/require-permission.ts'
 import { hashRefreshToken } from '../tokens.ts'
 import { hashPassword } from '../passwords.ts'
 import { revokeAllSessions } from '../sessions.ts'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../../app.ts'
 
-export async function confirmPasswordReset(app, { token: presentedToken, password, requestId }) {
+export async function confirmPasswordReset(app: GwcApp, { token: presentedToken, password, requestId }) {
   const presentedHash = hashRefreshToken(presentedToken)
   const newHash = await hashPassword(password)
 
-  const result = await withTransaction(app.pg, async (client) => {
+  const result = await withTransaction(app.pg, async (client: PoolClient) => {
     const { rows } = await client.query(
       `SELECT id, account_id, account_kind, expires_at, consumed_at
          FROM password_reset_tokens WHERE token_hash = $1 FOR UPDATE`,

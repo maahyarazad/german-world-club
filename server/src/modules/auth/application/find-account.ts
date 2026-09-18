@@ -1,4 +1,5 @@
 import { query } from '../../../db/query.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Account lookup shared by sign-in and password-reset request.
@@ -10,7 +11,7 @@ import { query } from '../../../db/query.ts'
  * sign-in; picking among several is a later problem, never a credential's to
  * answer.
  */
-export async function findAccount(app, email, signal) {
+export async function findAccount(app: GwcApp, email, signal) {
   const { rows: members } = await query(
     app.pg,
     `SELECT id, email, password_hash, password_reset_required, status, email_confirmed_at,

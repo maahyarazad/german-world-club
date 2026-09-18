@@ -2,6 +2,8 @@ import fp from 'fastify-plugin'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import { jsonSchemaTransform } from 'fastify-type-provider-zod'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * OpenAPI, generated from the shared Zod schemas (T196).
@@ -50,7 +52,7 @@ const DEV_DOCS_PREFIX = '/swagger-ui'
 const DOCS_AUTH = Object.freeze({ audience: 'staff', module: 'settings', flag: 'read' })
 
 export default fp(
-  async function openapi(app) {
+  async function openapi(app: GwcApp) {
     await app.register(swagger, {
       openapi: {
         openapi: '3.1.0',
@@ -270,7 +272,7 @@ export default fp(
         // serializing it through a Zod schema would only describe it twice.
         schema: { hide: true },
       },
-      async (request, reply) => reply.send(app.swagger()),
+      async (request: FastifyRequest, reply: FastifyReply) => reply.send(app.swagger()),
     )
   },
   { name: 'openapi', dependencies: ['auth', 'rate-limit'] },

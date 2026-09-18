@@ -2,6 +2,7 @@ import { query } from '../../../db/query.ts'
 import { absolute, pathFor } from '../build-page-meta.ts'
 import { isContractLive } from '../structured-data.ts'
 import { postureFor } from '../surfaces.ts'
+import type { Pool } from 'pg'
 
 /**
  * GET /sitemap.xml's body, generated from a live query (FR-023, §10.5).
@@ -53,7 +54,7 @@ export function renderSitemap(origin, records, options = {}) {
   }
 }
 
-export async function loadSitemapRecords(pool, signal) {
+export async function loadSitemapRecords(pool: Pool, signal) {
   const { rows } = await query(
     pool,
     `SELECT record_type, record_id, slug, indexable, published, updated_at

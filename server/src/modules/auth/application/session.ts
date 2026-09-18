@@ -1,4 +1,5 @@
 import { FLAGS, MODULES } from '@gwc/contracts/permissions'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Only the modules where at least one flag is true.
@@ -37,7 +38,7 @@ export function grantedModules(snapshot) {
  * of it is a token claim, so a grant revoked a second ago is already gone
  * from this response (Constitution Principle II).
  */
-export async function loadSession(app, { principal, permissions, signal }) {
+export async function loadSession(app: GwcApp, { principal, permissions, signal }) {
   const snapshot = permissions ?? (await app.permissions.resolve(principal.id, { signal }))
 
   return {

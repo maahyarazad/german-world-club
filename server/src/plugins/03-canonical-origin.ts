@@ -1,5 +1,7 @@
 import fp from 'fastify-plugin'
 import { postureFor } from '../modules/seo/surfaces.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * One origin, one URL form (FR-028, §10.6).
@@ -76,10 +78,10 @@ export function canonicalise(requestUrl, { host, protocol }, canonicalOrigin) {
 }
 
 export default fp(
-  async function canonicalOrigin(app) {
+  async function canonicalOrigin(app: GwcApp) {
     const origin = app.env.canonicalOrigin
 
-    app.addHook('onRequest', async (request, reply) => {
+    app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
       /**
        * Only safe methods are canonicalised. A 301 on a POST is a real hazard:
        * clients differ on whether they re-send the body, so a redirected

@@ -6,6 +6,7 @@ import { verifyPassword, verifyAgainstDummy, credentialState, CREDENTIAL_STATE }
 import { startSession } from '../sessions.ts'
 import { issueChallenge, maskPhone } from '../otp.ts'
 import { findAccount } from './find-account.ts'
+import type { GwcApp } from '../../../app.ts'
 
 const invalidCredentials = () =>
   forbidden(PROBLEMS.INVALID_CREDENTIALS, 'Those credentials are not valid.')
@@ -24,7 +25,7 @@ const invalidCredentials = () =>
  *     instead: locked ⇒ contact support, inactive ⇒ reset to reactivate, ended
  *     ⇒ no remedy.
  */
-export async function signIn(app, { email, password, deviceId, face, ip, userAgent, requestId, signal }) {
+export async function signIn(app: GwcApp, { email, password, deviceId, face, ip, userAgent, requestId, signal }) {
   const account = await findAccount(app, email, signal)
 
   // The dummy verification runs for a missing account, so an unknown address

@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { errorPage } from '../modules/public/templates/error-page.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * One error envelope for every route (FR-049, FR-017).
@@ -13,7 +15,7 @@ import { errorPage } from '../modules/public/templates/error-page.ts'
  * occurred" plus the requestId, with the real cause in the logs only.
  */
 
-const wantsHtml = (request) => {
+const wantsHtml = (request: FastifyRequest) => {
   const accept = request.headers.accept ?? ''
   return accept.includes('text/html') && !request.url.startsWith('/api')
 }
@@ -48,7 +50,7 @@ function detailFor(error, problem) {
   return error.safeDetail ?? error.message ?? problem.title
 }
 
-export function buildProblem(error, request) {
+export function buildProblem(error, request: FastifyRequest) {
   const problem = problemFor(error)
   const body = {
     type: problem.type,
@@ -68,8 +70,8 @@ export function buildProblem(error, request) {
 }
 
 export default fp(
-  async function errorHandler(app) {
-    app.setErrorHandler((error, request, reply) => {
+  async function errorHandler(app: GwcApp) {
+    app.setErrorHandler((error, request: FastifyRequest, reply: FastifyReply) => {
       const body = buildProblem(error, request)
 
       if (body.status >= 500) {
@@ -100,7 +102,7 @@ export default fp(
      * unlimited duplicate indexable URLs, which §10.6 names as a defect to
      * explicitly prevent and regression-test.
      */
-    app.setNotFoundHandler((request, reply) => {
+    app.setNotFoundHandler((request: FastifyRequest, reply: FastifyReply) => {
       const body = {
         type: PROBLEMS.NOT_FOUND.type,
         title: PROBLEMS.NOT_FOUND.title,

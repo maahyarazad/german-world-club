@@ -1,6 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /** A token is a credential for addressing someone's phone; never echo it whole. */
 const preview = (token) => `${String(token).slice(0, 12)}…${String(token).slice(-4)}`
@@ -22,7 +23,7 @@ export const toDevice = (row) => ({
  * receiving anything — so the client is expected to call this on every cold
  * start, and calling it must be cheap and idempotent.
  */
-export async function registerDevice(app, { memberId, token, provider, platform, enabled, signal }) {
+export async function registerDevice(app: GwcApp, { memberId, token, provider, platform, enabled, signal }) {
   const { rows } = await query(
     app.pg,
     `INSERT INTO push_devices (member_id, token, provider, platform, enabled)
@@ -40,7 +41,7 @@ export async function registerDevice(app, { memberId, token, provider, platform,
   return rows[0]
 }
 
-export async function listDevices(app, { memberId, signal }) {
+export async function listDevices(app: GwcApp, { memberId, signal }) {
   const { rows } = await query(
     app.pg,
     'SELECT * FROM push_devices WHERE member_id = $1 ORDER BY last_seen_at DESC',
@@ -58,7 +59,7 @@ export async function listDevices(app, { memberId, signal }) {
  * and scoping it to the caller's own member id means one member cannot
  * silence another's phone.
  */
-export async function deregisterDevice(app, { id, memberId, signal }) {
+export async function deregisterDevice(app: GwcApp, { id, memberId, signal }) {
   const { rows } = await query(
     app.pg,
     'DELETE FROM push_devices WHERE id = $1 AND member_id = $2 RETURNING id',

@@ -6,6 +6,7 @@ import { outletBody } from '../templates/outlet.ts'
 import { eventBody } from '../templates/event.ts'
 import { articleBody } from '../templates/article.ts'
 import { legalBody } from '../templates/legal.ts'
+import type { GwcApp } from '../../../app.ts'
 
 const BODIES = {
   partner: partnerBody,
@@ -33,7 +34,7 @@ export const VARY = 'Accept-Encoding, Accept-Language'
  * holding the link while the listing stops being advertised, which is what
  * the sponsor stopped paying for.
  */
-export async function renderRecord(app, { recordType, slug, origin, nonce, signal }) {
+export async function renderRecord(app: GwcApp, { recordType, slug, origin, nonce, signal }) {
   const now = new Date()
   const record = await app.contentSource.find(recordType, slug, { signal })
   if (!record) throw app.httpErrors.notFound('No such page.')

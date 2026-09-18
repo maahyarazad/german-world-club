@@ -1,5 +1,6 @@
 import { withTransaction, query } from '../../db/query.ts'
 import { generateRefreshToken, hashRefreshToken, refreshExpiry } from './tokens.ts'
+import type { Pool, PoolClient } from 'pg'
 
 /**
  * Sessions, rotation, and revocation (FR-004, FR-005).
@@ -91,10 +92,10 @@ export function createDenylist(redis) {
  * accept the insert; doing it the other way round makes every sign-in a
  * constraint violation.
  */
-export async function startSession(pool, {
+export async function startSession(pool: Pool, {
   accountId, accountKind, deviceId = null, userAgent = null, ip = null, face = 'web', now = new Date(),
 }) {
-  return withTransaction(pool, async (client) => {
+  return withTransaction(pool, async (client: PoolClient) => {
     const { rows: superseded } = await client.query(
       `UPDATE sessions
           SET revoked_at = now(), revoked_reason = 'superseded'
@@ -140,10 +141,10 @@ export const REFRESH_OUTCOME = Object.freeze({
  * The whole decision table of data-model.md §3, in one transaction so a
  * concurrent second presentation cannot slip between the read and the write.
  */
-export async function rotateRefreshToken(pool, presentedPlaintext, { face = 'web', now = new Date() } = {}) {
+export async function rotateRefreshToken(pool: Pool, presentedPlaintext, { face = 'web', now = new Date() } = {}) {
   const presentedHash = hashRefreshToken(presentedPlaintext)
 
-  return withTransaction(pool, async (client) => {
+  return withTransaction(pool, async (client: PoolClient) => {
     const { rows } = await client.query(
       `SELECT rt.id, rt.session_id, rt.consumed_at, rt.expires_at,
               s.account_id, s.account_kind, s.revoked_at, s.device_id
@@ -210,8 +211,8 @@ export async function rotateRefreshToken(pool, presentedPlaintext, { face = 'web
 // NOTE: the caller's deadline signal is accepted and currently unused —
 // `withTransaction` has no signal path yet. T178 propagates it into every `pg`
 // query; until then the parameter is dropped rather than silently promised.
-export async function revokeSession(pool, sessionId, reason) {
-  await withTransaction(pool, async (client) => {
+export async function revokeSession(pool: Pool, sessionId, reason) {
+  await withTransaction(pool, async (client: PoolClient) => {
     await client.query(
       `UPDATE sessions SET revoked_at = now(), revoked_reason = $2
         WHERE id = $1 AND revoked_at IS NULL`,
@@ -223,7 +224,7 @@ export async function revokeSession(pool, sessionId, reason) {
 }
 
 /** Revoke every session for an account — what a password reset does (§3.2). */
-export async function revokeAllSessions(pool, accountId, accountKind, reason, { signal } = {}) {
+export async function revokeAllSessions(pool: Pool, accountId, accountKind, reason, { signal } = {}) {
   const { rows } = await query(
     pool,
     `UPDATE sessions SET revoked_at = now(), revoked_reason = $3
@@ -240,7 +241,7 @@ export async function revokeAllSessions(pool, accountId, accountKind, reason, { 
 }
 
 /** Is this session still usable? Read per request, alongside the denylist. */
-export async function loadSession(pool, sessionId, { signal } = {}) {
+export async function loadSession(pool: Pool, sessionId, { signal } = {}) {
   const { rows } = await query(
     pool,
     'SELECT id, account_id, account_kind, device_id, revoked_at FROM sessions WHERE id = $1',

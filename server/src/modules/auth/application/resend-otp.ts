@@ -1,6 +1,7 @@
 import { OTP_RESEND_COOLDOWN_SECONDS } from '@gwc/contracts/auth'
 import { query } from '../../../db/query.ts'
 import { issueChallenge, loadChallenge } from '../otp.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Loads the challenge and its rate-limit key ahead of the route's
@@ -8,14 +9,14 @@ import { issueChallenge, loadChallenge } from '../otp.ts'
  * each send costs real money and an address-keyed limit is trivially
  * bypassed.
  */
-export async function loadOtpResendContext(app, challengeId, signal) {
+export async function loadOtpResendContext(app: GwcApp, challengeId, signal) {
   const challenge = await loadChallenge(app.pg, challengeId, { signal })
   if (!challenge) return { challenge: null, phoneKey: null }
   const { rows } = await query(app.pg, 'SELECT mobile FROM members WHERE id = $1', [challenge.account_id], { signal })
   return { challenge, phoneKey: rows[0]?.mobile ?? challenge.account_id }
 }
 
-export async function resendOtp(app, { challenge, phoneKey, signal }) {
+export async function resendOtp(app: GwcApp, { challenge, phoneKey, signal }) {
   // A missing or spent challenge answers the same as a fresh one: the resend
   // endpoint must not report whether a challenge exists.
   if (!challenge || challenge.consumed_at !== null) {

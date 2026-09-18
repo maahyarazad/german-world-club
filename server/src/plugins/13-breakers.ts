@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import CircuitBreaker from 'opossum'
 import { BREAKERS, errorFilter, assertBreakers, FAIL_CLOSED } from '../config/breakers.ts'
+import type { GwcApp } from '../app.ts'
 
 /**
  * One `opossum` breaker per outbound dependency (FR-035).
@@ -31,7 +32,7 @@ export class DependencyUnavailableError extends Error {
 }
 
 export default fp(
-  async function breakers(app, opts = {}) {
+  async function breakers(app: GwcApp, opts = {}) {
     const policies = opts.breakers ?? BREAKERS
     assertBreakers(policies)
 

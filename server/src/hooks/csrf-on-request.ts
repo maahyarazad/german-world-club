@@ -1,4 +1,6 @@
 import { COOKIES } from '@gwc/contracts/auth'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Checked at onRequest, before authentication: a forged request should be
@@ -10,8 +12,8 @@ import { COOKIES } from '@gwc/contracts/auth'
  * Registered after `@fastify/cookie` and `@fastify/csrf-protection`, which is
  * what supplies `app.csrfProtection`.
  */
-export function registerCsrfHook(app) {
-  app.addHook('onRequest', async (request, reply) => {
+export function registerCsrfHook(app: GwcApp) {
+  app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(request.method)
     const cookieBorne = Boolean(request.cookies?.[COOKIES.access] ?? request.cookies?.[COOKIES.refresh])
     const bearer = String(request.headers.authorization ?? '').startsWith('Bearer ')

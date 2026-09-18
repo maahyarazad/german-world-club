@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { z } from 'zod'
 import { createSeoStaffController } from './staff-controller.ts'
+import type { GwcApp } from '../../app.ts'
 
 const recordTypeSchema = z.enum(['page', 'partner', 'outlet', 'event', 'article', 'committee'])
 
@@ -34,7 +35,7 @@ const seoRecordSchema = z.object({
  * for the dual-permission check and the automatic 301 on a slug change.
  */
 export default fp(
-  async function seoStaffRoutes(app) {
+  async function seoStaffRoutes(app: GwcApp) {
     const controller = createSeoStaffController(app)
     const params = z.object({ recordType: recordTypeSchema, recordId: z.string().uuid() })
 

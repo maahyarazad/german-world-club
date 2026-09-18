@@ -1,6 +1,7 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import { query, withTransaction } from '../../db/query.ts'
 import { OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '@gwc/contracts/auth'
+import type { Pool, PoolClient } from 'pg'
 
 /**
  * The mobile second factor (§6.2) and device approval (§6.1).
@@ -32,7 +33,7 @@ export const OTP_OUTCOME = Object.freeze({
   ATTEMPTS_EXCEEDED: 'attempts_exceeded',
 })
 
-export async function issueChallenge(pool, {
+export async function issueChallenge(pool: Pool, {
   accountId, accountKind, deviceId, purpose = 'login', now = new Date(), signal,
 }) {
   const code = generateCode()
@@ -61,8 +62,8 @@ export async function issueChallenge(pool, {
  * one would let a challenge be probed across devices, which is the thing
  * binding it to a device was meant to prevent (§12.6).
  */
-export async function verifyChallenge(pool, { challengeId, code, deviceId, now = new Date() }) {
-  return withTransaction(pool, async (client) => {
+export async function verifyChallenge(pool: Pool, { challengeId, code, deviceId, now = new Date() }) {
+  return withTransaction(pool, async (client: PoolClient) => {
     const { rows } = await client.query(
       `SELECT id, account_id, account_kind, code_hash, device_id, purpose, attempts, expires_at, consumed_at
          FROM otp_challenges WHERE id = $1 FOR UPDATE`,
@@ -120,7 +121,7 @@ export function maskPhone(mobile) {
 }
 
 /** Load an unconsumed challenge, for the resend path. */
-export async function loadChallenge(pool, challengeId, { signal } = {}) {
+export async function loadChallenge(pool: Pool, challengeId, { signal } = {}) {
   const { rows } = await query(
     pool,
     `SELECT id, account_id, account_kind, device_id, purpose, expires_at, consumed_at, created_at

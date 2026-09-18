@@ -1,3 +1,4 @@
+import type { Pool } from 'pg'
 /**
  * Merchant locations, offers across their whole lifecycle, and the redemptions
  * and feedback behind the analytics screens (BUSINESS_DESCRIPTION.md §5).
@@ -28,7 +29,7 @@ const LIFECYCLE = [
   { state: 'withdrawn', share: 1, window: 'past' },
 ]
 
-export async function seedOffers(pool, faker, options) {
+export async function seedOffers(pool: Pool, faker, options) {
   /**
    * Already seeded? Then stop.
    *

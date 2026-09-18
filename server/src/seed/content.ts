@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import type { Pool } from 'pg'
 
 /**
  * Assets, their derivatives, SEO metadata and legacy redirects.
@@ -15,7 +16,7 @@ const VARIANTS = [
   ['large', 'webp', 1600, 1200, 172_000],
 ]
 
-export async function seedContent(pool, faker, options) {
+export async function seedContent(pool: Pool, faker, options) {
   /**
    * Already seeded? Then stop.
    *

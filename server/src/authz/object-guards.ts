@@ -1,6 +1,9 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { forbidden } from './require-permission.ts'
 import { permits } from './permissions.ts'
+import type { FastifyRequest } from 'fastify'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Layer 2 — object guards (rbac-model.md §5).
@@ -27,7 +30,7 @@ import { permits } from './permissions.ts'
  * department admin holding all five is still refused. That is the whole point —
  * otherwise `admins.edit` is a grant of superadmin by two steps.
  */
-export async function guardAdminTarget(app, request, actorSnapshot, targetAdmin) {
+export async function guardAdminTarget(app: GwcApp, request: FastifyRequest, actorSnapshot, targetAdmin) {
   if (actorSnapshot?.isSuperadmin) return
   if (!targetAdmin) return
   if (targetAdmin.is_admin || targetAdmin.is_superadmin) {
@@ -45,7 +48,7 @@ export async function guardAdminTarget(app, request, actorSnapshot, targetAdmin)
  * plausible reasons are a mistake and a compromised session, and neither is
  * worth the risk of locking the system out of its own administration.
  */
-export async function guardSelfDemotion(app, request, actorSnapshot, target, changes) {
+export async function guardSelfDemotion(app: GwcApp, request: FastifyRequest, actorSnapshot, target, changes) {
   const isSelf = actorSnapshot?.adminId === target?.id
   if (!isSelf) return
   const removingSuperadmin = changes?.is_superadmin === false && target.is_superadmin
@@ -63,7 +66,7 @@ export async function guardSelfDemotion(app, request, actorSnapshot, target, cha
  * redundancy for its own sake: the trigger produces a raw SQL error, and this
  * produces the documented problem+json a client can act on.
  */
-export async function guardLastSuperadmin(client, target, changes) {
+export async function guardLastSuperadmin(client: PoolClient, target, changes) {
   const losingSuperadmin = changes?.is_superadmin === false || changes?.is_active === false
   if (!losingSuperadmin || !target?.is_superadmin || !target?.is_active) return
 
@@ -97,7 +100,7 @@ export function guardMemberDeletion() {
  * post. Staff need the module flag instead — the two paths are separate, and
  * ownership never substitutes for a staff grant or the reverse.
  */
-export async function guardOwnedContent(app, request, { ownerId, ownerKind = 'member' }) {
+export async function guardOwnedContent(app: GwcApp, request: FastifyRequest, { ownerId, ownerKind = 'member' }) {
   const principal = request.principal
   if (principal?.kind === 'admin') return // staff reach this only through Layer 1
   if (principal?.id === ownerId && principal?.kind === ownerKind) return
@@ -121,7 +124,7 @@ export function seoModulesFor(recordType) {
   }
 }
 
-export async function guardSeoEdit(app, request, snapshot, recordType, flag = 'edit') {
+export async function guardSeoEdit(app: GwcApp, request: FastifyRequest, snapshot, recordType, flag = 'edit') {
   const modules = seoModulesFor(recordType)
   if (snapshot?.isSuperadmin) return
 
@@ -150,7 +153,7 @@ export async function guardSeoEdit(app, request, snapshot, recordType, flag = 'e
  * `tests/seed/audiences.test.js` compares the whole body rather than the status
  * alone, because a `detail` that differs leaks exactly what the status hid.
  */
-export async function guardOrganisationScope(app, request, target) {
+export async function guardOrganisationScope(app: GwcApp, request: FastifyRequest, target) {
   const principal = request.principal
   if (target && principal?.organisationId === target.id) return
 

@@ -1,4 +1,6 @@
 import { loadOwnOrganisation, loadOrganisationById } from './application/get-organisation.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 const asDate = (value) => (value === null || value === undefined ? null : new Date(value).toISOString().slice(0, 10))
 
@@ -16,14 +18,14 @@ const toResponse = (row, role) => ({
   role,
 })
 
-export function createOrganisationsController(app) {
+export function createOrganisationsController(app: GwcApp) {
   return {
-    getOwn: async (request, reply) => {
+    getOwn: async (request: FastifyRequest, reply: FastifyReply) => {
       const row = await loadOwnOrganisation(app, { organisationId: request.principal.organisationId })
       return reply.send(toResponse(row, request.principal.role))
     },
 
-    getById: async (request, reply) => {
+    getById: async (request: FastifyRequest, reply: FastifyReply) => {
       const row = await loadOrganisationById(app, request, { id: request.params.id })
       return reply.send(toResponse(row, request.principal.role))
     },

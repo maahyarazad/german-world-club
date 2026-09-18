@@ -11,6 +11,8 @@ import { sessionResponseSchema } from '@gwc/contracts/capabilities'
 import { z } from 'zod'
 
 import { createAuthController } from './controller.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * The authentication endpoints (auth-api.md): schema, access posture, and
@@ -23,7 +25,7 @@ import { createAuthController } from './controller.ts'
 const NO_STORE = 'private, no-store'
 
 export default fp(
-  async function authRoutes(app) {
+  async function authRoutes(app: GwcApp) {
     const controller = createAuthController(app)
 
     // Both sign-in buckets are checked independently (SC-013). Per-address
@@ -35,18 +37,18 @@ export default fp(
     // library's once-per-request marker and never count. See 07-rate-limit.js.
     const limitSignInAccount = app.rateLimitIndependent({
       ...app.bucket('sign-in-account'),
-      keyGenerator: (request) => `sign-in-account:${String(request.body?.email ?? '').toLowerCase()}`,
+      keyGenerator: (request: FastifyRequest) => `sign-in-account:${String(request.body?.email ?? '').toLowerCase()}`,
     })
     const limitOtpSend = app.rateLimit({
       ...app.bucket('otp-send'),
-      keyGenerator: (request) => `otp-send:${request.otpPhoneKey ?? request.ip}`,
+      keyGenerator: (request: FastifyRequest) => `otp-send:${request.otpPhoneKey ?? request.ip}`,
     })
 
     const publicAuth = (bucket) => ({
       config: { auth: { audience: 'public' }, budget: 'auth', rateLimit: app.bucket(bucket) },
     })
 
-    app.addHook('onSend', async (request, reply, payload) => {
+    app.addHook('onSend', async (request: FastifyRequest, reply: FastifyReply, payload) => {
       if (request.url.startsWith('/auth/')) reply.header('cache-control', NO_STORE)
       return payload
     })

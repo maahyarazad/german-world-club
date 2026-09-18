@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import { z } from 'zod'
 import { isCurrent } from '../db/migrate.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Liveness and readiness, reported separately (FR-050).
@@ -14,7 +16,7 @@ import { isCurrent } from '../db/migrate.ts'
  * struggling instance must be drained, not killed.
  */
 export default fp(
-  async function health(app) {
+  async function health(app: GwcApp) {
     let draining = false
     app.decorate('beginDraining', () => {
       draining = true
@@ -54,7 +56,7 @@ export default fp(
         // dependency detail as one reading 200, and more urgently.
         schema: { response: { 200: readinessSchema, 503: readinessSchema } },
       },
-      async (request, reply) => {
+      async (request: FastifyRequest, reply: FastifyReply) => {
         const [db, redis, migrations] = await Promise.all([
           app.dbHealthy(),
           app.redisHealthy(),

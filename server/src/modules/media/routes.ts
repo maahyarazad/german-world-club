@@ -9,6 +9,8 @@ import {
 import { QuotaExceededError } from '../../db/counters.ts'
 import { MediaRejected } from './validate.ts'
 import { createMediaController } from './controller.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * Media ingest and delivery (media-pipeline.md §1–§3): schema, access
@@ -17,7 +19,7 @@ import { createMediaController } from './controller.ts'
  * calls.
  */
 export default fp(
-  async function mediaRoutes(app, opts = {}) {
+  async function mediaRoutes(app: GwcApp, opts = {}) {
     const storage = opts.storage ?? app.mediaStorage
     const queue = opts.queue ?? app.jobQueue ?? null
     const maxBytes = app.env.MEDIA_MAX_BYTES
@@ -100,7 +102,7 @@ export default fp(
     )
 
     /** Translate the pipeline's own errors into the shared envelope. */
-    app.addHook('onError', async (request, reply, error) => {
+    app.addHook('onError', async (request: FastifyRequest, reply: FastifyReply, error) => {
       if (error instanceof QuotaExceededError) {
         error.problem = PROBLEMS.MEDIA_QUOTA_EXCEEDED
         error.statusCode = PROBLEMS.MEDIA_QUOTA_EXCEEDED.status

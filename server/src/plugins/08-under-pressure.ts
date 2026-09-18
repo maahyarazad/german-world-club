@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import underPressure from '@fastify/under-pressure'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Inbound load shedding (FR-045, resilience.md §4).
@@ -28,7 +30,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 const EXEMPT = ['/health/live', '/health/ready']
 
 export default fp(
-  async function pressure(app, opts = {}) {
+  async function pressure(app: GwcApp, opts = {}) {
     await app.register(underPressure, {
       // 1 s of event-loop delay means requests are already queueing badly.
       maxEventLoopDelay: opts.maxEventLoopDelay ?? 1_000,
@@ -41,7 +43,7 @@ export default fp(
       retryAfter: 10,
       exposeStatusRoute: false,
 
-      pressureHandler: (request, reply, type, value) => {
+      pressureHandler: (request: FastifyRequest, reply: FastifyReply, type, value) => {
         if (EXEMPT.includes(request.url.split('?')[0])) {
           // Answer normally: the probe is how the instance gets drained.
           return

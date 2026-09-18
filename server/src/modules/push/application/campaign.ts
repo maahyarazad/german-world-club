@@ -1,5 +1,7 @@
 import { query, withTransaction } from '../../../db/query.ts'
 import { sendToDevices } from '../providers.ts'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../../app.ts'
 
 export const toCampaign = (row, extra = {}) => ({
   id: row.id,
@@ -28,7 +30,7 @@ export const toCampaign = (row, extra = {}) => ({
  * suspended member should not receive club notifications, and that rule
  * belongs here rather than in whoever happens to compose the message.
  */
-async function audience(app, { testOnly }) {
+async function audience(app: GwcApp, { testOnly }) {
   const { rows } = await query(
     app.pg,
     `SELECT d.*
@@ -48,7 +50,7 @@ async function audience(app, { testOnly }) {
  * sending every member's phone a notification is the same privilege by
  * another transport, so it should not need a new one.
  */
-export async function dispatchCampaign(app, { config, transport, isTest, principal, requestId, body }) {
+export async function dispatchCampaign(app: GwcApp, { config, transport, isTest, principal, requestId, body }) {
   const { title, body: message, destinationType, destinationId, destinationLabel } = body
   const devices = await audience(app, { testOnly: isTest })
 
@@ -74,7 +76,7 @@ export async function dispatchCampaign(app, { config, transport, isTest, princip
   let loggingIncomplete = false
 
   try {
-    campaignRow = await withTransaction(app.pg, async (client) => {
+    campaignRow = await withTransaction(app.pg, async (client: PoolClient) => {
       const { rows } = await client.query(
         `INSERT INTO push_campaigns
            (title, body, destination_type, destination_id, destination_label, is_test, sent_by,
@@ -150,7 +152,7 @@ export async function dispatchCampaign(app, { config, transport, isTest, princip
   }
 }
 
-export async function listCampaigns(app, { isTest, limit, signal }) {
+export async function listCampaigns(app: GwcApp, { isTest, limit, signal }) {
   const { rows } = await query(
     app.pg,
     `SELECT * FROM push_campaigns

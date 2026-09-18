@@ -2,6 +2,8 @@ import fp from 'fastify-plugin'
 import rateLimit from '@fastify/rate-limit'
 import { BUCKETS, CRAWLER_ALLOWLIST, assertBuckets } from '../config/rate-limits.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Rate-limit mechanism. Individual buckets are attached per route by the story
@@ -15,7 +17,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
  */
 
 /** Resolve the key for a bucket's dimension. */
-export function keyForBucket(bucketName, request) {
+export function keyForBucket(bucketName, request: FastifyRequest) {
   const bucket = BUCKETS[bucketName]
   const scope = `${bucketName}:`
   switch (bucket?.dimension) {
@@ -56,13 +58,13 @@ export function keyForBucket(bucketName, request) {
 export const hookFor = (dimension) => (dimension === 'ip' ? 'onRequest' : 'preHandler')
 
 /** A verified crawler is never throttled (FR-041, SC-014). */
-export function isAllowlistedCrawler(request) {
+export function isAllowlistedCrawler(request: FastifyRequest) {
   const ua = request.headers['user-agent'] ?? ''
   return CRAWLER_ALLOWLIST.some((c) => ua.includes(c))
 }
 
 export default fp(
-  async function rateLimitPlugin(app, opts) {
+  async function rateLimitPlugin(app: GwcApp, opts) {
     assertBuckets()
 
     const redis = app.redis ?? null
@@ -77,8 +79,8 @@ export default fp(
       global: false,
       redis,
       // Never throttle a verified crawler — see FR-041.
-      allowList: (request) => isAllowlistedCrawler(request),
-      keyGenerator: (request) => keyForBucket(request.routeOptions?.config?.rateLimit?.bucket, request),
+      allowList: (request: FastifyRequest) => isAllowlistedCrawler(request),
+      keyGenerator: (request: FastifyRequest) => keyForBucket(request.routeOptions?.config?.rateLimit?.bucket, request),
       /**
        * @fastify/rate-limit *throws* whatever this returns, so the value has to
        * be an error our own handler recognises — a bare problem+json object has
@@ -89,7 +91,7 @@ export default fp(
        * when a key crosses the ban threshold, and reporting that as 429 would
        * tell a banned client to simply retry later.
        */
-      errorResponseBuilder: (request, context) => {
+      errorResponseBuilder: (request: FastifyRequest, context) => {
         // Counted per bucket: a spike on `sign-in-ip` is an attack, the same
         // spike on `public-read` is a crawl the allowlist is missing — and the
         // second one costs the club search visibility (FR-050).

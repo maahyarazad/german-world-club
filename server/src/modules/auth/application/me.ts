@@ -1,4 +1,5 @@
 import { query } from '../../../db/query.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Entitlement at point of use (FR-013, §12.2).
@@ -18,7 +19,7 @@ export async function resolveEntitlement() {
  * computed at request time. Clients use this to decide what to *display*;
  * they never use it to decide what is *allowed*.
  */
-export async function loadMe(app, { principal, signal }) {
+export async function loadMe(app: GwcApp, { principal, signal }) {
   if (principal.kind === 'admin') {
     const snapshot = await app.permissions.resolve(principal.id, { signal })
     return {
@@ -44,6 +45,6 @@ export async function loadMe(app, { principal, signal }) {
     displayName: member.display_name ?? null,
     emailConfirmed: member.email_confirmed_at !== null && member.email_confirmed_at !== undefined,
     permissions: Object.entries(member.permissions ?? {}).filter(([, v]) => v === true).map(([k]) => k),
-    entitlement: await resolveEntitlement(principal.id),
+    entitlement: await resolveEntitlement(),
   }
 }

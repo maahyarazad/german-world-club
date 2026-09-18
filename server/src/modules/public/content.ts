@@ -1,5 +1,6 @@
 import { query } from '../../db/query.ts'
 import { shareImageFromVariants } from '../seo/build-page-meta.ts'
+import type { Pool } from 'pg'
 
 /**
  * Where a public page's content comes from.
@@ -69,7 +70,7 @@ const RECORD_COLUMNS = `
   m.published, m.updated_at, a.alt AS share_image_alt`
 
 /** The database-backed source. */
-export function createDbContentSource(pool) {
+export function createDbContentSource(pool: Pool) {
   async function variantsFor(assetId, signal) {
     if (!assetId) return []
     const { rows } = await query(

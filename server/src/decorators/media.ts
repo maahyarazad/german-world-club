@@ -1,5 +1,6 @@
 import { createStorage } from '../modules/media/storage.ts'
 import { createInlineQueue } from '../modules/media/queue.ts'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Media storage and the video work queue.
@@ -10,7 +11,7 @@ import { createInlineQueue } from '../modules/media/queue.ts'
  * The inline queue is the default when no PostgreSQL-backed queue is
  * configured, so a single-host install still transcodes.
  */
-export function registerMediaDecorators(app, { storage, jobQueue, env } = {}) {
+export function registerMediaDecorators(app: GwcApp, { storage, jobQueue, env } = {}) {
   app.decorate('mediaStorage', storage ?? createStorage(env))
   app.decorate('jobQueue', jobQueue ?? createInlineQueue())
 }

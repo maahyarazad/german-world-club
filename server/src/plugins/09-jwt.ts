@@ -2,6 +2,8 @@ import fp from 'fastify-plugin'
 import jwt from '@fastify/jwt'
 import { COOKIES, ACCESS_TOKEN_TTL_SECONDS } from '@gwc/contracts/auth'
 import { loadKeys, buildClaims } from '../modules/auth/tokens.ts'
+import type { FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Token verification, one path for both faces (FR-002, FR-003).
@@ -15,7 +17,7 @@ import { loadKeys, buildClaims } from '../modules/auth/tokens.ts'
  * structural rather than a check each route has to remember.
  */
 export default fp(
-  async function jwtPlugin(app, opts) {
+  async function jwtPlugin(app: GwcApp, opts) {
     const env = opts.env ?? app.env
     // Validates shape and algorithm at boot: a malformed key should stop the
     // process, not fail one member's sign-in at 2 a.m. The PEM strings
@@ -63,7 +65,7 @@ export default fp(
      * a member token reaching a staff route must fail at verification rather
      * than inside a handler.
      */
-    app.decorate('verifyAccessToken', async (request, expectedAudience) => {
+    app.decorate('verifyAccessToken', async (request: FastifyRequest, expectedAudience) => {
       const claims = await request.jwtVerify()
       if (claims.typ !== 'access') throw new Error('not an access token')
       if (expectedAudience && claims.aud !== expectedAudience) {

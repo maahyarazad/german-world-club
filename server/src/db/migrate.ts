@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import pg from 'pg'
 import { loadEnv } from '../config/env.ts'
+import type { Pool, PoolClient } from 'pg'
 
 /**
  * SQL migration runner. Applies in filename order and records what it applied.
@@ -15,7 +16,7 @@ import { loadEnv } from '../config/env.ts'
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'migrations')
 
-async function ensureTable(client) {
+async function ensureTable(client: PoolClient) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       filename   text PRIMARY KEY,
@@ -64,7 +65,7 @@ export async function up({ connectionString, log = console.log } = {}) {
 }
 
 /** True when every migration on disk has been applied — backs readiness. */
-export async function isCurrent(pool) {
+export async function isCurrent(pool: Pool) {
   try {
     const { rows } = await pool.query('SELECT filename FROM schema_migrations')
     const applied = new Set(rows.map((r) => r.filename))

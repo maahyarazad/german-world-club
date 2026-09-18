@@ -4,8 +4,10 @@ import { withTransaction, query } from '../../../db/query.ts'
 import { release, SCOPE } from '../../../db/counters.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { VARIANTS_IN_ORDER, toResponse, MIME_FOR_FORMAT } from './format.ts'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../../app.ts'
 
-export async function getAsset(app, { id, signal }) {
+export async function getAsset(app: GwcApp, { id, signal }) {
   const { rows } = await query(app.pg, 'SELECT * FROM assets WHERE id = $1', [id], { signal })
   if (rows.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such asset.')
 
@@ -15,8 +17,8 @@ export async function getAsset(app, { id, signal }) {
   return toResponse(rows[0], variants)
 }
 
-export async function deleteAsset(app, { storage, id, principal, permissions, requestId }) {
-  const outcome = await withTransaction(app.pg, async (client) => {
+export async function deleteAsset(app: GwcApp, { storage, id, principal, permissions, requestId }) {
+  const outcome = await withTransaction(app.pg, async (client: PoolClient) => {
     const { rows } = await client.query('SELECT * FROM assets WHERE id = $1 FOR UPDATE', [id])
     if (rows.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such asset.')
     const asset = rows[0]
@@ -69,7 +71,7 @@ export async function deleteAsset(app, { storage, id, principal, permissions, re
   return { id: outcome.asset.id, deleted: true, bytesRemoved: outcome.bytesRemoved }
 }
 
-export async function getVariant(app, { storage, checksum, variant, ext, signal }) {
+export async function getVariant(app: GwcApp, { storage, checksum, variant, ext, signal }) {
   const format = ext === 'jpg' ? 'jpeg' : ext
 
   /**

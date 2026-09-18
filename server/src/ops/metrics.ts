@@ -1,4 +1,5 @@
 import fp from 'fastify-plugin'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Operational counters (FR-050, T194).
@@ -72,7 +73,7 @@ export function createMetrics() {
 }
 
 export default fp(
-  async function metrics(app) {
+  async function metrics(app: GwcApp) {
     app.decorate('metrics', createMetrics())
   },
   { name: 'metrics' },

@@ -1,6 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { rotateRefreshToken, REFRESH_OUTCOME } from '../sessions.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Returns a discriminated outcome rather than throwing for every failure:
@@ -8,7 +9,7 @@ import { rotateRefreshToken, REFRESH_OUTCOME } from '../sessions.ts'
  * (a missing token never had cookies worth clearing; a replayed or invalid
  * token does), and that decision belongs to the controller, not here.
  */
-export async function refresh(app, { presented, face, requestId }) {
+export async function refresh(app: GwcApp, { presented, face, requestId }) {
   if (!presented) {
     return { outcome: 'missing', problem: forbidden(PROBLEMS.INVALID_REFRESH_TOKEN, 'No refresh token was presented.') }
   }

@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { createPublicController, LANDING_ALTERNATES } from './controller.ts'
 import { INSTITUTIONAL_SLUGS } from './application/landing.ts'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * The six public route classes (FR-016, §10.2): schema, access posture, and
@@ -62,7 +63,7 @@ async function loadLandingShell(log, file = 'index.html') {
 }
 
 export default fp(
-  async function publicRoutes(app) {
+  async function publicRoutes(app: GwcApp) {
     const origin = app.env.canonicalOrigin
     const landingShell = await loadLandingShell(app.log, 'index.html')
     const landingShellEn = await loadLandingShell(app.log, 'en.html')

@@ -8,6 +8,8 @@ import { probeVideo } from '../derive-video.ts'
 import { checksumOf, hexOf, keyFor } from '../storage.ts'
 import { enqueueVideoDerivatives } from '../queue.ts'
 import { MIME_FOR_FORMAT, VARIANTS_IN_ORDER, sortVariants, toResponse } from './format.ts'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Media ingest (media-pipeline.md §1–§3), framework-free.
@@ -26,7 +28,7 @@ import { MIME_FOR_FORMAT, VARIANTS_IN_ORDER, sortVariants, toResponse } from './
  * upload response already carries every variant URL and the client never has
  * to poll (media-pipeline.md §5).
  */
-export async function ingestImage(app, { storage, maxPixels, storedByteQuota, buffer, validated, alt, principal }) {
+export async function ingestImage(app: GwcApp, { storage, maxPixels, storedByteQuota, buffer, validated, alt, principal }) {
   /**
    * Derivation runs under the media breaker, fail-closed (FR-063).
    *
@@ -58,7 +60,7 @@ export async function ingestImage(app, { storage, maxPixels, storedByteQuota, bu
   const totalBytes =
     derived.stripped.buffer.length + derived.variants.reduce((sum, v) => sum + v.bytes, 0)
 
-  const { asset, variants } = await withTransaction(app.pg, async (client) => {
+  const { asset, variants } = await withTransaction(app.pg, async (client: PoolClient) => {
     // Content-addressed dedupe: identical bytes are one stored copy. The
     // existing row is returned rather than a second created, so the caller
     // gets working URLs and the quota is not charged twice.
@@ -117,7 +119,7 @@ export async function ingestImage(app, { storage, maxPixels, storedByteQuota, bu
  * layout-shift requirement needs width and height at first render and cannot
  * wait for the transcode.
  */
-export async function ingestVideo(app, { storage, queue, storedByteQuota, buffer, validated, alt, principal }) {
+export async function ingestVideo(app: GwcApp, { storage, queue, storedByteQuota, buffer, validated, alt, principal }) {
   const probed = await probeVideo(buffer)
   if (!probed.width || !probed.height) {
     throw new MediaRejected(PROBLEMS.VALIDATION_FAILED, 'The video’s dimensions could not be read.')
@@ -127,7 +129,7 @@ export async function ingestVideo(app, { storage, queue, storedByteQuota, buffer
   const originalKey = keyFor(checksum, { variant: 'original', format: validated.mime })
   await storage.put(originalKey, buffer, { contentType: validated.mime })
 
-  const asset = await withTransaction(app.pg, async (client) => {
+  const asset = await withTransaction(app.pg, async (client: PoolClient) => {
     const { rows: existing } = await client.query('SELECT * FROM assets WHERE checksum = $1', [checksum])
     if (existing.length > 0) return existing[0]
 

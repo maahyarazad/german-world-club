@@ -1,5 +1,7 @@
 import fp from 'fastify-plugin'
 import { query } from '../db/query.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Table-driven legacy redirects (FR-029, §12.12).
@@ -27,7 +29,7 @@ export function normalisePath(url) {
 }
 
 export default fp(
-  async function legacyRedirects(app) {
+  async function legacyRedirects(app: GwcApp) {
     /** @type {Map<string, {target: string, status: number}>|null} */
     let table = null
 
@@ -58,7 +60,7 @@ export default fp(
      * route of the same shape exists — the table is curated by staff, and an
      * entry in it is a deliberate statement about that URL.
      */
-    app.addHook('onRequest', async (request, reply) => {
+    app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
       const hit = await app.resolveLegacyRedirect(request.url, request.deadlineSignal)
       if (!hit) return
 

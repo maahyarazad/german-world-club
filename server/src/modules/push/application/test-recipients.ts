@@ -1,8 +1,9 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
+import type { GwcApp } from '../../../app.ts'
 
-export async function listTestRecipients(app, { signal }) {
+export async function listTestRecipients(app: GwcApp, { signal }) {
   const { rows } = await query(
     app.pg,
     `SELECT t.member_id, m.display_name, m.email,
@@ -21,7 +22,7 @@ export async function listTestRecipients(app, { signal }) {
   }))
 }
 
-export async function addTestRecipient(app, { memberId, addedBy, signal }) {
+export async function addTestRecipient(app: GwcApp, { memberId, addedBy, signal }) {
   const { rows } = await query(
     app.pg,
     `INSERT INTO push_test_recipients (member_id, added_by) VALUES ($1, $2)
@@ -33,7 +34,7 @@ export async function addTestRecipient(app, { memberId, addedBy, signal }) {
   return rows[0].member_id
 }
 
-export async function removeTestRecipient(app, { memberId, signal }) {
+export async function removeTestRecipient(app: GwcApp, { memberId, signal }) {
   const { rows } = await query(
     app.pg,
     'DELETE FROM push_test_recipients WHERE member_id = $1 RETURNING member_id',

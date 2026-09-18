@@ -1,5 +1,7 @@
 import { renderRecord, PUBLIC_CACHE, VARY } from './application/render-record.ts'
 import { renderLanding, LANDING_RECORD, LANDING_RECORD_EN, LANDING_ALTERNATES } from './application/landing.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * Every handler here resolves a record or a landing shell through
@@ -7,8 +9,8 @@ import { renderLanding, LANDING_RECORD, LANDING_RECORD_EN, LANDING_ALTERNATES } 
  * language, CSP nonce). None of the record-resolution or template rules live
  * in this file.
  */
-export function createPublicController(app, { origin, landingShell, landingShellEn }) {
-  const renderRecordPage = (recordType, fixedSlug) => async (request, reply) => {
+export function createPublicController(app: GwcApp, { origin, landingShell, landingShellEn }) {
+  const renderRecordPage = (recordType, fixedSlug) => async (request: FastifyRequest, reply: FastifyReply) => {
     const { html, language } = await renderRecord(app, {
       recordType,
       slug: fixedSlug ?? request.params.slug,
@@ -26,7 +28,7 @@ export function createPublicController(app, { origin, landingShell, landingShell
       .send(html)
   }
 
-  const landingHandler = (shell, record) => async (request, reply) => {
+  const landingHandler = (shell, record) => async (request: FastifyRequest, reply: FastifyReply) => {
     reply
       .type('text/html; charset=utf-8')
       .header('cache-control', PUBLIC_CACHE)

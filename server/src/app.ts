@@ -38,6 +38,7 @@ import seoPublicRoutes from './modules/seo/public-routes.ts'
 import seoStaffRoutes from './modules/seo/staff-routes.ts'
 import organisationRoutes from './modules/organisations/routes.ts'
 import authRoutes from './modules/auth/routes.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import mediaRoutes from './modules/media/routes.ts'
 import mediaWorker from './modules/media/worker.ts'
 import pushRoutes from './modules/push/routes.ts'
@@ -273,7 +274,7 @@ export async function buildApp({ env = loadEnv(), contentSource, storage, jobQue
         }
       })
 
-      const sendShell = async (request, reply) =>
+      const sendShell = async (request: FastifyRequest, reply: FastifyReply) =>
         reply
           .type('text/html; charset=utf-8')
           // `private, no-store`, the same rule every other gated surface

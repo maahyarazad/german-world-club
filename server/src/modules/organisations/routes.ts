@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { z } from 'zod'
 import { createOrganisationsController } from './controller.ts'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * The merchant and partner portals' first surface (FR-012, data-model.md §1):
@@ -40,7 +41,7 @@ const organisationSchema = z.object({
 })
 
 export default fp(
-  async function organisationRoutes(app) {
+  async function organisationRoutes(app: GwcApp) {
     const controller = createOrganisationsController(app)
     const params = z.object({ id: z.string().uuid() })
 

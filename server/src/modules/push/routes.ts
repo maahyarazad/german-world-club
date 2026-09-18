@@ -6,6 +6,7 @@ import {
   testRecipientSchema, testRecipientListSchema, deletedSchema,
 } from '@gwc/contracts/push'
 import { createPushController } from './controller.ts'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * Push notification endpoints: schema, access posture, and wiring to
@@ -31,7 +32,7 @@ import { createPushController } from './controller.ts'
  *   DELETE /push/test-recipients/:id  remove from it                   (staff)
  */
 export default fp(
-  async function pushRoutes(app, opts = {}) {
+  async function pushRoutes(app: GwcApp, opts = {}) {
     const config = opts.pushConfig ?? {
       expoAccessToken: app.env.EXPO_ACCESS_TOKEN,
       fcmProjectId: app.env.FCM_PROJECT_ID,

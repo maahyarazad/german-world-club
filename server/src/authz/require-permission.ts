@@ -1,5 +1,6 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { permits } from './permissions.ts'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Layer 1 — module capability (FR-007, FR-008, FR-015).
@@ -31,7 +32,7 @@ export const forbidden = (problem, detail) => new AuthorizationError(problem, de
  * Build the preHandler. `app` supplies the resolver and the audit writer, so
  * the same function serves every staff route without each one wiring them.
  */
-export function makeRequirePermission(app) {
+export function makeRequirePermission(app: GwcApp) {
   return async function requirePermission(request) {
     const auth = request.routeOptions?.config?.auth
     if (auth?.audience !== 'staff') return

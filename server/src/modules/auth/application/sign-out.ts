@@ -1,10 +1,11 @@
 import { revokeSession } from '../sessions.ts'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Idempotent: a client retrying after a network failure must not see an
  * error for a session that is already gone.
  */
-export async function signOut(app, { principal, requestId, audit = true }) {
+export async function signOut(app: GwcApp, { principal, requestId, audit = true }) {
   await revokeSession(app.pg, principal.sid, 'logout')
   await app.denylist.add(principal.sid)
   if (audit) {

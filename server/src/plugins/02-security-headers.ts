@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import helmet from '@fastify/helmet'
 import { postureFor } from '../modules/seo/surfaces.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Security headers, and the crawl-directive half of FR-025.
@@ -19,7 +21,7 @@ import { postureFor } from '../modules/seo/surfaces.ts'
  * functions are called with the *raw* Node request, not the Fastify one.
  */
 export default fp(
-  async function securityHeaders(app) {
+  async function securityHeaders(app: GwcApp) {
     await app.register(helmet, {
       global: true,
       enableCSPNonces: true,
@@ -38,7 +40,7 @@ export default fp(
       hsts: { maxAge: 31536000, includeSubDomains: true, preload: false },
     })
 
-    app.addHook('onSend', async (request, reply, payload) => {
+    app.addHook('onSend', async (request: FastifyRequest, reply: FastifyReply, payload) => {
       const posture = postureFor(request.routeOptions?.config?.auth, request.url)
       if (!posture.indexed) reply.header('x-robots-tag', 'noindex, nofollow')
       if (!posture.public) reply.header('cache-control', 'private, no-store')

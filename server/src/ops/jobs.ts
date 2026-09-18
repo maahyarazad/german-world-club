@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { Cron } from 'croner'
 import { query } from '../db/query.ts'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Scheduled jobs (FR-051, §11).
@@ -60,7 +61,7 @@ export const PLATFORM_JOBS = Object.freeze([
 ])
 
 /** The work each job does. Separated from the schedule so both stay readable. */
-export function createJobHandlers(app) {
+export function createJobHandlers(app: GwcApp) {
   return {
     'sessions.expire': async () => {
       const { rowCount } = await app.pg.query(
@@ -113,7 +114,7 @@ export function createJobHandlers(app) {
 }
 
 export default fp(
-  async function jobs(app, opts = {}) {
+  async function jobs(app: GwcApp, opts = {}) {
     const handlers = { ...createJobHandlers(app), ...(opts.handlers ?? {}) }
     const definitions = opts.jobs ?? PLATFORM_JOBS
     const scheduled = []

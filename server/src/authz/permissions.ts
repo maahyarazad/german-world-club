@@ -1,5 +1,6 @@
 import { query } from '../db/query.ts'
 import { FLAGS, MODULES, NO_GRANT } from '@gwc/contracts/permissions'
+import type { Pool } from 'pg'
 
 /**
  * The permission snapshot (FR-006, SC-003).
@@ -20,7 +21,7 @@ export const SNAPSHOT_TTL_MS = 30_000
 
 const emptyModules = () => Object.fromEntries(MODULES.map((m) => [m, { ...NO_GRANT }]))
 
-export function createPermissionResolver(pool, { ttlMs = SNAPSHOT_TTL_MS, clock = Date.now } = {}) {
+export function createPermissionResolver(pool: Pool, { ttlMs = SNAPSHOT_TTL_MS, clock = Date.now } = {}) {
   /** @type {Map<string, {snapshot: object, at: number}>} */
   const cache = new Map()
 

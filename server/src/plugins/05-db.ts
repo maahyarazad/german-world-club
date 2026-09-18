@@ -1,8 +1,9 @@
 import fp from 'fastify-plugin'
 import { createPool } from '../db/pool.ts'
+import type { GwcApp } from '../app.ts'
 
 export default fp(
-  async function db(app, opts) {
+  async function db(app: GwcApp, opts) {
     const pool = createPool(opts.env)
     app.decorate('pg', pool)
     app.decorate('dbHealthy', async () => {

@@ -10,6 +10,8 @@ import { requestPasswordReset } from './application/request-password-reset.ts'
 import { confirmPasswordReset } from './application/confirm-password-reset.ts'
 import { loadMe } from './application/me.ts'
 import { loadSession } from './application/session.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /** Gated and credential responses are never cached — by a browser or a proxy. */
 const NO_STORE = 'private, no-store'
@@ -17,7 +19,7 @@ const NO_STORE = 'private, no-store'
 /** A member signing in from a device is on mobile; anyone else is a browser. */
 const faceFor = (body) => (body?.deviceId ? 'mobile' : 'web')
 
-function setAuthCookies(reply, { accessToken, refreshToken, secure }) {
+function setAuthCookies(reply: FastifyReply, { accessToken, refreshToken, secure }) {
   reply.setCookie(COOKIES.access, accessToken, {
     httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: ACCESS_TOKEN_TTL_SECONDS,
   })
@@ -32,7 +34,7 @@ function setAuthCookies(reply, { accessToken, refreshToken, secure }) {
   }
 }
 
-function clearAuthCookies(reply) {
+function clearAuthCookies(reply: FastifyReply) {
   reply.clearCookie(COOKIES.access, { path: '/' })
   reply.clearCookie(COOKIES.refresh, { path: '/auth/refresh' })
 }
@@ -43,16 +45,16 @@ function clearAuthCookies(reply) {
  * that data, and shape the result into cookies/headers/status on `reply`.
  * None of the actual auth rules live in this file — see `application/`.
  */
-export function createAuthController(app) {
+export function createAuthController(app: GwcApp) {
   const secureCookies = app.env.isProduction
 
   return {
-    csrf: async (request, reply) => {
+    csrf: async (request: FastifyRequest, reply: FastifyReply) => {
       reply.header('cache-control', NO_STORE)
       return reply.send({ csrfToken: reply.generateCsrf() })
     },
 
-    signIn: async (request, reply) => {
+    signIn: async (request: FastifyRequest, reply: FastifyReply) => {
       const { email, password, deviceId } = request.body
       const face = faceFor(request.body)
       const result = await signIn(app, {
@@ -80,7 +82,7 @@ export function createAuthController(app) {
       return reply.send(result)
     },
 
-    verifyOtp: async (request, reply) => {
+    verifyOtp: async (request: FastifyRequest, reply: FastifyReply) => {
       const { challengeId, code, deviceId } = request.body
       const result = await verifyOtp(app, {
         challengeId, code, deviceId,
@@ -93,13 +95,13 @@ export function createAuthController(app) {
     },
 
     /** `preHandler` for POST /auth/otp/resend — loads the rate-limit key before the limiter runs. */
-    loadOtpResendPreHandler: async (request) => {
+    loadOtpResendPreHandler: async (request: FastifyRequest) => {
       const { challenge, phoneKey } = await loadOtpResendContext(app, request.body?.challengeId, request.deadlineSignal)
       request.otpChallenge = challenge
       request.otpPhoneKey = phoneKey
     },
 
-    resendOtp: async (request, reply) => {
+    resendOtp: async (request: FastifyRequest, reply: FastifyReply) => {
       const result = await resendOtp(app, {
         challenge: request.otpChallenge,
         phoneKey: request.otpPhoneKey,
@@ -112,7 +114,7 @@ export function createAuthController(app) {
       return reply.code(202).send({ resent: result.resent, cooldownSeconds: result.cooldownSeconds })
     },
 
-    refresh: async (request, reply) => {
+    refresh: async (request: FastifyRequest, reply: FastifyReply) => {
       const presented = request.body?.refreshToken ?? request.cookies?.[COOKIES.refresh]
       const face = request.body?.refreshToken ? 'mobile' : 'web'
       const result = await refresh(app, { presented, face, requestId: request.id })
@@ -130,7 +132,7 @@ export function createAuthController(app) {
       return reply.send({ accessToken: result.token, refreshToken: result.refreshToken, expiresIn: result.expiresIn })
     },
 
-    signOut: async (request, reply) => {
+    signOut: async (request: FastifyRequest, reply: FastifyReply) => {
       await signOut(app, { principal: request.principal, requestId: request.id })
       clearAuthCookies(reply)
       return reply.code(204).send()
@@ -144,19 +146,19 @@ export function createAuthController(app) {
      * nothing beyond what `signOut` itself would — matching the original
      * behaviour of never writing a `session_revoked` audit entry here.
      */
-    staffSignOut: async (request, reply) => {
+    staffSignOut: async (request: FastifyRequest, reply: FastifyReply) => {
       await signOut(app, { principal: request.principal, requestId: request.id, audit: false })
       clearAuthCookies(reply)
       return reply.code(204).send()
     },
 
-    me: async (request, reply) => {
+    me: async (request: FastifyRequest, reply: FastifyReply) => {
       reply.header('cache-control', NO_STORE)
       const result = await loadMe(app, { principal: request.principal, signal: request.deadlineSignal })
       return reply.send(result)
     },
 
-    session: async (request, reply) => {
+    session: async (request: FastifyRequest, reply: FastifyReply) => {
       reply.header('cache-control', NO_STORE)
       const result = await loadSession(app, {
         principal: request.principal,
@@ -166,12 +168,12 @@ export function createAuthController(app) {
       return reply.send(result)
     },
 
-    requestPasswordReset: async (request, reply) => {
+    requestPasswordReset: async (request: FastifyRequest, reply: FastifyReply) => {
       const result = await requestPasswordReset(app, { email: request.body.email, signal: request.deadlineSignal })
       return reply.code(202).send(result)
     },
 
-    confirmPasswordReset: async (request, reply) => {
+    confirmPasswordReset: async (request: FastifyRequest, reply: FastifyReply) => {
       // No try/catch here: an invalid/expired token throws before any
       // session is touched, and the original behaviour never clears cookies
       // on that path — only a successful reset does, because it is the one

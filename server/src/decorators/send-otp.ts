@@ -1,4 +1,5 @@
 import { smsUnavailable } from '../integrations/sms.ts'
+import type { GwcApp } from '../app.ts'
 
 /**
  * OTP delivery (FR-012, §6.2).
@@ -15,7 +16,7 @@ import { smsUnavailable } from '../integrations/sms.ts'
  * Depends on `app.integrations` (registerIntegrations) and `app.breakers`
  * (13-breakers.js) already being present.
  */
-export function registerSendOtp(app) {
+export function registerSendOtp(app: GwcApp) {
   app.decorate('sendOtp', async ({ mobile, code }, { signal } = {}) => {
     if (!app.integrations.sms.configured) {
       // Loud rather than silent. A second factor that does not send is not a

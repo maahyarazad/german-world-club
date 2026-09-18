@@ -1,5 +1,7 @@
 import fp from 'fastify-plugin'
 import { fastifyRequestContext } from '@fastify/request-context'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Request correlation (FR-047).
@@ -16,12 +18,12 @@ import { fastifyRequestContext } from '@fastify/request-context'
 const SAFE_ID = /^[A-Za-z0-9_-]{8,64}$/
 
 export default fp(
-  async function requestContext(app) {
+  async function requestContext(app: GwcApp) {
     await app.register(fastifyRequestContext, {
       defaultStoreValues: () => ({ requestId: undefined, principal: undefined }),
     })
 
-    app.addHook('onRequest', async (request, reply) => {
+    app.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
       request.requestContext.set('requestId', request.id)
       reply.header('x-request-id', request.id)
     })

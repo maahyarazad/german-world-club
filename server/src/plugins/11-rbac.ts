@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { MODULES, FLAGS, AUDIENCES } from '@gwc/contracts/permissions'
+import type { GwcApp } from '../app.ts'
 
 /**
  * The deny-by-default route registry (FR-001, SC-001).
@@ -84,7 +85,7 @@ export function validateAuthConfig(auth) {
 }
 
 export default fp(
-  async function rbac(app) {
+  async function rbac(app: GwcApp) {
     /**
      * Routes are *recorded* here and *judged* at onReady.
      *

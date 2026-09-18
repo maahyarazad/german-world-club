@@ -1,3 +1,4 @@
+import type { Pool } from 'pg'
 /**
  * Push, jobs, devices — and history, under one rule.
  *
@@ -14,7 +15,7 @@
  * agree because the history is derived from the state.
  */
 
-export async function seedOperations(pool, faker, options) {
+export async function seedOperations(pool: Pool, faker, options) {
   // Idempotency, for the same reason offers and events need it: campaigns and
   // job runs have no natural key, so ON CONFLICT has nothing to catch.
   const { rows: seeded } = await pool.query('SELECT count(*)::int AS n FROM push_campaigns')

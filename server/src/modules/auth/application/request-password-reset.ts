@@ -2,8 +2,9 @@ import { PASSWORD_RESET_TTL_SECONDS } from '@gwc/contracts/auth'
 import { query } from '../../../db/query.ts'
 import { generateOpaqueToken } from '../tokens.ts'
 import { findAccount } from './find-account.ts'
+import type { GwcApp } from '../../../app.ts'
 
-export async function requestPasswordReset(app, { email, signal }) {
+export async function requestPasswordReset(app: GwcApp, { email, signal }) {
   const account = await findAccount(app, email, signal)
   if (account) {
     const token = generateOpaqueToken()

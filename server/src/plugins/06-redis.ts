@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import fastifyRedis from '@fastify/redis'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Redis: rate-limit buckets and the session revocation denylist.
@@ -11,7 +12,7 @@ import fastifyRedis from '@fastify/redis'
  * REDIS_URL is required in production.
  */
 export default fp(
-  async function redis(app, opts) {
+  async function redis(app: GwcApp, opts) {
     const { env } = opts
     if (!env.REDIS_URL) {
       app.log.warn('REDIS_URL unset — rate limits are per-process and the session denylist is unavailable')

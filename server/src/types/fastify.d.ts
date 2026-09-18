@@ -36,14 +36,22 @@ declare module 'fastify' {
 
     // --- authentication and authorization -----------------------------------
     authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void>
-    verifyAccessToken(token: string): Promise<Json>
-    mintAccessToken(claims: Json): Promise<string>
+    /** Takes the request (it reads the bearer via jwtVerify), not a raw token. */
+    verifyAccessToken(request: FastifyRequest, expectedAudience: string): Promise<Json>
+    mintAccessToken(input: {
+      accountId: string
+      sessionId: string
+      audience: string
+      now?: number
+    }): { token: string; [key: string]: unknown }
     permissions: unknown
     requirePermission(module: Module, flag: Flag): preHandlerHookHandler
     guard(...args: unknown[]): preHandlerHookHandler
     availableModules(...args: unknown[]): readonly Module[]
     routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
     denylist: unknown
+    /** From @fastify/csrf-protection. */
+    csrfProtection(request: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void): void
 
     // --- rate limiting ------------------------------------------------------
     bucket(name: string): Bucket
@@ -71,7 +79,7 @@ declare module 'fastify' {
     // --- SEO caches ---------------------------------------------------------
     invalidateSitemap(): void
     invalidateLegacyRedirects(): void
-    resolveLegacyRedirect(path: string): string | null
+    resolveLegacyRedirect(url: string, signal?: AbortSignal): Promise<string | null>
 
     // --- jobs ---------------------------------------------------------------
     jobQueue: unknown

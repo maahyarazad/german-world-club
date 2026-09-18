@@ -4,6 +4,8 @@ import { query } from '../db/query.ts'
 import { createDenylist, loadSession } from '../modules/auth/sessions.ts'
 import { createPermissionResolver } from '../authz/permissions.ts'
 import { makeRequirePermission, forbidden } from '../authz/require-permission.ts'
+import type { FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Authentication, and the member-side gates (FR-003, FR-010, FR-011, FR-012).
@@ -37,7 +39,7 @@ const STATUS_REFUSAL = Object.freeze({
 })
 
 export default fp(
-  async function auth(app) {
+  async function auth(app: GwcApp) {
     const denylist = createDenylist(app.redis)
     const permissions = createPermissionResolver(app.pg)
 
@@ -47,7 +49,7 @@ export default fp(
     app.decorateRequest('permissions', null)
 
     /** One place every denial is recorded from, so FR-015 cannot be half-applied. */
-    app.decorate('auditDenial', async (request, { requiredPermission = null, targetType = null, targetId = null, reason = null } = {}) => {
+    app.decorate('auditDenial', async (request: FastifyRequest, { requiredPermission = null, targetType = null, targetId = null, reason = null } = {}) => {
       try {
         await app.audit({
           action: 'permission_denied',
@@ -158,7 +160,7 @@ export default fp(
      * than from the token is the same rule the rest of the server follows:
      * authorization is never read from the token.
      */
-    async function applyOrganisationGates(request) {
+    async function applyOrganisationGates(request: FastifyRequest) {
       const { rows } = await query(
         app.pg,
         `SELECT ou.id, ou.status, ou.role, ou.display_name,
@@ -198,7 +200,7 @@ export default fp(
     }
 
     /** FR-010, FR-011, FR-012 — state gates, not permissions. */
-    async function applyMemberGates(request, auth) {
+    async function applyMemberGates(request: FastifyRequest, auth) {
       const member = await loadMember(request.principal.id, request.deadlineSignal)
       if (!member) throw forbidden(PROBLEMS.SESSION_REVOKED, 'This account no longer exists.')
 

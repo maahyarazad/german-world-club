@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg'
 /**
  * The transactional counter primitive (FR-043).
  *
@@ -42,7 +43,7 @@ const key = (scope, subject) => ({ scope: String(scope), subject: String(subject
  * Deliberately not usable as a check-then-act: by the time the caller acts the
  * value may have moved. Anything that gates on the number must call `reserve`.
  */
-export async function read(client, scope, subject) {
+export async function read(client: PoolClient, scope, subject) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     'SELECT used, limit_value, window_start, window_ends FROM counters WHERE scope = $1 AND subject = $2',
@@ -70,7 +71,7 @@ export async function read(client, scope, subject) {
  * which is the intended behaviour. The CHECK constraint is written to permit
  * exactly this, so it still catches a write that bypassed the helper.
  */
-export async function configure(client, scope, subject, { limit = null, windowStart = null, windowEnds = null } = {}) {
+export async function configure(client: PoolClient, scope, subject, { limit = null, windowStart = null, windowEnds = null } = {}) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     `INSERT INTO counters (scope, subject, used, limit_value, window_start, window_ends)
@@ -99,7 +100,7 @@ export async function configure(client, scope, subject, { limit = null, windowSt
  * @throws {QuotaExceededError} when the reservation would cross the ceiling.
  * @returns {Promise<{used: number, limit: number|null, remaining: number|null}>} state AFTER the reservation
  */
-export async function reserve(client, scope, subject, amount, { defaultLimit = null } = {}) {
+export async function reserve(client: PoolClient, scope, subject, amount, { defaultLimit = null } = {}) {
   if (!Number.isFinite(amount) || amount < 0) {
     throw new TypeError(`reserve() needs a non-negative amount, got ${amount}`)
   }
@@ -142,7 +143,7 @@ export async function reserve(client, scope, subject, amount, { defaultLimit = n
  * forever — the CHECK would reject the write and fail the caller's transaction,
  * which turns a bookkeeping slip into a failed user action.
  */
-export async function release(client, scope, subject, amount) {
+export async function release(client: PoolClient, scope, subject, amount) {
   const k = key(scope, subject)
   const { rows } = await client.query(
     `UPDATE counters SET used = GREATEST(0, used - $3), updated_at = now()

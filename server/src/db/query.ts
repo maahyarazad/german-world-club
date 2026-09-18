@@ -1,3 +1,4 @@
+import type { Pool } from 'pg'
 /**
  * Thin query helper.
  *
@@ -6,7 +7,7 @@
  * so cancellation is done by closing the client the query is running on, which
  * is what actually frees the server-side work.
  */
-export async function query(pool, sql, params = [], { signal } = {}) {
+export async function query(pool: Pool, sql, params = [], { signal } = {}) {
   if (!signal) return pool.query(sql, params)
   if (signal.aborted) throw signal.reason ?? new Error('aborted')
 
@@ -42,7 +43,7 @@ export async function query(pool, sql, params = [], { signal } = {}) {
  * of time should not start a transaction, and one that runs out mid-way is
  * interrupted rather than politely asked to stop.
  */
-export async function withTransaction(pool, fn, { signal } = {}) {
+export async function withTransaction(pool: Pool, fn, { signal } = {}) {
   if (signal?.aborted) throw signal.reason ?? new Error('aborted')
 
   const client = await pool.connect()

@@ -3,8 +3,9 @@ import { query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { startSession } from '../sessions.ts'
 import { verifyChallenge, OTP_OUTCOME } from '../otp.ts'
+import type { GwcApp } from '../../../app.ts'
 
-export async function verifyOtp(app, { challengeId, code, deviceId, ip, userAgent, requestId, signal }) {
+export async function verifyOtp(app: GwcApp, { challengeId, code, deviceId, ip, userAgent, requestId, signal }) {
   const result = await verifyChallenge(app.pg, { challengeId, code, deviceId })
 
   if (result.outcome === OTP_OUTCOME.EXPIRED) {

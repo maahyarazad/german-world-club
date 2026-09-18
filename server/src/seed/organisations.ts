@@ -1,5 +1,6 @@
 import { safeEmail, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor } from './hashing.ts'
+import type { Pool } from 'pg'
 
 /**
  * Club Merchants and Corporate Club Partners, with the people who sign in for
@@ -49,7 +50,7 @@ export const ORG_EMAIL = Object.freeze({
   pending: safeEmail('demo.owner.nordwind', EMAIL_DOMAIN.partner),
 })
 
-export async function seedOrganisations(pool, faker, options) {
+export async function seedOrganisations(pool: Pool, faker, options) {
   const merchantHash = await hashFor(MERCHANT_PASSWORD)
   const partnerHash = await hashFor(PARTNER_PASSWORD)
 

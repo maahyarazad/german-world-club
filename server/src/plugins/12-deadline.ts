@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import { ROUTE_BUDGETS } from '../config/budgets.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { FastifyRequest } from 'fastify'
+import type { GwcApp } from '../app.ts'
 
 /**
  * Handler deadlines — timeout layer 3 (FR-032, FR-034).
@@ -30,7 +32,7 @@ export class DeadlineExceededError extends Error {
 export const DEFAULT_ROUTE_CLASS = 'member-read'
 
 export default fp(
-  async function deadline(app) {
+  async function deadline(app: GwcApp) {
     app.decorateRequest('deadlineSignal', null)
     app.decorateRequest('deadlineMs', null)
     app.decorateRequest('routeClass', null)
@@ -55,7 +57,7 @@ export default fp(
      */
     app.decorateRequest('clientGone', null)
 
-    app.addHook('onRequest', async (request) => {
+    app.addHook('onRequest', async (request: FastifyRequest) => {
       const routeClass = request.routeOptions?.config?.budget ?? DEFAULT_ROUTE_CLASS
       const budget = ROUTE_BUDGETS[routeClass] ?? ROUTE_BUDGETS[DEFAULT_ROUTE_CLASS]
 
@@ -149,7 +151,7 @@ export default fp(
      * nothing can be sent. So this records a signal and nothing else; the
      * client's error comes from layer 1 or 3.
      */
-    app.addHook('onTimeout', async (request) => {
+    app.addHook('onTimeout', async (request: FastifyRequest) => {
       request.log.warn({ routeClass: request.routeClass }, 'connection timed out')
       app.metrics?.requestTimeout?.(request.routeClass)
     })
@@ -160,7 +162,7 @@ export default fp(
      * Fastify fires this only when the client actually went away, which is the
      * distinction `request.signal` does not draw.
      */
-    app.addHook('onRequestAbort', async (request) => {
+    app.addHook('onRequestAbort', async (request: FastifyRequest) => {
       request.clientGone?.abort()
       request.log.info({ routeClass: request.routeClass }, 'client aborted; in-flight work cancelled')
     })

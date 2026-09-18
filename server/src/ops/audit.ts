@@ -1,4 +1,5 @@
 import { query } from '../db/query.ts'
+import type { Pool } from 'pg'
 
 /**
  * Append-only audit writer (FR-015).
@@ -23,7 +24,7 @@ export function sanitizeDetail(detail) {
   return Object.keys(out).length > 0 ? out : null
 }
 
-export function createAuditWriter(pool) {
+export function createAuditWriter(pool: Pool) {
   /**
    * @param {{action: string, outcome?: 'allowed'|'denied'|'error', requestId?: string,
    *          actorId?: string|null, actorKind?: 'member'|'admin'|null,
@@ -62,7 +63,7 @@ export function createAuditWriter(pool) {
  * audit query on a table that only ever grows is a way to take the database
  * down from the admin console.
  */
-export function createAuditReader(pool) {
+export function createAuditReader(pool: Pool) {
   const MAX_LIMIT = 500
   const bounded = (limit) => Math.min(Math.max(1, Number(limit) || 50), MAX_LIMIT)
 

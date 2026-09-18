@@ -4,6 +4,8 @@ import { workVideoDerivatives } from './queue.ts'
 import { deriveVideo } from './derive-video.ts'
 import { keyFor } from './storage.ts'
 import { reserve, SCOPE } from '../../db/counters.ts'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * The video derivative worker (FR-058, FR-059).
@@ -30,7 +32,7 @@ const MIME_FOR_FORMAT = Object.freeze({ webp: 'image/webp', webm: 'video/webm' }
  * Process one job. Exported separately from the plugin so a suite can drive it
  * directly, without a queue in the way.
  */
-export async function processVideoJob(app, { assetId }) {
+export async function processVideoJob(app: GwcApp, { assetId }) {
   const { rows } = await app.pg.query('SELECT * FROM assets WHERE id = $1', [assetId])
   if (rows.length === 0) return { outcome: 'gone' }
   const asset = rows[0]
@@ -60,7 +62,7 @@ export async function processVideoJob(app, { assetId }) {
       )
     }
 
-    await withTransaction(app.pg, async (client) => {
+    await withTransaction(app.pg, async (client: PoolClient) => {
       for (const output of outputs) {
         await client.query(
           `INSERT INTO asset_variants (asset_id, variant, format, width, height, bytes, storage_key)
@@ -110,7 +112,7 @@ export async function processVideoJob(app, { assetId }) {
 }
 
 export default fp(
-  async function mediaWorker(app, opts = {}) {
+  async function mediaWorker(app: GwcApp, opts = {}) {
     const queue = opts.queue ?? app.jobQueue
     if (!queue) return
 

@@ -4,6 +4,9 @@ import { guardSeoEdit, seoModulesFor } from '../../../authz/object-guards.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { normalisePath } from '../../../plugins/04-legacy-redirects.ts'
 import { pathFor } from '../build-page-meta.ts'
+import type { FastifyRequest } from 'fastify'
+import type { PoolClient } from 'pg'
+import type { GwcApp } from '../../../app.ts'
 
 /**
  * Staff-editable SEO fields (§10.8, FR-020, FR-021).
@@ -43,7 +46,7 @@ export const toResponse = (row, redirectCreated = null) => ({
   redirectCreated,
 })
 
-export async function readSeoRecord(app, request, { recordType, recordId, permissions }) {
+export async function readSeoRecord(app: GwcApp, request: FastifyRequest, { recordType, recordId, permissions }) {
   await guardSeoEdit(app, request, permissions, recordType, 'read')
   const { rows } = await app.pg.query(
     'SELECT * FROM seo_metadata WHERE record_type = $1 AND record_id = $2',
@@ -53,12 +56,12 @@ export async function readSeoRecord(app, request, { recordType, recordId, permis
   return rows[0]
 }
 
-export async function updateSeoRecord(app, request, { recordType, recordId, patch, permissions, principal, requestId }) {
+export async function updateSeoRecord(app: GwcApp, request: FastifyRequest, { recordType, recordId, patch, permissions, principal, requestId }) {
   // The dual-permission requirement. Layer 1 already proved `seo.edit`; this
   // proves the record's own module too.
   await guardSeoEdit(app, request, permissions, recordType, 'edit')
 
-  const { row, redirectCreated } = await withTransaction(app.pg, async (client) => {
+  const { row, redirectCreated } = await withTransaction(app.pg, async (client: PoolClient) => {
     const { rows: existing } = await client.query(
       'SELECT * FROM seo_metadata WHERE record_type = $1 AND record_id = $2 FOR UPDATE',
       [recordType, recordId],

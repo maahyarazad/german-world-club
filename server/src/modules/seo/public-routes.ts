@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import { renderRobots } from './application/robots.ts'
 import { renderSitemap, loadSitemapRecords } from './application/sitemap.ts'
+import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { GwcApp } from '../../app.ts'
 
 /**
  * GET /robots.txt and GET /sitemap.xml: schema, access posture, and wiring
@@ -8,13 +10,13 @@ import { renderSitemap, loadSitemapRecords } from './application/sitemap.ts'
  * generation rules.
  */
 export default fp(
-  async function seoPublicRoutes(app) {
+  async function seoPublicRoutes(app: GwcApp) {
     app.get(
       '/robots.txt',
       {
         config: { auth: { audience: 'public' }, produces: 'text/plain', budget: 'public-page', rateLimit: app.bucket('public-read') },
       },
-      async (request, reply) =>
+      async (request: FastifyRequest, reply: FastifyReply) =>
         reply
           .type('text/plain; charset=utf-8')
           .header('cache-control', 'public, max-age=3600')
@@ -33,7 +35,7 @@ export default fp(
       {
         config: { auth: { audience: 'public' }, produces: 'application/xml', budget: 'sitemap', rateLimit: app.bucket('public-read') },
       },
-      async (request, reply) => {
+      async (request: FastifyRequest, reply: FastifyReply) => {
         if (!cache || Date.now() - cache.at > 3_600_000) {
           const records = await loadSitemapRecords(app.pg, request.deadlineSignal)
           const { xml, count, needsIndex } = renderSitemap(app.env.canonicalOrigin, records)
