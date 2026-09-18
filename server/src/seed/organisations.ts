@@ -1,6 +1,8 @@
 import { safeEmail, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor } from './hashing.ts'
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 
 /**
  * Club Merchants and Corporate Club Partners, with the people who sign in for
@@ -26,7 +28,10 @@ const PARTNER_BANDS = [
   { max: 1000, fee: 'US$30.000' }, { max: 2500, fee: 'US$45.000' },
 ]
 
-const bandFor = (bands, count) => (bands.find((b) => count <= b.max) ?? bands.at(-1)).fee
+type FeeBand = { max: number; fee: string }
+
+const bandFor = (bands: readonly FeeBand[], count: number): string =>
+  (bands.find((b) => count <= b.max) ?? bands.at(-1)!).fee
 
 /**
  * The organisations the credentials table names, with chosen slugs and emails.
@@ -50,7 +55,7 @@ export const ORG_EMAIL = Object.freeze({
   pending: safeEmail('demo.owner.nordwind', EMAIL_DOMAIN.partner),
 })
 
-export async function seedOrganisations(pool: Pool, faker, options) {
+export async function seedOrganisations(pool: Pool, faker: Faker, options: SeedOptions) {
   const merchantHash = await hashFor(MERCHANT_PASSWORD)
   const partnerHash = await hashFor(PARTNER_PASSWORD)
 
@@ -58,7 +63,19 @@ export async function seedOrganisations(pool: Pool, faker, options) {
   let people = 0
 
   /** Insert one organisation and its people. Returns the id, or null if present. */
-  const upsert = async ({ kind, slug, name, status, locations, employees, owners }) => {
+  type OrganisationSeed = {
+    kind: string
+    slug: string
+    name: string
+    status: string
+    locations?: number
+    employees?: number
+    owners?: { email: string; role?: string; displayName?: string }[]
+  }
+
+  const upsert = async ({
+    kind, slug, name, status, locations, employees, owners,
+  }: OrganisationSeed): Promise<string | null> => {
     const { rows } = await pool.query(
       `INSERT INTO organisations (kind, legal_name, slug, status, status_changed_at,
                                   contract_start, contract_end, fee_tier,
@@ -88,14 +105,14 @@ export async function seedOrganisations(pool: Pool, faker, options) {
           person.role, person.name,
         ],
       )
-      people += rowCount
+      people += rowCount ?? 0
     }
     return rows[0].id
   }
 
   // The named organisations first, so the credentials table always has them
   // even when --merchants or --partners is small.
-  const ids = {}
+  const ids: Record<string, string | null> = {}
   ids.alpine = await upsert({
     kind: 'merchant', slug: 'alpine-hiking', name: 'Alpine Hiking Co.', status: 'active',
     locations: 3,

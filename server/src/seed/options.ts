@@ -14,16 +14,29 @@ export const DEFAULTS = Object.freeze({
   events: 25,
 })
 
-export function parseOptions(argv = process.argv.slice(2)) {
-  const options = { ...DEFAULTS, random: false, quiet: false }
+/** Volumes plus the two behaviour flags, as the seeders receive them. */
+export type SeedOptions = {
+  members: number
+  staff: number
+  merchants: number
+  partners: number
+  offers: number
+  events: number
+  /** Unseeded faker — a different population each run. */
+  random: boolean
+  quiet: boolean
+}
+
+export function parseOptions(argv: string[] = process.argv.slice(2)): SeedOptions {
+  const options: SeedOptions = { ...DEFAULTS, random: false, quiet: false }
 
   for (const arg of argv) {
     if (arg === '--random') { options.random = true; continue }
     if (arg === '--quiet') { options.quiet = true; continue }
 
     const match = /^--([a-z]+)=(\d+)$/.exec(arg)
-    if (match && Object.hasOwn(DEFAULTS, match[1])) {
-      options[match[1]] = Number(match[2])
+    if (match && Object.hasOwn(DEFAULTS, match[1]!)) {
+      options[match[1] as keyof typeof DEFAULTS] = Number(match[2])
       continue
     }
     // An unrecognised flag is a typo, and silently ignoring it would produce a

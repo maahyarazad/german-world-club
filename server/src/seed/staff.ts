@@ -2,6 +2,8 @@ import { safeEmail, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor } from './hashing.ts'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 
 /**
  * Staff, with varied partial permission matrices.
@@ -82,7 +84,7 @@ export const STAFF_EMAIL = Object.freeze(
   Object.fromEntries(SHAPES.map((s) => [s.id, safeEmail(`demo.${s.id}`, EMAIL_DOMAIN.staff)])),
 )
 
-export async function seedStaff(pool: Pool, faker, options) {
+export async function seedStaff(pool: Pool, faker: Faker, options: SeedOptions) {
   const hash = await hashFor(STAFF_PASSWORD)
   const shapes = SHAPES.slice(0, Math.max(options.staff, SHAPES.length))
   let created = 0

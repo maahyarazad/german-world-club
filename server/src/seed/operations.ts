@@ -1,4 +1,6 @@
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 /**
  * Push, jobs, devices — and history, under one rule.
  *
@@ -15,7 +17,7 @@ import type { Pool } from 'pg'
  * agree because the history is derived from the state.
  */
 
-export async function seedOperations(pool: Pool, faker, options) {
+export async function seedOperations(pool: Pool, faker: Faker, options: SeedOptions) {
   // Idempotency, for the same reason offers and events need it: campaigns and
   // job runs have no natural key, so ON CONFLICT has nothing to catch.
   const { rows: seeded } = await pool.query('SELECT count(*)::int AS n FROM push_campaigns')

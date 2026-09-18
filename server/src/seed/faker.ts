@@ -57,7 +57,7 @@ export function createFaker({ random = false } = {}) {
  * a generated one can never shadow a fixed `seed:dev` account even if the local
  * parts collide.
  */
-export function safeEmail(localPart, subdomain) {
+export function safeEmail(localPart: string, subdomain: string): string {
   const local = String(localPart)
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
@@ -87,12 +87,12 @@ export const EMAIL_DOMAIN = Object.freeze({
  * A British number on a member living in Dubai reads slightly oddly. A real
  * handset receiving a real one-time code reads much worse.
  */
-export function safeMobile(faker) {
+export function safeMobile(faker: Faker): string {
   const suffix = faker.number.int({ min: 0, max: 999 }).toString().padStart(3, '0')
   return `+447700900${suffix}`
 }
 
 /** True for anything safeEmail/safeMobile produced. Used by the safety suites. */
-export const isNonRoutableEmail = (email) => typeof email === 'string' && email.endsWith('.invalid')
-export const isNonRoutableMobile = (mobile) =>
+export const isNonRoutableEmail = (email: unknown): boolean => typeof email === 'string' && email.endsWith('.invalid')
+export const isNonRoutableMobile = (mobile: unknown): boolean =>
   typeof mobile === 'string' && /^\+447700900\d{3}$/.test(mobile)

@@ -1,4 +1,6 @@
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 /**
  * Merchant locations, offers across their whole lifecycle, and the redemptions
  * and feedback behind the analytics screens (BUSINESS_DESCRIPTION.md §5).
@@ -29,7 +31,7 @@ const LIFECYCLE = [
   { state: 'withdrawn', share: 1, window: 'past' },
 ]
 
-export async function seedOffers(pool: Pool, faker, options) {
+export async function seedOffers(pool: Pool, faker: Faker, options: SeedOptions) {
   /**
    * Already seeded? Then stop.
    *

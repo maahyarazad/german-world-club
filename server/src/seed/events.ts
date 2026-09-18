@@ -1,4 +1,6 @@
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 /**
  * Club events across their state machine, with registrations
  * (BUSINESS_DESCRIPTION.md §4).
@@ -17,7 +19,7 @@ const STATES = [
   { state: 'review', share: 3, when: 'past', fill: 0.8 },
 ]
 
-export async function seedEvents(pool: Pool, faker, options) {
+export async function seedEvents(pool: Pool, faker: Faker, options: SeedOptions) {
   /**
    * Already seeded? Then stop.
    *

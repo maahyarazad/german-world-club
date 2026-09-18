@@ -1,6 +1,8 @@
 import { safeEmail, safeMobile, EMAIL_DOMAIN } from './faker.ts'
 import { hashFor, LEGACY_MD5_HASH } from './hashing.ts'
 import type { Pool } from 'pg'
+import type { Faker } from '@faker-js/faker'
+import type { SeedOptions } from './options.ts'
 
 /**
  * Members, spread deliberately across every state the product models.
@@ -63,7 +65,7 @@ function plan(count) {
   return rows
 }
 
-export async function seedMembers(pool: Pool, faker, options) {
+export async function seedMembers(pool: Pool, faker: Faker, options: SeedOptions) {
   const usable = await hashFor(MEMBER_PASSWORD)
   const rows = plan(options.members)
   let created = 0
