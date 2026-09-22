@@ -44,9 +44,9 @@ domains that happen to arrive together:
 
 - `018_messaging.sql` — `conversations`, `conversation_participants`, `messages`.
   First, because the marketplace references it.
-- `019_marketplace.sql` — `marketplace_listings`, three detail tables,
+- `019_marketplace.sql` — `marketplace_listings`, four detail tables,
   `vehicle_features` + `marketplace_vehicle_features`,
-  `marketplace_listing_photos`, `marketplace_reports`,
+  `marketplace_listing_media`, `marketplace_reports`,
   `marketplace_terms_acceptances`.
 
 **Testing**: Vitest. SQL-backed suites skip loudly without a database, which

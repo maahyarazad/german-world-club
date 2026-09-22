@@ -276,7 +276,7 @@ runtime either.
 npm run -w server seed:demo
 ```
 
-**Expect**: listings across **all three** categories, **both** modes and **every**
+**Expect**: listings across **all four** categories, **both** modes and **every**
 state — including some with an expiry and some unlimited, and at least one
 conversation so the inbox is not empty on a fresh demo. Feature 005's rule: six identical published listings demonstrate nothing
 about how visibility works.

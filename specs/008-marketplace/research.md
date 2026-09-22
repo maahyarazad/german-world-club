@@ -55,11 +55,12 @@ whoever runs Phase 6 to rediscover.
 
 ## R2. Category-specific fields: one table per category
 
-**Decision**: A common `marketplace_listings` table plus three detail tables —
+**Decision**: A common `marketplace_listings` table plus **four** detail tables —
 `marketplace_vehicle_details`, `marketplace_property_details`,
-`marketplace_job_details` — each one-to-one, primary key = `listing_id`.
+`marketplace_job_details`, `marketplace_general_details` — each one-to-one,
+primary key = `listing_id`.
 
-**Rationale**: §7's three categories have genuinely different, genuinely
+**Rationale**: §7's structured categories have genuinely different, genuinely
 *structured* fields that the index must filter on: price and make for vehicles,
 rooms and size for property, location and seniority for jobs. Filtering is the
 requirement that decides this (FR-010).
@@ -83,6 +84,12 @@ holding them is gone.
   inside JSONB needs expression indexes per field — so the migration comes back,
   just uglier — and Principle IV asks for invariants in the database, not in a
   document the database cannot read. Still the right tool for R3.
+**`general` (added 2026-09-22)** is the exception that proves the rule: it has
+almost no structure, because it exists so an arbitrary product or service has
+somewhere to go. Giving it a detail table anyway keeps one shape — every
+category has exactly one detail row — rather than a special case where `general`
+has none.
+
 - *Single-table inheritance with a discriminator and CHECK constraints per
   category.* Enforces shape in the database, which is attractive, but the CHECK
   expressions become unreadable at ~40 vehicle fields.
@@ -167,8 +174,13 @@ words, a race condition with extra steps.
 
 ## R6. Photos
 
-**Decision**: Reuse `modules/media` unchanged. `marketplace_listing_photos`
+**Decision**: Reuse `modules/media` unchanged. `marketplace_listing_media`
 holds `(listing_id, asset_id, position)`. No new pipeline, no new validation.
+
+**Resolved 2026-09-22**: a listing may carry one photo, several photos, or a
+video (FR-039). `ASSET_KINDS` is already `['image', 'video']` and the `poster`
+and `video` variants already exist, so this widens what the marketplace asks of
+the pipeline rather than changing the pipeline.
 
 **Rationale**: The media pipeline already does content inspection by magic bytes,
 strips metadata, derives at declared breakpoints and never serves the original —
@@ -178,7 +190,9 @@ may share the checksum, and `media/routes` is already the only place that decide
 whether bytes go.
 
 `position` is explicit rather than implied by insertion order, because the first
-photo is the one that represents the listing in the index.
+item represents the listing in the index — and for a video that means its
+`poster` variant, so a browse page never autoplays and never waits on a
+transcode.
 
 ---
 

@@ -121,13 +121,34 @@ recorded. Both resolved in favour of the existing architecture.
   merging `offers` and `marketplace_listings`, leaving each posting path and its
   rules alone.
 
+### Session 2026-09-22 (c)
+
+- **Q**: Photos only, or video too? → **A**: A listing may carry **a single
+  photo, multiple photos, or a video**. The media pipeline already supports both
+  — `ASSET_KINDS = ['image', 'video']`, `derive-video.ts`, and the `poster` and
+  `video` variants — so this widens the marketplace's use of it rather than
+  changing it.
+
+- **Q**: Category on each listing? → **A**: Every listing already carries a
+  required `category`, and it is what decides which detail table holds its
+  fields. What was missing is a category that **fits an arbitrary product or
+  service**: vehicle, property and job cannot express one.
+
+  Adding **`general`** as the fourth category. It is not an invention — the §7
+  table in BUSINESS_DESCRIPTION.md already lists the type as
+  *"vehicle / real estate / job / **general**"*; only the §7 prose says "three
+  structured categories", and this spec had followed the prose. `general` is
+  what makes "sell your product or service" expressible without inventing a
+  concept.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A member posts a listing (Priority: P1)
 
 A member with the `marketplace_post` flag writes a classified: picks a category,
 says whether they are offering or looking, fills the fields that category asks
-for, attaches photos, chooses how they want to be contacted, accepts the terms,
+for, attaches media — one photo, several, or a video — chooses how they want to
+be contacted, accepts the terms,
 and publishes. A member without the flag never sees the compose control at all.
 
 **Why this priority**: Without posting there is no marketplace. It is also where
@@ -161,21 +182,22 @@ refused by the API if they call it directly.
 A member opens the marketplace, sees current listings newest-first, narrows by
 category, by offer-versus-request, and by the filters that category supports —
 price range and make for vehicles, rooms and size for real estate, location and
-seniority for jobs. They open one and see the photos and how to make contact.
+seniority for jobs. They open one and see its media and how to make contact.
 
 **Why this priority**: A marketplace only one person can see is not one. This is
 also where the never-indexed posture has to hold under a real listing corpus.
 
-**Independent Test**: Seed listings across all three categories and both modes,
+**Independent Test**: Seed listings across all four categories and both modes,
 then filter to each combination and confirm the result set matches — and that
 an unauthenticated request for the same URLs is refused and carries `noindex`.
 
 **Acceptance Scenarios**:
 
-1. **Given** listings in all three categories, **When** a member filters to
+1. **Given** listings in all four categories, **When** a member filters to
    `vehicle` + `request`, **Then** only vehicle requests are returned.
-2. **Given** a listing with photos, **When** a member opens it, **Then** the
-   served images are derivatives at declared breakpoints, never the original.
+2. **Given** a listing with media, **When** a member opens it, **Then** what is
+   served are derivatives at declared breakpoints — the `poster` variant for a
+   video — never the original.
 3. **Given** any marketplace URL, **When** an unauthenticated client requests it,
    **Then** it is refused and the response carries `X-Robots-Tag: noindex`.
 4. **Given** a paginated index, **When** a client asks for an absurd page size,
@@ -345,7 +367,7 @@ describing the marketplace, is the test.
 - **A member's status changes to `locked`, `inactive` or `ended`.** Their
   listings must stop being reachable by other members. This is the same question
   §3.2 answers for sign-in and it needs an answer here, stated once.
-- **Photos.** A listing's photos are assets. Deleting a listing must not delete
+- **Media.** A listing's photos and video are assets. Deleting a listing must not delete
   bytes another listing shares by checksum — the rule `media/routes` already
   owns. The per-member stored-byte quota already exists and applies.
 - **Contact method.** §7 says configurable. Whatever it offers, a listing must
@@ -376,8 +398,12 @@ describing the marketplace, is the test.
 
 **Categories**
 
-- **FR-006**: Three categories MUST be supported — vehicle, real estate, job —
-  each with its own required and optional fields.
+- **FR-006**: Four categories MUST be supported — vehicle, real estate, job and
+  **general** — each with its own required and optional fields. `general` is the
+  home for any product or service the three structured categories do not fit,
+  and carries the common fields plus a price; it is deliberately the loosest of
+  the four, because the alternative is turning away listings that do not fit a
+  schema.
 - **FR-007**: Every listing MUST be either an offer or a request.
 - **FR-008**: Vehicle listings MUST support the ~40 feature checkboxes of §7.
 - **FR-009**: Category-specific validation MUST be server-side. A client may
@@ -392,13 +418,21 @@ describing the marketplace, is the test.
 - **FR-012**: A withdrawn, sold, expired or hidden listing MUST return not-found
   or gone when requested directly — never a success carrying fallback content.
 
-**Photos**
+**Media**
 
-- **FR-013**: Photos MUST go through the existing media pipeline: content
-  inspection, derivatives at declared breakpoints, metadata stripped.
-- **FR-014**: Originals MUST NOT be served.
+- **FR-013**: Media MUST go through the existing media pipeline: content
+  inspection by magic bytes, derivatives at declared breakpoints, metadata
+  stripped. This applies to **images and video alike** — the pipeline already
+  handles both.
+- **FR-014**: Originals MUST NOT be served, for either kind.
 - **FR-015**: Stored bytes MUST count against the member's existing quota, under
-  a row lock.
+  a row lock. Video is the reason this matters rather than a formality.
+- **FR-039**: A listing MAY carry **one photo, several photos, or one video**.
+  At least one item of media is required; the ordering is explicit, and the
+  first item represents the listing in the index.
+- **FR-040**: A video listing MUST serve a poster frame for the index, so a
+  browse page never autoplays or waits on a transcode. The `poster` variant
+  already exists in the pipeline.
 
 **Moderation**
 
@@ -493,7 +527,7 @@ describing the marketplace, is the test.
 
 ### Measurable Outcomes
 
-- **SC-001**: A member with the flag can post in each of the three categories;
+- **SC-001**: A member with the flag can post in each of the four categories;
   one without it is refused by the API, not merely missing a button.
 - **SC-002**: Filtering returns exactly the matching set for every category and
   mode combination, proven against a seeded corpus spanning all of them.
@@ -529,6 +563,11 @@ describing the marketplace, is the test.
 - **SC-015**: The public marketplace page, fetched signed out, contains no
   seeded listing's id, title, photo URL, price or owner — asserted by scanning
   the response against the seeded corpus, not by inspecting the template.
+- **SC-017**: A listing accepts one photo, several photos and a video, and in
+  each case the index renders from a derivative — the poster frame for video.
+  No response references an original.
+- **SC-018**: A `general` listing is accepted with only the common fields plus a
+  price, and the same payload is refused under `vehicle`, which requires more.
 - **SC-016**: Creating a listing as a merchant, partner or staff principal is
   refused. The `marketplace_post` flag is member-only and the route's audience
   is `member`.

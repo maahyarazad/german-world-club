@@ -35,8 +35,8 @@ exist in `config/budgets.ts` before any of these routes register.
 | `PATCH` | `/marketplace/listings/:id` | Edit | owner only |
 | `POST` | `/marketplace/listings/:id/state` | sold / filled / withdrawn | owner only |
 | `GET` | `/marketplace/mine` | Own listings, **including** hidden and withdrawn | — |
-| `POST` | `/marketplace/listings/:id/photos` | Attach an uploaded asset | owner only |
-| `DELETE` | `/marketplace/listings/:id/photos/:assetId` | Detach — never deletes bytes | owner only |
+| `POST` | `/marketplace/listings/:id/media` | Attach an uploaded asset (image or video) | owner only |
+| `DELETE` | `/marketplace/listings/:id/media/:assetId` | Detach — never deletes bytes | owner only |
 | `POST` | `/marketplace/listings/:id/report` | Report | one open report per member |
 | `POST` | `/marketplace/listings/:id/inquire` | Start a conversation | listing must be inquirable |
 | `GET` | `/marketplace/terms` | Current terms version | — |
@@ -107,8 +107,10 @@ A listing response carries:
 
 - the listing's own fields
 - its category detail block
-- photo **derivative** URLs at declared breakpoints — never the original, which
-  `verify:seo` and the media suites both already assert
+- media **derivative** URLs at declared breakpoints — never the original, which
+  `verify:seo` and the media suites both already assert. A listing may carry one
+  photo, several photos or a video; for video the index uses the `poster`
+  variant, so a browse page never autoplays and never waits on a transcode
 - the owner's **display** identity only
 - a resolved contact **affordance**, never a contact value (R9)
 

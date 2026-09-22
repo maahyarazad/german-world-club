@@ -45,10 +45,16 @@ the contract level:
   `postal_code`, `available_from`.
 - **job** — `employment_type`, `seniority`, `department`, `city`, `remote`,
   `salary_min_minor`, `salary_max_minor`.
+- **general** — `price_minor`, `currency`, `condition`, `kind`
+  (product | service). Deliberately the loosest: it exists so an arbitrary
+  product or service has somewhere to go, and asking a bicycle-repair service
+  for a mileage would defeat that. `kind` is kept because a service priced per
+  hour and a product priced once read differently in an index.
 
 Required sets differ per category, and that difference is testable directly: the
 same submission that is refused as a `vehicle` for a missing field is accepted as
-a `job` (spec US1.4).
+a `job` (spec US1.4), and a payload carrying only the common fields plus a price
+is accepted as `general` and refused as `vehicle` (SC-018).
 
 ## Money
 

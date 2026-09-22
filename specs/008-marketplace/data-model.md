@@ -12,7 +12,7 @@ throughout.
 ## 1. Enums
 
 ```
-marketplace_category  : vehicle | property | job
+marketplace_category  : vehicle | property | job | general
 marketplace_mode      : offer | request
 marketplace_state     : draft | active | sold | filled | withdrawn | expired | hidden
 marketplace_contact   : platform_message | email_relay | phone
@@ -77,8 +77,8 @@ The only table the unfiltered index reads.
 
 ## 3. Detail tables — one per category
 
-Each is one-to-one with `marketplace_listings`, PK **and** FK `listing_id`, with
-`ON DELETE CASCADE`. A category change deletes the old row and inserts a new one,
+Four tables, each one-to-one with `marketplace_listings`, PK **and** FK
+`listing_id`, with `ON DELETE CASCADE`. A category change deletes the old row and inserts a new one,
 which is why stale fields cannot linger (spec edge case).
 
 ### 3a. `marketplace_vehicle_details`
@@ -104,9 +104,24 @@ is a coherent listing, and collapsing the two would make it unexpressible.
 `employment_type`, `seniority`, `department`, `city`, `remote` (onsite | hybrid |
 remote), `salary_min_minor`, `salary_max_minor`, `currency`.
 
+### 3d. `marketplace_general_details`
+
+`price_minor`, `currency`, `condition` (new | used | n/a), `kind`
+(product | service).
+
+**Deliberately the loosest of the four.** `general` exists so an arbitrary
+product or service has somewhere to go, and over-structuring it would defeat
+that — a member selling a bicycle repair service should not be asked for a
+mileage. `kind` is the one discriminator worth keeping, because a *service*
+priced per hour and a *product* priced once read differently in an index.
+
+Filter index on `(kind, price_minor)`.
+
+---
+
 **Filter indexes**: each detail table indexes what its category filters on —
 vehicles on `(price_minor)` and `(make)`, property on `(deal, city)` and
-`(rooms)`, jobs on `(city, seniority)`.
+`(rooms)`, jobs on `(city, seniority)`, general on `(kind, price_minor)`.
 
 ---
 
@@ -141,18 +156,28 @@ Index on `(feature_id, listing_id)` for "listings having this feature".
 
 ---
 
-## 5. `marketplace_listing_photos`
+## 5. `marketplace_listing_media`
 
 `(listing_id, asset_id, position)`, composite PK `(listing_id, position)`.
+
+**Named media, not photos**, because a listing may carry one photo, several
+photos, or a video (FR-039). The pipeline already handles both kinds —
+`ASSET_KINDS = ['image', 'video']`, `derive-video.ts`, and the `poster` and
+`video` variants — so this is a naming and a constraint, not new machinery.
 
 `asset_id` → `assets(id)`. **`ON DELETE RESTRICT`, not CASCADE** — deleting a
 listing removes these rows, never the bytes, because another listing may share
 the checksum and `media/routes` is the only place that decides whether bytes go
 (research.md R6).
 
-`position` is explicit because the first photo represents the listing in the
-index. A photo count bound belongs here as a constraint, for the same
-after-Phase-6 reason as §2.
+`position` is explicit because the **first item represents the listing in the
+index** — and for a video that means its `poster` variant, so a browse page never
+autoplays and never waits on a transcode (FR-040).
+
+A media count bound belongs here as a constraint, for the same after-Phase-6
+reason as §2. Video makes the stored-byte quota matter in a way photos alone did
+not: one video can exceed a member's whole image allowance, which is why FR-015
+is called out rather than assumed.
 
 ---
 
