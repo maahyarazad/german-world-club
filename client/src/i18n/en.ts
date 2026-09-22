@@ -141,6 +141,66 @@ export const en = {
    * renamed on the server surfaces here as a missing label rather than as a
    * sidebar entry that quietly disappears.
    */
+  /**
+   * Vehicle feature labels, keyed by the catalogue `key`.
+   *
+   * The server never sends these words — it sends keys, and
+   * tests/ops/no-server-localisation asserts no response body varies with
+   * Accept-Language. A feature added to the catalogue with a label here and
+   * not in the other catalogue fails `npm run -w client test:i18n`.
+   */
+  vehicleFeatures: {
+    air_conditioning: 'Air conditioning',
+    climate_control: 'Climate control',
+    heated_seats: 'Heated seats',
+    ventilated_seats: 'Ventilated seats',
+    leather_seats: 'Leather seats',
+    electric_seats: 'Electric seats',
+    memory_seats: 'Seat memory',
+    heated_steering_wheel: 'Heated steering wheel',
+    panoramic_roof: 'Panoramic roof',
+    sunroof: 'Sunroof',
+    keyless_entry: 'Keyless entry',
+    keyless_start: 'Keyless start',
+    power_tailgate: 'Power tailgate',
+    tinted_windows: 'Tinted windows',
+    abs: 'ABS',
+    esp: 'ESP',
+    airbags_front: 'Front airbags',
+    airbags_side: 'Side airbags',
+    airbags_curtain: 'Curtain airbags',
+    lane_assist: 'Lane assist',
+    blind_spot_monitor: 'Blind-spot monitor',
+    adaptive_cruise_control: 'Adaptive cruise control',
+    emergency_braking: 'Emergency braking',
+    parking_sensors_front: 'Front parking sensors',
+    parking_sensors_rear: 'Rear parking sensors',
+    reversing_camera: 'Reversing camera',
+    camera_360: '360° camera',
+    tyre_pressure_monitor: 'Tyre pressure monitor',
+    isofix: 'Isofix',
+    navigation: 'Navigation',
+    bluetooth: 'Bluetooth',
+    apple_carplay: 'Apple CarPlay',
+    android_auto: 'Android Auto',
+    dab_radio: 'DAB radio',
+    premium_sound: 'Premium sound system',
+    wireless_charging: 'Wireless charging',
+    head_up_display: 'Head-up display',
+    usb_c_ports: 'USB-C ports',
+    all_wheel_drive: 'All-wheel drive',
+    tow_bar: 'Tow bar',
+    roof_rails: 'Roof rails',
+    alloy_wheels: 'Alloy wheels',
+    winter_tyres: 'Winter tyres',
+    spare_wheel: 'Spare wheel',
+  },
+  vehicleFeatureGroups: {
+    comfort: 'Comfort',
+    safety: 'Safety',
+    media: 'Media',
+    drivetrain: 'Drivetrain & equipment',
+  },
   modules: {
     members: 'Members',
     invitations: 'Invitations',

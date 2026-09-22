@@ -56,7 +56,7 @@ declare module 'fastify' {
      */
     guard: preHandlerHookHandler[]
     availableModules(...args: unknown[]): readonly Module[]
-    routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
+    routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag; requires?: string }>
     /** Revoked session ids, so a superseded session stops working immediately. */
     denylist: {
       add(sessionId: string): Promise<void>

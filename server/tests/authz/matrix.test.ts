@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { MEMBER_PERMISSIONS } from '@gwc/contracts/permissions'
 import { randomUUID } from 'node:crypto'
 import { buildAuthApp, createMember, createAdmin, grant, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
@@ -68,6 +69,17 @@ const ROUTE_CLASSES = [
   { name: 'media delete', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   // Push: devices belong to the member holding them; broadcasting to every
   // member's phone is the `mass_messages` privilege by another transport.
+  // --- Marketplace (008) -----------------------------------------------------
+  // Members only. Organisations sell through `offers` (§5) and staff do not
+  // sell at all — moderating a market you trade in is a conflict of interest.
+  // Posting additionally requires the per-member `marketplace_post` flag.
+  { name: 'marketplace create listing', url: '/marketplace/listings', method: 'POST', audience: 'member', requires: 'marketplace_post' },
+  // No `requires` on the terms routes: a member must be able to read and
+  // accept the terms before they can hold the flag that posting needs.
+  { name: 'marketplace read terms', url: '/marketplace/terms', method: 'GET', audience: 'member' },
+  { name: 'marketplace accept terms', url: '/marketplace/terms/accept', method: 'POST', audience: 'member' },
+  { name: 'marketplace categories', url: '/marketplace/categories', method: 'GET', audience: 'member' },
+
   { name: 'push register device', url: '/push/devices', method: 'POST', audience: 'member' },
   { name: 'push list devices', url: '/push/devices', method: 'GET', audience: 'member' },
   { name: 'push delete device', url: '/push/devices/:id', probe: `/push/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },
@@ -231,12 +243,17 @@ describe('anonymous reaches public routes and nothing else', () => {
 
 describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', () => {
   let member: Record<string, unknown>
+  /** A member holding every per-member flag, for the `requires` rows. */
+  let flaggedMember: Record<string, unknown>
   let departmentAdmin
   let superadmin
 
   beforeAll(async () => {
     await resetAuthTables(app.pg)
     member = await createMember(app.pg)
+    flaggedMember = await createMember(app.pg, {
+      permissions: Object.fromEntries(MEMBER_PERMISSIONS.map((p) => [p, true])),
+    })
     departmentAdmin = await createAdmin(app.pg, { grants: { settings: { read: true } } })
     superadmin = await createAdmin(app.pg, { isSuperadmin: true })
     app.permissions.invalidateAll()
@@ -277,11 +294,35 @@ describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', ()
 
   it('admits a member to member routes and refuses every staff route', async () => {
     const account = { accountId: member.id, accountKind: 'member' }
-    await sweep(account, ROUTE_CLASSES.filter((r) => r.audience === 'member'), (route, status) => {
+    // Only the rows with no per-member flag. A route declaring `requires` has
+    // a SECOND gate, and asserting a plain member reaches it would assert the
+    // opposite of what §7's permission flag is for.
+    const ungated = ROUTE_CLASSES.filter((r) => r.audience === 'member' && !r.requires)
+    await sweep(account, ungated, (route, status) => {
       expect(permitted(status), `member should reach ${route.name}`).toBe(true)
     })
     await sweep(account, ROUTE_CLASSES.filter((r) => r.audience === 'staff'), (route, status) => {
       expect(status, `member must not reach ${route.name}`).toBe(403)
+    })
+  })
+
+  it('refuses a member the routes gated on a per-member flag they lack', async () => {
+    // §7's marketplace_post is the first of these. A member without it must be
+    // refused by the API, not merely shown no button.
+    const gated = ROUTE_CLASSES.filter((r) => r.audience === 'member' && r.requires)
+    expect(gated.length, 'no flag-gated member route — this sweep proves nothing').toBeGreaterThan(0)
+
+    await sweep({ accountId: member.id, accountKind: 'member' }, gated, (route, status) => {
+      expect(status, `member without '${route.requires}' must not reach ${route.name}`).toBe(403)
+    })
+  })
+
+  it('admits a member who HOLDS the flag — the counter-assertion', async () => {
+    // Without this the sweep above would pass against a route that refused
+    // every member, flag or not.
+    const gated = ROUTE_CLASSES.filter((r) => r.audience === 'member' && r.requires)
+    await sweep({ accountId: flaggedMember.id, accountKind: 'member' }, gated, (route, status) => {
+      expect(status, `member holding '${route.requires}' should reach ${route.name}`).not.toBe(403)
     })
   })
 

@@ -80,28 +80,28 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Tests for User Story 1
 
-- [ ] T019 [P] [US1] Write `server/tests/marketplace/posting.test.ts` — the permission pair: a member with `marketplace_post` creates successfully, one without gets 403 `PERMISSION_REQUIRED` calling the endpoint directly. **The second half is the test**; the absent UI control is a courtesy and the server is the control.
-- [ ] T020 [P] [US1] Add terms cases to `server/tests/marketplace/posting.test.ts`: a member who has not accepted the current version is refused naming the terms, and one who accepted an older version is also refused.
-- [ ] T021 [P] [US1] Add the category-required-field pair to `server/tests/marketplace/posting.test.ts`: a `vehicle` submission missing a vehicle-required field is refused naming the field, and **the same payload submitted as `job` is accepted** — the required set differs per category (spec US1.4).
+- [X] T019 [P] [US1] Write `server/tests/marketplace/posting.test.ts` — the permission pair: a member with `marketplace_post` creates successfully, one without gets 403 `PERMISSION_REQUIRED` calling the endpoint directly. **The second half is the test**; the absent UI control is a courtesy and the server is the control.
+- [X] T020 [P] [US1] Add terms cases to `server/tests/marketplace/posting.test.ts`: a member who has not accepted the current version is refused naming the terms, and one who accepted an older version is also refused.
+- [X] T021 [P] [US1] Add the category-required-field pair to `server/tests/marketplace/posting.test.ts`: a `vehicle` submission missing a vehicle-required field is refused naming the field, and **the same payload submitted as `job` is accepted** — the required set differs per category (spec US1.4).
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Create `server/src/modules/marketplace/categories.ts` — server-side validation reading the definitions from `@gwc/contracts/marketplace`. A client may shape its form from the same source but is never the enforcement point (FR-009).
-- [ ] T023 [US1] Create `server/src/modules/marketplace/application/create.ts`: check the `marketplace_post` flag from server-held state, check the current terms acceptance, validate category fields, insert the listing and its detail row in one transaction.
-- [ ] T024 [US1] Create `server/src/modules/marketplace/controller.ts` with the create handler, shaping request to `application/create.ts` and the result onto reply.
-- [ ] T025 [US1] Create `server/src/modules/marketplace/routes.ts` with `POST /marketplace/listings`, declaring `config: { auth: { audience: 'member' }, budget: 'marketplace' }` and its Zod `schema.body`/`schema.response`.
-- [ ] T026 [US1] Register the marketplace module in `server/src/app.ts` after the plugin chain, and confirm the server boots — the `config.auth` gate refuses otherwise.
-- [ ] T027 [US1] Add `GET /marketplace/terms` and `POST /marketplace/terms/accept` to `server/src/modules/marketplace/routes.ts`, writing to `marketplace_terms_acceptances`. Append-only: accepting v2 keeps the v1 row, which is the record of what was agreed when earlier listings were posted.
-- [ ] T028 [US1] Add `GET /marketplace/categories` to `server/src/modules/marketplace/routes.ts`, serving the field definitions plus the live `vehicle_features` catalogue (excluding retired). This is the client's only source for the ~40 features — hard-coding them in the console would be a second home for a rule.
-- [ ] T029 [US1] Seed the `vehicle_features` catalogue in `server/src/seed/` with the §7 feature set, grouped and positioned.
-- [ ] T030 [P] [US1] Add the German and English labels for every vehicle-feature `key` to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`. `npm run -w client test:i18n` fails when the catalogues disagree in either direction.
-- [ ] T031 [US1] Write `server/tests/marketplace/no-server-localisation.test.ts` confirming no marketplace response body varies with `Accept-Language`, extending the existing `tests/ops/no-server-localisation.test.ts` guarantee to this module.
+- [X] T022 [US1] Create `server/src/modules/marketplace/categories.ts` — server-side validation reading the definitions from `@gwc/contracts/marketplace`. A client may shape its form from the same source but is never the enforcement point (FR-009).
+- [X] T023 [US1] Create `server/src/modules/marketplace/application/create.ts`: check the `marketplace_post` flag from server-held state, check the current terms acceptance, validate category fields, insert the listing and its detail row in one transaction.
+- [X] T024 [US1] Create `server/src/modules/marketplace/controller.ts` with the create handler, shaping request to `application/create.ts` and the result onto reply.
+- [X] T025 [US1] Create `server/src/modules/marketplace/routes.ts` with `POST /marketplace/listings`, declaring `config: { auth: { audience: 'member' }, budget: 'marketplace' }` and its Zod `schema.body`/`schema.response`.
+- [X] T026 [US1] Register the marketplace module in `server/src/app.ts` after the plugin chain, and confirm the server boots — the `config.auth` gate refuses otherwise.
+- [X] T027 [US1] Add `GET /marketplace/terms` and `POST /marketplace/terms/accept` to `server/src/modules/marketplace/routes.ts`, writing to `marketplace_terms_acceptances`. Append-only: accepting v2 keeps the v1 row, which is the record of what was agreed when earlier listings were posted.
+- [X] T028 [US1] Add `GET /marketplace/categories` to `server/src/modules/marketplace/routes.ts`, serving the field definitions plus the live `vehicle_features` catalogue (excluding retired). This is the client's only source for the ~40 features — hard-coding them in the console would be a second home for a rule.
+- [X] T029 [US1] Seed the `vehicle_features` catalogue in `server/src/seed/` with the §7 feature set, grouped and positioned.
+- [X] T030 [P] [US1] Add the German and English labels for every vehicle-feature `key` to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`. `npm run -w client test:i18n` fails when the catalogues disagree in either direction.
+- [X] T031 [US1] Write `server/tests/marketplace/no-server-localisation.test.ts` confirming no marketplace response body varies with `Accept-Language`, extending the existing `tests/ops/no-server-localisation.test.ts` guarantee to this module.
 
 ### The quota — its own task because it fails silently
 
-- [ ] T032 [US1] Write `server/tests/marketplace/audience.test.ts`: creating a listing as a **merchant**, **partner** or **staff** principal is refused (FR-038, SC-016). The route's audience is `member` and `marketplace_post` is a member-only flag; organisations sell through `offers` (§5) and staff do not sell. Counter-assertion: a member with the flag succeeds, or the suite would pass against a route that refused everyone.
-- [ ] T033 [US1] Enforce the listing quota in `server/src/modules/marketplace/application/create.ts` via `reserve()` from `server/src/db/counters.ts` under the row lock, returning **422 `QUOTA_EXCEEDED`, never 429**. A 429 means "retry and it will work"; a quota means retrying changes nothing until state does, so a client shown 429 retries forever.
-- [ ] T034 [US1] Write the concurrency assertion in `server/tests/marketplace/quota.test.ts`: fire N+1 creates **simultaneously** against a member at cap N and confirm exactly the remaining allowance succeed and the counter matches the rows created. **A sequential test passes against a quota with no lock at all** — that is why this one is concurrent.
+- [X] T032 [US1] Write `server/tests/marketplace/audience.test.ts`: creating a listing as a **merchant**, **partner** or **staff** principal is refused (FR-038, SC-016). The route's audience is `member` and `marketplace_post` is a member-only flag; organisations sell through `offers` (§5) and staff do not sell. Counter-assertion: a member with the flag succeeds, or the suite would pass against a route that refused everyone.
+- [X] T033 [US1] Enforce the listing quota in `server/src/modules/marketplace/application/create.ts` via `reserve()` from `server/src/db/counters.ts` under the row lock, returning **422 `QUOTA_EXCEEDED`, never 429**. A 429 means "retry and it will work"; a quota means retrying changes nothing until state does, so a client shown 429 retries forever.
+- [X] T034 [US1] Write the concurrency assertion in `server/tests/marketplace/quota.test.ts`: fire N+1 creates **simultaneously** against a member at cap N and confirm exactly the remaining allowance succeed and the counter matches the rows created. **A sequential test passes against a quota with no lock at all** — that is why this one is concurrent.
 
 **Checkpoint**: A member can post. Nothing can read it back yet.
 

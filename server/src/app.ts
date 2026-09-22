@@ -42,6 +42,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import mediaRoutes from './modules/media/routes.ts'
 import mediaWorker from './modules/media/worker.ts'
 import pushRoutes from './modules/push/routes.ts'
+import marketplaceRoutes from './modules/marketplace/routes.ts'
 import publicRoutes from './modules/public/routes.ts'
 import { COOKIES } from '@gwc/contracts/auth'
 import { registerCsrfHook } from './hooks/csrf-on-request.ts'
@@ -322,6 +323,7 @@ export async function buildApp({
   await app.register(mediaRoutes)
   await app.register(mediaWorker)
   await app.register(pushRoutes)
+  await app.register(marketplaceRoutes)
   await app.register(seoStaffRoutes)
   await app.register(organisationRoutes)
   await app.register(publicRoutes)

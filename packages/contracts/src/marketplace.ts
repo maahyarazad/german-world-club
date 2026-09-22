@@ -84,9 +84,23 @@ export type CategoryDef = {
   fields: readonly FieldDef[]
 }
 
-/** Money is always integer minor units plus a currency, never a float. */
-const money = (key: string, required = false): FieldDef =>
-  ({ key, kind: 'money', required, min: 0, filterable: true })
+/**
+ * Money is always integer minor units, never a float — and it is meaningless
+ * without its currency, so the two are defined together. Emitting only the
+ * amount is how a price becomes ambiguous the first time a second currency
+ * appears.
+ */
+const money = (key: string, required = false): readonly FieldDef[] => [
+  { key, kind: 'money', required, min: 0, filterable: true },
+]
+
+/** The currency every money field in a category shares. */
+const CURRENCY: FieldDef = {
+  key: 'currency',
+  kind: 'enum',
+  required: false,
+  options: Object.freeze(['EUR', 'AED', 'USD', 'GBP', 'CHF']),
+}
 
 /**
  * Declared before freezing so the object literal gets its contextual type.
@@ -102,7 +116,8 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
         { key: 'model', kind: 'text', required: false, max: 60 },
         { key: 'year', kind: 'integer', required: false, min: 1900, max: 2100 },
         { key: 'mileage_km', kind: 'integer', required: false, min: 0 },
-        money('price_minor'),
+        ...money('price_minor'),
+        CURRENCY,
         { key: 'fuel', kind: 'enum', required: false,
           options: Object.freeze(['petrol', 'diesel', 'hybrid', 'electric', 'other']) },
         { key: 'transmission', kind: 'enum', required: false,
@@ -123,7 +138,8 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
         // Half-rooms are a real German convention.
         { key: 'rooms', kind: 'decimal', required: false, min: 0, filterable: true },
         { key: 'size_sqm', kind: 'decimal', required: false, min: 0 },
-        money('price_minor'),
+        ...money('price_minor'),
+        CURRENCY,
         { key: 'city', kind: 'text', required: true, max: 80, filterable: true },
         { key: 'postal_code', kind: 'text', required: false, max: 12 },
         { key: 'available_from', kind: 'date', required: false },
@@ -141,8 +157,9 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
         { key: 'city', kind: 'text', required: true, max: 80, filterable: true },
         { key: 'remote', kind: 'enum', required: false,
           options: Object.freeze(['onsite', 'hybrid', 'remote']) },
-        money('salary_min_minor'),
-        money('salary_max_minor'),
+        ...money('salary_min_minor'),
+        ...money('salary_max_minor'),
+        CURRENCY,
       ]),
     },
 
@@ -158,7 +175,8 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
       fields: Object.freeze([
         { key: 'kind', kind: 'enum', required: true,
           options: GENERAL_KINDS, filterable: true },
-        money('price_minor'),
+        ...money('price_minor'),
+        CURRENCY,
         { key: 'condition', kind: 'enum', required: false,
           options: Object.freeze(['new', 'used', 'n/a']) },
       ]),

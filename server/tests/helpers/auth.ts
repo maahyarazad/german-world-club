@@ -29,6 +29,13 @@ export async function resetAuthTables(pool: Pool) {
   await pool.query(`
     TRUNCATE refresh_tokens, sessions, otp_challenges, device_approvals,
              admin_permissions, password_reset_tokens, audit_log RESTART IDENTITY CASCADE`)
+  // Members gained dependents in feature 008. owner_id and sender_id are
+  // ON DELETE RESTRICT — correct, because members are never deleted in
+  // production, only transitioned (§12 rule 4) — so the member delete below
+  // fails unless these go first. CASCADE reaches their own dependents.
+  await pool.query(`
+    TRUNCATE marketplace_listings, conversations, marketplace_terms_acceptances
+             RESTART IDENTITY CASCADE`)
   // admin_users guards the last active superadmin (§11). A suite that made one
   // *is* the last one in a clean test database, so tearing it down trips the
   // trigger. Suspend it for the teardown only — the rule stays armed for every

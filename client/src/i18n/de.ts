@@ -135,6 +135,66 @@ export const de = {
    * renamed on the server surfaces here as a missing label rather than as a
    * sidebar entry that quietly disappears.
    */
+  /**
+   * Vehicle feature labels, keyed by the catalogue `key`.
+   *
+   * The server never sends these words — it sends keys, and
+   * tests/ops/no-server-localisation asserts no response body varies with
+   * Accept-Language. A feature added to the catalogue with a label here and
+   * not in the other catalogue fails `npm run -w client test:i18n`.
+   */
+  vehicleFeatures: {
+    air_conditioning: 'Klimaanlage',
+    climate_control: 'Klimaautomatik',
+    heated_seats: 'Sitzheizung',
+    ventilated_seats: 'Sitzbelüftung',
+    leather_seats: 'Ledersitze',
+    electric_seats: 'Elektrische Sitze',
+    memory_seats: 'Sitzmemory',
+    heated_steering_wheel: 'Lenkradheizung',
+    panoramic_roof: 'Panoramadach',
+    sunroof: 'Schiebedach',
+    keyless_entry: 'Keyless Entry',
+    keyless_start: 'Keyless Start',
+    power_tailgate: 'Elektrische Heckklappe',
+    tinted_windows: 'Getönte Scheiben',
+    abs: 'ABS',
+    esp: 'ESP',
+    airbags_front: 'Frontairbags',
+    airbags_side: 'Seitenairbags',
+    airbags_curtain: 'Kopfairbags',
+    lane_assist: 'Spurhalteassistent',
+    blind_spot_monitor: 'Totwinkel-Assistent',
+    adaptive_cruise_control: 'Adaptiver Tempomat',
+    emergency_braking: 'Notbremsassistent',
+    parking_sensors_front: 'Einparkhilfe vorne',
+    parking_sensors_rear: 'Einparkhilfe hinten',
+    reversing_camera: 'Rückfahrkamera',
+    camera_360: '360°-Kamera',
+    tyre_pressure_monitor: 'Reifendruckkontrolle',
+    isofix: 'Isofix',
+    navigation: 'Navigationssystem',
+    bluetooth: 'Bluetooth',
+    apple_carplay: 'Apple CarPlay',
+    android_auto: 'Android Auto',
+    dab_radio: 'DAB-Radio',
+    premium_sound: 'Premium-Soundsystem',
+    wireless_charging: 'Induktives Laden',
+    head_up_display: 'Head-up-Display',
+    usb_c_ports: 'USB-C-Anschlüsse',
+    all_wheel_drive: 'Allradantrieb',
+    tow_bar: 'Anhängerkupplung',
+    roof_rails: 'Dachreling',
+    alloy_wheels: 'Alufelgen',
+    winter_tyres: 'Winterreifen',
+    spare_wheel: 'Ersatzrad',
+  },
+  vehicleFeatureGroups: {
+    comfort: 'Komfort',
+    safety: 'Sicherheit',
+    media: 'Multimedia',
+    drivetrain: 'Antrieb & Ausstattung',
+  },
   modules: {
     members: 'Mitglieder',
     invitations: 'Einladungen',

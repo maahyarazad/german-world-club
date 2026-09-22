@@ -101,8 +101,17 @@ export default fp(
       controller.getVariant,
     )
 
-    /** Translate the pipeline's own errors into the shared envelope. */
+    /**
+     * Translate the pipeline's own errors into the shared envelope.
+     *
+     * Scoped to media routes by URL. `fp()` plugins are deliberately NOT
+     * encapsulated, so without this guard the hook fires for every route in
+     * the app — and any other feature's QuotaExceededError would surface as
+     * MEDIA_QUOTA_EXCEEDED (409) instead of its own problem type. The
+     * marketplace listing quota (422) was the first to collide with it.
+     */
     app.addHook('onError', async (request: FastifyRequest, reply: FastifyReply, error) => {
+      if (!request.url.startsWith('/media')) return
       if (error instanceof QuotaExceededError) {
         error.problem = PROBLEMS.MEDIA_QUOTA_EXCEEDED
         error.statusCode = PROBLEMS.MEDIA_QUOTA_EXCEEDED.status
