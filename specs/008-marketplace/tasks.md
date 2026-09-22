@@ -63,10 +63,10 @@ These do not announce themselves. Each has its own task and its own test rather 
 - [X] T012 [P] Add `marketplace_reports` and `marketplace_terms_acceptances` to `server/migrations/019_marketplace.sql`. Reports are unique on `(listing_id, reporter_id) WHERE state = 'open'` so one complainant cannot flood the queue; acceptances are append-only and keyed `(member_id, version)`.
 - [X] T013 Add the indexes to `server/migrations/019_marketplace.sql`: the partial `(state, created_at DESC, id DESC) WHERE state = 'active'`, `(owner_id, state_changed_at DESC)`, `(category, state, created_at DESC) WHERE state = 'active'`, and one per filterable detail field including `general` on `(kind, price_minor)` (data-model.md §3).
 - [X] T014 Run `npm run -w server migrate` and confirm both migrations apply cleanly against a scratch database, then that `migrate:down` reverses them.
-- [ ] T015 Define the category field sets in `packages/contracts/src/marketplace.ts` per `contracts/listing-categories.md` — `FieldDef`, `CategoryDef`, and the **four** category definitions with `filterable` flags. This is the one definition the console form and the server validation both read (Principle I).
-- [ ] T016 [P] Define the listing, photo, report and terms types in `packages/contracts/src/marketplace.ts`.
-- [ ] T017 [P] Define conversation and message types in `packages/contracts/src/messaging.ts`.
-- [ ] T018 Write a test in `server/tests/marketplace/definitions.test.ts` asserting every `filterable: true` field has a backing index in `019_marketplace.sql`. A filter with no index is a sequential scan that looks fine until the corpus grows.
+- [X] T015 Define the category field sets in `packages/contracts/src/marketplace.ts` per `contracts/listing-categories.md` — `FieldDef`, `CategoryDef`, and the **four** category definitions with `filterable` flags. This is the one definition the console form and the server validation both read (Principle I).
+- [X] T016 [P] Define the listing, photo, report and terms types in `packages/contracts/src/marketplace.ts`.
+- [X] T017 [P] Define conversation and message types in `packages/contracts/src/messaging.ts`.
+- [X] T018 Write a test in `server/tests/marketplace/definitions.test.ts` asserting every `filterable: true` field has a backing index in `019_marketplace.sql`. A filter with no index is a sequential scan that looks fine until the corpus grows.
 
 **Checkpoint**: Schema applies, types exist, no route yet.
 
