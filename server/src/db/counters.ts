@@ -181,4 +181,11 @@ export async function release(client: PoolClient, scope: string, subject: string
 /** Named scopes, so a typo is a missing export rather than a silent new counter. */
 export const SCOPE = Object.freeze({
   STORED_BYTES: 'media.stored_bytes',
+  /**
+   * How many listings one member may have live at once (008 FR-021).
+   *
+   * A business quota, not a rate limit: retrying changes nothing until the
+   * member withdraws something, which is why exceeding it is 422 and not 429.
+   */
+  MARKETPLACE_LISTINGS: 'marketplace.listings',
 })

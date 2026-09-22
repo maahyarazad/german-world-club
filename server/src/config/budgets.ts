@@ -41,6 +41,14 @@ export const ROUTE_BUDGETS = Object.freeze({
   'member-write': { deadlineMs: 5000, calls: ['geocoding', 'redis'] },
   'media-upload': { deadlineMs: 8000, calls: ['mediaImage', 'redis'] },
   checkout: { deadlineMs: 12000, calls: ['payments', 'redis'] },
+  // The marketplace index joins the owner's status live rather than reading a
+  // denormalised flag (008 research.md R7), so it is a read with one more join
+  // than 'member-read' — not a different class of work.
+  marketplace: { deadlineMs: 3000, calls: ['redis'] },
+  // Messaging persists before it notifies, and the notification is a step
+  // after commit rather than inside the transaction, so the request itself
+  // waits only on the write.
+  messaging: { deadlineMs: 3000, calls: ['redis'] },
   'admin-read': { deadlineMs: 5000, calls: ['redis'] },
   'admin-report': { deadlineMs: 28000, calls: ['redis'] },
   health: { deadlineMs: 1000, calls: [] },
