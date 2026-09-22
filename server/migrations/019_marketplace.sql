@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS marketplace_property_details (
 
 CREATE INDEX IF NOT EXISTS property_deal_city_idx ON marketplace_property_details (deal, city);
 CREATE INDEX IF NOT EXISTS property_rooms_idx     ON marketplace_property_details (rooms);
+CREATE INDEX IF NOT EXISTS property_price_idx     ON marketplace_property_details (price_minor);
 
 CREATE TABLE IF NOT EXISTS marketplace_job_details (
   listing_id        uuid    PRIMARY KEY REFERENCES marketplace_listings (id) ON DELETE CASCADE,
@@ -168,6 +169,8 @@ CREATE TABLE IF NOT EXISTS marketplace_job_details (
 );
 
 CREATE INDEX IF NOT EXISTS job_city_seniority_idx ON marketplace_job_details (city, seniority);
+CREATE INDEX IF NOT EXISTS job_salary_idx
+  ON marketplace_job_details (salary_min_minor, salary_max_minor);
 
 -- Deliberately the loosest of the four.
 --
