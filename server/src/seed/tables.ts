@@ -34,6 +34,28 @@ export const SEEDED = Object.freeze([
   'push_test_recipients',
   'job_definitions',
   'device_approvals',
+
+  // --- Messaging (018) -------------------------------------------------------
+  // Content, not credentials. A seeded conversation is a demo inbox that is not
+  // empty; nothing here authenticates anybody, so none of it belongs in
+  // NEVER_SEEDED.
+  'conversations',
+  'conversation_participants',
+  'messages',
+
+  // --- Marketplace (019) -----------------------------------------------------
+  'marketplace_listings',
+  'marketplace_vehicle_details',
+  'marketplace_property_details',
+  'marketplace_job_details',
+  'marketplace_general_details',
+  'vehicle_features',
+  'marketplace_vehicle_features',
+  'marketplace_listing_media',
+  'marketplace_reports',
+  // A record of what a member agreed to, not a credential — so it is seedable.
+  // The listing's own terms_version is what pins the version they posted under.
+  'marketplace_terms_acceptances',
 ])
 
 /**
