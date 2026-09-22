@@ -82,6 +82,45 @@ The three items `plan.md` carried as NEEDS CLARIFICATION, now answered.
   member-settable, including unlimited**. A listing with no expiry never
   expires. The quota remains configurable with a default.
 
+### Session 2026-09-22 (b) — raised by `/speckit-analyze`
+
+Two questions the analysis surfaced as conflicting with decisions already
+recorded. Both resolved in favour of the existing architecture.
+
+- **Q**: Should unauthenticated visitors see listings, blurred? → **A**: **No.**
+  A public page describes the marketplace and shows **aggregate counts only** —
+  no listing row, no title, no photo, no price, no owner.
+
+  A blurred listing is the exact case Principle VI names: *"Member-only content
+  MUST NOT be rendered, even partially, to an unauthenticated requester for the
+  purpose of search visibility."* Blurring in CSS is worse than it sounds — the
+  bytes must reach the browser to be blurred, so view-source discloses them in
+  full. It is a disclosure that looks like a control.
+
+  A page *about* a gated surface is not gated content shown publicly, so this
+  needs no constitutional amendment and `/marketplace` keeps its posture
+  unchanged. Covered by US7.
+
+- **Q**: Can every principal kind sell — merchants, partners, staff? → **A**:
+  **No.** Members sell through `marketplace_listings`; organisations already
+  sell through `offers` (`015_merchant_domain.sql`), which §5 built for exactly
+  that and which carries the benefit, the validity window, the remaining count,
+  the redemption code and the terminal PIN.
+
+  Giving organisations a second selling channel would mean two different
+  semantics for one merchant — an *offer* is redeemed with a code, a *listing*
+  is answered with a message — and would require `config.auth.audience` to
+  accept a list, which `plugins/10-auth.ts` does not support today (it is a
+  single `TOKEN_AUDIENCE` lookup). That is a change to the most sensitive plugin
+  in the server, for a boundary §5 is emphatic about keeping.
+
+  **Staff do not sell.** A staff member holding `marketplace_moderation` who
+  also lists items moderates a market they trade in.
+
+  If a unified *browse* surface is wanted later, the cheap route is a read view
+  merging `offers` and `marketplace_listings`, leaving each posting path and its
+  rules alone.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A member posts a listing (Priority: P1)
@@ -264,6 +303,39 @@ member's `marketplace_post` flag and confirm both faces refuse to post.
 
 ---
 
+### User Story 7 - A visitor discovers the marketplace exists (Priority: P3)
+
+Someone who is not signed in reaches the public site and finds a page explaining
+that the club has a marketplace: what the categories are, roughly how much is
+listed, and how to get in. They see **no listing** — not a title, not a photo,
+not a price.
+
+**Why this priority**: It is the growth surface, and it is genuinely independent
+— it ships without any member-facing work and breaks nothing if deferred. P3
+because the marketplace functions completely without it.
+
+**Independent Test**: Fetch the page signed out and scan the response for any
+seeded listing's title, photo URL or price. Finding none, with the page still
+describing the marketplace, is the test.
+
+**Acceptance Scenarios**:
+
+1. **Given** an unauthenticated visitor, **When** they open the public
+   marketplace page, **Then** it renders with category names and aggregate
+   counts and invites them to sign in.
+2. **Given** a seeded corpus, **When** the public page is fetched signed out,
+   **Then** no listing id, title, photo URL, price or owner appears anywhere in
+   the response.
+3. **Given** the page, **When** JavaScript is disabled, **Then** it renders
+   completely — it is a public landing page and crawlers execute nothing.
+4. **Given** the gated marketplace at `/marketplace`, **When** its posture is
+   checked, **Then** it is **unchanged**: still gated, still never-indexed. The
+   public page is a *second surface* with its own declaration.
+5. **Given** the counts shown, **When** listings are published or withdrawn,
+   **Then** the counts follow live state rather than a cached copy.
+
+---
+
 ### Edge Cases
 
 - **A member loses `marketplace_post` while holding live listings.** Their
@@ -379,6 +451,24 @@ member's `marketplace_post` flag and confirm both faces refuse to post.
 - **FR-033**: No marketplace surface may be readable while signed out, on either
   face. "One shared API" does not mean an unauthenticated one.
 
+**Public discovery surface (US7)**
+
+- **FR-034**: A public page MUST be served describing the marketplace, with
+  category names and aggregate counts, and MUST be declared public-and-indexed
+  in `seo/surfaces.ts` as its **own** surface.
+- **FR-035**: That page MUST NOT reference any individual listing — no id, no
+  title, no photo, no price, no owner. Counts are aggregates over published
+  state, never a projection of rows.
+- **FR-036**: It MUST render completely without JavaScript, like the other
+  public landing pages.
+- **FR-037**: The gated `/marketplace` posture MUST remain unchanged. Adding a
+  public surface must not relax the member-only one.
+
+**Who sells**
+
+- **FR-038**: Only members may create marketplace listings. Organisations sell
+  through `offers` (§5); staff do not sell at all.
+
 **Contracts**
 
 - **FR-022**: Request and response types MUST live in `@gwc/contracts`, imported
@@ -433,14 +523,25 @@ member's `marketplace_post` flag and confirm both faces refuse to post.
   honours, not a null it trips over.
 - **SC-013**: The same member, same filters, gets identical results on the web
   and mobile faces.
-- **SC-014**: No marketplace response is reachable signed out on **either** face,
-  and `verify:seo` continues to exit 0 with no marketplace URL in the sitemap.
+- **SC-014**: No *gated* marketplace response is reachable signed out on either
+  face, and `verify:seo` continues to exit 0 with no `/marketplace` URL in the
+  sitemap.
+- **SC-015**: The public marketplace page, fetched signed out, contains no
+  seeded listing's id, title, photo URL, price or owner — asserted by scanning
+  the response against the seeded corpus, not by inspecting the template.
+- **SC-016**: Creating a listing as a merchant, partner or staff principal is
+  refused. The `marketplace_post` flag is member-only and the route's audience
+  is `member`.
 
 ## Assumptions
 
-- No public or indexed marketplace surface. `/marketplace` stays gated and
-  never-indexed as `seo/surfaces.ts` already declares. One shared API for both
-  faces is not the same thing as an unauthenticated one.
+- `/marketplace` stays gated and never-indexed as `seo/surfaces.ts` already
+  declares. One shared API for both faces is not the same thing as an
+  unauthenticated one.
+- A **second, separate** public surface describes the marketplace without
+  showing any of it (US7). Two surfaces, two postures, two declarations — which
+  is what "declare every posture" asks for.
+- Only members sell. Organisations have `offers` (§5); staff do not sell.
 - No money. §7 describes a contact method, not a transaction.
 - The contact method is in-platform messaging, and this feature builds its
   persistence and the inquiry flow. Real-time WebSocket delivery, typing
