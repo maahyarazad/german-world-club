@@ -42,3 +42,6 @@ expo-client/
 # Demo-seed credentials. Publishing them on a terminal is the point of the
 # seed; committing them is not.
 server/.seed-credentials.md
+
+# Local, non-chain migrations — kept out of the runner and out of git.
+server/migrations/local/
