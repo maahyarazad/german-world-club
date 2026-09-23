@@ -2,7 +2,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 import { EMAIL_CODE_LENGTH, EMAIL_CODE_TTL_SECONDS } from '@gwc/contracts/onboarding'
 import { query, withTransaction } from '../../../db/query.ts'
 import { forbidden as refuse } from '../../../authz/require-permission.ts'
-import { issueChallenge, verifyChallenge, OTP_OUTCOME } from '../../auth/otp.ts'
+import { issueChallenge, verifyChallenge, OTP_OUTCOME, WEB_DEVICE } from '../../auth/otp.ts'
 import { startSession } from '../../auth/sessions.ts'
 import { loadStatus } from './status.ts'
 import type { GwcApp } from '../../../app.ts'
@@ -25,17 +25,19 @@ function refuseOutcome(outcome: string): never {
 /**
  * Verify the SMS code and open the applicant's session.
  *
- * The session is a real one, bound to the device, and the member gates are
- * what keep it inside `/onboarding/*` until staff approve (10-auth). Issuing it
- * here is what lets the app survive a restart mid-onboarding without asking
- * for the password again.
+ * The session is a real one — bound to the device on mobile, a cookie session
+ * on the web — and the member gates are what keep it inside `/onboarding/*`
+ * until staff approve (10-auth). Issuing it here is what lets either client
+ * survive a restart mid-onboarding without asking for the password again.
  */
 export async function verifyMobile(
   app: GwcApp,
   { challengeId, code, deviceId, ip, userAgent, requestId }:
-    { challengeId: string; code: string; deviceId: string; ip?: string; userAgent?: string; requestId?: string },
+    { challengeId: string; code: string; deviceId?: string; ip?: string; userAgent?: string; requestId?: string },
 ) {
-  const result = await verifyChallenge(app.pg, { challengeId, code, deviceId, purposes: ['mobile_verification'] })
+  const result = await verifyChallenge(app.pg, {
+    challengeId, code, deviceId: deviceId ?? WEB_DEVICE, purposes: ['mobile_verification'],
+  })
   if (result.outcome !== OTP_OUTCOME.VERIFIED) refuseOutcome(result.outcome)
   const memberId = String(result.accountId)
 
@@ -44,8 +46,11 @@ export async function verifyMobile(
     [memberId],
   )
 
+  // The face decides how the session travels (the controller: tokens in the
+  // body for the app, cookies for the browser) and how long it lives.
+  const face = deviceId ? 'mobile' : 'web'
   const session = await startSession(app.pg, {
-    accountId: memberId, accountKind: 'member', deviceId, userAgent: userAgent ?? null, ip, face: 'mobile',
+    accountId: memberId, accountKind: 'member', deviceId: deviceId ?? null, userAgent: userAgent ?? null, ip, face,
   })
   for (const sid of session.supersededSessionIds) await app.denylist.add(sid)
 
@@ -58,6 +63,7 @@ export async function verifyMobile(
   })
 
   return {
+    face,
     accessToken: token,
     refreshToken: session.refreshToken,
     expiresIn: Number(expiresIn),
@@ -96,9 +102,8 @@ export async function sendEmailCode(
   const challenge = await issueChallenge(app.pg, {
     accountId: memberId,
     accountKind: 'member',
-    // A web session has no device. The code is then bound to the literal
-    // 'web', which only a deviceless session will ever present back.
-    deviceId: deviceId ?? 'web',
+    // A web session has no device; see WEB_DEVICE.
+    deviceId: deviceId ?? WEB_DEVICE,
     purpose: 'email_verification',
     digits: EMAIL_CODE_LENGTH,
     ttlSeconds: EMAIL_CODE_TTL_SECONDS,
@@ -126,7 +131,7 @@ export async function verifyEmail(
     { memberId: string; deviceId: string | null; challengeId: string; code: string; requestId?: string; signal?: AbortSignal },
 ) {
   const result = await verifyChallenge(app.pg, {
-    challengeId, code, deviceId: deviceId ?? 'web', purposes: ['email_verification'],
+    challengeId, code, deviceId: deviceId ?? WEB_DEVICE, purposes: ['email_verification'],
   })
   if (result.outcome !== OTP_OUTCOME.VERIFIED) refuseOutcome(result.outcome)
   // A valid code for somebody else's challenge proves nothing about this

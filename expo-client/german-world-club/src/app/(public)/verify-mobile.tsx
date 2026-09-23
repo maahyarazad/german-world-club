@@ -32,9 +32,13 @@ export default function VerifyMobile() {
     setError(null);
     try {
       const pair = await onboardingApi.verifyMobile({ challengeId, code, deviceId: deviceId! });
+      // The body carries tokens because this request carried a deviceId — the
+      // web face gets cookies instead. A missing pair here is a server bug,
+      // and adopting a half-session would be worse than failing loudly.
+      if (!pair.accessToken || !pair.refreshToken) throw new Error('verify-mobile returned no token pair');
       // The draft held the password; it has done its job.
       clear();
-      await adopt(pair);
+      await adopt({ accessToken: pair.accessToken, refreshToken: pair.refreshToken, principal: pair.principal });
     } catch (e) {
       setError(problemMessage(e));
       setCode('');

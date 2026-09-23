@@ -2,8 +2,15 @@ import { z } from 'zod'
 import { principalSchema } from './auth.ts'
 
 /**
- * Mobile onboarding, Phase 1 (feature 009): register → country → verify
- * mobile → verify email → wait for staff approval.
+ * Onboarding, Phase 1 (feature 009): register → country → verify mobile →
+ * verify email → wait for staff approval. The same flow on both faces: the
+ * mobile app and the web console.
+ *
+ * The one difference between them is the device. The app sends `deviceId`,
+ * which binds the application's approval to that phone (§6.1, §12.6) and gets
+ * its session back as bearer tokens. The web sends none: its session arrives
+ * as cookies, and approving a web application approves the member, not a
+ * device — the web has no device binding anywhere on this platform.
  *
  * Staff approval is the gate, not an invitation (the business decision recorded
  * in specs/009-expo-client/spec.md). Registration is therefore open, and
@@ -65,7 +72,8 @@ export const registerRequestSchema = z.object({
   birthday: isoDateSchema,
   gender: z.enum(GENDERS),
   countryOfResidence: countryCodeSchema,
-  deviceId: z.string().min(1).max(128),
+  /** Mobile only. Absent marks the web face. */
+  deviceId: z.string().min(1).max(128).optional(),
 })
 
 /**
@@ -85,7 +93,8 @@ export const registerResponseSchema = z.object({
 export const verifyMobileRequestSchema = z.object({
   challengeId: z.string().uuid(),
   code: z.string().regex(/^\d{4}$/, 'must be four digits'),
-  deviceId: z.string().min(1).max(128),
+  /** Must match the registration: present on mobile, absent on the web. */
+  deviceId: z.string().min(1).max(128).optional(),
 })
 
 /**
@@ -94,10 +103,14 @@ export const verifyMobileRequestSchema = z.object({
  * It opens `/onboarding/*` and nothing else until staff approve: the member
  * gates in 10-auth refuse an unapproved applicant on every other route. That is
  * what lets the app resume onboarding after a restart without a password.
+ *
+ * The tokens are in the body for the mobile face only. The web face receives
+ * them as httpOnly cookies and never sees them — a token a page script can
+ * read is a token any injected script can read too.
  */
 export const verifyMobileResponseSchema = z.object({
-  accessToken: z.string(),
-  refreshToken: z.string(),
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
   expiresIn: z.number().int().positive(),
   principal: principalSchema,
 })
@@ -134,7 +147,8 @@ export const applicationSchema = z.object({
   birthday: z.string().nullable(),
   gender: z.string().nullable(),
   countryOfResidence: z.string().nullable(),
-  deviceId: z.string(),
+  /** Null when the application was made on the web. */
+  deviceId: z.string().nullable(),
   state: z.enum(APPLICATION_STATES),
   submittedAt: z.string().nullable(),
   reviewedAt: z.string().nullable(),

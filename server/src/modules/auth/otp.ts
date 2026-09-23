@@ -16,6 +16,15 @@ import type { Pool, PoolClient } from 'pg'
 export { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS }
 
 /**
+ * What a browser's challenges are bound to. The web has no device id, and
+ * `otp_challenges.device_id` is NOT NULL on purpose — every mobile challenge
+ * must name its phone. A browser's challenge names this instead, which only a
+ * deviceless request will ever present back, so a code issued to a browser
+ * cannot be redeemed as if it belonged to some phone.
+ */
+export const WEB_DEVICE = 'web'
+
+/**
  * `randomInt` rather than `Math.random`: a predictable second factor is none.
  *
  * Four digits by default — what an SMS code has always been here. Email codes

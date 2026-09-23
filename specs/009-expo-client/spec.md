@@ -42,6 +42,23 @@
 | Posts are never edited, by anyone; `removed` and `deleted` are final (trigger) | §8: staff moderate, they do not rewrite. |
 | `/auth/otp/resend` now returns the new `challengeId` | This was a pre-existing bug: a resend mints a new challenge, but the client never learned its id, so every resent code was refused. |
 
+## Onboarding on the web (second session)
+
+**Input**: "implement the same onboarding process … for the web-application, what it does is exactly same as the mobile application".
+
+The same five steps in the web console, at `/konsole/registrieren` (steps 1–2), `/konsole/registrieren/mobil` (3) and `/konsole/bewerbung` (4–5). The server endpoints are shared with the app. What differs is only what a browser does not have:
+
+| Decision | Why |
+|---|---|
+| The web sends no `deviceId`; `membership_applications.device_id` is NULL for a web application (025) | Web sessions are never device-bound on this platform. Approving a web application approves the member, and no `device_approvals` row is written. A phone they later use still needs its own approval. |
+| verify-mobile answers the web with **httpOnly cookies** and no tokens in the body | Exactly what sign-in does per face. A token a page script can read is one an injected script can read too. |
+| Web challenges are bound to `WEB_DEVICE` (`'web'`) | `otp_challenges.device_id` stays NOT NULL, so every mobile challenge still names its phone. |
+| A web applicant resumes on the web **by password**; a mobile applicant only on their phone, by SMS | Each face resumes the way that face signs in. Either way the session reaches `/onboarding/*` only. |
+| `/auth/sign-out` declares `onboarding: true` | An applicant must be able to sign out. Otherwise the approval gate refused the sign-out itself. |
+| The console gains a capability state `applicant` | Before, an applicant's `/auth/me` refusal rendered "permissions could not be loaded". |
+| `tests/no-registration.test.tsx` is replaced by `tests/registration-entry.test.tsx` | The old suite enforced 003's "no registration in the console". This feature reverses that on purpose. The new suite keeps the reset-flow guarantees and pins one registration endpoint with one caller. |
+| The country list moved to `@gwc/contracts/countries` | Both clients offer it for the same field. |
+
 ## Out of scope — and why
 
 - **Influencer identity / affiliate link**: the 4th Phase 1 item. No column is added for it, because nothing could set one yet ("no columns nothing writes").

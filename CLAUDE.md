@@ -219,15 +219,19 @@ else: a sold, filled or withdrawn listing gets the owner's state-change entry
 at its own `state_changed_at`, a hidden one the moderator's, and an expired one
 the `marketplace-expiry` job run that moved it. Nothing else gets history.
 
-**Mobile onboarding is gated by approval, not invitation** (feature 009,
+**Onboarding is gated by approval, not invitation** (feature 009,
 `specs/009-expo-client/spec.md`). Registration is open; a row in
 `membership_applications` that is not `approved` makes 10-auth refuse that
 member on *every* route and every face — web included, because device approval
 alone would let an applicant with a confirmed email walk in through a browser.
 Members with no row (invited, legacy) are untouched. The only routes an
 applicant reaches are those declaring `config.auth.onboarding: true`, which
-11-rbac accepts on member routes only. Sign-in gives an unapproved applicant a
-token solely on the device they applied from, by SMS, so they can resume.
+11-rbac accepts on member routes only. Both faces run it — the app, and the
+console at `/konsole/registrieren` — against the same endpoints: the app sends
+a `deviceId` and gets tokens, the browser sends none and gets cookies, and a
+web application (`device_id IS NULL`) approves no device. Sign-in gives an
+unapproved applicant a session only on the face they applied from — their
+phone by SMS, or a browser by password — so they can resume.
 
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and

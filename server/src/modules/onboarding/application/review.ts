@@ -33,7 +33,7 @@ function toApplication(row: Record<string, unknown>): Application {
     birthday: (row.birthday as string | null) ?? null,
     gender: (row.gender as string | null) ?? null,
     countryOfResidence: (row.country_of_residence as string | null) ?? null,
-    deviceId: String(row.device_id),
+    deviceId: row.device_id ? String(row.device_id) : null,
     state: row.state as ApplicationState,
     submittedAt: iso(row.submitted_at),
     reviewedAt: iso(row.reviewed_at),
@@ -87,7 +87,10 @@ export async function decide(
     if (rows.length === 0) return null
     const { device_id: deviceId } = rows[0]
 
-    await client.query(
+    // A web application has no device to approve: the member-level decision
+    // above is the whole of it, and any phone they sign in from later still
+    // needs its own approval.
+    if (deviceId) await client.query(
       `INSERT INTO device_approvals (member_id, device_id, state, denial_reason, reviewed_by, reviewed_at)
        VALUES ($1, $2, $3, $4, $5, now())
        ON CONFLICT (member_id, device_id) DO UPDATE

@@ -56,7 +56,26 @@ export const STATUS = Object.freeze({
   READY: 'ready',
   ANONYMOUS: 'anonymous',
   FAILED: 'failed',
+  /**
+   * Signed in, but a membership application stands between this person and
+   * the console (feature 009). Not FAILED — nothing is broken, and "reload the
+   * page" would loop — and not ANONYMOUS, because they hold a valid session
+   * that the application screen needs.
+   */
+  APPLICANT: 'applicant',
 } as const)
+
+/**
+ * The refusals that mean "your application is not finished or not approved".
+ * The server sends them from every member route to an applicant; the console
+ * answers all three by showing the application, which reads the precise step
+ * from /onboarding/status rather than guessing it from which refusal came.
+ */
+const APPLICANT_PROBLEMS: ReadonlySet<string> = new Set([
+  PROBLEMS.APPROVAL_PENDING.type,
+  PROBLEMS.PROFILE_INCOMPLETE.type,
+  PROBLEMS.APPLICATION_DENIED.type,
+])
 
 /** The four states, as a union. "loading" and "anonymous" are not the same. */
 export type Status = (typeof STATUS)[keyof typeof STATUS]
@@ -113,8 +132,9 @@ export function CapabilityProvider({ children }: { children?: ReactNode }) {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return null
       const anonymous = error instanceof ApiError && error.needsSignIn
+      const applicant = error instanceof ApiError && APPLICANT_PROBLEMS.has(error.problem?.type)
       setState({
-        status: anonymous ? STATUS.ANONYMOUS : STATUS.FAILED,
+        status: anonymous ? STATUS.ANONYMOUS : applicant ? STATUS.APPLICANT : STATUS.FAILED,
         snapshot: null,
         error: error instanceof ApiError ? error : null,
       })

@@ -1,6 +1,7 @@
 import { register } from './application/register.ts'
 import { verifyMobile, sendEmailCode, verifyEmail } from './application/verify.ts'
 import { loadStatus } from './application/status.ts'
+import { setAuthCookies } from '../auth/cookies.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
 import type { RegisterRequest, VerifyMobileRequest, VerifyEmailRequest } from '@gwc/contracts/onboarding'
@@ -23,13 +24,19 @@ export function createOnboardingController(app: GwcApp) {
 
     verifyMobile: async (request: GwcRequest, reply: GwcReply) => {
       const body = request.body as VerifyMobileRequest
-      const result = await verifyMobile(app, {
+      const { face, accessToken, refreshToken, ...rest } = await verifyMobile(app, {
         ...body,
         ip: request.ip,
         userAgent: request.headers['user-agent'] as string | undefined,
         requestId: request.id,
       })
-      return reply.send(result)
+      // Exactly what sign-in does per face: the browser gets httpOnly cookies
+      // and never sees a token; the app gets the pair in the body.
+      if (face === 'web') {
+        setAuthCookies(reply, { accessToken, refreshToken, secure: app.env.isProduction })
+        return reply.send(rest)
+      }
+      return reply.send({ ...rest, accessToken, refreshToken })
     },
 
     status: async (request: GwcRequest, reply: GwcReply) =>

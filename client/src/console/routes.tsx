@@ -14,6 +14,9 @@ import MemberMarketplace from '../member/Marketplace'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
 import NotBuilt from './NotBuilt'
+import Register from '../onboarding/Register'
+import VerifyMobile from '../onboarding/VerifyMobile'
+import Application from '../onboarding/Application'
 import EmptyState from './EmptyState'
 import Button from '../components/ui/Button'
 
@@ -72,6 +75,24 @@ function Elsewhere() {
   if (status === STATUS.READY && snapshot) {
     return <Navigate to={homeFor(snapshot.kind)} replace />
   }
+  if (status === STATUS.APPLICANT) return <Navigate to={APPLICATION_PATH} replace />
+  return <Navigate to="/konsole/anmelden" replace />
+}
+
+/** Where an applicant with a session belongs until staff decide (feature 009). */
+const APPLICATION_PATH = '/konsole/bewerbung'
+
+/**
+ * The application screen's own gate: only for somebody who IS an applicant.
+ *
+ * An approved member landing here goes home, and an anonymous visitor goes to
+ * sign-in — the screen itself would only discover either after a request.
+ */
+function ApplicantOnly({ children }: { children?: ReactNode }) {
+  const { status, snapshot } = useCapabilities()
+  if (status === STATUS.LOADING) return null
+  if (status === STATUS.APPLICANT) return children
+  if (status === STATUS.READY && snapshot) return <Navigate to={homeFor(snapshot.kind)} replace />
   return <Navigate to="/konsole/anmelden" replace />
 }
 
@@ -96,6 +117,10 @@ function Authenticated({ children }: { children?: ReactNode }) {
 
   if (status === STATUS.ANONYMOUS) return <Navigate to="/konsole/anmelden" replace />
 
+  // Signed in, application not yet approved: never the console, and never the
+  // "could not load permissions" error either — nothing is broken.
+  if (status === STATUS.APPLICANT) return <Navigate to={APPLICATION_PATH} replace />
+
   if (status === STATUS.FAILED) {
     // Never a hard-coded fallback navigation. A failed capability fetch is an
     // error state, not an invitation to guess (contracts/capability-api.md).
@@ -119,6 +144,19 @@ export function ConsoleRoutes() {
     <Routes>
       <Route path="/konsole/anmelden" element={<SignInRoute />} />
       <Route path="/konsole/passwort" element={<PasswordResetRoute />} />
+
+      {/* Onboarding, Phase 1 (feature 009) — the same steps as the app. Steps
+          1–3 need no session; the application screen needs an applicant's. */}
+      <Route path="/konsole/registrieren" element={<Register />} />
+      <Route path="/konsole/registrieren/mobil" element={<VerifyMobile />} />
+      <Route
+        path={APPLICATION_PATH}
+        element={
+          <ApplicantOnly>
+            <Application />
+          </ApplicantOnly>
+        }
+      />
 
       <Route
         path="/konsole/admin"

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { COUNTRIES, PINNED, type Country } from '@gwc/contracts/countries';
+
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { COUNTRIES, PINNED, type Country } from '@/data/countries';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 

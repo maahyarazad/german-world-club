@@ -6,7 +6,9 @@
  * YU…) are excluded — nobody lives in East Germany any more. Embedded rather
  * than computed on the phone because Hermes does not reliably ship
  * Intl.DisplayNames. Country names are data, not
- * interface strings, so they live here and not in the i18n catalogues.
+ * interface strings, so they live here and not in the i18n catalogues — and
+ * here in contracts, because both the app and the web console offer the same
+ * list for the same registration field.
  */
 export type Country = { code: string; en: string; de: string };
 
@@ -265,3 +267,6 @@ export const COUNTRIES: readonly Country[] = [
 
 /** Shown first: Phase 2 profiling branches on Germany, and the club began in the Emirates. */
 export const PINNED = ["DE", "AE", "AT", "CH"] as const;
+
+export const countryByCode = (code: string | null | undefined) =>
+  (code ? COUNTRIES.find((c) => c.code === code) : undefined) ?? null;

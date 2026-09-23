@@ -17,7 +17,8 @@
     "./onboarding": "./src/onboarding.ts",
     "./profile": "./src/profile.ts",
     "./events": "./src/events.ts",
-    "./threads": "./src/threads.ts"
+    "./threads": "./src/threads.ts",
+    "./countries": "./src/countries.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"

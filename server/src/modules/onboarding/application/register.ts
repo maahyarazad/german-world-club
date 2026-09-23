@@ -2,19 +2,20 @@ import { randomUUID } from 'node:crypto'
 import { OTP_TTL_SECONDS } from '@gwc/contracts/auth'
 import { query, withTransaction } from '../../../db/query.ts'
 import { hashPassword, verifyPassword } from '../../auth/passwords.ts'
-import { issueChallenge, maskPhone } from '../../auth/otp.ts'
+import { issueChallenge, maskPhone, WEB_DEVICE } from '../../auth/otp.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 import type { RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
 
 /**
- * Registration: steps 1 and 2 of §6.1 (details, then country of residence),
- * submitted together — the app collects them on two screens and sends one
- * request, so an applicant is never half-created between them.
+ * Registration, for both faces: steps 1 and 2 of §6.1 (details, then country
+ * of residence), submitted together — each client collects them on two screens
+ * and sends one request, so an applicant is never half-created between them.
  *
  * What it creates, in one transaction:
  *   - the member row, `active` but with neither contact detail verified;
- *   - the membership application, `pending`, bound to the requesting device;
+ *   - the membership application, `pending`, bound to the requesting device
+ *     (or to none, on the web);
  *   - a mobile-verification challenge, whose code is sent by SMS *before*
  *     commit.
  *
@@ -54,9 +55,11 @@ export async function register(
     if (resumable) {
       return withTransaction(app.pg, async (client) => {
         await writeDetails(client, existing.id, input)
+        // Resuming on another face moves the application there: approval
+        // follows the device the applicant actually finished on.
         await client.query(
           'UPDATE membership_applications SET device_id = $2 WHERE member_id = $1',
-          [existing.id, deviceId],
+          [existing.id, deviceId ?? null],
         )
         return challengeAndSend(app, client, { memberId: existing.id, mobile, deviceId })
       }, { signal })
@@ -76,7 +79,8 @@ export async function register(
       await writeDetails(client, memberId, input)
       await client.query(
         'INSERT INTO membership_applications (member_id, device_id) VALUES ($1, $2)',
-        [memberId, deviceId],
+        // NULL: applied on the web, where nothing is device-bound.
+        [memberId, deviceId ?? null],
       )
       const sent = await challengeAndSend(app, client, { memberId, mobile, deviceId })
       return { memberId, sent }
@@ -110,10 +114,10 @@ async function writeDetails(client: PoolClient, memberId: string, input: Registe
 async function challengeAndSend(
   app: GwcApp,
   client: PoolClient,
-  { memberId, mobile, deviceId }: { memberId: string; mobile: string; deviceId: string },
+  { memberId, mobile, deviceId }: { memberId: string; mobile: string; deviceId: string | undefined },
 ): Promise<RegisterResponse> {
   const challenge = await issueChallenge(client, {
-    accountId: memberId, accountKind: 'member', deviceId, purpose: 'mobile_verification',
+    accountId: memberId, accountKind: 'member', deviceId: deviceId ?? WEB_DEVICE, purpose: 'mobile_verification',
   })
   await app.sendOtp({ mobile, code: challenge.code })
   return { challengeId: challenge.challengeId, expiresIn: OTP_TTL_SECONDS, sentTo: maskPhone(mobile) }

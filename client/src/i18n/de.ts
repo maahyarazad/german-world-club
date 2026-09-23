@@ -26,9 +26,9 @@ export const de = {
     forgotPassword: 'Passwort vergessen?',
     emailRequired: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
     passwordRequired: 'Bitte geben Sie Ihr Passwort ein.',
-    // There is deliberately no "Konto erstellen" link. Registration is out of
-    // scope (FR-002) and client/tests/no-registration.test.jsx enforces that
-    // no such affordance creeps back in.
+    // The way in for someone without an account (feature 009). Staff approval
+    // gates membership, not an invitation — see specs/009-expo-client/spec.md.
+    becomeMember: 'Mitglied werden',
 
     /**
      * POST /auth/sign-in answers with one of five outcomes, and four of them
@@ -44,8 +44,8 @@ export const de = {
 
       profileIncompleteTitle: 'E-Mail-Adresse nicht bestätigt',
       profileIncompleteBody:
-        'Dieses Konto ist noch nicht vollständig eingerichtet. Die Einrichtung erfolgt in der '
-        + 'mobilen App; im Web ist sie derzeit nicht verfügbar.',
+        'Ihre Registrierung wurde nicht abgeschlossen. Registrieren Sie sich erneut mit derselben '
+        + 'E-Mail-Adresse und demselben Passwort, um dort fortzufahren, wo Sie aufgehört haben.',
 
       approvalPendingTitle: 'Freigabe ausstehend',
       approvalPendingBody:
@@ -57,6 +57,74 @@ export const de = {
 
       unknownTitle: 'Anmeldung nicht abgeschlossen',
       unknownBody: 'Die Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.',
+    },
+  },
+
+  /**
+   * Onboarding, Phase 1 (feature 009): the same five steps as the mobile app.
+   * `{target}` and `{length}` are filled by `fill()` in lib/format.
+   */
+  onboarding: {
+    stepOf: 'Schritt {step} von 4',
+    detailsTitle: 'Mitglied werden',
+    detailsSubtitle: 'Erzählen Sie uns, wer Sie sind. Nach der Prüfung durch unser Team erhalten Sie Zugang.',
+    fullName: 'Vollständiger Name',
+    email: 'E-Mail-Adresse',
+    password: 'Passwort',
+    passwordHint: 'Mindestens 8 Zeichen.',
+    mobile: 'Mobilnummer',
+    mobileHint: 'Internationales Format, z. B. +49 151 12345678',
+    birthday: 'Geburtstag',
+    gender: 'Geschlecht',
+    genders: {
+      female: 'Weiblich',
+      male: 'Männlich',
+      diverse: 'Divers',
+      prefer_not_to_say: 'Keine Angabe',
+    },
+    countryTitle: 'Wo leben Sie?',
+    countrySubtitle: 'Wählen Sie Ihr hauptsächliches Wohnsitzland.',
+    country: 'Wohnsitzland',
+    countryPinned: 'Häufig gewählt',
+    countryAll: 'Alle Länder',
+    countryPlaceholder: 'Bitte wählen',
+    back: 'Zurück',
+    continue: 'Weiter',
+    submit: 'Absenden',
+    submitting: 'Wird gesendet …',
+    haveAccount: 'Bereits ein Konto? Anmelden',
+    mobileTitle: 'Mobilnummer bestätigen',
+    mobileSubtitle: 'Wir haben einen 4-stelligen Code per SMS an {target} gesendet.',
+    code: 'Code',
+    verify: 'Bestätigen',
+    verifying: 'Wird geprüft …',
+    resend: 'Neuen Code senden',
+    resent: 'Ein neuer Code ist unterwegs.',
+    missingChallengeTitle: 'Registrierung unterbrochen',
+    missingChallengeBody:
+      'Diese Seite wurde neu geladen, bevor der Code eingegeben war. Starten Sie die Registrierung '
+      + 'erneut mit denselben Angaben – Sie setzen dort fort, wo Sie aufgehört haben.',
+    restart: 'Registrierung fortsetzen',
+    emailTitle: 'E-Mail-Adresse bestätigen',
+    emailSubtitle: 'Wir haben einen 6-stelligen Code an {target} gesendet.',
+    emailSending: 'Der Code wird gesendet …',
+    waitingTitle: 'Warten auf Freigabe',
+    waitingBody:
+      'Vielen Dank! Unser Team prüft Ihren Antrag. Sie erhalten eine E-Mail, sobald entschieden ist.',
+    check: 'Erneut prüfen',
+    deniedTitle: 'Antrag nicht angenommen',
+    deniedBody: 'Es tut uns leid – Ihr Mitgliedsantrag wurde nicht angenommen.',
+    reason: 'Begründung',
+    signOut: 'Abmelden',
+    errors: {
+      fullName: 'Bitte geben Sie Ihren vollständigen Namen ein.',
+      email: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+      password: 'Das Passwort muss mindestens 8 Zeichen lang sein.',
+      mobile: 'Bitte im internationalen Format mit + am Anfang.',
+      birthday: 'Bitte ein echtes Datum in der Vergangenheit eingeben.',
+      gender: 'Bitte wählen Sie eine Option.',
+      country: 'Bitte wählen Sie ein Land.',
+      code: 'Bitte alle {length} Ziffern eingeben.',
     },
   },
 

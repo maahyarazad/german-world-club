@@ -79,12 +79,21 @@ export async function signIn(
     if (row.status === 'ended') throw forbidden(PROBLEMS.MEMBERSHIP_ENDED, 'This membership has ended.')
 
     // ---- Applicants (feature 009) ----------------------------------------
-    // Somebody who registered in the app and is not yet approved. They get a
-    // token on exactly one condition: the device they applied from, with the
-    // mobile number already proven — which is how they resume onboarding after
-    // losing the app's stored session. The token then opens /onboarding/* and
-    // nothing else (10-auth). Anywhere else, no token: web has no device, and
-    // an applicant must not reach the portal by signing in there.
+    // Somebody who registered and is not yet approved. They get a session on
+    // exactly one condition: the face they applied from, with the mobile
+    // number already proven — which is how they resume onboarding after losing
+    // their session. The session then opens /onboarding/* and nothing else
+    // (10-auth), so it cannot reach the portal whichever face it is on.
+    //
+    //   - Applied in the app: that phone only, and by SMS code, as every
+    //     mobile sign-in is.
+    //   - Applied on the web (no device on the application): a browser, by
+    //     password, as every web sign-in is. It falls through to the ordinary
+    //     session below with the email and device checks skipped — those are
+    //     exactly the onboarding steps the session exists to finish.
+    //
+    // A mobile applicant on the web, or a web applicant in the app, gets no
+    // session: approval_pending, as before.
     const { rows: applications } = await query(
       app.pg,
       'SELECT state, device_id FROM membership_applications WHERE member_id = $1',
@@ -92,8 +101,11 @@ export async function signIn(
       { signal },
     )
     const application = applications[0]
+    let resumingOnWeb = false
     if (application && application.state !== 'approved') {
-      const onItsDevice = Boolean(deviceId) && deviceId === application.device_id && row.mobile_verified_at !== null
+      const proven = row.mobile_verified_at !== null
+      const onItsDevice = proven && Boolean(deviceId) && deviceId === application.device_id
+      resumingOnWeb = proven && !deviceId && application.device_id === null
       if (onItsDevice) {
         const challenge = await issueChallenge(app.pg, {
           accountId: row.id, accountKind: 'member', deviceId: deviceId!, purpose: 'login', signal,
@@ -106,13 +118,15 @@ export async function signIn(
           sentTo: maskPhone(row.mobile),
         }
       }
-      if (application.state === 'denied') {
-        throw forbidden(PROBLEMS.APPLICATION_DENIED, 'This membership application was not approved.')
+      if (!resumingOnWeb) {
+        if (application.state === 'denied') {
+          throw forbidden(PROBLEMS.APPLICATION_DENIED, 'This membership application was not approved.')
+        }
+        return { outcome: row.email_confirmed_at === null ? 'profile_incomplete' : 'approval_pending' }
       }
-      return { outcome: row.email_confirmed_at === null ? 'profile_incomplete' : 'approval_pending' }
     }
 
-    if (row.email_confirmed_at === null) {
+    if (!resumingOnWeb && row.email_confirmed_at === null) {
       return { outcome: 'profile_incomplete' }
     }
 
