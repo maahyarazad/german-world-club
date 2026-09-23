@@ -2,6 +2,8 @@ import type { ViteDevServer } from 'vite'
 import type { AddressInfo } from 'node:net'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createServer } from 'vite'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   consoleEntryFor,
   isApiPath,
@@ -54,6 +56,36 @@ describe('which requests belong to the console', () => {
   it.each(API_PREFIXES.map((p) => [p]))('%s belongs to the API', (prefix) => {
     expect(isApiPath(prefix)).toBe(true)
     expect(isApiPath(`${prefix}/etwas`)).toBe(true)
+  })
+
+  it('proxies every API path the client actually calls', () => {
+    // Read from the source rather than listed here, so a module added later
+    // fails this test instead of 404ing only in development — which is how
+    // the member marketplace shipped unreachable on `npm run dev`.
+    const called = new Set<string>()
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name)
+        if (entry.isDirectory()) walk(path)
+        else if (/\.tsx?$/.test(entry.name)) {
+          const source = readFileSync(path, 'utf8')
+          for (const [, prefix] of source.matchAll(/\b(?:get|post|patch|put|del)\(\s*['"`](\/[a-z-]+)/g)) {
+            called.add(prefix!)
+          }
+        }
+      }
+    }
+    // process.cwd() is the client root, as the real-server suite below relies on;
+    // import.meta.url is not a file: URL under the test environment.
+    walk(join(process.cwd(), 'src'))
+
+    // Counter-assertion: the scan finds calls at all, or an empty set would
+    // pass against any proxy list.
+    expect(called.has('/auth')).toBe(true)
+    expect(called.has('/marketplace')).toBe(true)
+    for (const prefix of called) {
+      expect(isApiPath(prefix), `${prefix} is called by the client but not proxied`).toBe(true)
+    }
   })
 
   it('does not hand the console or the landing page to the API', () => {

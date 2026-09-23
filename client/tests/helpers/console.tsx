@@ -63,11 +63,11 @@ const problem = (type: string, status: number) => ({
 })
 
 /**
- * Stub fetch for the two capability routes.
+ * Stub fetch for the capability routes.
  *
  * `/auth/me` answers 403 for a non-member so the provider falls through to
- * `/auth/session`, which is exactly what the real server does: a staff token on
- * a member route fails its audience check.
+ * the next audience's route, which is exactly what the real server does: a
+ * staff token on a member route fails its audience check.
  */
 /** What an extraRoutes handler returns: a raw Response body plus its metadata. */
 export type RouteResult = { body?: BodyInit | null; status?: number; headers?: HeadersInit }
@@ -113,9 +113,17 @@ export function mockCapabilityFetch(
       return new Response(p.body, { status: p.status, headers: p.headers })
     }
 
-    if (path === '/auth/session') {
+    // One route per audience, as on the server: a staff snapshot is served
+    // only by `/auth/session`, a merchant's only by `/auth/merchant/session`,
+    // and every other principal gets the audience-mismatch 403 there.
+    const sessionKind = { '/auth/session': 'staff', '/auth/merchant/session': 'merchant', '/auth/partner/session': 'partner' }[path]
+    if (sessionKind) {
       if (!snapshot) {
         const p = problem('https://german-world-club.com/problems/unauthenticated', 401)
+        return new Response(p.body, { status: p.status, headers: p.headers })
+      }
+      if ((snapshot.kind ?? 'staff') !== sessionKind) {
+        const p = problem('https://german-world-club.com/problems/insufficient-permission', 403)
         return new Response(p.body, { status: p.status, headers: p.headers })
       }
       return new Response(JSON.stringify(snapshot), {

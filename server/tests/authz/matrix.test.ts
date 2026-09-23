@@ -65,6 +65,12 @@ const ROUTE_CLASSES = [
   { name: 'capability snapshot', url: '/auth/session', method: 'GET', audience: 'staff', anyStaff: true },
   // anyStaff: ending your own session cannot depend on a module grant.
   { name: 'staff sign-out', url: '/auth/staff/sign-out', method: 'POST', audience: 'staff', anyStaff: true },
+  // The organisation principals' snapshot and sign-out, one pair per kind:
+  // `/auth/session` is staff-audience and cannot also be theirs.
+  { name: 'merchant capability snapshot', url: '/auth/merchant/session', method: 'GET', audience: 'merchant' },
+  { name: 'merchant sign-out', url: '/auth/merchant/sign-out', method: 'POST', audience: 'merchant' },
+  { name: 'partner capability snapshot', url: '/auth/partner/session', method: 'GET', audience: 'partner' },
+  { name: 'partner sign-out', url: '/auth/partner/sign-out', method: 'POST', audience: 'partner' },
   // Media delivery is public — a crawler must be able to fetch the images a
   // partner page references — while ingest and management are member-gated.
   { name: 'media variant', url: '/media/:checksum/:variant.:ext', probe: '/media/deadbeef/medium.webp', method: 'GET', audience: 'public' },

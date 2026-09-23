@@ -70,6 +70,9 @@ export function createMarketplaceController(app: GwcApp) {
           return reply.code(400).send({
             ...PROBLEMS.VALIDATION_FAILED,
             detail: err.problems.map((p) => `${p.field} ${p.reason}`).join('; '),
+            // Structured, so a client can mark the refused fields without
+            // parsing `detail` — clients branch on data, never on prose.
+            problems: err.problems.map((p) => ({ field: p.field, reason: p.reason })),
             instance: request.url,
           })
         }

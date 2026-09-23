@@ -1,0 +1,27 @@
+name: pgai-worker
+
+x-worker: &worker
+  image: timescale/pgai-vectorizer-worker:v0.12.1
+  command: ["--poll-interval", "5s"]
+  restart: unless-stopped
+  environment: &worker-env
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+  deploy:
+    resources:
+      limits:
+        memory: 384M
+        cpus: "0.5"
+  networks: [pgai-net]
+
+services:
+  worker-german-world-club:
+    <<: *worker
+    container_name: pgai-worker-german-world-club
+    environment:
+      <<: *worker-env
+      PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:${PG_PASSWORD}@pg17-ai:5432/german-world-club
+
+
+networks:
+  pgai-net:
+    external: true

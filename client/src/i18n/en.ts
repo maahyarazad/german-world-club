@@ -127,6 +127,15 @@ export const en = {
       + 'spam, pay-to-play, poor merchants and unreliable experts.',
   },
 
+  organisationPortal: {
+    home: 'Overview',
+    role: 'Your role',
+    roles: { owner: 'Owner', manager: 'Manager', staff: 'Staff' },
+    notBuiltHint:
+      'You are signed in to your organisation. The tools in this portal are not built yet — '
+      + 'your GWC contact will let you know when they are.',
+  },
+
   portals: {
     staff: 'Admin Panel',
     merchant: 'Club Merchant Portal',
@@ -254,6 +263,31 @@ export const en = {
     allModes: 'All modes',
     selectPlaceholder: 'Please select',
     contactUnavailable: 'Contact currently unavailable.',
+    loadFailed: 'The form could not be loaded. Please reload the page.',
+    media: 'Photos and video',
+    mediaHint: 'JPEG, PNG, WebP, AVIF, MP4, WebM or MOV, up to 25 MB each and 20 per listing. The first one represents the listing.',
+    mediaAlt: 'Describe this file (required)',
+    mediaRemove: 'Remove',
+    mediaAltMissing: 'Every photo and video needs a description.',
+    mediaTooLarge: 'One of the files is larger than 25 MB.',
+    mediaTooMany: 'A listing may carry at most 20 media files.',
+    publishing: 'Publishing …',
+    mediaDrop: 'Drag photos or videos here, or',
+    mediaChoose: 'Choose files',
+    mediaCover: 'Cover',
+    mediaMakeCover: 'Make cover',
+    mediaMoveEarlier: 'Move earlier',
+    mediaMoveLater: 'Move later',
+    mediaUnsupported: 'Only JPEG, PNG, WebP, AVIF, MP4, WebM and MOV files can be uploaded.',
+    mediaRetry: 'Retry failed media',
+    mediaStatus: {
+      pending: 'Waiting',
+      uploading: 'Uploading …',
+      processing: 'Processing video …',
+      attached: 'Attached',
+      failed: 'Failed',
+    },
+    mediaFailed: 'The listing was published, but some media could not be attached. You can add them again later.',
     categories: {
       vehicle: 'Vehicle',
       property: 'Property',

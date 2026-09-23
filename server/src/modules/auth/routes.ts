@@ -195,6 +195,43 @@ export default fp(
       controller.me,
     )
 
+    /**
+     * The organisation principals' session and sign-out — one pair per kind.
+     *
+     * capability-api.md has `/auth/session` serve staff, merchant and partner
+     * alike, but a route's audience is part of its posture and cannot be three
+     * things at once: `/auth/session` verifies against the staff audience, so
+     * a merchant token was refused there with "not valid for this interface"
+     * and the console, having no snapshot, could render nothing. The handler
+     * and the response shape are the contract's; only the path differs.
+     *
+     * Sign-out is declared alongside for the same reason. `/auth/sign-out` is
+     * member-only and `/auth/staff/sign-out` staff-only, so without these an
+     * organisation principal could sign in and never sign out — with no way
+     * out but waiting for the token to expire.
+     */
+    for (const kind of ['merchant', 'partner'] as const) {
+      app.get(
+        `/auth/${kind}/session`,
+        {
+          config: { auth: { audience: kind }, budget: 'member-read' },
+          onRequest: app.authenticate,
+          schema: { response: { 200: sessionResponseSchema } },
+        },
+        controller.session,
+      )
+
+      app.post(
+        `/auth/${kind}/sign-out`,
+        {
+          config: { auth: { audience: kind }, budget: 'auth' },
+          onRequest: app.authenticate,
+          schema: { response: { 204: z.null() } },
+        },
+        controller.signOut,
+      )
+    }
+
     // ---- Password reset -----------------------------------------------------
 
     app.post(

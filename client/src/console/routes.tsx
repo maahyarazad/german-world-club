@@ -11,6 +11,8 @@ import AdminDashboard from './AdminDashboard'
 import Marketplace from './admin/Marketplace'
 import MemberLayout from '../member/MemberLayout'
 import MemberMarketplace from '../member/Marketplace'
+import OrganisationLayout from '../organisation/OrganisationLayout'
+import OrganisationHome from '../organisation/OrganisationHome'
 import NotBuilt from './NotBuilt'
 import EmptyState from './EmptyState'
 import Button from '../components/ui/Button'
@@ -148,6 +150,24 @@ export function ConsoleRoutes() {
             session that is still perfectly valid. */}
         <Route path="*" element={<NotBuilt />} />
       </Route>
+
+      {/* The two organisation portals, at the homes HOME_FOR_KIND already
+          names. Both are shells today; the nested `*` keeps an unbuilt path
+          inside the portal rather than reading as a logout. */}
+      {(['merchant', 'partner'] as const).map((kind) => (
+        <Route
+          key={kind}
+          path={`/konsole/${kind}`}
+          element={
+            <Authenticated>
+              <OrganisationLayout kind={kind} />
+            </Authenticated>
+          }
+        >
+          <Route index element={<OrganisationHome />} />
+          <Route path="*" element={<NotBuilt />} />
+        </Route>
+      ))}
 
       <Route path="/konsole" element={<Elsewhere />} />
       <Route path="*" element={<Elsewhere />} />

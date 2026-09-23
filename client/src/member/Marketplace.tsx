@@ -5,6 +5,8 @@ import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc
 import type {
   CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse,
 } from '@gwc/contracts/marketplace'
+import MediaPicker from './MediaPicker'
+import type { PendingMedia, MediaStatus } from './MediaPicker'
 import { useCapabilities } from '../lib/capabilities'
 import PageHeader from '../components/ui/PageHeader'
 import Card from '../components/ui/Card'
@@ -29,6 +31,50 @@ import { formatDate } from '../lib/format'
  */
 
 const MODE_TONE = { offer: 'success', request: 'info' } as const
+
+/**
+ * The refusal as the member should read it: the localised title, plus which
+ * fields were refused when the server names them. Branches on `type` via
+ * `describeProblem`; `problems` is structured data, never parsed prose.
+ */
+function describeError(err: ApiError, locale: string): string {
+  const title = describeProblem(err.problem, locale as never).title
+  const fields = (err.problem as { problems?: Array<{ field?: string }> })?.problems
+    ?.map((p) => p.field).filter(Boolean)
+  return fields && fields.length > 0 ? `${title}: ${fields.join(', ')}` : title
+}
+
+type UploadedAsset = { id: string; state: string }
+
+/**
+ * Upload one file, wait for it to be usable, attach it.
+ *
+ * `alt` is appended BEFORE the file: the server reads the fields that precede
+ * the file part, so an alt sent after it arrives as missing. A video comes
+ * back `processing` and cannot be attached until it is `ready` — the attach
+ * route refuses it rather than let the index render a listing whose
+ * derivatives do not exist — so this waits, bounded, rather than failing.
+ */
+async function uploadAndAttach(
+  listingId: string,
+  item: PendingMedia,
+  onStatus: (status: MediaStatus) => void,
+) {
+  const form = new FormData()
+  form.append('alt', item.alt.trim())
+  form.append('file', item.file)
+  onStatus('uploading')
+  let asset = (await post('/media', form)) as UploadedAsset
+
+  if (asset.state === 'processing') onStatus('processing')
+  for (let waited = 0; asset.state === 'processing' && waited < 120_000; waited += 2_000) {
+    await new Promise((resolve) => setTimeout(resolve, 2_000))
+    asset = (await get(`/media/${asset.id}`)) as UploadedAsset
+  }
+  if (asset.state !== 'ready') throw new Error(`asset ${asset.id} is ${asset.state}`)
+
+  await post(`/marketplace/listings/${listingId}/media`, { assetId: asset.id })
+}
 
 function DetailField({
   def, value, onChange,
@@ -72,12 +118,14 @@ function DetailField({
   )
 }
 
-function ComposeListing({ categories, vehicleFeatures, onPosted }: {
+function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   categories: readonly CategoryDef[]
   vehicleFeatures: readonly VehicleFeature[]
+  loadFailed: boolean
   onPosted: () => void
 }) {
   const t = useTranslations()
+  const { locale } = useLocale()
   const [category, setCategory] = useState<string>(categories[0]?.category ?? '')
   const [mode, setMode] = useState<string>('offer')
   const [title, setTitle] = useState('')
@@ -90,10 +138,27 @@ function ComposeListing({ categories, vehicleFeatures, onPosted }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [posted, setPosted] = useState(false)
+  const [media, setMedia] = useState<PendingMedia[]>([])
+  // The listing whose media are still being (or failed being) attached, so a
+  // retry attaches to it rather than creating a second listing.
+  const [attachingTo, setAttachingTo] = useState<string | null>(null)
+  const [termsFailed, setTermsFailed] = useState(false)
 
   useEffect(() => {
-    void get('/marketplace/terms').then((body) => setTerms(body as TermsResponse)).catch(() => {})
+    // Not swallowed. A terms fetch that failed silently left `terms` null, and
+    // the button then looked enabled while `submit` returned without a word.
+    void get('/marketplace/terms')
+      .then((body) => { setTerms(body as TermsResponse); setTermsFailed(false) })
+      .catch(() => setTermsFailed(true))
   }, [])
+
+  // The categories arrive after this component mounts, so the initial state
+  // above is '' on every real page load — and `useState` never looks at its
+  // initialiser again. Without this the form posted `category: ''`, rendered
+  // none of the category's own fields, and every publish failed validation.
+  useEffect(() => {
+    if (!category && categories[0]) setCategory(categories[0].category)
+  }, [categories, category])
 
   // Category-specific fields reset with the category — a `price_minor` typed
   // in for `vehicle` means nothing once the category becomes `job`, and
@@ -124,7 +189,7 @@ function ComposeListing({ categories, vehicleFeatures, onPosted }: {
       const updated = await post('/marketplace/terms/accept') as TermsResponse
       setTerms(updated)
     } catch (err) {
-      setError(err instanceof ApiError ? describeProblem(err.problem).title : String(err))
+      setError(err instanceof ApiError ? describeError(err, locale) : String(err))
     } finally {
       setBusy(false)
     }
@@ -132,35 +197,100 @@ function ComposeListing({ categories, vehicleFeatures, onPosted }: {
 
   const submit = async () => {
     if (!terms) return
+    // Alt text is required at ingest (§10.1). Refusing here, before the
+    // listing exists, beats publishing it and then failing every upload.
+    if (media.some((m) => m.alt.trim().length === 0)) {
+      setError(t.memberMarketplace.mediaAltMissing)
+      return
+    }
     setBusy(true)
     setError(null)
+    setPosted(false)
+    let listingId: string | null = null
     try {
-      await post('/marketplace/listings', {
+      const created = (await post('/marketplace/listings', {
         category, mode, title, body,
         details: Object.keys(details).length > 0 ? details : {},
         ...(category === 'vehicle' ? { features: [...features] } : {}),
         contactMethod,
         expiresAt: expiresAt === '' ? null : new Date(expiresAt).toISOString(),
         termsVersion: terms.version,
-      })
-      setTitle('')
-      setBody('')
-      setDetails({})
-      setFeatures(new Set())
-      setPosted(true)
-      onPosted()
+      })) as { id: string }
+      listingId = created.id
     } catch (err) {
-      setError(err instanceof ApiError ? describeProblem(err.problem).title : String(err))
-    } finally {
+      setError(err instanceof ApiError ? describeError(err, locale) : String(err))
       setBusy(false)
+      return
     }
+
+    setAttachingTo(listingId)
+    const failed = await attachAll(listingId, media)
+
+    setTitle('')
+    setBody('')
+    setDetails({})
+    setFeatures(new Set())
+    setPosted(true)
+    onPosted()
+    if (failed.length > 0) {
+      // Keep only what failed, so the member sees which files and can retry
+      // them against the listing that now exists.
+      setMedia(failed)
+      setError(t.memberMarketplace.mediaFailed)
+    } else {
+      setMedia([])
+      setAttachingTo(null)
+    }
+    setBusy(false)
   }
 
-  const termsAccepted = terms?.acceptedVersion === terms?.version
+  const setStatus = (key: string, status: MediaStatus) =>
+    setMedia((prev) => prev.map((m) => (m.key === key ? { ...m, status } : m)))
+
+  /**
+   * One at a time and in the order shown: the first attached represents the
+   * listing in the index. Returns what failed, marked as failed.
+   */
+  const attachAll = async (listingId: string, items: readonly PendingMedia[]) => {
+    const failed: PendingMedia[] = []
+    for (const item of items) setStatus(item.key, 'pending')
+    for (const item of items) {
+      try {
+        await uploadAndAttach(listingId, item, (status) => setStatus(item.key, status))
+        setStatus(item.key, 'attached')
+      } catch {
+        setStatus(item.key, 'failed')
+        failed.push({ ...item, status: 'failed' })
+      }
+    }
+    return failed
+  }
+
+  const retryMedia = async () => {
+    if (!attachingTo) return
+    setBusy(true)
+    setError(null)
+    const failed = await attachAll(attachingTo, media)
+    if (failed.length > 0) {
+      setMedia(failed)
+      setError(t.memberMarketplace.mediaFailed)
+    } else {
+      setMedia([])
+      setAttachingTo(null)
+      onPosted()
+    }
+    setBusy(false)
+  }
+
+  // Loaded AND equal. `undefined === undefined` made an unloaded terms record
+  // read as accepted, which is how the button came to be enabled for nothing.
+  const termsAccepted = terms !== null && terms.acceptedVersion === terms.version
+  const ready = categories.length > 0 && terms !== null && category !== ''
 
   return (
     <Card title={t.memberMarketplace.composeTitle}>
       <div className="flex flex-col gap-4">
+        {(loadFailed || termsFailed) && <Callout variant="neutral" title={t.memberMarketplace.loadFailed} />}
         {posted && <Callout variant="info" title={t.memberMarketplace.posted} />}
         {error && <Callout variant="neutral" title={error} />}
 
@@ -227,6 +357,8 @@ function ComposeListing({ categories, vehicleFeatures, onPosted }: {
           </div>
         )}
 
+        <MediaPicker items={media} onChange={setMedia} onError={setError} disabled={busy} />
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
             {t.memberMarketplace.contactMethod}
@@ -259,11 +391,16 @@ function ComposeListing({ categories, vehicleFeatures, onPosted }: {
         <div>
           <Button
             variant="accent"
-            disabled={busy || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
+            disabled={busy || !ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
             onClick={submit}
           >
-            {t.memberMarketplace.submit}
+            {busy ? t.memberMarketplace.publishing : t.memberMarketplace.submit}
           </Button>
+          {attachingTo && media.some((m) => m.status === 'failed') && !busy && (
+            <Button variant="secondary" className="ml-2" onClick={retryMedia}>
+              {t.memberMarketplace.mediaRetry}
+            </Button>
+          )}
         </div>
       </div>
     </Card>
@@ -281,6 +418,7 @@ export function Marketplace() {
   const [mode, setMode] = useState<string>('')
   const [listings, setListings] = useState<Listing[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [categoriesFailed, setCategoriesFailed] = useState(false)
 
   // Whether COMPOSE renders at all — absent, not disabled, without the flag
   // (the same rule RequireGrant.tsx states for staff modules; members hold
@@ -293,7 +431,8 @@ export function Marketplace() {
       const parsed = body as { categories: CategoryDef[]; vehicleFeatures: VehicleFeature[] }
       setCategories(parsed.categories)
       setVehicleFeatures(parsed.vehicleFeatures)
-    }).catch(() => {})
+      setCategoriesFailed(false)
+    }).catch(() => setCategoriesFailed(true))
   }, [])
 
   const loadListings = useCallback(async (signal?: AbortSignal) => {
@@ -322,7 +461,12 @@ export function Marketplace() {
       <PageHeader title={t.memberMarketplace.title} subtitle={t.memberMarketplace.subtitle} />
 
       {canPost && (
-        <ComposeListing categories={categories} vehicleFeatures={vehicleFeatures} onPosted={() => void loadListings()} />
+        <ComposeListing
+          categories={categories}
+          vehicleFeatures={vehicleFeatures}
+          loadFailed={categoriesFailed}
+          onPosted={() => void loadListings()}
+        />
       )}
 
       <Card title={t.memberMarketplace.browseTitle}>

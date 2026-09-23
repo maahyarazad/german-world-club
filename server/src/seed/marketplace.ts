@@ -457,7 +457,10 @@ export async function seedMarketplace(pool: Pool, faker: Faker, _options: SeedOp
 async function insertDetails(
   pool: Pool,
   faker: Faker,
-  { id, category, index, counts }: { id: string; category: Category; index: number; counts: Record<string, number> },
+  { id, category, index, counts }: {
+    id: string; category: Category; index: number
+    counts: Record<`marketplace_${Category}_details`, number>
+  },
 ) {
   if (category === 'vehicle') {
     const [make, model, body] = MAKES[index % MAKES.length]!

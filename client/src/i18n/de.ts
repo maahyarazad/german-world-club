@@ -121,6 +121,15 @@ export const de = {
       + 'Spam, Pay-to-play, schlechten Merchants und unzuverlässigen Experten.',
   },
 
+  organisationPortal: {
+    home: 'Übersicht',
+    role: 'Ihre Rolle',
+    roles: { owner: 'Inhaber', manager: 'Manager', staff: 'Mitarbeiter' },
+    notBuiltHint:
+      'Sie sind für Ihre Organisation angemeldet. Die Funktionen des Portals sind noch nicht '
+      + 'freigeschaltet — Ihr GWC-Ansprechpartner informiert Sie, sobald sie bereitstehen.',
+  },
+
   portals: {
     staff: 'Admin Panel',
     merchant: 'Club Merchant Portal',
@@ -248,6 +257,31 @@ export const de = {
     allModes: 'Alle Arten',
     selectPlaceholder: 'Bitte wählen',
     contactUnavailable: 'Kontakt derzeit nicht verfügbar.',
+    loadFailed: 'Das Formular konnte nicht geladen werden. Bitte laden Sie die Seite neu.',
+    media: 'Fotos und Video',
+    mediaHint: 'JPEG, PNG, WebP, AVIF, MP4, WebM oder MOV, je bis 25 MB und bis zu 20 pro Anzeige. Die erste Datei repräsentiert die Anzeige.',
+    mediaAlt: 'Beschreiben Sie diese Datei (erforderlich)',
+    mediaRemove: 'Entfernen',
+    mediaAltMissing: 'Jedes Foto und Video braucht eine Beschreibung.',
+    mediaTooLarge: 'Eine der Dateien ist größer als 25 MB.',
+    mediaTooMany: 'Eine Anzeige darf höchstens 20 Mediendateien haben.',
+    publishing: 'Wird veröffentlicht …',
+    mediaDrop: 'Fotos oder Videos hierher ziehen, oder',
+    mediaChoose: 'Dateien auswählen',
+    mediaCover: 'Titelbild',
+    mediaMakeCover: 'Als Titelbild',
+    mediaMoveEarlier: 'Nach vorne',
+    mediaMoveLater: 'Nach hinten',
+    mediaUnsupported: 'Nur JPEG-, PNG-, WebP-, AVIF-, MP4-, WebM- und MOV-Dateien können hochgeladen werden.',
+    mediaRetry: 'Fehlgeschlagene Medien erneut versuchen',
+    mediaStatus: {
+      pending: 'Wartet',
+      uploading: 'Wird hochgeladen …',
+      processing: 'Video wird verarbeitet …',
+      attached: 'Angehängt',
+      failed: 'Fehlgeschlagen',
+    },
+    mediaFailed: 'Die Anzeige wurde veröffentlicht, aber einige Medien konnten nicht angehängt werden. Sie können sie später erneut hinzufügen.',
     categories: {
       vehicle: 'Fahrzeug',
       property: 'Immobilie',
