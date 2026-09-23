@@ -111,7 +111,9 @@ export function createAuthController(app: GwcApp) {
         reply.header('retry-after', String(result.retryAfter))
         throw forbidden(PROBLEMS.RATE_LIMITED, `Wait ${result.retryAfter}s before requesting another code.`)
       }
-      return reply.code(202).send({ resent: result.resent, cooldownSeconds: result.cooldownSeconds })
+      return reply.code(202).send({
+        resent: result.resent, cooldownSeconds: result.cooldownSeconds, challengeId: result.challengeId,
+      })
     },
 
     refresh: async (request: FastifyRequest, reply: FastifyReply) => {

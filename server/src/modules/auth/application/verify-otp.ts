@@ -6,7 +6,9 @@ import { verifyChallenge, OTP_OUTCOME } from '../otp.ts'
 import type { GwcApp } from '../../../app.ts'
 
 export async function verifyOtp(app: GwcApp, { challengeId, code, deviceId, ip, userAgent, requestId, signal }) {
-  const result = await verifyChallenge(app.pg, { challengeId, code, deviceId })
+  // Only sign-in codes open a session here. Onboarding codes are redeemed by
+  // /onboarding/*, which also records what they prove.
+  const result = await verifyChallenge(app.pg, { challengeId, code, deviceId, purposes: ['login', 'device_approval'] })
 
   if (result.outcome === OTP_OUTCOME.EXPIRED) {
     throw forbidden(PROBLEMS.OTP_EXPIRED, 'This code has expired. Request a new one.')

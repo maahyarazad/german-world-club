@@ -78,6 +78,40 @@ export async function signIn(
     if (row.status === 'inactive') throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This account is inactive. Reset your password to reactivate it.')
     if (row.status === 'ended') throw forbidden(PROBLEMS.MEMBERSHIP_ENDED, 'This membership has ended.')
 
+    // ---- Applicants (feature 009) ----------------------------------------
+    // Somebody who registered in the app and is not yet approved. They get a
+    // token on exactly one condition: the device they applied from, with the
+    // mobile number already proven — which is how they resume onboarding after
+    // losing the app's stored session. The token then opens /onboarding/* and
+    // nothing else (10-auth). Anywhere else, no token: web has no device, and
+    // an applicant must not reach the portal by signing in there.
+    const { rows: applications } = await query(
+      app.pg,
+      'SELECT state, device_id FROM membership_applications WHERE member_id = $1',
+      [row.id],
+      { signal },
+    )
+    const application = applications[0]
+    if (application && application.state !== 'approved') {
+      const onItsDevice = Boolean(deviceId) && deviceId === application.device_id && row.mobile_verified_at !== null
+      if (onItsDevice) {
+        const challenge = await issueChallenge(app.pg, {
+          accountId: row.id, accountKind: 'member', deviceId: deviceId!, purpose: 'login', signal,
+        })
+        await app.sendOtp?.({ mobile: row.mobile, code: challenge.code })
+        return {
+          outcome: 'otp_required',
+          challengeId: challenge.challengeId,
+          expiresIn: OTP_TTL_SECONDS,
+          sentTo: maskPhone(row.mobile),
+        }
+      }
+      if (application.state === 'denied') {
+        throw forbidden(PROBLEMS.APPLICATION_DENIED, 'This membership application was not approved.')
+      }
+      return { outcome: row.email_confirmed_at === null ? 'profile_incomplete' : 'approval_pending' }
+    }
+
     if (row.email_confirmed_at === null) {
       return { outcome: 'profile_incomplete' }
     }

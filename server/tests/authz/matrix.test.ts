@@ -131,6 +131,58 @@ const ROUTE_CLASSES = [
   { name: 'messaging read', url: '/messages/conversations/:id', probe: `/messages/conversations/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'messaging reply', url: '/messages/conversations/:id/messages', probe: `/messages/conversations/${randomUUID()}/messages`, method: 'POST', audience: 'member' },
 
+  // --- Onboarding (009) ------------------------------------------------------
+  // Register and verify-mobile are public: they are how an applicant gets a
+  // credential at all. Everything after is a member route carrying the
+  // `onboarding` posture, which tests/onboarding/gates.test.ts exercises.
+  { name: 'onboarding register', url: '/onboarding/register', method: 'POST', audience: 'public' },
+  { name: 'onboarding verify mobile', url: '/onboarding/verify-mobile', method: 'POST', audience: 'public' },
+  { name: 'onboarding status', url: '/onboarding/status', method: 'GET', audience: 'member' },
+  { name: 'onboarding send email code', url: '/onboarding/email/send', method: 'POST', audience: 'member' },
+  { name: 'onboarding verify email', url: '/onboarding/email/verify', method: 'POST', audience: 'member' },
+  // Deciding who becomes a member is member administration: the existing
+  // `members` module, `status` for the decision.
+  { name: 'application queue', url: '/admin/onboarding/applications', method: 'GET', audience: 'staff', module: 'members', flag: 'read' },
+  { name: 'application approve', url: '/admin/onboarding/applications/:memberId/approve', probe: `/admin/onboarding/applications/${randomUUID()}/approve`, method: 'POST', audience: 'staff', module: 'members', flag: 'status' },
+  { name: 'application deny', url: '/admin/onboarding/applications/:memberId/deny', probe: `/admin/onboarding/applications/${randomUUID()}/deny`, method: 'POST', audience: 'staff', module: 'members', flag: 'status' },
+
+  // --- Profile (009) ---------------------------------------------------------
+  { name: 'own profile', url: '/profile/me', method: 'GET', audience: 'member' },
+  { name: 'edit own profile', url: '/profile/me', method: 'PATCH', audience: 'member' },
+  { name: 'member public profile', url: '/profile/members/:id', probe: `/profile/members/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'merchant profile', url: '/profile/merchant', method: 'GET', audience: 'merchant' },
+  { name: 'partner profile', url: '/profile/partner', method: 'GET', audience: 'partner' },
+
+  // --- Member events (009) ---------------------------------------------------
+  // Under /member, never /events: that prefix is the public, indexed page.
+  { name: 'member events', url: '/member/events', method: 'GET', audience: 'member' },
+  { name: 'member event', url: '/member/events/:id', probe: `/member/events/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'event register', url: '/member/events/:id/registration', probe: `/member/events/${randomUUID()}/registration`, method: 'POST', audience: 'member' },
+  { name: 'event cancel', url: '/member/events/:id/registration', probe: `/member/events/${randomUUID()}/registration`, method: 'DELETE', audience: 'member' },
+
+  // --- Threads (009) ---------------------------------------------------------
+  // No per-member flag: §7 describes Threads as the member feed, not an opt-in.
+  { name: 'threads feed', url: '/threads/feed', method: 'GET', audience: 'member' },
+  { name: 'threads member posts', url: '/threads/members/:id/posts', probe: `/threads/members/${randomUUID()}/posts`, method: 'GET', audience: 'member' },
+  { name: 'threads view', url: '/threads/posts/:id', probe: `/threads/posts/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'threads post', url: '/threads/posts', method: 'POST', audience: 'member' },
+  { name: 'threads delete own', url: '/threads/posts/:id', probe: `/threads/posts/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  { name: 'threads like', url: '/threads/posts/:id/like', probe: `/threads/posts/${randomUUID()}/like`, method: 'PUT', audience: 'member' },
+  { name: 'threads unlike', url: '/threads/posts/:id/like', probe: `/threads/posts/${randomUUID()}/like`, method: 'DELETE', audience: 'member' },
+  { name: 'threads repost', url: '/threads/posts/:id/repost', probe: `/threads/posts/${randomUUID()}/repost`, method: 'PUT', audience: 'member' },
+  { name: 'threads unrepost', url: '/threads/posts/:id/repost', probe: `/threads/posts/${randomUUID()}/repost`, method: 'DELETE', audience: 'member' },
+  { name: 'threads report', url: '/threads/posts/:id/report', probe: `/threads/posts/${randomUUID()}/report`, method: 'POST', audience: 'member' },
+  { name: 'threads follow', url: '/threads/follows/:id', probe: `/threads/follows/${randomUUID()}`, method: 'PUT', audience: 'member' },
+  { name: 'threads unfollow', url: '/threads/follows/:id', probe: `/threads/follows/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  // On the EXISTING threads_moderation module. `write`/`edit` are unused on
+  // purpose: moderating a post must never become editing it.
+  { name: 'threads moderation reports', url: '/admin/threads/reports', method: 'GET', audience: 'staff', module: 'threads_moderation', flag: 'read' },
+  { name: 'threads moderation post', url: '/admin/threads/posts/:id', probe: `/admin/threads/posts/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'threads_moderation', flag: 'read' },
+  { name: 'threads moderation hide', url: '/admin/threads/posts/:id/hide', probe: `/admin/threads/posts/${randomUUID()}/hide`, method: 'POST', audience: 'staff', module: 'threads_moderation', flag: 'status' },
+  { name: 'threads moderation restore', url: '/admin/threads/posts/:id/restore', probe: `/admin/threads/posts/${randomUUID()}/restore`, method: 'POST', audience: 'staff', module: 'threads_moderation', flag: 'status' },
+  { name: 'threads moderation remove', url: '/admin/threads/posts/:id/remove', probe: `/admin/threads/posts/${randomUUID()}/remove`, method: 'POST', audience: 'staff', module: 'threads_moderation', flag: 'delete' },
+  { name: 'threads moderation resolve', url: '/admin/threads/reports/:id/resolve', probe: `/admin/threads/reports/${randomUUID()}/resolve`, method: 'POST', audience: 'staff', module: 'threads_moderation', flag: 'status' },
+
   { name: 'push register device', url: '/push/devices', method: 'POST', audience: 'member' },
   { name: 'push list devices', url: '/push/devices', method: 'GET', audience: 'member' },
   { name: 'push delete device', url: '/push/devices/:id', probe: `/push/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },

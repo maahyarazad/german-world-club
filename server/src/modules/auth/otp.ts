@@ -15,8 +15,13 @@ import type { Pool, PoolClient } from 'pg'
 
 export { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS }
 
-/** `randomInt` rather than `Math.random`: a predictable second factor is none. */
-export const generateCode = () => String(randomInt(0, 10_000)).padStart(4, '0')
+/**
+ * `randomInt` rather than `Math.random`: a predictable second factor is none.
+ *
+ * Four digits by default — what an SMS code has always been here. Email codes
+ * ask for six (contracts/onboarding.ts says why).
+ */
+export const generateCode = (digits = 4) => String(randomInt(0, 10 ** digits)).padStart(digits, '0')
 
 /**
  * Hashed with the challenge id as a salt, so two challenges sharing a code do
@@ -33,24 +38,39 @@ export const OTP_OUTCOME = Object.freeze({
   ATTEMPTS_EXCEEDED: 'attempts_exceeded',
 })
 
-export async function issueChallenge(pool: Pool, {
-  accountId, accountKind, deviceId, purpose = 'login', now = new Date(), signal,
-}) {
-  const code = generateCode()
-  const expiresAt = new Date(now.getTime() + OTP_TTL_SECONDS * 1000)
+export type IssueChallengeInput = {
+  accountId: string
+  accountKind: string
+  deviceId: string
+  purpose?: 'login' | 'device_approval' | 'mobile_verification' | 'email_verification'
+  digits?: number
+  ttlSeconds?: number
+  now?: Date
+  signal?: AbortSignal
+}
 
-  const { rows } = await query(
-    pool,
+export async function issueChallenge(pool: Pool | PoolClient, {
+  accountId, accountKind, deviceId, purpose = 'login', digits = 4, ttlSeconds = OTP_TTL_SECONDS,
+  now = new Date(), signal,
+}: IssueChallengeInput) {
+  const code = generateCode(digits)
+  const expiresAt = new Date(now.getTime() + ttlSeconds * 1000)
+
+  // A PoolClient means the caller's transaction: the challenge must commit or
+  // roll back with whatever it verifies (registration creates both at once).
+  const run = (sql: string, params: unknown[]) =>
+    'release' in pool ? pool.query(sql, params) : query(pool, sql, params, { signal })
+
+  const { rows } = await run(
     `INSERT INTO otp_challenges (account_id, account_kind, code_hash, device_id, purpose, expires_at)
      VALUES ($1, $2, '\\x00'::bytea, $3, $4, $5)
      RETURNING id`,
     [accountId, accountKind, deviceId, purpose, expiresAt],
-    { signal },
   )
   const id = rows[0].id
 
   // The digest is salted with the row id, which only exists after the insert.
-  await query(pool, 'UPDATE otp_challenges SET code_hash = $2 WHERE id = $1', [id, hashCode(code, id)], { signal })
+  await run('UPDATE otp_challenges SET code_hash = $2 WHERE id = $1', [id, hashCode(code, id)])
 
   return { challengeId: id, code, expiresAt }
 }
@@ -62,7 +82,20 @@ export async function issueChallenge(pool: Pool, {
  * one would let a challenge be probed across devices, which is the thing
  * binding it to a device was meant to prevent (§12.6).
  */
-export async function verifyChallenge(pool: Pool, { challengeId, code, deviceId, now = new Date() }) {
+export async function verifyChallenge(pool: Pool, {
+  challengeId, code, deviceId, purposes, now = new Date(),
+}: {
+  challengeId: string
+  code: string
+  deviceId: string
+  /**
+   * The purposes this caller redeems. A code issued for one purpose must not be
+   * spendable at another endpoint — an email-verification code is not a way to
+   * sign in. Omitted means any, which is how the unit suites drive it.
+   */
+  purposes?: readonly string[]
+  now?: Date
+}) {
   return withTransaction(pool, async (client: PoolClient) => {
     const { rows } = await client.query(
       `SELECT id, account_id, account_kind, code_hash, device_id, purpose, attempts, expires_at, consumed_at
@@ -84,8 +117,12 @@ export async function verifyChallenge(pool: Pool, { challengeId, code, deviceId,
     const presented = hashCode(String(code ?? ''), challengeId)
     const codeMatches = expected.length === presented.length && timingSafeEqual(expected, presented)
     const deviceMatches = challenge.device_id === deviceId
+    // A purpose mismatch answers like a wrong code, for the same reason a
+    // device mismatch does: a distinct answer would let one endpoint probe
+    // challenges that belong to another.
+    const purposeMatches = !purposes || purposes.includes(challenge.purpose)
 
-    if (!codeMatches || !deviceMatches) {
+    if (!codeMatches || !deviceMatches || !purposeMatches) {
       const { rows: after } = await client.query(
         'UPDATE otp_challenges SET attempts = attempts + 1 WHERE id = $1 RETURNING attempts',
         [challengeId],

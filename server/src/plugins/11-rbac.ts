@@ -76,6 +76,13 @@ export function validateAuthConfig(auth) {
   if (auth.audience !== 'staff' && (auth.module || auth.flag)) {
     problems.push('module/flag are only meaningful on a staff route')
   }
+  if (auth.onboarding !== undefined && (auth.audience !== 'member' || auth.onboarding !== true)) {
+    // The onboarding posture lifts the approval gates for an applicant, which
+    // only means anything for a member. On any other audience it would read as
+    // a relaxation somebody meant to apply, and `false` is an omission spelled
+    // out — the same rule as `anyStaff`.
+    problems.push('onboarding must be true and is only meaningful on a member route')
+  }
   if (auth.audience !== 'staff' && auth.anyStaff !== undefined) {
     // A public route reachable by "any staff" is a contradiction; a member
     // route carrying it would read as staff-gated to anyone skimming.

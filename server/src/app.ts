@@ -56,6 +56,13 @@ import { registerAudit } from './decorators/audit.ts'
 import { registerMediaDecorators } from './decorators/media.ts'
 import { registerIntegrations } from './decorators/integrations.ts'
 import { registerSendOtp } from './decorators/send-otp.ts'
+import { registerMail } from './decorators/mail.ts'
+import onboardingRoutes from './modules/onboarding/routes.ts'
+import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
+import profileRoutes from './modules/profile/routes.ts'
+import eventRoutes from './modules/events/routes.ts'
+import threadRoutes from './modules/threads/routes.ts'
+import threadStaffRoutes from './modules/threads/staff-routes.ts'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
@@ -236,6 +243,7 @@ export async function buildApp({
   registerIntegrations(app, { integrations, env })
   registerShutdownHook(app)
   registerSendOtp(app)
+  registerMail(app)
 
   /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves
@@ -329,6 +337,12 @@ export async function buildApp({
   await app.register(marketplaceRoutes)
   await app.register(marketplaceStaffRoutes)
   await app.register(messagingRoutes)
+  await app.register(onboardingRoutes)
+  await app.register(onboardingStaffRoutes)
+  await app.register(profileRoutes)
+  await app.register(eventRoutes)
+  await app.register(threadRoutes)
+  await app.register(threadStaffRoutes)
   await app.register(seoStaffRoutes)
   await app.register(organisationRoutes)
   await app.register(ragRoutes)

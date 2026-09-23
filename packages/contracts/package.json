@@ -13,7 +13,11 @@
     "./push": "./src/push.ts",
     "./capabilities": "./src/capabilities.ts",
     "./marketplace": "./src/marketplace.ts",
-    "./messaging": "./src/messaging.ts"
+    "./messaging": "./src/messaging.ts",
+    "./onboarding": "./src/onboarding.ts",
+    "./profile": "./src/profile.ts",
+    "./events": "./src/events.ts",
+    "./threads": "./src/threads.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"

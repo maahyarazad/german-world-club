@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { OTP_RESEND_COOLDOWN_SECONDS } from '@gwc/contracts/auth'
 import { query } from '../../../db/query.ts'
 import { issueChallenge, loadChallenge } from '../otp.ts'
@@ -20,7 +21,7 @@ export async function resendOtp(app: GwcApp, { challenge, phoneKey, signal }) {
   // A missing or spent challenge answers the same as a fresh one: the resend
   // endpoint must not report whether a challenge exists.
   if (!challenge || challenge.consumed_at !== null) {
-    return { outcome: 'resent', resent: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS }
+    return { outcome: 'resent', resent: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS, challengeId: randomUUID() }
   }
 
   const sinceIssue = Date.now() - new Date(challenge.created_at).getTime()
@@ -39,5 +40,5 @@ export async function resendOtp(app: GwcApp, { challenge, phoneKey, signal }) {
     signal,
   })
   await app.sendOtp?.({ mobile: phoneKey, code: fresh.code })
-  return { outcome: 'resent', resent: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS }
+  return { outcome: 'resent', resent: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS, challengeId: fresh.challengeId }
 }

@@ -56,6 +56,14 @@ export const SEEDED = Object.freeze([
   // A record of what a member agreed to, not a credential — so it is seedable.
   // The listing's own terms_version is what pins the version they posted under.
   'marketplace_terms_acceptances',
+
+  // --- Onboarding and threads (009) -----------------------------------------
+  'membership_applications',
+  'thread_posts',
+  'thread_likes',
+  'thread_reposts',
+  'member_follows',
+  'thread_reports',
 ])
 
 /**
@@ -93,6 +101,8 @@ export const NEVER_SEEDED = Object.freeze({
   refresh_tokens: 'a live credential that outlives the browser session',
   otp_challenges: 'live one-time codes',
   password_reset_tokens: 'live single-use reset links',
+  // Queued mail carries reset links and email codes until it is delivered.
+  mail_outbox: 'queued mail holding live reset links and verification codes',
 })
 
 /** Every table this manifest accounts for. */

@@ -80,6 +80,14 @@ export const SURFACES = Object.freeze([
   // false`, which is what stamps X-Robots-Tag on every console response.
   { name: 'console', prefixes: ['/konsole'], public: false, indexed: false, shell: true, why: 'Gated console for members, staff, merchants and partners' },
   { name: 'auth', prefixes: ['/auth'], public: false, indexed: false, why: 'Credential endpoints' },
+  // Feature 009's member API. Declared rather than left to the gated default,
+  // so the table stays the answer to "what is this path" rather than the gap.
+  { name: 'onboarding', prefixes: ['/onboarding'], public: false, indexed: false, why: 'Applicant personal data and one-time codes' },
+  { name: 'profile', prefixes: ['/profile'], public: false, indexed: false, why: 'Member PII — gated' },
+  // Member event data cannot live under /events: that prefix is the public,
+  // indexed event page surface above, and a member-only JSON answer inheriting
+  // `indexed: true` from a shared prefix is exactly the leak §10.1 forbids.
+  { name: 'member-api', prefixes: ['/member'], public: false, indexed: false, why: 'Member-only resources that share a name with a public page' },
   { name: 'api', prefixes: ['/api'], public: false, indexed: false, why: 'Machine interface' },
 ])
 

@@ -11,6 +11,9 @@ server/              Fastify 5 API. Everything testable lives in app.js;
                      how src/ is laid out (routes/controllers/application,
                      plugins/decorators/hooks).
 client/              Vite web client.
+expo-client/german-world-club/
+                     Expo SDK 57 mobile app (feature 009). An npm workspace:
+                     it imports @gwc/contracts like every other client.
 packages/contracts/  Zod schemas, problem types and permission constants,
                      imported by the server AND every client.
 specs/               Spec-kit artifacts: spec, plan, tasks, contracts.
@@ -215,6 +218,39 @@ The demo seed's marketplace corpus follows the history rule like everything
 else: a sold, filled or withdrawn listing gets the owner's state-change entry
 at its own `state_changed_at`, a hidden one the moderator's, and an expired one
 the `marketplace-expiry` job run that moved it. Nothing else gets history.
+
+**Mobile onboarding is gated by approval, not invitation** (feature 009,
+`specs/009-expo-client/spec.md`). Registration is open; a row in
+`membership_applications` that is not `approved` makes 10-auth refuse that
+member on *every* route and every face — web included, because device approval
+alone would let an applicant with a confirmed email walk in through a browser.
+Members with no row (invited, legacy) are untouched. The only routes an
+applicant reaches are those declaring `config.auth.onboarding: true`, which
+11-rbac accepts on member routes only. Sign-in gives an unapproved applicant a
+token solely on the device they applied from, by SMS, so they can resume.
+
+**One-time codes carry a purpose, and endpoints redeem only their own.**
+`verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
+`device_approval`, `/onboarding/*` redeems `mobile_verification` and
+`email_verification`. A mismatch answers exactly like a wrong code. A resend
+mints a *new* challenge and returns its id — the old id never accepts the new
+code.
+
+**Mail goes through the outbox, never inline.** `app.enqueueMail()` writes
+`mail_outbox`; the `mail.deliver` job sends with backoff and clears the row's
+variables once delivered (they hold codes and reset tokens). Pass `{ client }`
+when the mail must exist only if the surrounding transaction commits. In
+development queued mail is logged, contents included, so onboarding can be
+finished on a laptop — the same bargain `seed:demo` makes.
+
+**Member events are `/member/events`, not `/events`.** `/events` is the
+public, indexed page surface; member JSON with prices and seat counts must not
+inherit its crawl posture. Capacity is still the trigger's job, and a cancelled
+registration (a timestamp, never a DELETE) holds no seat.
+
+**Threads are never edited, by anyone.** The `thread_posts` trigger refuses a
+changed body and makes `removed`/`deleted` final. Hidden, removed, deleted,
+locked-author and absent posts all answer the same 404.
 
 ## Conventions
 

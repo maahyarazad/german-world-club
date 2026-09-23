@@ -90,6 +90,15 @@ export const tokenPairResponseSchema = z.object({
 export const resendOtpResponseSchema = z.object({
   resent: z.literal(true),
   cooldownSeconds: z.number().int().nonnegative(),
+  /**
+   * The challenge the NEW code belongs to. A resend mints a fresh challenge
+   * (codes are stored hashed, so the old one cannot be re-sent), and without
+   * its id a client could only submit the new code against the old challenge
+   * — which is refused, every time. For a missing or spent challenge this is a
+   * random id of the same shape, so the answer still does not say whether the
+   * challenge existed.
+   */
+  challengeId: z.string().uuid(),
 })
 
 export const passwordResetAcceptedSchema = z.object({

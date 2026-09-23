@@ -35,6 +35,13 @@ export const BUCKETS = Object.freeze({
   // an address-keyed limit is trivially bypassed.
   'otp-send': { dimension: 'phone', max: 3, timeWindow: '1 hour', skipOnError: false, why: 'SMS costs money per send' },
   'otp-verify': { dimension: 'challenge', max: 5, timeWindow: '10 minutes', skipOnError: false, why: 'A 4-digit code is only 10,000 possibilities' },
+  // Open registration (feature 009) costs an SMS per attempt and creates a
+  // member row, and it is reachable with no credential at all. Fails closed
+  // for the same reason the sign-in buckets do.
+  register: { dimension: 'ip', max: 5, timeWindow: '1 hour', skipOnError: false, why: 'Open registration sends an SMS per attempt' },
+  // Keyed on the applicant, who is authenticated by then. Each send queues a
+  // mail, and each code is a fresh set of guesses at a verified address.
+  'email-code-send': { dimension: 'account', max: 5, timeWindow: '1 hour', skipOnError: false, why: 'Email code flooding and guess renewal' },
   'password-reset': { dimension: 'account', max: 3, timeWindow: '1 hour', skipOnError: false, why: 'Reset-mail flooding' },
   refresh: { dimension: 'session', max: 60, timeWindow: '1 hour', skipOnError: false, why: 'Rotation abuse' },
 

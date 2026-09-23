@@ -55,6 +55,10 @@ export const ROUTE_BUDGETS = Object.freeze({
   // after commit rather than inside the transaction, so the request itself
   // waits only on the write.
   messaging: { deadlineMs: 3000, calls: ['redis'] },
+  // Threads reads compute their counts live rather than trusting stored
+  // counters (024_threads.sql), so a feed page is a read with a few indexed
+  // subqueries per row — heavier than 'member-read', lighter than a report.
+  threads: { deadlineMs: 3000, calls: ['redis'] },
   'admin-read': { deadlineMs: 5000, calls: ['redis'] },
   'admin-report': { deadlineMs: 28000, calls: ['redis'] },
   // 25250 < 28000 < REQUEST_TIMEOUT_MS (30000). The margin is thin on purpose:
