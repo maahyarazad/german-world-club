@@ -58,6 +58,14 @@ export const PLATFORM_JOBS = Object.freeze([
     schedule: '0 5 * * *',
     description: 'Remove push devices unseen for 180 days',
   },
+  {
+    name: 'marketplace-expiry',
+    schedule: '*/5 * * * *',
+    // FR-029, data-model.md §7. NOT "every listing past its expiry" — a
+    // listing with no expiry is unlimited and must never be touched by this
+    // job, which is why the predicate names both halves rather than one.
+    description: 'Expire listings whose expires_at has passed (never listings with no expiry)',
+  },
 ])
 
 /** The work each job does. Separated from the schedule so both stay readable. */
@@ -107,6 +115,19 @@ export function createJobHandlers(app: GwcApp) {
       // guaranteed failure and the failure counts pollute the history.
       const { rowCount } = await app.pg.query(
         `DELETE FROM push_devices WHERE last_seen_at < now() - interval '180 days'`,
+      )
+      return { itemsProcessed: rowCount }
+    },
+
+    'marketplace-expiry': async () => {
+      // BOTH halves of the predicate. `expires_at IS NULL` means unlimited —
+      // dropping that clause would silently expire every listing nobody ever
+      // asked to expire, and a happy-path test would not notice because it
+      // only ever seeds listings that DO have an expiry.
+      const { rowCount } = await app.pg.query(
+        `UPDATE marketplace_listings
+            SET state = 'expired', state_changed_at = now(), updated_at = now()
+          WHERE state = 'active' AND expires_at IS NOT NULL AND expires_at <= now()`,
       )
       return { itemsProcessed: rowCount }
     },

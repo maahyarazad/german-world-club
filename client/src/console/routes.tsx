@@ -8,6 +8,9 @@ import SignIn from '../auth/SignIn'
 import PasswordReset from '../auth/PasswordReset'
 import AdminLayout from './admin/AdminLayout'
 import AdminDashboard from './AdminDashboard'
+import Marketplace from './admin/Marketplace'
+import MemberLayout from '../member/MemberLayout'
+import MemberMarketplace from '../member/Marketplace'
 import NotBuilt from './NotBuilt'
 import EmptyState from './EmptyState'
 import Button from '../components/ui/Button'
@@ -124,9 +127,25 @@ export function ConsoleRoutes() {
         }
       >
         <Route index element={<AdminDashboard />} />
+        <Route path="angebote" element={<Marketplace />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}
+        <Route path="*" element={<NotBuilt />} />
+      </Route>
+
+      <Route
+        path="/konsole/mitglied"
+        element={
+          <Authenticated>
+            <MemberLayout />
+          </Authenticated>
+        }
+      >
+        <Route index element={<MemberMarketplace />} />
+        {/* Same reasoning as the admin area's `*`: an unbuilt member path must
+            not fall through to the top-level `*` and read as a logout on a
+            session that is still perfectly valid. */}
         <Route path="*" element={<NotBuilt />} />
       </Route>
 

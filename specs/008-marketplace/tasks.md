@@ -196,21 +196,21 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Tests for User Story 3
 
-- [ ] T070 [P] [US3] Write `server/tests/marketplace/ownership.test.ts`: the owner edits successfully; another member gets **404** on edit and on GET; a genuinely absent id also gets 404. **Assert the three are indistinguishable** — status, body and headers compared (SC-006).
-- [ ] T071 [P] [US3] Write `server/tests/marketplace/expiry.test.ts` covering all three cases: expiry in the past → `expired`, in the future → still active, and **NULL (unlimited) → still active**.
+- [X] T070 [P] [US3] Write `server/tests/marketplace/ownership.test.ts`: the owner edits successfully; another member gets **404** on edit and on GET; a genuinely absent id also gets 404. **Assert the three are indistinguishable** — status, body and headers compared (SC-006).
+- [X] T071 [P] [US3] Write `server/tests/marketplace/expiry.test.ts` covering all three cases: expiry in the past → `expired`, in the future → still active, and **NULL (unlimited) → still active**.
 
 ### Implementation for User Story 3
 
-- [ ] T072 [US3] Create `server/src/modules/marketplace/application/manage.ts` — edit, state transitions, expiry changes, all enforced against the loaded row inside the transaction.
-- [ ] T073 [US3] Add `PATCH /marketplace/listings/:id`, `POST /marketplace/listings/:id/state` and `GET /marketplace/mine` to `server/src/modules/marketplace/routes.ts`. `/mine` includes hidden and withdrawn listings — the owner must see them.
-- [ ] T074 [US3] Handle category change in `server/src/modules/marketplace/application/manage.ts` by deleting the old detail row and inserting the new one, so fields that no longer apply cannot linger.
-- [ ] T075 [US3] Implement optional expiry in `server/src/modules/marketplace/application/manage.ts`: null means unlimited and is a first-class choice, and a member may clear an expiry back to unlimited at any time (FR-028, FR-030).
-- [ ] T076 [US3] Write `server/tests/marketplace/ownership.test.ts` counter-assertion: the owner **can** do each of the actions another member is refused, or the suite would pass against an endpoint that refused everyone.
+- [X] T072 [US3] Create `server/src/modules/marketplace/application/manage.ts` — edit, state transitions, expiry changes, all enforced against the loaded row inside the transaction.
+- [X] T073 [US3] Add `PATCH /marketplace/listings/:id`, `POST /marketplace/listings/:id/state` and `GET /marketplace/mine` to `server/src/modules/marketplace/routes.ts`. `/mine` includes hidden and withdrawn listings — the owner must see them.
+- [X] T074 [US3] Handle category change in `server/src/modules/marketplace/application/manage.ts` by deleting the old detail row and inserting the new one, so fields that no longer apply cannot linger.
+- [X] T075 [US3] Implement optional expiry in `server/src/modules/marketplace/application/manage.ts`: null means unlimited and is a first-class choice, and a member may clear an expiry back to unlimited at any time (FR-028, FR-030).
+- [X] T076 [US3] Write `server/tests/marketplace/ownership.test.ts` counter-assertion: the owner **can** do each of the actions another member is refused, or the suite would pass against an endpoint that refused everyone.
 
 ### The expiry job — its own task because it fails silently
 
-- [ ] T077 [US3] Register a `marketplace-expiry` job in `server/src/ops/jobs.ts` whose predicate is **`expires_at IS NOT NULL AND expires_at <= now()`** — both halves. Individually enableable, recording start, end and outcome, as the Workflow section requires of every job.
-- [ ] T078 [US3] Write the negative assertion in `server/tests/marketplace/expiry.test.ts`: after the job runs, a listing with **no** expiry is **still active**. A job that forgot the null check would silently expire every unlimited listing and a happy-path test would not notice.
+- [X] T077 [US3] Register a `marketplace-expiry` job in `server/src/ops/jobs.ts` whose predicate is **`expires_at IS NOT NULL AND expires_at <= now()`** — both halves. Individually enableable, recording start, end and outcome, as the Workflow section requires of every job.
+- [X] T078 [US3] Write the negative assertion in `server/tests/marketplace/expiry.test.ts`: after the job runs, a listing with **no** expiry is **still active**. A job that forgot the null check would silently expire every unlimited listing and a happy-path test would not notice.
 
 **Checkpoint**: Members fully own their listings.
 
@@ -224,19 +224,19 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Tests for User Story 4
 
-- [ ] T079 [P] [US4] Write `server/tests/marketplace/moderation.test.ts`: `status` can hide, `read` alone is refused, and a hide with **no reason** is refused.
-- [ ] T080 [P] [US4] Add the audit assertion to `server/tests/marketplace/moderation.test.ts`: every action appears in the append-only log with actor, target and reason.
-- [ ] T081 [P] [US4] Add the owner-visibility case to `server/tests/marketplace/moderation.test.ts`: a hidden listing is absent from the member index and **present, marked hidden**, in the owner's `/marketplace/mine`. A member who cannot tell "hidden by staff" from "I deleted it by accident" files a ticket.
+- [X] T079 [P] [US4] Write `server/tests/marketplace/moderation.test.ts`: `status` can hide, `read` alone is refused, and a hide with **no reason** is refused.
+- [X] T080 [P] [US4] Add the audit assertion to `server/tests/marketplace/moderation.test.ts`: every action appears in the append-only log with actor, target and reason.
+- [X] T081 [P] [US4] Add the owner-visibility case to `server/tests/marketplace/moderation.test.ts`: a hidden listing is absent from the member index and **present, marked hidden**, in the owner's `/marketplace/mine`. A member who cannot tell "hidden by staff" from "I deleted it by accident" files a ticket.
 
 ### Implementation for User Story 4
 
-- [ ] T082 [US4] Create `server/src/modules/marketplace/application/moderate.ts` — hide, restore, remove, resolve a report, each writing to `app.audit` with a required reason.
-- [ ] T083 [US4] Add `POST /marketplace/listings/:id/report` to `server/src/modules/marketplace/routes.ts`, enforcing one open report per member per listing.
-- [ ] T084 [US4] Create `server/src/modules/marketplace/staff-routes.ts` with the six `/admin/marketplace/*` endpoints, each declaring `auth: { audience: 'staff', module: 'marketplace_moderation', flag: … }` per `contracts/moderation-api.md`.
-- [ ] T085 [US4] Write `server/tests/marketplace/moderation.test.ts` counter-assertion: staff **cannot** edit a member's listing body through any endpoint. `write` and `edit` are deliberately unused on this module — moderating a classified must not become rewriting what a member said.
-- [ ] T086 [US4] Replace `NotBuilt` with a moderation screen at `client/src/console/admin/Marketplace.tsx`, wired into `client/src/console/routes.tsx` at `/konsole/admin/angebote`.
-- [ ] T087 [P] [US4] Add moderation strings to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`.
-- [ ] T088 [P] [US4] Write `client/tests/console/marketplace-moderation.test.tsx` asserting the screen renders for a holder of `marketplace_moderation` and not for a non-holder — the capability pair every console screen needs.
+- [X] T082 [US4] Create `server/src/modules/marketplace/application/moderate.ts` — hide, restore, remove, resolve a report, each writing to `app.audit` with a required reason.
+- [X] T083 [US4] Add `POST /marketplace/listings/:id/report` to `server/src/modules/marketplace/routes.ts`, enforcing one open report per member per listing.
+- [X] T084 [US4] Create `server/src/modules/marketplace/staff-routes.ts` with the six `/admin/marketplace/*` endpoints, each declaring `auth: { audience: 'staff', module: 'marketplace_moderation', flag: … }` per `contracts/moderation-api.md`.
+- [X] T085 [US4] Write `server/tests/marketplace/moderation.test.ts` counter-assertion: staff **cannot** edit a member's listing body through any endpoint. `write` and `edit` are deliberately unused on this module — moderating a classified must not become rewriting what a member said.
+- [X] T086 [US4] Replace `NotBuilt` with a moderation screen at `client/src/console/admin/Marketplace.tsx`, wired into `client/src/console/routes.tsx` at `/konsole/admin/angebote`.
+- [X] T087 [P] [US4] Add moderation strings to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`.
+- [X] T088 [P] [US4] Write `client/tests/console/marketplace-moderation.test.tsx` asserting the screen renders for a holder of `marketplace_moderation` and not for a non-holder — the capability pair every console screen needs.
 
 **Checkpoint**: The marketplace is moderated.
 
@@ -252,18 +252,18 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Web member surface
 
-- [ ] T089 [US6] Create `client/src/member/MemberLayout.tsx` — the member area tab bar, at the `/konsole/mitglied` path `HOME_FOR_KIND` already maps members to.
-- [ ] T090 [US6] Create `client/src/member/Marketplace.tsx` — browse, filter and compose, building the compose form from `GET /marketplace/categories` with **no hard-coded field list** (Principle I).
-- [ ] T091 [US6] Add the member routes to `client/src/console/routes.tsx` under an `Authenticated` gate, with a nested `*` rendering `NotBuilt` so an unbuilt member area does not bounce to sign-in — the defect fixed in `f8bba29`.
-- [ ] T092 [P] [US6] Add marketplace strings to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`, and run `npm run -w client test:i18n`.
-- [ ] T093 [P] [US6] Write `client/tests/member/marketplace.test.tsx` asserting the compose control is absent without `marketplace_post` and present with it.
+- [X] T089 [US6] Create `client/src/member/MemberLayout.tsx` — the member area tab bar, at the `/konsole/mitglied` path `HOME_FOR_KIND` already maps members to.
+- [X] T090 [US6] Create `client/src/member/Marketplace.tsx` — browse, filter and compose, building the compose form from `GET /marketplace/categories` with **no hard-coded field list** (Principle I).
+- [X] T091 [US6] Add the member routes to `client/src/console/routes.tsx` under an `Authenticated` gate, with a nested `*` rendering `NotBuilt` so an unbuilt member area does not bounce to sign-in — the defect fixed in `f8bba29`.
+- [X] T092 [P] [US6] Add marketplace strings to **both** `client/src/i18n/de.ts` and `client/src/i18n/en.ts`, and run `npm run -w client test:i18n`.
+- [X] T093 [P] [US6] Write `client/tests/member/marketplace.test.tsx` asserting the compose control is absent without `marketplace_post` and present with it.
 
 ### Mobile surface
 
 - [ ] T094 [US6] Create `expo-client/german-world-club/src/lib/api.ts` — a bearer-token API client against the existing `/auth` routes. The server already mints mobile bearer tokens and already treats `deviceId` as marking the mobile face, so this wires an existing capability rather than designing an auth flow (research.md R14).
 - [ ] T095 [US6] Create `expo-client/german-world-club/src/app/marketplace.tsx` — the mobile marketplace screen, importing its types from `@gwc/contracts/marketplace`.
 - [ ] T096 [US6] Add a third `NativeTabs.Trigger` to `expo-client/german-world-club/src/components/app-tabs.tsx` and its `.web.tsx` counterpart, with a tab icon asset.
-- [ ] T097 [US6] Write `server/tests/marketplace/parity.test.ts`: the same member, same filters, via cookie auth and via bearer auth, returns identical result sets — and a member without `marketplace_post` is refused on both (FR-031).
+- [X] T097 [US6] Write `server/tests/marketplace/parity.test.ts`: the same member, same filters, via cookie auth and via bearer auth, returns identical result sets — and a member without `marketplace_post` is refused on both (FR-031).
 - [ ] T098 [US6] Assert no redeclared shapes in `expo-client/german-world-club/src/`: grep for a locally-declared listing type and confirm it imports from `@gwc/contracts/marketplace` instead. After feature 007 Phase 6 removes the runtime schemas, nothing would catch this drift at runtime either.
 
 **Checkpoint**: Three faces, one rule set.

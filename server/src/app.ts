@@ -43,6 +43,7 @@ import mediaRoutes from './modules/media/routes.ts'
 import mediaWorker from './modules/media/worker.ts'
 import pushRoutes from './modules/push/routes.ts'
 import marketplaceRoutes from './modules/marketplace/routes.ts'
+import marketplaceStaffRoutes from './modules/marketplace/staff-routes.ts'
 import messagingRoutes from './modules/messaging/routes.ts'
 import publicRoutes from './modules/public/routes.ts'
 import ragRoutes from './modules/rag/routes.ts'
@@ -326,6 +327,7 @@ export async function buildApp({
   await app.register(mediaWorker)
   await app.register(pushRoutes)
   await app.register(marketplaceRoutes)
+  await app.register(marketplaceStaffRoutes)
   await app.register(messagingRoutes)
   await app.register(seoStaffRoutes)
   await app.register(organisationRoutes)

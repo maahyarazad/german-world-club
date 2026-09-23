@@ -22,8 +22,15 @@ import { renderConsole, mockCapabilityFetch, staffSnapshot } from '../helpers/co
 
 afterEach(() => vi.unstubAllGlobals())
 
-/** Everything the sidebar offers except the dashboard, which is built. */
-const GATED = ADMIN_ITEMS.filter((item) => item.module)
+/**
+ * Everything the sidebar offers except the dashboard and the areas that ARE
+ * built. `marketplace_moderation` got its screen in 008 US4
+ * (`console/admin/Marketplace.tsx`) — it renders real content now, not
+ * `NotBuilt`'s hint, and asserting the hint against a built screen would make
+ * this suite fail for the opposite reason it exists to catch.
+ */
+const BUILT: readonly string[] = ['marketplace_moderation']
+const GATED = ADMIN_ITEMS.filter((item) => item.module && !BUILT.includes(item.module))
 
 describe('an admin area with no page yet', () => {
   it.each(GATED.map((item) => [item.module, item.to]))(

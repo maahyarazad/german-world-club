@@ -83,6 +83,26 @@ export async function seedListing(pool: Pool, seed: ListingSeed): Promise<string
   return id
 }
 
+/**
+ * Push an already-published listing's expiry into the past, directly by SQL.
+ *
+ * `seedListing({ expiresAt: <a past date> })` cannot do this itself: the
+ * `listings_expiry_after_publication` CHECK requires `expires_at >
+ * published_at`, and `seedListing` publishes at `now()` in the same INSERT —
+ * so an expiry earlier than "now" is also earlier than `published_at` and the
+ * constraint refuses the row outright. Setting it to `published_at + 1ms`
+ * satisfies the constraint (still strictly after publication) while already
+ * being in the past by the time a test's job run checks it against a LATER
+ * `now()`.
+ */
+export async function expireInThePast(pool: Pool, listingId: string) {
+  await pool.query(
+    `UPDATE marketplace_listings SET expires_at = published_at + interval '1 millisecond'
+      WHERE id = $1`,
+    [listingId],
+  )
+}
+
 /** Wipe every marketplace row between tests. */
 export async function resetMarketplace(pool: Pool) {
   await pool.query('TRUNCATE marketplace_listings, marketplace_terms_acceptances CASCADE')

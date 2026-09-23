@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Marktplatz — German World Club</title>
+    <meta
+      name="description"
+      content="Anzeigen von Mitgliedern für Mitglieder: Fahrzeuge, Immobilien, Jobs und mehr."
+    />
+    <meta name="theme-color" content="#0A2457" />
+    <link rel="canonical" href="https://german-world-club.com/marktplatz" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="German World Club" />
+    <meta property="og:title" content="Marktplatz — German World Club" />
+    <meta
+      property="og:description"
+      content="Anzeigen von Mitgliedern für Mitglieder: Fahrzeuge, Immobilien, Jobs und mehr."
+    />
+    <meta property="og:url" content="https://german-world-club.com/marktplatz" />
+    <meta property="og:locale" content="de_DE" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Marktplatz — German World Club" />
+    <meta
+      name="twitter:description"
+      content="Anzeigen von Mitgliedern für Mitglieder: Fahrzeuge, Immobilien, Jobs und mehr."
+    />
+
+    <!--
+      The whole page, inline — the same discipline as index.html and en.html
+      (Constitution "Public rendering"): real content and real styling in the
+      first response, nothing waiting on a bundle.
+
+      UNLIKE index.html and en.html, this file is NOT what a visitor actually
+      receives at /marktplatz in production. The category counts below change
+      every time a member posts or withdraws a listing, and a file built once
+      at deploy time cannot carry that. The live page is rendered per request
+      by server/src/modules/public/application/marketplace-discovery.ts, which
+      emits the same markup and inline CSS this file defines, with the real
+      numbers from `GET /marketplace/summary` in place of the ones shown here.
+
+      This file exists because it is still a genuine Vite entry — a design
+      reference, a target for `npm run -w client build`, and what
+      `vite`'s dev server actually serves for local preview — and because a
+      preview with fabricated counts would be a more misleading artifact than
+      one that is honest about being a template. The counts here are
+      therefore left as an explicit placeholder rather than invented numbers.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #fff8f0;
+        --muted: #f0d8d4;
+        --gold: #c9a227;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #750a04 0%, #4a0603 58%, #1a0b0a 100%);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.65;
+      }
+      main { max-width: 64rem; margin: 0 auto; padding: clamp(1.5rem, 5vw, 4rem); }
+      h1 {
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 500;
+        font-size: clamp(1.9rem, 5vw, 3rem);
+        margin: 0 0 .5rem;
+      }
+      h2 {
+        font-family: ui-serif, Georgia, serif;
+        font-weight: 500;
+        font-size: clamp(1.2rem, 3vw, 1.6rem);
+        margin: 2rem 0 .5rem;
+      }
+      p { color: var(--muted); margin: .75rem 0; }
+      a { color: var(--gold); }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1rem; margin: 1rem 0; }
+      dt { color: var(--gold); }
+      dd { margin: 0; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Marktplatz</h1>
+      <p>
+        Anzeigen von Mitgliedern für Mitglieder — Fahrzeuge, Immobilien, Jobs
+        und Sonstiges. Keine Zahlungsabwicklung, kein Treuhandservice: eine
+        Anzeige endet damit, dass sich zwei Mitglieder über die Plattform
+        austauschen.
+      </p>
+      <p>
+        Derzeit <strong data-live-count>—</strong> aktive Anzeigen in vier Kategorien:
+      </p>
+      <dl>
+        <dt>Fahrzeuge</dt><dd data-live-count>—</dd>
+        <dt>Immobilien</dt><dd data-live-count>—</dd>
+        <dt>Jobs</dt><dd data-live-count>—</dd>
+        <dt>Sonstiges</dt><dd data-live-count>—</dd>
+      </dl>
+      <h2>Mitglied werden</h2>
+      <p>
+        Der Marktplatz steht angemeldeten Mitgliedern offen. Einzelne Anzeigen
+        sind hier bewusst nicht sichtbar — sie sind Mitgliedern vorbehalten,
+        unabhängig davon, wer diese Seite liest.
+      </p>
+    </main>
+  </body>
+</html>

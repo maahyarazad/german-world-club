@@ -66,6 +66,15 @@ export default fp(
       body: z.string(),
       state: z.string(),
       contactMethod: z.string(),
+      // T066/R9 — a resolved PREFERENCE, never a value. Without a slot in this
+      // schema the field is computed and then silently stripped: the response
+      // serializer here is Zod's own `parse`, which drops any key an object
+      // schema does not declare. This is the fix for exactly that.
+      contact: z.object({
+        method: z.string(),
+        available: z.boolean(),
+        via: z.union([z.string(), z.null()]),
+      }),
       createdAt: z.union([z.string(), z.date()]),
       publishedAt: z.union([z.string(), z.date(), z.null()]),
       expiresAt: z.union([z.string(), z.date(), z.null()]),
@@ -144,6 +153,81 @@ export default fp(
       controller.findOne,
     )
 
+    // ---- Managing your own listings (US3) ------------------------------------
+    //
+    // No `requires: 'marketplace_post'` on any of these four. That flag gates
+    // making a NEW listing postable; owning ones you already have is not a
+    // second privilege — a member whose flag was later revoked must still be
+    // able to withdraw or edit what they posted while they held it.
+
+    app.patch(
+      '/marketplace/listings/:id',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace', rateLimit: app.bucket('write-heavy') },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string().uuid() }),
+          // Every field optional: PATCH edits what is sent, not a full
+          // replacement. `details`/`category` are validated together against
+          // the FINAL category in application/manage.ts.
+          body: z.object({
+            title: z.string().trim().min(3).max(140).optional(),
+            body: z.string().trim().min(10).max(8000).optional(),
+            category: z.enum(MARKETPLACE_CATEGORIES).optional(),
+            details: z.record(z.string(), z.unknown()).optional(),
+            features: z.array(z.string()).max(60).optional(),
+            contactMethod: z.enum(CONTACT_METHODS).optional(),
+            // Present-and-null clears it back to unlimited; absent leaves it
+            // untouched. Zod's `.optional()` on a nullable field is what makes
+            // "not sent" and "sent as null" two different things on the wire,
+            // which is exactly the distinction FR-030 needs.
+            expiresAt: z.union([z.string(), z.null()]).optional(),
+          }),
+          response: { 200: listingResponseSchema },
+        },
+      },
+      controller.edit,
+    )
+
+    app.post(
+      '/marketplace/listings/:id/state',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace', rateLimit: app.bucket('write-heavy') },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string().uuid() }),
+          // `active`/`draft`/`hidden`/`expired` are refused by application/
+          // manage.ts, not by this enum — the refusal has to distinguish "not
+          // a state a member may request" from "not reachable from here right
+          // now", and only the loaded row knows which.
+          body: z.object({ state: z.enum(['sold', 'filled', 'withdrawn']) }),
+          response: {
+            200: z.object({
+              id: z.string(),
+              state: z.string(),
+              stateChangedAt: z.union([z.string(), z.date()]),
+            }),
+          },
+        },
+      },
+      controller.setState,
+    )
+
+    app.get(
+      '/marketplace/mine',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace' },
+        onRequest: app.guard,
+        schema: {
+          // No `details`/`media` here: this is the owner's management list,
+          // not the public-facing card the index renders. A dedicated GET
+          // /marketplace/listings/:id already carries those for one listing.
+          response: { 200: z.object({ items: z.array(listingResponseSchema) }) },
+        },
+      },
+      controller.mine,
+    )
+
     // ---- Terms --------------------------------------------------------------
     //
     // No `requires` here: a member must be able to READ and ACCEPT the terms
@@ -212,6 +296,28 @@ export default fp(
         },
       },
       controller.inquire,
+    )
+
+    // ---- Reporting (US4) ------------------------------------------------------
+    //
+    // Member-side half of moderation: any member may report any listing, once
+    // per listing while their report is open. The staff half — the queue and
+    // the actions it enables — lives in `staff-routes.ts`, gated on the
+    // existing `marketplace_moderation` module rather than anything declared
+    // here.
+
+    app.post(
+      '/marketplace/listings/:id/report',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace', rateLimit: app.bucket('write-heavy') },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string().uuid() }),
+          body: z.object({ reason: z.string().trim().min(3).max(2000) }),
+          response: { 201: z.object({ id: z.string(), state: z.string() }) },
+        },
+      },
+      controller.report,
     )
 
     // ---- Media --------------------------------------------------------------
@@ -283,6 +389,31 @@ export default fp(
         },
       },
       controller.categories,
+    )
+
+    // ---- Public aggregate counts (US7) ---------------------------------------
+    //
+    // The one route in this file that is `audience: 'public'` and carries no
+    // `onRequest: app.guard` — public routes elsewhere in the codebase (the
+    // media derivative delivery route) skip the guard chain the same way.
+    // `/marketplace` itself stays gated and never-indexed; this is a SEPARATE
+    // surface (`/marktplatz`, declared in seo/surfaces.ts) that answers with
+    // counts only, never a listing (FR-034, FR-035, FR-037).
+
+    app.get(
+      '/marketplace/summary',
+      {
+        config: { auth: { audience: 'public' }, budget: 'public-page', rateLimit: app.bucket('public-read') },
+        schema: {
+          response: {
+            200: z.object({
+              total: z.number(),
+              byCategory: z.record(z.enum(MARKETPLACE_CATEGORIES), z.number()),
+            }),
+          },
+        },
+      },
+      controller.summary,
     )
   },
   { name: 'marketplace-routes', dependencies: ['auth', 'rate-limit'] },

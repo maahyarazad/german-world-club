@@ -11,6 +11,16 @@ import {
   inquire, ListingNotFoundError, ListingNotInquirableError, SelfInquiryError,
 } from '../messaging/application/inquire.ts'
 import { notifyAfterCommit } from '../messaging/application/converse.ts'
+import { getMarketplaceSummary } from './application/summary.ts'
+import {
+  editListing, transitionState, setExpiry, myListings,
+  ListingNotFoundError as ManageNotFoundError, InvalidTransitionError,
+  DetailsInvalidError as ManageDetailsInvalidError,
+} from './application/manage.ts'
+import {
+  reportListing, ListingNotFoundError as ReportListingNotFoundError,
+  AlreadyReportedError, ReasonRequiredError,
+} from './application/moderate.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
 import type { CreateListingRequest } from '@gwc/contracts/marketplace'
@@ -178,6 +188,101 @@ export function createMarketplaceController(app: GwcApp) {
       }
     },
 
+    // ---- Managing your own listings (US3) -----------------------------------
+    //
+    // Every refusal here is 404, never 403 — see manage.ts's module doc. The
+    // three "not yours" shapes (edit, state, expiry) all funnel through the
+    // same mapping so a future fourth cannot forget it.
+
+    edit: async (request: GwcRequest, reply: GwcReply) => {
+      const principal = request.principal!
+      const { id } = request.params as { id: string }
+      const body = request.body as Record<string, unknown>
+      const ownerId = String(principal.id)
+
+      try {
+        let listing = await editListing(app, {
+          listingId: id,
+          ownerId,
+          title: body.title as string | undefined,
+          body: body.body as string | undefined,
+          category: body.category as never,
+          details: body.details as never,
+          features: body.features as string[] | undefined,
+          contactMethod: body.contactMethod as string | undefined,
+          signal: request.deadlineSignal,
+        })
+
+        // `'expiresAt' in body`, not `body.expiresAt !== undefined`: the whole
+        // point of FR-030 is that SENDING `null` clears it, and the two checks
+        // disagree on exactly that value.
+        if ('expiresAt' in body) {
+          listing = await setExpiry(app, {
+            listingId: id,
+            ownerId,
+            expiresAt: body.expiresAt as string | null,
+            signal: request.deadlineSignal,
+          })
+        }
+
+        return reply.send(toListingResponse(listing))
+      } catch (err) {
+        return manageErrorOrThrow(err, request, reply)
+      }
+    },
+
+    setState: async (request: GwcRequest, reply: GwcReply) => {
+      const principal = request.principal!
+      const { id } = request.params as { id: string }
+      const { state } = request.body as { state: string }
+
+      try {
+        const result = await transitionState(app, {
+          listingId: id,
+          ownerId: String(principal.id),
+          to: state,
+          signal: request.deadlineSignal,
+        })
+        return reply.send({ id: result.id, state: result.state, stateChangedAt: result.state_changed_at })
+      } catch (err) {
+        return manageErrorOrThrow(err, request, reply)
+      }
+    },
+
+    mine: async (request: GwcRequest, reply: GwcReply) => {
+      const principal = request.principal!
+      const rows = await myListings(app, { ownerId: String(principal.id), signal: request.deadlineSignal })
+      return reply.send({ items: rows.map((r) => toListingResponse(r)) })
+    },
+
+    // ---- Reporting (US4) -----------------------------------------------------
+
+    report: async (request: GwcRequest, reply: GwcReply) => {
+      const principal = request.principal!
+      const { id } = request.params as { id: string }
+      const { reason } = request.body as { reason: string }
+
+      try {
+        const created = await reportListing(app, {
+          listingId: id,
+          reporterId: String(principal.id),
+          reason,
+          signal: request.deadlineSignal,
+        })
+        return reply.code(201).send({ id: created.id, state: created.state })
+      } catch (err) {
+        if (err instanceof ReportListingNotFoundError) {
+          return reply.code(PROBLEMS.NOT_FOUND.status).send({ ...PROBLEMS.NOT_FOUND, instance: request.url })
+        }
+        if (err instanceof AlreadyReportedError || err instanceof ReasonRequiredError) {
+          return reply.code(400).send({
+            ...PROBLEMS.VALIDATION_FAILED, detail: err.message, instance: request.url,
+          })
+        }
+        throw err
+      }
+    },
+
     // ---- Media -------------------------------------------------------------
     //
     // Attaching is a LINK, not an upload: the bytes went through `modules/media`
@@ -264,6 +369,19 @@ export function createMarketplaceController(app: GwcApp) {
         })),
       })
     },
+
+    /**
+     * Public aggregate counts (US7, FR-034, FR-035).
+     *
+     * The only handler in this file with `audience: 'public'`. It calls the
+     * same `getMarketplaceSummary` the discovery page renders from, so the
+     * JSON endpoint and the page can never disagree about what "the
+     * marketplace" currently holds.
+     */
+    summary: async (request: GwcRequest, reply: GwcReply) => {
+      const summary = await getMarketplaceSummary(app, { signal: request.deadlineSignal })
+      return reply.send(summary)
+    },
   }
 }
 
@@ -348,6 +466,29 @@ function resolveContact(preference: unknown) {
     // Never a value. There is no field here to hold one.
     via: method === 'platform_message' ? 'inquire' : null,
   }
+}
+
+/**
+ * The mapping every US3 handler shares: not-yours-or-absent is 404, an invalid
+ * transition is 400, and a details failure is 400 with the field named.
+ */
+function manageErrorOrThrow(err: unknown, request: GwcRequest, reply: GwcReply) {
+  if (err instanceof ManageNotFoundError) {
+    return reply.code(PROBLEMS.NOT_FOUND.status).send({ ...PROBLEMS.NOT_FOUND, instance: request.url })
+  }
+  if (err instanceof InvalidTransitionError) {
+    return reply.code(400).send({
+      ...PROBLEMS.VALIDATION_FAILED, detail: err.message, instance: request.url,
+    })
+  }
+  if (err instanceof ManageDetailsInvalidError) {
+    return reply.code(400).send({
+      ...PROBLEMS.VALIDATION_FAILED,
+      detail: err.problems.map((p) => `${p.field} ${p.reason}`).join('; '),
+      instance: request.url,
+    })
+  }
+  throw err
 }
 
 /** Columns named explicitly; never SELECT *. See contracts/marketplace-api.md. */

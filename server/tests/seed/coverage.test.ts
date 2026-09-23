@@ -112,4 +112,85 @@ describe.skipIf(!hasDatabase)('the seeded population spans every state', () => {
     )
     expect(rows).toEqual([])
   })
+
+  // ---- Marketplace (008, SC-009) --------------------------------------------
+
+  it('covers every listing state, and every category in both modes', async () => {
+    const { rows: states } = await db.pool.query(
+      `SELECT DISTINCT state::text AS s FROM marketplace_listings ORDER BY 1`,
+    )
+    expect(states.map((r) => r.s)).toEqual(
+      ['active', 'draft', 'expired', 'filled', 'hidden', 'sold', 'withdrawn'])
+
+    const { rows: combos } = await db.pool.query(
+      `SELECT category::text || '/' || mode::text AS c FROM marketplace_listings
+        WHERE state = 'active' GROUP BY 1 ORDER BY 1`,
+    )
+    expect(combos).toHaveLength(8)
+
+    // Unlimited is a first-class choice (FR-028), so both must be on screen —
+    // a corpus where every listing expires would never exercise the null half
+    // of the expiry job's predicate.
+    const { rows: expiry } = await db.pool.query(`
+      SELECT count(*) FILTER (WHERE expires_at IS NULL)     AS unlimited,
+             count(*) FILTER (WHERE expires_at IS NOT NULL) AS expiring
+        FROM marketplace_listings WHERE state = 'active'`)
+    expect(Number(expiry[0].unlimited)).toBeGreaterThan(0)
+    expect(Number(expiry[0].expiring)).toBeGreaterThan(0)
+
+    const { rows: inbox } = await db.pool.query(
+      `SELECT count(*)::int AS n FROM messages m
+         JOIN conversations c ON c.id = m.conversation_id
+        WHERE c.subject_type = 'marketplace_listing'`,
+    )
+    expect(inbox[0].n, 'the demo inbox is empty').toBeGreaterThan(0)
+  })
+
+  it('gives each moved listing exactly the history that moved it, at its own timestamp', async () => {
+    // One entry per sold/filled/withdrawn/hidden listing, stamped with that
+    // listing's own state_changed_at and naming the state it reached.
+    const { rows: mismatched } = await db.pool.query(`
+      SELECT l.id, l.state::text, count(a.id)::int AS entries
+        FROM marketplace_listings l
+        LEFT JOIN audit_log a
+          ON a.target_type = 'marketplace_listing' AND a.target_id = l.id
+         AND a.occurred_at = l.state_changed_at
+         AND a.detail->>'statusTo' = l.state::text
+       WHERE l.state IN ('sold', 'filled', 'withdrawn', 'hidden')
+       GROUP BY l.id, l.state
+      HAVING count(a.id) <> 1`)
+    expect(mismatched, 'moved listings without exactly one matching entry').toEqual([])
+
+    // Counter-assertion: nothing invented. A listing that never moved —
+    // draft or active — has no audit history at all, and every expired one
+    // sits inside a run of the job that expires listings.
+    const { rows: invented } = await db.pool.query(`
+      SELECT count(*)::int AS n FROM audit_log a
+        JOIN marketplace_listings l ON l.id = a.target_id
+       WHERE a.target_type = 'marketplace_listing' AND l.state IN ('draft', 'active')`)
+    expect(invented[0].n).toBe(0)
+
+    const { rows: unexplained } = await db.pool.query(`
+      SELECT l.id FROM marketplace_listings l
+       WHERE l.state = 'expired' AND NOT EXISTS (
+         SELECT 1 FROM job_runs r
+          WHERE r.job_name = 'marketplace-expiry'
+            AND l.state_changed_at BETWEEN r.started_at AND r.finished_at)`)
+    expect(unexplained).toEqual([])
+  })
+
+  it('attaches only photos the listing owner uploaded, and keeps their quota exact', async () => {
+    const { rows: foreign } = await db.pool.query(`
+      SELECT lm.listing_id FROM marketplace_listing_media lm
+        JOIN marketplace_listings l ON l.id = lm.listing_id
+        JOIN assets a ON a.id = lm.asset_id
+       WHERE a.uploaded_by IS DISTINCT FROM l.owner_id`)
+    expect(foreign).toEqual([])
+
+    const { rows: drifted } = await db.pool.query(`
+      SELECT c.subject FROM counters c
+       WHERE c.scope = 'media.stored_bytes'
+         AND c.used <> (SELECT sum(bytes) FROM assets WHERE uploaded_by::text = c.subject)`)
+    expect(drifted, 'stored_bytes counters that disagree with sum(bytes)').toEqual([])
+  })
 })

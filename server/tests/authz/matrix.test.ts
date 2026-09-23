@@ -94,6 +94,28 @@ const ROUTE_CLASSES = [
   // No `requires` on enquiring: contacting a seller is not selling, and gating
   // it on the posting flag would mean only sellers could buy.
   { name: 'marketplace enquire', url: '/marketplace/listings/:id/inquire', probe: `/marketplace/listings/${randomUUID()}/inquire`, method: 'POST', audience: 'member' },
+  // No `requires` on any of the three below: owning what you already posted is
+  // not a second privilege, and a member whose posting flag was later revoked
+  // must still be able to withdraw or edit what they posted while they held it.
+  { name: 'marketplace edit listing', url: '/marketplace/listings/:id', probe: `/marketplace/listings/${randomUUID()}`, method: 'PATCH', audience: 'member' },
+  { name: 'marketplace set listing state', url: '/marketplace/listings/:id/state', probe: `/marketplace/listings/${randomUUID()}/state`, method: 'POST', audience: 'member' },
+  { name: 'marketplace mine', url: '/marketplace/mine', method: 'GET', audience: 'member' },
+  // The one member-module route that IS public, deliberately (008 US7): counts
+  // only, never a listing (FR-034/035). posture.test.ts excludes it from the
+  // "every marketplace route needs a bearer" sweep for the same reason.
+  { name: 'marketplace summary', url: '/marketplace/summary', method: 'GET', audience: 'public' },
+  { name: 'marketplace discovery page', url: '/marktplatz', method: 'GET', audience: 'public' },
+  { name: 'marketplace report listing', url: '/marketplace/listings/:id/report', probe: `/marketplace/listings/${randomUUID()}/report`, method: 'POST', audience: 'member' },
+
+  // --- Marketplace moderation (008 US4) --------------------------------------
+  // Gated on the EXISTING marketplace_moderation module — this feature adds no
+  // permission, it fills a hole the matrix already has.
+  { name: 'marketplace moderation reports', url: '/admin/marketplace/reports', method: 'GET', audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
+  { name: 'marketplace moderation listing', url: '/admin/marketplace/listings/:id', probe: `/admin/marketplace/listings/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
+  { name: 'marketplace moderation hide', url: '/admin/marketplace/listings/:id/hide', probe: `/admin/marketplace/listings/${randomUUID()}/hide`, method: 'POST', audience: 'staff', module: 'marketplace_moderation', flag: 'status' },
+  { name: 'marketplace moderation restore', url: '/admin/marketplace/listings/:id/restore', probe: `/admin/marketplace/listings/${randomUUID()}/restore`, method: 'POST', audience: 'staff', module: 'marketplace_moderation', flag: 'status' },
+  { name: 'marketplace moderation remove', url: '/admin/marketplace/listings/:id', probe: `/admin/marketplace/listings/${randomUUID()}`, method: 'DELETE', audience: 'staff', module: 'marketplace_moderation', flag: 'delete' },
+  { name: 'marketplace moderation resolve report', url: '/admin/marketplace/reports/:id/resolve', probe: `/admin/marketplace/reports/${randomUUID()}/resolve`, method: 'POST', audience: 'staff', module: 'marketplace_moderation', flag: 'status' },
 
   // --- Messaging (008 US5) ---------------------------------------------------
   // Member-audience and no flag: replying to someone who contacted you is not

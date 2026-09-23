@@ -169,6 +169,47 @@ behaviour — live-state generation, status-code correctness, canonical redirect
 The JSDoc annotation at `build-page-meta.js:51` is itself removable once the
 parameter carries a real `ContentRecord` type.
 
+### 4e. Marketplace and messaging (added by feature 008) — recommend PRESERVE
+
+Feature 008 landed after this audit and added its own request schemas. It is
+listed here because 008 is what knows these rules exist; Phase 6 would
+otherwise meet them for the first time while deleting them.
+
+Most of them have a second enforcement point — a CHECK constraint in
+`019_marketplace.sql`/`018_messaging.sql`, or a runtime value in
+`@gwc/contracts/marketplace` that is not a Zod schema and survives (§3). **A
+CHECK constraint is not a replacement.** Nothing in `server/src` maps SQLSTATE
+`23514` (check_violation) or `22P02` (invalid input syntax) to a problem type,
+so once the schema is gone the data stays sound but the client's `400
+validation-failed` becomes a `500`. The "Backstop" column says what is left;
+"What is lost" says what the client sees change.
+
+| # | Rule | Source | Backstop after Phase 6 | What is lost |
+|---|---|---|---|---|
+| 34 | `title: trim().min(3).max(140)` | `marketplace/routes.ts` create + PATCH | CHECK `listings_title_bounded` | 400 becomes 500. Both call sites must move together or PATCH becomes the weaker door. |
+| 35 | `body: trim().min(10).max(8000)` | `marketplace/routes.ts` create + PATCH | CHECK `listings_body_bounded` | Same. |
+| 36 | Category-required and per-field detail rules (`make`, `deal`+`city`, `employment_type`+`city`, `kind`; enum options; integer/decimal/date kinds; `year` 1900–2100) | `validateDetails` over `CATEGORY_DEFS` | **Survives** — `CATEGORY_DEFS` is a frozen runtime value, not Zod | Nearly nothing. `validateDetails` reads `details?.[key]`, so a non-object `details` fails on the category's required field rather than crashing — but the refusal then names a missing field instead of a malformed body. A plain-object check keeps the message honest. |
+| 37 | Price and salary bounds: every `money` field `min: 0`; `salary_max ≥ salary_min` | `CATEGORY_DEFS` + CHECKs `*_price_non_negative`, `job_salary_ordered` | **Survives** in `validateDetails`; CHECKs behind it | Nothing, if 36's object check is kept. |
+| 38 | Media per listing ≤ 20 | `MAX_MEDIA_PER_LISTING` in `application/media.ts` | CHECK `listing_media_position_bounded` (0–19) | Nothing — not a Zod rule. Listed so Phase 6 does not "tidy" the constant away as a duplicate of a schema. |
+| 39 | `features: array(string()).max(60)` | `marketplace/routes.ts` create + PATCH | FK to `vehicle_features` refuses unknown keys | **The upper bound.** No constraint caps the count; a 10,000-element array would be looked up key by key. Unbounded-input path where one was bounded. |
+| 40 | `category`, `mode`, `contactMethod`, `state` enums | `marketplace/routes.ts` | Postgres enum types | 400 becomes 500 (`22P02`). `state` additionally loses nothing — `manage.ts` refuses non-owner transitions itself. |
+| 41 | `contactMethod` default `platform_message` | `marketplace/routes.ts` create | Column default, and `createListing`'s own destructuring default | Nothing. |
+| 42 | `termsVersion: min(1)` | `marketplace/routes.ts` create | `createListing` compares against `currentTermsVersion()` | Nothing, provided the comparison stays strict equality — an absent version must not match. |
+| 43 | `:id` params `uuid()` on every listing and staff route | `marketplace/routes.ts`, `staff-routes.ts` | None | **404 becomes 500** (`22P02` on the `::uuid` cast). For the ownership routes this also breaks SC-006's "indistinguishable" guarantee: a malformed id would answer differently from an absent one. |
+| 44 | Report / moderation `reason: trim().min(3).max(2000)` | `marketplace/routes.ts` report; `staff-routes.ts` hide/restore/remove/resolve | CHECK `report_reason_bounded` on reports only; `requireReason` in `moderate.ts` for staff actions | Member report: 400 becomes 500. Staff actions: `requireReason` keeps the **minimum** (≥ 3 after trim) but has no maximum, and `audit_log.detail` has no CHECK — so the 2000-character cap on a staff reason is lost outright. |
+| 45 | Message `body: trim().min(1).max(4000)` | `messaging/routes.ts` send; `marketplace/routes.ts` inquire | CHECK `messages_body_bounded` | 400 becomes 500 on both paths. Message *volume* is the rate limiter's (429) and is unaffected. |
+
+`limit` on the browse index and the inbox is **not** in this list on purpose:
+both routes declare `limit: z.unknown()` and bound it in the controller, so the
+§4b rule-13 regression cannot happen here — the schema carries no rule to lose.
+
+**Recommended Phase 6 disposition:** preserve 34, 35, 39, 40, 43, 44 (member
+report, plus a `max(2000)` in `requireReason`) and 45 as hand-written checks, or add one error mapping that turns
+`23514`/`22P02` into `validation-failed` — which fixes all of them at once but
+must not turn an ownership-route `22P02` into anything other than the same 404
+an absent id gets. Keep 36's plain-object check. 37, 38, 41 and 42 need no
+action beyond not deleting what they depend on.
+
 ---
 
 ## 5. Server-side shapes
@@ -269,6 +310,7 @@ then usage tracing reduced the number that are actually **enforced** to 20:
 | Response-side only (`csrfToken`, `meResponse.package`, `asset.checksum`) | 3 | **DELETE** — covered by the accepted Principle VI loss |
 | SEO metadata, not wired to any route (§4d) | 12 | **DELETE** — never enforced |
 | Token-minting strict check (§6b) | 1 | **PRESERVE** |
+| Marketplace and messaging, added by feature 008 (§4e) | 12 | **PRESERVE** 7 as checks (or one `23514`/`22P02` mapping); 5 need no action beyond keeping what they depend on |
 
 So the removal is "delete 41 schema definitions, preserve 21 rules, and record
 a decision for the other 15." Tasks are generated per rule, not per file, or

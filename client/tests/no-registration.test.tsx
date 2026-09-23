@@ -33,7 +33,7 @@ const SRC = join(process.cwd(), 'src')
  * page is no less tempting, and English sign-up vocabulary is the likelier
  * slip of the two.
  */
-const ENTRY_HTML = ['index.html', 'en.html', 'konsole.html'].map((f) => join(process.cwd(), f))
+const ENTRY_HTML = ['index.html', 'en.html', 'konsole.html', 'marktplatz.html'].map((f) => join(process.cwd(), f))
 
 /** German and English, because a stray English label is the likelier slip. */
 const REGISTRATION_WORDS = [

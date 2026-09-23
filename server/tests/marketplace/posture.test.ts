@@ -29,9 +29,19 @@ let app: GwcApp
 beforeAll(async () => { app = await buildFixtureApp() })
 afterAll(async () => { await app.close() })
 
-/** Every marketplace route, read from the real route table rather than a list. */
+/**
+ * Every GATED marketplace route, read from the real route table rather than a
+ * list.
+ *
+ * `/marketplace/summary` is excluded on purpose: it is public by design (US7,
+ * FR-034) — aggregate counts only, never a listing — and is asserted
+ * separately in `tests/seo/marketplace-public.test.ts`. A blanket "every
+ * marketplace route requires a bearer" would be exactly the check that
+ * regresses the day someone adds the next public route here without reading
+ * this comment, so the exclusion is named rather than silent.
+ */
 const marketplaceRoutes = () =>
-  app.routePostures().filter((r) => r.url.startsWith('/marketplace'))
+  app.routePostures().filter((r) => r.url.startsWith('/marketplace') && r.url !== '/marketplace/summary')
 
 describe('every marketplace route', () => {
   it('has routes to check at all', () => {
@@ -67,6 +77,17 @@ describe('every marketplace route', () => {
   it('carries X-Robots-Tag: noindex on an unauthenticated refusal', async () => {
     const response = await app.inject({ method: 'GET', url: '/marketplace/listings' })
     expect(response.headers['x-robots-tag']).toMatch(/noindex/)
+  })
+
+  it('the ONE excluded route really is public, not merely un-swept', async () => {
+    // The counter-assertion for the exclusion above: without this, silently
+    // narrowing marketplaceRoutes() could hide a route that regressed to
+    // gated-but-forgotten just as easily as it hides a genuinely public one.
+    const route = app.routePostures().find((r) => r.url === '/marketplace/summary')
+    expect(route?.auth?.audience).toBe('public')
+
+    const response = await app.inject({ method: 'GET', url: '/marketplace/summary' })
+    expect(response.statusCode).toBe(200)
   })
 })
 
