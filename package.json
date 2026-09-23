@@ -14,7 +14,7 @@
   "scripts": {
     "test": "npm run typecheck && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "tsc --noEmit -p packages/contracts && tsc --noEmit -p server && tsc --noEmit -p client"
+    "typecheck": "tsc --noEmit -p packages/contracts && tsc --noEmit -p server && tsc --noEmit -p client && tsc --noEmit -p expo-client/german-world-club"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
