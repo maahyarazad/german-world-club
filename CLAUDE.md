@@ -176,6 +176,46 @@ organisation" — that is `guardOrganisationScope` in `authz/object-guards.js`,
 and it answers **404, not 403**, so a merchant login cannot enumerate the club's
 partners by guessing uuids.
 
+**The marketplace is two modules, and messaging is not part of it.**
+`modules/marketplace/` holds member classifieds (feature 008, §7): member routes
+in `routes.ts`, the `/admin/marketplace/*` moderation routes in
+`staff-routes.ts`, gated on the existing `marketplace_moderation` module.
+`modules/messaging/` is its own module because it outlives the marketplace —
+threads and system notifications will ride the same tables — so a conversation
+references its subject softly (`subject_type`, `subject_id`) rather than by a
+foreign key to listings, and the application enforces that reference. Four
+rules that look optional and are not:
+
+- **Ownership refusals are 404, never 403**, and indistinguishable from an
+  absent id (status, body and headers — `tests/marketplace/ownership.test.ts`).
+  `marketplace_post` gates *creating* a listing, not managing one you already
+  have: a member whose flag was revoked can still withdraw what they posted.
+- **`expires_at IS NULL` means unlimited**, a first-class choice. The
+  `marketplace-expiry` job's predicate is `expires_at IS NOT NULL AND
+  expires_at <= now()` — both halves, or it silently expires every unlimited
+  listing. `tests/marketplace/expiry.test.ts` asserts the null case survives.
+- **Staff moderate, they do not rewrite.** Hide, restore, remove and resolve
+  each need a reason and write to the audit log; `write` and `edit` are
+  deliberately unused on `marketplace_moderation`, so no staff endpoint changes
+  what a member said.
+- **Two surfaces, two declarations.** `/marketplace` is gated and never
+  indexed; `/marktplatz` is public, indexed, and shows aggregate counts only —
+  no listing id, title, photo, price or owner. They are separate rows in
+  `seo/surfaces.ts` so adding the public one cannot relax the gated one.
+
+**A message is persisted before anyone is told about it.** `converse.ts`
+commits first and notifies after, never inside the transaction, so a failed
+push cannot roll back a message the sender was told was accepted
+(`tests/messaging/persist-before-notify.test.ts`). **Real-time transport is a
+later feature.** Delivery is on read today: there is no `delivered_at` or
+`read_at`, and no WebSocket. They arrive together with the transport that can
+actually set them, not as columns nothing writes.
+
+The demo seed's marketplace corpus follows the history rule like everything
+else: a sold, filled or withdrawn listing gets the owner's state-change entry
+at its own `state_changed_at`, a hidden one the moderator's, and an expired one
+the `marketplace-expiry` job run that moved it. Nothing else gets history.
+
 ## Conventions
 
 - ES modules, Node 22, no TypeScript in the server.

@@ -45,6 +45,12 @@ export const SURFACES = Object.freeze([
   { name: 'events-public', prefixes: ['/events'], public: true, indexed: true, why: 'Drives awareness and partner/press interest' },
   { name: 'recaps', prefixes: ['/recaps'], public: true, indexed: true, why: 'Credibility content; galleries need alt text' },
   { name: 'institutional', prefixes: ['/committees', '/about', '/legal', '/imprint'], public: true, indexed: true, why: 'Institutional credibility' },
+  // TWO surfaces for the marketplace, deliberately (008 US7, FR-034, FR-037):
+  // this one describes it with aggregate counts and no listing ever appears
+  // here; `/marketplace` below stays gated and never-indexed unchanged. Adding
+  // this row must never relax that one — they are declared independently
+  // rather than as a variant of each other for exactly that reason.
+  { name: 'marketplace-discovery', prefixes: ['/marktplatz'], public: true, indexed: true, why: 'Discovery page: counts only, no listing content (FR-034/035)' },
   { name: 'crawl-control', prefixes: ['/robots.txt', '/sitemap.xml'], public: true, indexed: false, why: 'Directives themselves are not content' },
   { name: 'media-delivery', prefixes: ['/media'], public: true, indexed: false, why: 'Derivatives are referenced by pages, not indexed as pages' },
   { name: 'health', prefixes: ['/health'], public: true, indexed: false, why: 'Operational endpoint' },
@@ -52,6 +58,11 @@ export const SURFACES = Object.freeze([
   // describes a surface that does not exist. It is declared anyway: §10.1 asks
   // for a posture per surface, not per surface that happens to be mounted, and
   // a developer reading the table should find the answer rather than the gap.
+  // Public so it is reachable, never indexed: an answer generated per request
+  // is not a page, and a crawler that indexed one would put model output in
+  // search results under the club's name. Public-but-not-indexed is the same
+  // posture /media carries, and for the same reason.
+  { name: 'rag', prefixes: ['/rag'], public: true, indexed: false, why: 'Public question answering; generated per request, never a page' },
   { name: 'dev-docs', prefixes: ['/swagger-ui'], public: true, indexed: false, why: 'Development-only API explorer; never mounted outside development' },
 
   // --- Gated, never indexed ------------------------------------------------

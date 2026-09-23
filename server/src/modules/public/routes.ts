@@ -105,6 +105,15 @@ export default fp(
     for (const slug of INSTITUTIONAL_SLUGS) {
       app.get(`/${slug}`, publicConfig, controller.renderRecordPage('page', slug))
     }
+
+    // --- 7. Marketplace discovery (008 US7) ---------------------------------
+    //
+    // Public and indexed — the opposite posture of `/marketplace`, which stays
+    // gated and never-indexed. Declared as its own surface in
+    // `seo/surfaces.ts` (`marketplace-discovery`) rather than as a variant of
+    // the gated one, so adding this route cannot be mistaken for relaxing that
+    // one (FR-034, FR-037).
+    app.get('/marktplatz', publicConfig, controller.marketplaceDiscovery)
   },
   { name: 'public-routes', dependencies: ['rate-limit'] },
 )

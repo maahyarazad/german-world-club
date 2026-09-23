@@ -184,7 +184,15 @@ export default fp(
       // A suspended or ended organisation takes its people with it. The
       // alternative — leaving them signed in against a dead contract — is the
       // state §5 says must not exist.
-      if (row.organisation_status !== 'active') {
+      //
+      // `pending` is let through, matching sign-in (`sign-in.ts` admits it on
+      // purpose): an organisation being onboarded has people who must be able
+      // to reach their portal. Refusing it here as well meant a pending
+      // merchant could sign in and then be refused on every request after —
+      // including sign-out. What pending may NOT do is publish (003
+      // data-model: "Only active may publish"), and that is a check for the
+      // publishing route against `organisationStatus`, not for this gate.
+      if (row.organisation_status !== 'active' && row.organisation_status !== 'pending') {
         throw forbidden(
           PROBLEMS.ACCOUNT_INACTIVE,
           'This organisation is not active. Please contact your GWC contact.',

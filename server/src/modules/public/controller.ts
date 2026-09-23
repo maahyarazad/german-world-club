@@ -1,5 +1,6 @@
 import { renderRecord, PUBLIC_CACHE, VARY } from './application/render-record.ts'
 import { renderLanding, LANDING_RECORD, LANDING_RECORD_EN, LANDING_ALTERNATES } from './application/landing.ts'
+import { renderMarketplaceDiscovery } from './application/marketplace-discovery.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../../app.ts'
 
@@ -38,10 +39,23 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
     return reply.send(html)
   }
 
+  const marketplaceDiscovery = async (request: FastifyRequest, reply: FastifyReply) => {
+    const html = await renderMarketplaceDiscovery(app, {
+      origin, nonce: reply.cspNonce?.style, signal: request.deadlineSignal,
+    })
+    return reply
+      .code(200)
+      .type('text/html; charset=utf-8')
+      .header('cache-control', PUBLIC_CACHE)
+      .header('vary', VARY)
+      .send(html)
+  }
+
   return {
     renderRecordPage,
     landing: landingHandler(landingShell, LANDING_RECORD),
     landingEn: landingHandler(landingShellEn, LANDING_RECORD_EN),
+    marketplaceDiscovery,
   }
 }
 

@@ -50,6 +50,12 @@ export default defineConfig({
         // it must render with no JavaScript like its German twin.
         en: resolve(__dirname, 'en.html'),
         konsole: resolve(__dirname, 'konsole.html'),
+        // Static Vite entry and build target only — the LIVE page at
+        // /marktplatz is server-rendered per request (real category counts
+        // change constantly), by
+        // server/src/modules/public/application/marketplace-discovery.ts.
+        // See the comment at the top of marktplatz.html.
+        marktplatz: resolve(__dirname, 'marktplatz.html'),
       },
     },
   },

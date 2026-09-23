@@ -81,7 +81,7 @@ try {
       : `\nseed:demo — deterministic (seed ${SEED})\n`,
   )
 
-  const counts = {}
+  const counts: Record<string, Record<string, unknown>> = {}
   const { seedMembers } = await import('../seed/members.ts')
   const { seedStaff } = await import('../seed/staff.ts')
   const { seedOrganisations } = await import('../seed/organisations.ts')
@@ -89,6 +89,8 @@ try {
   const { seedEvents } = await import('../seed/events.ts')
   const { seedContent } = await import('../seed/content.ts')
   const { seedOperations } = await import('../seed/operations.ts')
+  const { seedVehicleFeatures } = await import('../seed/vehicle-features.ts')
+  const { seedMarketplace } = await import('../seed/marketplace.ts')
   const { CREDENTIALS, renderCredentials, writeCredentials } = await import('../seed/credentials.ts')
 
   // One hash per distinct password, before anything inserts (research R5).
@@ -101,6 +103,13 @@ try {
   counts.events = await seedEvents(pool, faker, options)
   counts.content = await seedContent(pool, faker, options)
   counts.operations = await seedOperations(pool, faker, options)
+  // The vehicle feature catalogue is reference data, not a population: it does
+  // not scale with --members and it is the same in every environment.
+  counts.marketplace = { vehicle_features: await seedVehicleFeatures(pool) }
+  // After members, staff, content and operations: listings need posters, a
+  // hide needs a moderator, and the expiry history joins job_runs alongside
+  // the runs operations.ts writes.
+  counts.listings = await seedMarketplace(pool, faker, options)
 
   if (!options.quiet) {
     for (const [group, result] of Object.entries(counts)) {

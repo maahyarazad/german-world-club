@@ -42,6 +42,20 @@ export const BUCKETS = Object.freeze({
   'admin-api': { dimension: 'account', max: 1200, timeWindow: '1 minute', skipOnError: true, why: 'Staff console traffic' },
   'write-heavy': { dimension: 'account', max: 60, timeWindow: '1 minute', skipOnError: false, why: 'Member writes and uploads' },
   upload: { dimension: 'account', max: 30, timeWindow: '1 hour', skipOnError: false, why: 'Media ingest is CPU- and storage-expensive' },
+
+  // Message volume (008 US5). A TRANSPORT limit: exceeding it answers 429,
+  // meaning "wait and it will work". The marketplace's listing cap is a
+  // business quota answering 422, because retrying that changes nothing until
+  // the member withdraws something. Both live in feature 008 and must not be
+  // flattened together — tests/messaging/limits.test.ts asserts each.
+  messages: { dimension: 'account', max: 120, timeWindow: '1 minute', skipOnError: false, why: 'Message flooding is harassment, not traffic' },
+
+  // The one public bucket that does NOT fail open. `public-read` skips on
+  // error because a 429 to a crawler costs the club the partner visibility it
+  // has sold; this route is unauthenticated AND bills per request, so when the
+  // limiter cannot be consulted the right answer is to refuse, not to wave
+  // traffic through.
+  'rag-ask': { dimension: 'ip', max: 10, timeWindow: '1 minute', skipOnError: false, why: 'Unauthenticated and costs money per request' },
 })
 
 /** Crawlers that must never be throttled (FR-041). Verified by reverse DNS in production. */

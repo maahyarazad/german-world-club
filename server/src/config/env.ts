@@ -80,6 +80,18 @@ const schema = z
     FCM_PROJECT_ID: z.string().optional(),
     FCM_CLIENT_EMAIL: z.string().optional(),
     FCM_PRIVATE_KEY: z.string().optional(),
+
+    // Retrieval-augmented answering (pgai). The embeddings live in whichever
+    // database pgai was installed into, which need not be the application's —
+    // so this is separate from DATABASE_URL and falls back to it rather than
+    // being guessed.
+    RAG_DATABASE_URL: z.string().min(1).optional(),
+    // Optional, so an ordinary boot without it still works and the route
+    // answers 503 while naming the gap in the log.
+    ANTHROPIC_API_KEY: z.string().optional(),
+    OLLAMA_HOST: z.string().url().default('http://host.docker.internal:11434'),
+    RAG_MODEL: z.string().default('claude-sonnet-4-5'),
+    RAG_EMBED_MODEL: z.string().default('nomic-embed-text'),
   })
   // Production has no safe default for the three settings that must agree with
   // infrastructure. Boot fails rather than guessing (plan.md Risk 4).

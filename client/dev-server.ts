@@ -34,8 +34,14 @@ export const CONSOLE_ENTRY = '/konsole.html'
  * with Vite, so a typo in a fetch path fails as a 404 from the dev server
  * rather than being silently forwarded to the API and 404ing there, which is a
  * much harder trail to follow.
+ *
+ * The cost of a list is that a new module must be added to it, and feature
+ * 008 was not: `/marketplace` and `/messages` fell through to Vite, so the
+ * member marketplace answered 404 on every call in development while working
+ * everywhere else. `tests/dev-server.test.ts` now scans the client's own
+ * fetch calls and fails when one names a prefix this list does not.
  */
-export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health']
+export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages']
 
 /**
  * Static pages Vite serves from a file whose name is not the URL.

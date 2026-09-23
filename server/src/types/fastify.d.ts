@@ -29,6 +29,13 @@ declare module 'fastify' {
       isTest: boolean
       canonicalOrigin: string
       trustProxy: false | number
+      DATABASE_URL: string
+      /** Where pgai's `docs_embeddings` lives, when that is not DATABASE_URL. */
+      RAG_DATABASE_URL?: string
+      ANTHROPIC_API_KEY?: string
+      OLLAMA_HOST: string
+      RAG_MODEL: string
+      RAG_EMBED_MODEL: string
     }
     pg: Pool
     redis?: unknown
@@ -56,7 +63,17 @@ declare module 'fastify' {
      */
     guard: preHandlerHookHandler[]
     availableModules(...args: unknown[]): readonly Module[]
-    routePostures: Map<string, { audience: Audience; module?: Module; flag?: Flag }>
+    /**
+     * The real route table, as `11-rbac.ts` built it — a function returning
+     * one entry per fully-declared route. Previously declared as a Map, which
+     * no caller ever used it as; the posture and matrix suites call it.
+     */
+    routePostures: () => readonly {
+      method: string | string[]
+      url: string
+      auth: { audience: Audience; module?: Module; flag?: Flag; requires?: string }
+      staticFile: boolean
+    }[]
     /** Revoked session ids, so a superseded session stops working immediately. */
     denylist: {
       add(sessionId: string): Promise<void>
@@ -92,6 +109,19 @@ declare module 'fastify' {
     metrics: unknown
 
     // --- domain seams -------------------------------------------------------
+    /**
+     * The notification step for a persisted message (008 US5).
+     *
+     * Optional, and called only AFTER the message is committed. Declared as a
+     * decorator rather than an import so a suite can replace it with a thrower
+     * and prove the message survives — which is what
+     * tests/messaging/persist-before-notify.test.ts does.
+     */
+    notifyMessage?: (event: {
+      conversationId: string
+      messageId: string
+      recipientIds: string[]
+    }) => Promise<void>
     audit(...args: unknown[]): Promise<void>
     auditDenial(...args: unknown[]): Promise<void>
     auditLog(...args: unknown[]): Promise<void>

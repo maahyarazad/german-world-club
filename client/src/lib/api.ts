@@ -145,6 +145,9 @@ export async function request(
   { method = 'GET', body, signal, headers = {} }: RequestOptions = {},
 ): Promise<unknown> {
   const unsafe = UNSAFE.has(method)
+  // Multipart goes as-is, with no content-type of our own: the browser writes
+  // the header itself, boundary included, and a hand-set one would lack it.
+  const multipart = typeof FormData !== 'undefined' && body instanceof FormData
 
   const send = async () => {
     const token = unsafe ? (csrfToken ?? (await fetchCsrfToken())) : null
@@ -156,11 +159,11 @@ export async function request(
       signal,
       headers: {
         accept: `${PROBLEM_TYPE}, application/json`,
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(body === undefined || multipart ? {} : { 'content-type': 'application/json' }),
         ...(token ? { 'x-csrf-token': token } : {}),
         ...headers,
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: multipart ? (body as FormData) : JSON.stringify(body) }),
     })
   }
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react'
 import { get, ApiError } from './api'
 import { HOME_FOR_KIND } from '@gwc/contracts/capabilities'
+import { PROBLEMS } from '@gwc/contracts/errors'
 import type { ConsoleKind, GrantSnapshot } from '@gwc/contracts/capabilities'
 import type { ReactNode } from 'react'
 
@@ -61,25 +62,39 @@ export const STATUS = Object.freeze({
 export type Status = (typeof STATUS)[keyof typeof STATUS]
 
 /**
- * Members come from `/auth/me`, everyone else from `/auth/session`.
+ * Each audience has its own route: members `/auth/me`, staff `/auth/session`,
+ * organisation principals `/auth/merchant/session` and `/auth/partner/session`.
  *
- * Two routes because they are two audiences: a member token and a staff token
- * can never satisfy each other's routes, by design. The console tries the
- * member route first only because it is the cheaper guess for the common case;
- * the server's answer is what decides, not the order.
+ * Separate routes because a route's audience is part of its posture: a member
+ * token and a staff token can never satisfy each other's routes, by design,
+ * and the same holds for the two organisation kinds. The console asks in order
+ * of how common each principal is; the server's answer is what decides, not
+ * the order.
  */
+const SNAPSHOT_ROUTES: ReadonlyArray<readonly [string, (body: Record<string, unknown>) => Snapshot]> = [
+  ['/auth/me', (body) => ({ ...body, kind: 'member', available: [] }) as Snapshot],
+  ['/auth/session', (body) => body as Snapshot],
+  ['/auth/merchant/session', (body) => body as Snapshot],
+  ['/auth/partner/session', (body) => body as Snapshot],
+]
+
 async function fetchSnapshot(signal?: AbortSignal): Promise<Snapshot> {
-  try {
-    const member = (await get('/auth/me', { signal })) as Record<string, unknown>
-    return { ...member, kind: 'member', available: [] } as Snapshot
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error
-    // 401 means no credential at all — stop, do not try the other route.
-    if (error.status === 401) throw error
-    // 403 here means "valid credential, wrong audience", i.e. not a member.
-    // Fall through and ask the staff/organisation route.
+  let last: unknown = null
+  for (const [path, shape] of SNAPSHOT_ROUTES) {
+    try {
+      return shape((await get(path, { signal })) as Record<string, unknown>)
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error
+      // Only "valid credential, wrong audience" means try the next route.
+      // No credential, a revoked session or a locked account is the same
+      // answer on every route, and asking the rest would only hide it.
+      if (error.status !== 403 || error.needsSignIn || error.problem?.type !== PROBLEMS.INSUFFICIENT_PERMISSION.type) {
+        throw error
+      }
+      last = error
+    }
   }
-  return (await get('/auth/session', { signal })) as Snapshot
+  throw last
 }
 
 export function CapabilityProvider({ children }: { children?: ReactNode }) {
