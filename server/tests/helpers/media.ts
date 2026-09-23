@@ -298,3 +298,32 @@ export async function shortVideo({ seconds = 2, width = 320, height = 240 } = {}
 
 /** Whether ffmpeg is usable here, so the video suites can skip loudly. */
 export const hasFfmpeg = Boolean(ffmpegPath)
+
+/**
+ * Whether the video pipeline actually WORKS here, not merely whether a binary
+ * exists.
+ *
+ * `hasFfmpeg` answers the wrong question. The bundled build on some machines
+ * has a libwebp encoder that cannot assemble the animated poster, so ffmpeg is
+ * present, the transcode starts, and it exits 1 — which the breaker then
+ * reports as `Dependency "mediaVideo" is unavailable`, hiding the cause behind
+ * a message about availability.
+ *
+ * So this runs one real derivation and reports the outcome. A skip announced
+ * with its reason is worth more than a red suite that names the wrong defect,
+ * and worth much more than a silent one.
+ */
+export const hasVideoPipeline = await (async () => {
+  if (!hasFfmpeg) return false
+  try {
+    const { deriveVideo } = await import('../../src/modules/media/derive-video.ts')
+    await deriveVideo(await shortVideo({ seconds: 1 }), { timeoutMs: 60_000 })
+    return true
+  } catch (err) {
+    console.warn(
+      `\n  ⚠  ffmpeg is present but cannot derive video here — video suites are SKIPPED.\n` +
+      `     ${(err as Error).message.slice(0, 200)}\n`,
+    )
+    return false
+  }
+})()

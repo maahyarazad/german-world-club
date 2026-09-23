@@ -98,10 +98,14 @@ describe.skipIf(!hasDatabase)('who may create a listing', () => {
     // Asserting the declaration as well as the behaviour: the behaviour could
     // be right for the wrong reason, and the posture is what the boot gate and
     // the audit trail read.
-    const posture = app.routePostures?.get?.('/marketplace/listings')
-    if (posture) {
-      expect(posture.audience).toBe('member')
-      expect(posture.requires ?? 'marketplace_post').toBe('marketplace_post')
-    }
+    // `routePostures` is a function returning the route table, not a Map. The
+    // earlier `?.get?.()` form here read as an assertion but resolved to
+    // undefined, so the block never ran and this test passed against anything.
+    const posture = app.routePostures()
+      .find((r) => r.url === '/marketplace/listings' && r.method === 'POST')
+
+    expect(posture, 'the posting route is not in the route table').toBeTruthy()
+    expect(posture?.auth.audience).toBe('member')
+    expect(posture?.auth.requires).toBe('marketplace_post')
   })
 })

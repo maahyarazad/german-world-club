@@ -22,6 +22,12 @@ export const OUTBOUND: Readonly<Record<string, number>> = Object.freeze({
   // Video transcoding is a queued job, not an inbound-request dependency, so
   // it is deliberately absent from every route's `calls` list below.
   mediaVideoJob: 300000,
+  // An embedding call plus a generation call, both made by PostgreSQL through
+  // pgai rather than by Node. Still outbound budgets: the rule does not care
+  // which process opens the socket, only that the caller does not give up
+  // before the callee does.
+  ragEmbed: 5000,
+  ragGenerate: 20000,
 })
 
 /**
@@ -51,6 +57,11 @@ export const ROUTE_BUDGETS = Object.freeze({
   messaging: { deadlineMs: 3000, calls: ['redis'] },
   'admin-read': { deadlineMs: 5000, calls: ['redis'] },
   'admin-report': { deadlineMs: 28000, calls: ['redis'] },
+  // 25250 < 28000 < REQUEST_TIMEOUT_MS (30000). The margin is thin on purpose:
+  // a model call is the slowest thing this server waits on, and the
+  // alternative to a tight deadline is a public route that can hold a
+  // connection open for the whole request timeout.
+  rag: { deadlineMs: 28000, calls: ['ragEmbed', 'ragGenerate', 'redis'] },
   health: { deadlineMs: 1000, calls: [] },
 })
 

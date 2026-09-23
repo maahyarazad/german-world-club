@@ -115,36 +115,36 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Tests for User Story 2
 
-- [ ] T035 [P] [US2] Write `server/tests/marketplace/browse.test.ts` covering every category × mode combination against a seeded corpus.
-- [ ] T036 [P] [US2] Add per-category filter cases to `server/tests/marketplace/browse.test.ts` — price range and make for vehicles, rooms and deal for property, city and seniority for jobs.
-- [ ] T037 [P] [US2] Write `server/tests/marketplace/visibility.test.ts`: a listing whose owner is `locked`, `inactive` or `ended` is absent from the member index, and returns to it when the member is reinstated.
-- [ ] T038 [P] [US2] Add gone-state cases to `server/tests/marketplace/visibility.test.ts`: withdrawn, sold, expired and hidden listings return not-found or gone when requested directly — **never a success carrying fallback content** (§12 rule 13).
+- [X] T035 [P] [US2] Write `server/tests/marketplace/browse.test.ts` covering every category × mode combination against a seeded corpus.
+- [X] T036 [P] [US2] Add per-category filter cases to `server/tests/marketplace/browse.test.ts` — price range and make for vehicles, rooms and deal for property, city and seniority for jobs.
+- [X] T037 [P] [US2] Write `server/tests/marketplace/visibility.test.ts`: a listing whose owner is `locked`, `inactive` or `ended` is absent from the member index, and returns to it when the member is reinstated.
+- [X] T038 [P] [US2] Add gone-state cases to `server/tests/marketplace/visibility.test.ts`: withdrawn, sold, expired and hidden listings return not-found or gone when requested directly — **never a success carrying fallback content** (§12 rule 13).
 
 ### Implementation for User Story 2
 
-- [ ] T039 [US2] Create `server/src/modules/marketplace/application/browse.ts` with the keyset index query, joining the owner's status live rather than reading a denormalised flag — a cached copy of live state is what Principle III forbids (research.md R7).
-- [ ] T040 [US2] Add per-category filter predicates to `server/src/modules/marketplace/application/browse.ts`, joining exactly one detail table when a category filter is present and none when it is not.
-- [ ] T041 [US2] Add `GET /marketplace/listings` and `GET /marketplace/listings/:id` to `server/src/modules/marketplace/routes.ts` with member posture.
+- [X] T039 [US2] Create `server/src/modules/marketplace/application/browse.ts` with the keyset index query, joining the owner's status live rather than reading a denormalised flag — a cached copy of live state is what Principle III forbids (research.md R7).
+- [X] T040 [US2] Add per-category filter predicates to `server/src/modules/marketplace/application/browse.ts`, joining exactly one detail table when a category filter is present and none when it is not.
+- [X] T041 [US2] Add `GET /marketplace/listings` and `GET /marketplace/listings/:id` to `server/src/modules/marketplace/routes.ts` with member posture.
 
 ### `limit` — its own task because it fails silently
 
-- [ ] T042 [US2] Coerce, default and bound `limit` **in `server/src/modules/marketplace/controller.ts`**, not only in the Zod schema: `Number()` it, default 20 when absent, cap at 50. Feature 007 Phase 6 will delete the schema; the handler is what survives.
-- [ ] T043 [US2] Implement the opaque keyset cursor encoding `(created_at, id)` in `server/src/modules/marketplace/controller.ts`. An unparseable cursor is a 400, not a silent reset to page one — silently restarting is how a client loops forever without noticing.
-- [ ] T044 [US2] Ensure every query in `server/src/modules/marketplace/application/browse.ts` names its columns explicitly. With response schemas removed by constitution 2.0.0, this is the **only** thing preventing a new `members` column from reaching a listing response.
-- [ ] T045 [US2] Write `server/tests/marketplace/limit.test.ts` asserting all three: `?limit=1000000` returns at most 50, absent `limit` returns 20 and does not error, and `limit` reaches the application layer as a **number** rather than the string `"50"`. `specs/007-typescript-migration/data-model.md` §4b traced exactly these three regressions on the existing `campaignQuery.limit`.
-- [ ] T046 [US2] Write `server/tests/marketplace/no-select-star.test.ts` asserting `SELECT *` appears nowhere under `server/src/modules/marketplace/`.
+- [X] T042 [US2] Coerce, default and bound `limit` **in `server/src/modules/marketplace/controller.ts`**, not only in the Zod schema: `Number()` it, default 20 when absent, cap at 50. Feature 007 Phase 6 will delete the schema; the handler is what survives.
+- [X] T043 [US2] Implement the opaque keyset cursor encoding `(created_at, id)` in `server/src/modules/marketplace/controller.ts`. An unparseable cursor is a 400, not a silent reset to page one — silently restarting is how a client loops forever without noticing.
+- [X] T044 [US2] Ensure every query in `server/src/modules/marketplace/application/browse.ts` names its columns explicitly. With response schemas removed by constitution 2.0.0, this is the **only** thing preventing a new `members` column from reaching a listing response.
+- [X] T045 [US2] Write `server/tests/marketplace/limit.test.ts` asserting all three: `?limit=1000000` returns at most 50, absent `limit` returns 20 and does not error, and `limit` reaches the application layer as a **number** rather than the string `"50"`. `specs/007-typescript-migration/data-model.md` §4b traced exactly these three regressions on the existing `campaignQuery.limit`.
+- [X] T046 [US2] Write `server/tests/marketplace/no-select-star.test.ts` asserting `SELECT *` appears nowhere under `server/src/modules/marketplace/`.
 
 ### Media
 
-- [ ] T047 [P] [US2] Create `server/src/modules/marketplace/application/media.ts` linking uploaded assets to a listing with explicit `position`, reusing `modules/media` unchanged. Accepts **images and video** — `ASSET_KINDS` already covers both.
-- [ ] T048 [US2] Add `POST /marketplace/listings/:id/media` and `DELETE /marketplace/listings/:id/media/:assetId` to `server/src/modules/marketplace/routes.ts`. Detaching removes the link row and **never** the bytes. Enforce the media-count bound and require at least one item (FR-039).
-- [ ] T049 [P] [US2] Write `server/tests/marketplace/media.test.ts` covering all three shapes (FR-039, SC-017): **one photo**, **several photos**, **one video**. In each case responses reference derivatives only and never the original; two listings sharing a checksum both keep rendering after one is deleted; and stored bytes count against the existing quota. **Video is why the quota assertion matters** — one video can exceed a member's whole image allowance.
-- [ ] T050 [P] [US2] Assert in `server/tests/marketplace/media.test.ts` that a video listing serves its `poster` variant in the index (FR-040), so a browse page never autoplays and never waits on a transcode.
+- [X] T047 [P] [US2] Create `server/src/modules/marketplace/application/media.ts` linking uploaded assets to a listing with explicit `position`, reusing `modules/media` unchanged. Accepts **images and video** — `ASSET_KINDS` already covers both.
+- [X] T048 [US2] Add `POST /marketplace/listings/:id/media` and `DELETE /marketplace/listings/:id/media/:assetId` to `server/src/modules/marketplace/routes.ts`. Detaching removes the link row and **never** the bytes. Enforce the media-count bound and require at least one item (FR-039).
+- [X] T049 [P] [US2] Write `server/tests/marketplace/media.test.ts` covering all three shapes (FR-039, SC-017): **one photo**, **several photos**, **one video**. In each case responses reference derivatives only and never the original; two listings sharing a checksum both keep rendering after one is deleted; and stored bytes count against the existing quota. **Video is why the quota assertion matters** — one video can exceed a member's whole image allowance.
+- [X] T050 [P] [US2] Assert in `server/tests/marketplace/media.test.ts` that a video listing serves its `poster` variant in the index (FR-040), so a browse page never autoplays and never waits on a transcode.
 
 ### Never public, never indexed
 
-- [ ] T051 [US2] Write `server/tests/marketplace/posture.test.ts`: every marketplace route is refused unauthenticated, every response carries `X-Robots-Tag: noindex`, and `seo/surfaces.ts` still declares `/marketplace` gated. Counter-assertion — removing `config.auth` from one route refuses to boot.
-- [ ] T052 [US2] Run `npm run -w server verify:seo` and confirm exit 0 with no marketplace URL in the sitemap.
+- [X] T051 [US2] Write `server/tests/marketplace/posture.test.ts`: every marketplace route is refused unauthenticated, every response carries `X-Robots-Tag: noindex`, and `seo/surfaces.ts` still declares `/marketplace` gated. Counter-assertion — removing `config.auth` from one route refuses to boot.
+- [X] T052 [US2] Run `npm run -w server verify:seo` and confirm exit 0 with no marketplace URL in the sitemap.
 
 **Checkpoint**: Post and browse work. This is a shippable marketplace with no way to respond to a listing.
 
@@ -160,29 +160,29 @@ These do not announce themselves. Each has its own task and its own test rather 
 
 ### Tests for User Story 5
 
-- [ ] T053 [P] [US5] Write `server/tests/messaging/inquiry.test.ts`: an inquiry creates a conversation linked to the listing, the owner reads it, replies, and the inquirer reads the reply — with neither online simultaneously.
-- [ ] T054 [P] [US5] Write `server/tests/messaging/privacy.test.ts` asserting **no messaging or marketplace response carries an email address or phone number** for either party (FR-026). A conversation payload already carries two members' data; this is where forgetting the explicit-columns rule is worst.
-- [ ] T055 [P] [US5] Add the non-participant case to `server/tests/messaging/privacy.test.ts`: a member who is not in a conversation gets **404**, byte-identical to a conversation that does not exist. A 403 would confirm it exists and reveal who is talking to whom.
+- [X] T053 [P] [US5] Write `server/tests/messaging/inquiry.test.ts`: an inquiry creates a conversation linked to the listing, the owner reads it, replies, and the inquirer reads the reply — with neither online simultaneously.
+- [X] T054 [P] [US5] Write `server/tests/messaging/privacy.test.ts` asserting **no messaging or marketplace response carries an email address or phone number** for either party (FR-026). A conversation payload already carries two members' data; this is where forgetting the explicit-columns rule is worst.
+- [X] T055 [P] [US5] Add the non-participant case to `server/tests/messaging/privacy.test.ts`: a member who is not in a conversation gets **404**, byte-identical to a conversation that does not exist. A 403 would confirm it exists and reveal who is talking to whom.
 
 ### Implementation for User Story 5
 
-- [ ] T056 [US5] Create `server/src/modules/messaging/application/converse.ts` — start a conversation, append a message, read a conversation keyset-paged.
-- [ ] T057 [US5] Create `server/src/modules/messaging/application/inquire.ts` — the marketplace entry point, refusing when the listing is not inquirable and when a member inquires on their own listing.
-- [ ] T058 [US5] Create `server/src/modules/messaging/controller.ts` and `server/src/modules/messaging/routes.ts` with `GET /messages/conversations`, `GET /messages/conversations/:id`, `POST /messages/conversations/:id/messages`, all `budget: 'messaging'`.
-- [ ] T059 [US5] Add `POST /marketplace/listings/:id/inquire` to `server/src/modules/marketplace/routes.ts`, delegating to `messaging/application/inquire.ts`. It lives under `/marketplace` because that is the resource it acts on and the guard it needs.
-- [ ] T060 [US5] Register the messaging module in `server/src/app.ts`.
-- [ ] T061 [US5] Maintain `conversations.last_message_at` on every append in `server/src/modules/messaging/application/converse.ts` — it is the inbox ordering key, and the alternative is a correlated subquery per row.
-- [ ] T062 [US5] Bound and coerce the conversation page size in `server/src/modules/messaging/controller.ts`, the same three ways as T042. It is the second such parameter in this feature.
-- [ ] T063 [US5] Ensure every query in `server/src/modules/messaging/application/` names its columns, and write `server/tests/messaging/no-select-star.test.ts`.
-- [ ] T064 [US5] Add message-volume rate limiting to `server/src/modules/messaging/routes.ts` via `app.bucket`, returning **429** — a transport limit where waiting works, unlike the listing quota's 422.
-- [ ] T065 [US5] Write `server/tests/messaging/limits.test.ts` asserting message volume is 429 **and** the listing quota is 422. Both live in this feature and flattening them together is the easy mistake.
-- [ ] T066 [US5] Implement `marketplace_contact` preference resolution in `server/src/modules/marketplace/controller.ts`, resolving against the owner's privacy settings at render time and omitting what they do not permit. The listing stores a preference, **never a value** (research.md R9).
-- [ ] T067 [US5] Add the conversations-outlive-their-listing rule to `server/src/modules/messaging/application/inquire.ts`: a withdrawn, sold or hidden listing refuses **new** inquiries while existing conversations stay readable (FR-027).
+- [X] T056 [US5] Create `server/src/modules/messaging/application/converse.ts` — start a conversation, append a message, read a conversation keyset-paged.
+- [X] T057 [US5] Create `server/src/modules/messaging/application/inquire.ts` — the marketplace entry point, refusing when the listing is not inquirable and when a member inquires on their own listing.
+- [X] T058 [US5] Create `server/src/modules/messaging/controller.ts` and `server/src/modules/messaging/routes.ts` with `GET /messages/conversations`, `GET /messages/conversations/:id`, `POST /messages/conversations/:id/messages`, all `budget: 'messaging'`.
+- [X] T059 [US5] Add `POST /marketplace/listings/:id/inquire` to `server/src/modules/marketplace/routes.ts`, delegating to `messaging/application/inquire.ts`. It lives under `/marketplace` because that is the resource it acts on and the guard it needs.
+- [X] T060 [US5] Register the messaging module in `server/src/app.ts`.
+- [X] T061 [US5] Maintain `conversations.last_message_at` on every append in `server/src/modules/messaging/application/converse.ts` — it is the inbox ordering key, and the alternative is a correlated subquery per row.
+- [X] T062 [US5] Bound and coerce the conversation page size in `server/src/modules/messaging/controller.ts`, the same three ways as T042. It is the second such parameter in this feature.
+- [X] T063 [US5] Ensure every query in `server/src/modules/messaging/application/` names its columns, and write `server/tests/messaging/no-select-star.test.ts`.
+- [X] T064 [US5] Add message-volume rate limiting to `server/src/modules/messaging/routes.ts` via `app.bucket`, returning **429** — a transport limit where waiting works, unlike the listing quota's 422.
+- [X] T065 [US5] Write `server/tests/messaging/limits.test.ts` asserting message volume is 429 **and** the listing quota is 422. Both live in this feature and flattening them together is the easy mistake.
+- [X] T066 [US5] Implement `marketplace_contact` preference resolution in `server/src/modules/marketplace/controller.ts`, resolving against the owner's privacy settings at render time and omitting what they do not permit. The listing stores a preference, **never a value** (research.md R9).
+- [X] T067 [US5] Add the conversations-outlive-their-listing rule to `server/src/modules/messaging/application/inquire.ts`: a withdrawn, sold or hidden listing refuses **new** inquiries while existing conversations stay readable (FR-027).
 
 ### Persist before notify — its own task because it fails silently
 
-- [ ] T068 [US5] In `server/src/modules/messaging/application/converse.ts`, commit the message **before** attempting any notification. Notification is a step after commit, never inside the transaction — a transaction rolling back on a failed push loses a message the sender was told was accepted. The Technology Baseline states this ordering.
-- [ ] T069 [US5] Write `server/tests/messaging/persist-before-notify.test.ts`: **deliberately fail the notification path** and confirm the message is still in the database and readable by the recipient. A happy-path test passes against an implementation that notifies inside the transaction.
+- [X] T068 [US5] In `server/src/modules/messaging/application/converse.ts`, commit the message **before** attempting any notification. Notification is a step after commit, never inside the transaction — a transaction rolling back on a failed push loses a message the sender was told was accepted. The Technology Baseline states this ordering.
+- [X] T069 [US5] Write `server/tests/messaging/persist-before-notify.test.ts`: **deliberately fail the notification path** and confirm the message is still in the database and readable by the recipient. A happy-path test passes against an implementation that notifies inside the transaction.
 
 **Checkpoint**: Post, browse, and respond. This is the MVP.
 

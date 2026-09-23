@@ -33,6 +33,10 @@ const ROUTE_CLASSES = [
   { name: 'event page', url: '/events/:slug', probe: '/events/anything', method: 'GET', audience: 'public' },
   { name: 'article page', url: '/magazine/:slug', probe: '/magazine/anything', method: 'GET', audience: 'public' },
   { name: 'committee page', url: '/committees/:slug', probe: '/committees/anything', method: 'GET', audience: 'public' },
+  // Public on purpose, and the only public route that costs money per call.
+  // Its compensating controls (a non-fail-open IP bucket, a bounded prompt, a
+  // server-side prompt template) are asserted in tests/rag/ask.test.ts.
+  { name: 'rag ask', url: '/rag/ask', method: 'POST', audience: 'public' },
   { name: 'landing', url: '/', method: 'GET', audience: 'public' },
   // The English half of the landing pair. Public and indexed, like its twin.
   { name: 'landing (en)', url: '/en', method: 'GET', audience: 'public' },
@@ -79,6 +83,25 @@ const ROUTE_CLASSES = [
   { name: 'marketplace read terms', url: '/marketplace/terms', method: 'GET', audience: 'member' },
   { name: 'marketplace accept terms', url: '/marketplace/terms/accept', method: 'POST', audience: 'member' },
   { name: 'marketplace categories', url: '/marketplace/categories', method: 'GET', audience: 'member' },
+  // No `requires` on browsing: reading the market is not gated on being able
+  // to sell in it. Only creating a listing needs the per-member flag.
+  { name: 'marketplace browse', url: '/marketplace/listings', method: 'GET', audience: 'member' },
+  { name: 'marketplace read listing', url: '/marketplace/listings/:id', probe: `/marketplace/listings/${randomUUID()}`, method: 'GET', audience: 'member' },
+  // Attaching media to a listing is part of posting one, so it carries the
+  // same flag as the create route.
+  { name: 'marketplace attach media', url: '/marketplace/listings/:id/media', probe: `/marketplace/listings/${randomUUID()}/media`, method: 'POST', audience: 'member', requires: 'marketplace_post' },
+  { name: 'marketplace detach media', url: '/marketplace/listings/:id/media/:assetId', probe: `/marketplace/listings/${randomUUID()}/media/${randomUUID()}`, method: 'DELETE', audience: 'member', requires: 'marketplace_post' },
+  // No `requires` on enquiring: contacting a seller is not selling, and gating
+  // it on the posting flag would mean only sellers could buy.
+  { name: 'marketplace enquire', url: '/marketplace/listings/:id/inquire', probe: `/marketplace/listings/${randomUUID()}/inquire`, method: 'POST', audience: 'member' },
+
+  // --- Messaging (008 US5) ---------------------------------------------------
+  // Member-audience and no flag: replying to someone who contacted you is not
+  // a privilege a member has to be granted. Participation is a per-row rule and
+  // is enforced in the application layer, where it answers 404 rather than 403.
+  { name: 'messaging inbox', url: '/messages/conversations', method: 'GET', audience: 'member' },
+  { name: 'messaging read', url: '/messages/conversations/:id', probe: `/messages/conversations/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'messaging reply', url: '/messages/conversations/:id/messages', probe: `/messages/conversations/${randomUUID()}/messages`, method: 'POST', audience: 'member' },
 
   { name: 'push register device', url: '/push/devices', method: 'POST', audience: 'member' },
   { name: 'push list devices', url: '/push/devices', method: 'GET', audience: 'member' },

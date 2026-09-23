@@ -52,6 +52,11 @@ export const SURFACES = Object.freeze([
   // describes a surface that does not exist. It is declared anyway: §10.1 asks
   // for a posture per surface, not per surface that happens to be mounted, and
   // a developer reading the table should find the answer rather than the gap.
+  // Public so it is reachable, never indexed: an answer generated per request
+  // is not a page, and a crawler that indexed one would put model output in
+  // search results under the club's name. Public-but-not-indexed is the same
+  // posture /media carries, and for the same reason.
+  { name: 'rag', prefixes: ['/rag'], public: true, indexed: false, why: 'Public question answering; generated per request, never a page' },
   { name: 'dev-docs', prefixes: ['/swagger-ui'], public: true, indexed: false, why: 'Development-only API explorer; never mounted outside development' },
 
   // --- Gated, never indexed ------------------------------------------------

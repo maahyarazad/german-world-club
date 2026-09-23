@@ -43,6 +43,21 @@ export default fp(
       termsVersion: z.string().min(1),
     })
 
+    const mediaItemSchema = z.object({
+      assetId: z.string(),
+      kind: z.string(),
+      position: z.number(),
+      alt: z.string(),
+      width: z.number(),
+      height: z.number(),
+      durationMs: z.union([z.number(), z.null()]),
+      variants: z.array(z.object({
+        variant: z.string(), format: z.string(), width: z.number(), url: z.string(),
+      })),
+      // FR-040: what the index renders for a video. Null for a photo.
+      posterUrl: z.union([z.string(), z.null()]),
+    })
+
     const listingResponseSchema = z.object({
       id: z.string(),
       category: z.enum(MARKETPLACE_CATEGORIES),
@@ -54,6 +69,7 @@ export default fp(
       createdAt: z.union([z.string(), z.date()]),
       publishedAt: z.union([z.string(), z.date(), z.null()]),
       expiresAt: z.union([z.string(), z.date(), z.null()]),
+      media: z.array(mediaItemSchema).default([]),
     })
 
     // ---- Posting ------------------------------------------------------------
@@ -70,6 +86,62 @@ export default fp(
         schema: { body: createListingSchema, response: { 201: listingResponseSchema } },
       },
       controller.create,
+    )
+
+    // ---- Browsing -----------------------------------------------------------
+    //
+    // No `requires`: reading the marketplace is not gated on being able to
+    // post to it. Only creating a listing needs the per-member flag.
+
+    const listingWithDetailsSchema = listingResponseSchema.extend({
+      owner: z.object({ id: z.string(), displayName: z.union([z.string(), z.null()]) }).optional(),
+      details: z.record(z.string(), z.unknown()).optional(),
+    })
+
+    app.get(
+      '/marketplace/listings',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace' },
+        onRequest: app.guard,
+        schema: {
+          /**
+           * `limit` is deliberately UNBOUNDED here and bounded in the handler.
+           *
+           * Not an oversight. Feature 007 Phase 6 deletes this schema, and a
+           * `.max(50)` here would mean `?limit=1000000` answers 400 today and
+           * 200-with-50-items afterwards — a silent behaviour change at the
+           * exact moment nobody is looking at this route. Bounding in
+           * `controller.boundedLimit` makes the two sides of that removal
+           * identical, which is the point of doing it there.
+           */
+          querystring: z.object({
+            category: z.enum(MARKETPLACE_CATEGORIES).optional(),
+            mode: z.enum(MARKETPLACE_MODES).optional(),
+            cursor: z.string().optional(),
+            limit: z.unknown().optional(),
+          }).loose(),
+          response: {
+            200: z.object({
+              items: z.array(listingWithDetailsSchema),
+              nextCursor: z.union([z.string(), z.null()]),
+            }),
+          },
+        },
+      },
+      controller.browse,
+    )
+
+    app.get(
+      '/marketplace/listings/:id',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace' },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string().uuid() }),
+          response: { 200: listingWithDetailsSchema },
+        },
+      },
+      controller.findOne,
     )
 
     // ---- Terms --------------------------------------------------------------
@@ -101,6 +173,95 @@ export default fp(
         schema: { response: { 200: termsSchema } },
       },
       controller.acceptTerms,
+    )
+
+    // ---- Enquiry ------------------------------------------------------------
+    //
+    // Under `/marketplace` because the listing is the resource it acts on and
+    // the guard it needs — the listing must be inquirable. What it produces is
+    // a conversation, which `modules/messaging` owns from then on.
+    //
+    // No `requires: 'marketplace_post'`: contacting a seller is not selling.
+    // Gating it on the posting flag would mean only sellers could buy.
+
+    app.post(
+      '/marketplace/listings/:id/inquire',
+      {
+        config: {
+          auth: { audience: 'member' },
+          budget: 'messaging',
+          rateLimit: app.bucket('messages'),
+        },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string() }),
+          body: z.object({ body: z.string().trim().min(1).max(4000) }),
+          response: {
+            201: z.object({
+              conversationId: z.string(),
+              created: z.boolean(),
+              message: z.object({
+                id: z.string(),
+                conversationId: z.string(),
+                senderId: z.string(),
+                body: z.string(),
+                createdAt: z.union([z.string(), z.date()]),
+              }),
+            }),
+          },
+        },
+      },
+      controller.inquire,
+    )
+
+    // ---- Media --------------------------------------------------------------
+    //
+    // A link, not an upload. `POST /media` did the inspection, the metadata
+    // strip and the derivation; these two routes only say which assets belong
+    // to which listing, and in what order. `requires: 'marketplace_post'`
+    // because attaching media to a listing is part of posting one.
+
+    const mediaLinkSchema = z.object({
+      listingId: z.string(),
+      assetId: z.string(),
+      position: z.number(),
+    })
+
+    app.post(
+      '/marketplace/listings/:id/media',
+      {
+        config: {
+          auth: { audience: 'member', requires: 'marketplace_post' },
+          budget: 'marketplace',
+          rateLimit: app.bucket('write-heavy'),
+        },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string() }),
+          body: z.object({ assetId: z.string() }),
+          response: { 201: mediaLinkSchema },
+        },
+      },
+      controller.attachMedia,
+    )
+
+    app.delete(
+      '/marketplace/listings/:id/media/:assetId',
+      {
+        config: {
+          auth: { audience: 'member', requires: 'marketplace_post' },
+          budget: 'marketplace',
+          rateLimit: app.bucket('write-heavy'),
+        },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string(), assetId: z.string() }),
+          // `deleted` describes the LINK. The bytes are `modules/media`'s to
+          // decide about, and another listing may share the checksum.
+          response: { 200: z.object({ assetId: z.string(), deleted: z.boolean() }) },
+        },
+      },
+      controller.detachMedia,
     )
 
     // ---- Category definitions and the live feature catalogue ----------------
