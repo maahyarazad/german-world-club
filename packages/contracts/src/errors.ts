@@ -50,6 +50,12 @@ export const PROBLEMS = {
   MEMBERSHIP_ENDED: { type: `${BASE}/membership-ended`, title: 'Membership ended', status: 403 },
   PROFILE_INCOMPLETE: { type: `${BASE}/profile-incomplete`, title: 'Profile incomplete', status: 403 },
   APPROVAL_PENDING: { type: `${BASE}/approval-pending`, title: 'Approval pending', status: 403 },
+  /**
+   * Staff reviewed the application and refused it (§6.1). Distinct from
+   * APPROVAL_PENDING because the remedy is the opposite: waiting helps a
+   * pending applicant and changes nothing for a denied one.
+   */
+  APPLICATION_DENIED: { type: `${BASE}/application-denied`, title: 'Application denied', status: 403 },
 
   // --- Authorization --------------------------------------------------------
   INSUFFICIENT_PERMISSION: { type: `${BASE}/insufficient-permission`, title: 'Insufficient permission', status: 403 },
@@ -70,6 +76,14 @@ export const PROBLEMS = {
   NOT_FOUND: { type: `${BASE}/not-found`, title: 'Not found', status: 404 },
   GONE: { type: `${BASE}/gone`, title: 'Gone', status: 410 },
   CONFLICT: { type: `${BASE}/conflict`, title: 'Conflict', status: 409 },
+
+  // --- Events (§4) ----------------------------------------------------------
+  // Three types rather than one CONFLICT, because a client does three
+  // different things: show "sold out", show when registration opens, or show
+  // the registration the member already has.
+  EVENT_FULL: { type: `${BASE}/event-full`, title: 'Event full', status: 409 },
+  REGISTRATION_CLOSED: { type: `${BASE}/registration-closed`, title: 'Registration not open', status: 409 },
+  ALREADY_REGISTERED: { type: `${BASE}/already-registered`, title: 'Already registered', status: 409 },
 
   // --- Quotas vs. rate limits ----------------------------------------------
   // 429 is a transport limit: retry later and it will work.

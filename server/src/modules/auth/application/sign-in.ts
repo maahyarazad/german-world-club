@@ -78,7 +78,55 @@ export async function signIn(
     if (row.status === 'inactive') throw forbidden(PROBLEMS.ACCOUNT_INACTIVE, 'This account is inactive. Reset your password to reactivate it.')
     if (row.status === 'ended') throw forbidden(PROBLEMS.MEMBERSHIP_ENDED, 'This membership has ended.')
 
-    if (row.email_confirmed_at === null) {
+    // ---- Applicants (feature 009) ----------------------------------------
+    // Somebody who registered and is not yet approved. They get a session on
+    // exactly one condition: the face they applied from, with the mobile
+    // number already proven — which is how they resume onboarding after losing
+    // their session. The session then opens /onboarding/* and nothing else
+    // (10-auth), so it cannot reach the portal whichever face it is on.
+    //
+    //   - Applied in the app: that phone only, and by SMS code, as every
+    //     mobile sign-in is.
+    //   - Applied on the web (no device on the application): a browser, by
+    //     password, as every web sign-in is. It falls through to the ordinary
+    //     session below with the email and device checks skipped — those are
+    //     exactly the onboarding steps the session exists to finish.
+    //
+    // A mobile applicant on the web, or a web applicant in the app, gets no
+    // session: approval_pending, as before.
+    const { rows: applications } = await query(
+      app.pg,
+      'SELECT state, device_id FROM membership_applications WHERE member_id = $1',
+      [row.id],
+      { signal },
+    )
+    const application = applications[0]
+    let resumingOnWeb = false
+    if (application && application.state !== 'approved') {
+      const proven = row.mobile_verified_at !== null
+      const onItsDevice = proven && Boolean(deviceId) && deviceId === application.device_id
+      resumingOnWeb = proven && !deviceId && application.device_id === null
+      if (onItsDevice) {
+        const challenge = await issueChallenge(app.pg, {
+          accountId: row.id, accountKind: 'member', deviceId: deviceId!, purpose: 'login', signal,
+        })
+        await app.sendOtp?.({ mobile: row.mobile, code: challenge.code })
+        return {
+          outcome: 'otp_required',
+          challengeId: challenge.challengeId,
+          expiresIn: OTP_TTL_SECONDS,
+          sentTo: maskPhone(row.mobile),
+        }
+      }
+      if (!resumingOnWeb) {
+        if (application.state === 'denied') {
+          throw forbidden(PROBLEMS.APPLICATION_DENIED, 'This membership application was not approved.')
+        }
+        return { outcome: row.email_confirmed_at === null ? 'profile_incomplete' : 'approval_pending' }
+      }
+    }
+
+    if (!resumingOnWeb && row.email_confirmed_at === null) {
       return { outcome: 'profile_incomplete' }
     }
 

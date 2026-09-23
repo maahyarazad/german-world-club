@@ -72,10 +72,15 @@ export default fp(
 
     /** Load the live member row behind a token. */
     async function loadMember(memberId: string, signal?: AbortSignal) {
+      // LEFT JOIN: most members never applied (invited, legacy), and for them
+      // `application_state` is NULL — which gates nothing.
       const { rows } = await query(
         app.pg,
-        `SELECT id, email_confirmed_at, status, display_name, permissions
-           FROM members WHERE id = $1`,
+        `SELECT m.id, m.email_confirmed_at, m.status, m.display_name, m.permissions,
+                a.state AS application_state
+           FROM members m
+           LEFT JOIN membership_applications a ON a.member_id = m.id
+          WHERE m.id = $1`,
         [memberId],
         { signal },
       )
@@ -214,7 +219,7 @@ export default fp(
     /** FR-010, FR-011, FR-012 — state gates, not permissions. */
     async function applyMemberGates(
       request: FastifyRequest,
-      auth: { audience?: string; requires?: string },
+      auth: { audience?: string; requires?: string; onboarding?: boolean },
     ) {
       // As above: principal is set by authenticate() before any gate runs.
       const principal = request.principal!
@@ -224,8 +229,35 @@ export default fp(
       const refusal = STATUS_REFUSAL[String(member.status)]
       if (refusal) throw forbidden(refusal.problem, refusal.detail)
 
+      /**
+       * The onboarding routes (feature 009) are the one place an applicant who
+       * is not yet approved may be. They exist to *finish* the steps the gates
+       * below check, so applying those gates to them would make onboarding
+       * impossible to complete. Status still applies above: a locked account
+       * does not get to finish applying.
+       *
+       * Declared per route as `onboarding: true`, which 11-rbac only accepts on
+       * a member route, so it cannot quietly widen a staff one.
+       */
+      if (auth.onboarding === true) {
+        request.permissions = { kind: 'member', flags: {}, displayName: member.display_name }
+        return
+      }
+
+      // Before the email check, so a denied applicant is told they were denied
+      // rather than asked to confirm an address that no longer matters.
+      if (member.application_state === 'denied') {
+        throw forbidden(PROBLEMS.APPLICATION_DENIED, 'This membership application was not approved.')
+      }
+
       if (member.email_confirmed_at === null) {
         throw forbidden(PROBLEMS.PROFILE_INCOMPLETE, 'Confirm your email address to continue.')
+      }
+
+      // Every face, not only mobile: web has no device, and without this an
+      // applicant whose email is confirmed would reach the portal unreviewed.
+      if (member.application_state === 'pending') {
+        throw forbidden(PROBLEMS.APPROVAL_PENDING, 'This membership application is waiting for approval.')
       }
 
       if (!(await deviceApproved(member.id, principal.deviceId as string | undefined, request.deadlineSignal))) {

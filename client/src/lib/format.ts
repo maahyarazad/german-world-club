@@ -128,3 +128,14 @@ export function formattersFor(locale: Locale = DEFAULT_LOCALE) {
     compare: (a: unknown, b: unknown) => compareText(a, b, locale),
   }
 }
+
+/**
+ * Fill `{name}` placeholders in a catalogue string.
+ *
+ * The catalogues were placeholder-free until onboarding needed to say where a
+ * code was sent. One tiny function rather than an i18n library: named slots
+ * only, no plurals, no formats — the values arrive already formatted.
+ */
+export function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match))
+}

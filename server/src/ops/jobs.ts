@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { Cron } from 'croner'
 import { query } from '../db/query.ts'
+import { deliverDueMail } from '../decorators/mail.ts'
 import type { GwcApp } from '../app.ts'
 
 /**
@@ -59,6 +60,13 @@ export const PLATFORM_JOBS = Object.freeze([
     description: 'Remove push devices unseen for 180 days',
   },
   {
+    name: 'mail.deliver',
+    schedule: '* * * * *',
+    // Every minute: an onboarding email code is waited for by somebody holding
+    // the app open, and the outbox is the only way mail leaves this server.
+    description: 'Send queued mail from the outbox, retrying with backoff',
+  },
+  {
     name: 'marketplace-expiry',
     schedule: '*/5 * * * *',
     // FR-029, data-model.md §7. NOT "every listing past its expiry" — a
@@ -71,6 +79,7 @@ export const PLATFORM_JOBS = Object.freeze([
 /** The work each job does. Separated from the schedule so both stay readable. */
 export function createJobHandlers(app: GwcApp) {
   return {
+    'mail.deliver': async () => deliverDueMail(app),
     'sessions.expire': async () => {
       const { rowCount } = await app.pg.query(
         `UPDATE sessions SET revoked_at = now(), revoked_reason = 'expired'

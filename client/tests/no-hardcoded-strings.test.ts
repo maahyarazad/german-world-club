@@ -14,7 +14,7 @@ import { join } from 'node:path'
  */
 
 const SRC = join(process.cwd(), 'src')
-const SCANNED = ['console', 'auth', 'components/ui']
+const SCANNED = ['console', 'auth', 'components/ui', 'onboarding']
 
 function* sourceFiles(dir: string): Generator<string> {
   let entries: string[]

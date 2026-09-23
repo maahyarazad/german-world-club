@@ -8,7 +8,7 @@ real files here rather than from scratch.
 ## Layers
 
 Every HTTP-facing feature lives under `server/src/modules/<domain>/` (`auth`, `media`, `seo`,
-`organisations`, `push`, `public`) and is split into three files/folders, in the order a request
+`organisations`, `push`, `public`, and since feature 009 `onboarding`, `profile`, `events`, `threads`) and is split into three files/folders, in the order a request
 actually flows through them:
 
 ```text

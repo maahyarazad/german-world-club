@@ -16,6 +16,14 @@ import type { Audience, Flag, Module } from '@gwc/contracts/permissions'
 
 type Json = Record<string, unknown>
 
+/** One outbound email. `subjectKey` makes the idempotency key (integrations/mail.ts). */
+type MailMessage = {
+  to: string
+  template: string
+  subjectKey: string
+  variables?: Record<string, unknown>
+}
+
 /** A rate-limit bucket's declared options, as `app.bucket(name)` returns them. */
 type Bucket = { max: number; timeWindow: number | string; [key: string]: unknown }
 
@@ -55,6 +63,8 @@ declare module 'fastify' {
     permissions: {
       resolve(adminId: string, opts?: { signal?: AbortSignal }): Promise<unknown>
       invalidate?(adminId: string): void
+      /** Drop every cached snapshot — for suites that change grants directly in SQL. */
+      invalidateAll?(): void
     }
     requirePermission(module: Module, flag: Flag): preHandlerHookHandler
     /**
@@ -134,6 +144,14 @@ declare module 'fastify' {
     mediaStorage: unknown
     integrations: Record<string, unknown>
     sendOtp(...args: unknown[]): Promise<unknown>
+    /**
+     * Queue a message for the `mail.deliver` job (decorators/mail.ts). Never
+     * sends inline: mail is in no route's budget. Pass the caller's transaction
+     * client when the mail must exist only if the work it describes commits.
+     */
+    enqueueMail(message: MailMessage, opts?: { client?: PoolClient; signal?: AbortSignal }): Promise<void>
+    /** The password-reset notification; queued like every other mail. */
+    sendResetMail(input: { email: string; token: string }): Promise<void>
 
     // --- SEO caches ---------------------------------------------------------
     invalidateSitemap(): void
@@ -161,6 +179,10 @@ declare module 'fastify' {
       module?: Module
       flag?: Flag
       requires?: string
+      /** Staff routes only: any active staff member, no module (11-rbac). */
+      anyStaff?: true
+      /** Member routes only: an applicant not yet approved may reach it (feature 009). */
+      onboarding?: true
     }
     /** Names the route class whose deadline and outbound budgets apply. */
     budget?: string

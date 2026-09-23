@@ -32,9 +32,9 @@ export const en = {
     forgotPassword: 'Forgotten your password?',
     emailRequired: 'Please enter your email address.',
     passwordRequired: 'Please enter your password.',
-    // There is deliberately no account-creation link. Registration is out of
-    // scope (FR-002) and client/tests/no-registration.test.jsx enforces that
-    // no such affordance creeps back in — in either language.
+    // The way in for someone without an account (feature 009). Staff approval
+    // gates membership, not an invitation — see specs/009-expo-client/spec.md.
+    becomeMember: 'Become a member',
 
     /**
      * POST /auth/sign-in answers with one of five outcomes, and four of them
@@ -50,8 +50,8 @@ export const en = {
 
       profileIncompleteTitle: 'Email address not confirmed',
       profileIncompleteBody:
-        'This account is not fully set up yet. Setup happens in the mobile app; it is not '
-        + 'currently available on the web.',
+        'Your registration was not finished. Register again with the same email address and '
+        + 'password to continue where you left off.',
 
       approvalPendingTitle: 'Approval pending',
       approvalPendingBody:
@@ -63,6 +63,74 @@ export const en = {
 
       unknownTitle: 'Sign-in not completed',
       unknownBody: 'Sign-in could not be completed. Please try again.',
+    },
+  },
+
+  /**
+   * Onboarding, Phase 1 (feature 009): the same five steps as the mobile app.
+   * `{target}` and `{length}` are filled by `fill()` in lib/format.
+   */
+  onboarding: {
+    stepOf: 'Step {step} of 4',
+    detailsTitle: 'Become a member',
+    detailsSubtitle: 'Tell us who you are. You get access once our team has reviewed your application.',
+    fullName: 'Full name',
+    email: 'Email address',
+    password: 'Password',
+    passwordHint: 'At least 8 characters.',
+    mobile: 'Mobile number',
+    mobileHint: 'International format, e.g. +49 151 12345678',
+    birthday: 'Birthday',
+    gender: 'Gender',
+    genders: {
+      female: 'Female',
+      male: 'Male',
+      diverse: 'Diverse',
+      prefer_not_to_say: 'Prefer not to say',
+    },
+    countryTitle: 'Where do you live?',
+    countrySubtitle: 'Choose your primary country of residence.',
+    country: 'Country of residence',
+    countryPinned: 'Frequently chosen',
+    countryAll: 'All countries',
+    countryPlaceholder: 'Please choose',
+    back: 'Back',
+    continue: 'Continue',
+    submit: 'Submit',
+    submitting: 'Submitting …',
+    haveAccount: 'Already have an account? Sign in',
+    mobileTitle: 'Verify your mobile number',
+    mobileSubtitle: 'We sent a 4-digit code by SMS to {target}.',
+    code: 'Code',
+    verify: 'Verify',
+    verifying: 'Checking …',
+    resend: 'Send a new code',
+    resent: 'A new code is on its way.',
+    missingChallengeTitle: 'Registration interrupted',
+    missingChallengeBody:
+      'This page was reloaded before the code was entered. Start the registration again with the '
+      + 'same details — you will continue where you left off.',
+    restart: 'Continue registration',
+    emailTitle: 'Verify your email address',
+    emailSubtitle: 'We sent a 6-digit code to {target}.',
+    emailSending: 'Sending the code …',
+    waitingTitle: 'Waiting for approval',
+    waitingBody:
+      'Thank you! Our team is reviewing your application. You will receive an email as soon as it is decided.',
+    check: 'Check again',
+    deniedTitle: 'Application not approved',
+    deniedBody: 'We are sorry — your membership application was not approved.',
+    reason: 'Reason',
+    signOut: 'Sign out',
+    errors: {
+      fullName: 'Please enter your full name.',
+      email: 'Please enter a valid email address.',
+      password: 'The password must be at least 8 characters long.',
+      mobile: 'Use international format, starting with +.',
+      birthday: 'Please enter a real date in the past.',
+      gender: 'Please choose one.',
+      country: 'Please choose a country.',
+      code: 'Enter all {length} digits.',
     },
   },
 

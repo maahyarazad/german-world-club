@@ -128,6 +128,50 @@ register(PROBLEMS.MEMBERSHIP_ENDED, {
   retry: RETRY.NEVER,
 })
 
+// --- Onboarding (feature 009) ------------------------------------------------
+//
+// The account exists and the credential is valid; what stands in the way is a
+// step of the application. None of them is solved by signing in again, so none
+// is REAUTHENTICATE — the capability layer routes these to the application
+// screen instead of the sign-in screen.
+
+register(PROBLEMS.APPROVAL_PENDING, {
+  de: { title: 'Freigabe ausstehend', body: 'Ihr Mitgliedsantrag wird noch vom GWC-Team geprüft.' },
+  en: { title: 'Approval pending', body: 'Your membership application is still being reviewed by the GWC team.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.PROFILE_INCOMPLETE, {
+  de: { title: 'E-Mail-Adresse nicht bestätigt', body: 'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.' },
+  en: { title: 'Email address not confirmed', body: 'Please confirm your email address first.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.APPLICATION_DENIED, {
+  de: { title: 'Antrag nicht angenommen', body: 'Ihr Mitgliedsantrag wurde nicht angenommen.' },
+  en: { title: 'Application not approved', body: 'Your membership application was not approved.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.INVALID_OTP, {
+  de: { title: 'Code nicht korrekt', body: 'Der eingegebene Code stimmt nicht. Bitte prüfen Sie ihn.' },
+  en: { title: 'Incorrect code', body: 'That code is not correct. Please check it.' },
+  retry: RETRY.IMMEDIATE,
+})
+
+register(PROBLEMS.OTP_EXPIRED, {
+  de: { title: 'Code abgelaufen', body: 'Dieser Code ist abgelaufen. Bitte fordern Sie einen neuen an.' },
+  en: { title: 'Code expired', body: 'This code has expired. Please request a new one.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.OTP_ATTEMPTS_EXCEEDED, {
+  de: { title: 'Zu viele Versuche', body: 'Dieser Code ist gesperrt. Bitte fordern Sie einen neuen an.' },
+  en: { title: 'Too many attempts', body: 'This code is locked. Please request a new one.' },
+  // Not AFTER_WAIT: waiting does not unlock the challenge; a new code does.
+  retry: RETRY.NEVER,
+})
+
 // --- Authorization ----------------------------------------------------------
 
 register(PROBLEMS.INSUFFICIENT_PERMISSION, {

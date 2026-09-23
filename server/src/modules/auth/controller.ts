@@ -1,4 +1,4 @@
-import { COOKIES, ACCESS_TOKEN_TTL_SECONDS, REFRESH_TTL_DAYS } from '@gwc/contracts/auth'
+import { COOKIES } from '@gwc/contracts/auth'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { forbidden } from '../../authz/require-permission.ts'
 import { signIn } from './application/sign-in.ts'
@@ -10,6 +10,7 @@ import { requestPasswordReset } from './application/request-password-reset.ts'
 import { confirmPasswordReset } from './application/confirm-password-reset.ts'
 import { loadMe } from './application/me.ts'
 import { loadSession } from './application/session.ts'
+import { setAuthCookies, clearAuthCookies } from './cookies.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../../app.ts'
 
@@ -18,26 +19,6 @@ const NO_STORE = 'private, no-store'
 
 /** A member signing in from a device is on mobile; anyone else is a browser. */
 const faceFor = (body) => (body?.deviceId ? 'mobile' : 'web')
-
-function setAuthCookies(reply: FastifyReply, { accessToken, refreshToken, secure }) {
-  reply.setCookie(COOKIES.access, accessToken, {
-    httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: ACCESS_TOKEN_TTL_SECONDS,
-  })
-  if (refreshToken) {
-    // Scoped to the one path that consumes it, and SameSite=Strict: a refresh
-    // token is the credential that outlives the browser session, so it
-    // travels as narrowly as possible.
-    reply.setCookie(COOKIES.refresh, refreshToken, {
-      httpOnly: true, secure, sameSite: 'strict', path: '/auth/refresh',
-      maxAge: REFRESH_TTL_DAYS.web * 86_400,
-    })
-  }
-}
-
-function clearAuthCookies(reply: FastifyReply) {
-  reply.clearCookie(COOKIES.access, { path: '/' })
-  reply.clearCookie(COOKIES.refresh, { path: '/auth/refresh' })
-}
 
 /**
  * Every handler here does the same three things and nothing else: pull plain
@@ -111,7 +92,9 @@ export function createAuthController(app: GwcApp) {
         reply.header('retry-after', String(result.retryAfter))
         throw forbidden(PROBLEMS.RATE_LIMITED, `Wait ${result.retryAfter}s before requesting another code.`)
       }
-      return reply.code(202).send({ resent: result.resent, cooldownSeconds: result.cooldownSeconds })
+      return reply.code(202).send({
+        resent: result.resent, cooldownSeconds: result.cooldownSeconds, challengeId: result.challengeId,
+      })
     },
 
     refresh: async (request: FastifyRequest, reply: FastifyReply) => {

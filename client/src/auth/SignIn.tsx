@@ -24,24 +24,28 @@ import { useLocale, useTranslations } from '../i18n/index'
  *
  *   authenticated            → a session exists; go to the console
  *   password_reset_required  → legacy or unusable credential; reset is the only way in
- *   profile_incomplete       → email unconfirmed; setup happens in the app
- *   approval_pending         → device awaiting staff approval
+ *   profile_incomplete       → a registration left unfinished; registering
+ *                              again with the same details resumes it
+ *   approval_pending         → an application or a device awaiting staff approval
  *   otp_required             → second factor needed
  *
  * A client that treated 200 as success would, for the second of those, send the
  * user to a console that can never load — on every attempt, forever. So the
  * outcome is switched on explicitly and each one gets its own next step.
  *
- * The last two are unreachable from a browser: the server only takes those
- * branches when the request carries a `deviceId`, which is what makes it the
- * mobile face, and this screen never sends one. They are handled anyway rather
- * than falling through to a generic error — see
- * server/tests/auth/console-sign-in.test.js, which pins that behaviour so this
- * comment cannot quietly become untrue.
+ * `otp_required` is unreachable from a browser: the server only asks for a
+ * second factor when the request carries a `deviceId`, which marks the mobile
+ * face, and this screen never sends one. `approval_pending` IS reachable since
+ * feature 009 — somebody who applied in the app and signs in here before
+ * approval. Both are handled rather than falling through to a generic error
+ * (server/tests/auth/console-sign-in.test.ts and
+ * server/tests/onboarding/web.test.ts pin what the browser face can get).
  *
- * There is deliberately no account-creation link. Registration is unfinished
- * and out of scope (FR-002); tests/no-registration.test.jsx is the standing
- * check that one does not reappear.
+ * Since feature 009 the screen also offers the way in for somebody without an
+ * account: registration, gated by staff approval rather than an invitation
+ * (specs/009-expo-client/spec.md). An applicant who signs in here mid-way is
+ * given a session only if they applied on the web, and the console routes
+ * them to their application rather than to a portal they cannot use yet.
  */
 export type SignInProps = {
   onSignedIn?: (snapshot: Snapshot | null) => void
@@ -106,9 +110,14 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
       title={t.signIn.title}
       subtitle={t.signIn.subtitle}
       footer={
-        <a href="/konsole/passwort" className="text-navy underline underline-offset-2">
-          {t.signIn.forgotPassword}
-        </a>
+        <div className="flex flex-wrap justify-between gap-2">
+          <a href="/konsole/passwort" className="text-navy underline underline-offset-2">
+            {t.signIn.forgotPassword}
+          </a>
+          <a href="/konsole/registrieren" className="font-semibold text-navy underline underline-offset-2">
+            {t.signIn.becomeMember}
+          </a>
+        </div>
       }
     >
       <form onSubmit={submit} className="mt-6 flex flex-col gap-4" noValidate>

@@ -127,7 +127,11 @@ export default fp(
     app.post(
       '/auth/sign-out',
       {
-        config: { auth: { audience: 'member' }, budget: 'auth' },
+        // `onboarding: true`: signing out must work for anyone holding a
+        // session, applicants included. The same rule as staff sign-out's
+        // `anyStaff` — a gate somebody else controls must never be what keeps
+        // you signed in.
+        config: { auth: { audience: 'member', onboarding: true }, budget: 'auth' },
         onRequest: app.authenticate,
         schema: { response: { 204: z.null() } },
       },

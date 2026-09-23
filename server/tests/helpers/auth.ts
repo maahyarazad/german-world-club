@@ -36,6 +36,11 @@ export async function resetAuthTables(pool: Pool) {
   await pool.query(`
     TRUNCATE marketplace_listings, conversations, marketplace_terms_acceptances
              RESTART IDENTITY CASCADE`)
+  // Feature 009's member-referencing tables, for the same reason.
+  await pool.query(`
+    TRUNCATE membership_applications, thread_posts, thread_likes, thread_reposts,
+             member_follows, thread_reports, event_registrations, mail_outbox
+             RESTART IDENTITY CASCADE`)
   // admin_users guards the last active superadmin (§11). A suite that made one
   // *is* the last one in a clean test database, so tearing it down trips the
   // trigger. Suspend it for the teardown only — the rule stays armed for every
