@@ -1,25 +1,70 @@
 {
-  "cli": {
-    "version": ">= 16.0.0",
-    "appVersionSource": "remote"
-  },
-  "build": {
-    "base": {
-      "node": "22.23.2"
+    "cli": {
+        "version": ">= 16.0.0",
+        "appVersionSource": "remote"
     },
-    "preview": {
-      "extends": "base",
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
+    "build": {
+        "base": {
+            "node": "22.23.2"
+        },
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal",
+            "channel": "development",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000/",
+                "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",
+                // "EXPO_PUBLIC_RECAPTCHA_V3_SITE_KEY": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_ANDROID": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_IOS": "",
+                "EXPO_PUBLIC_DEV": "true"
+            }
+        },
+        "preview": {
+            "distribution": "internal",
+            "channel": "preview",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000/",
+                "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",
+                // "EXPO_PUBLIC_RECAPTCHA_V3_SITE_KEY": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_ANDROID": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_IOS": "",
+                "EXPO_PUBLIC_DEV": "false"
+            }
+        },
+        "production": {
+            "autoIncrement": true,
+            "channel": "production",
+            "android": {
+                "buildType": "app-bundle"
+            },
+            "env": {
+                "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000/",
+                "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",
+                // "EXPO_PUBLIC_RECAPTCHA_V3_SITE_KEY": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_ANDROID": "",
+                // "EXPO_PUBLIC_RECAPTCHA_SITE_KEY_IOS": "",
+                "EXPO_PUBLIC_DEV": "false"
+            }
+        }
     },
-    "production": {
-      "extends": "base",
-      "autoIncrement": true
+    "submit": {
+        "production": {
+            "ios": {
+                "ascAppId": "6815216930"
+            }
+        }
     }
-  },
-  "submit": {
-    "production": {}
-  }
 }

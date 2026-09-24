@@ -20,7 +20,7 @@
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.buenapublica.germanworldclub"
+      "package": "com.germanworldclub.app"
     },
     "web": {
       "output": "static",
@@ -58,6 +58,12 @@
         "projectId": "c2fa644f-85a8-47fe-9294-1c45d2eef904"
       }
     },
-    "owner": "buenapublica"
+    "owner": "buenapublica",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c2fa644f-85a8-47fe-9294-1c45d2eef904"
+    }
   }
 }
