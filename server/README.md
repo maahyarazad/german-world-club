@@ -75,7 +75,8 @@ prevents boot; it never degrades behaviour silently.
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | always | |
-| `REDIS_URL` | production | Without it, rate limits are per-process and the session denylist is unavailable — meaning N instances grant N× every limit |
+| `REDIS_ENABLED` | production (`true`) | Default `false`: no Redis client is registered, rate limits are per-process and the session denylist is in-memory — meaning N instances grant N× every limit. Production refuses `false` |
+| `REDIS_URL` | production, or whenever `REDIS_ENABLED=true` | Ignored while `REDIS_ENABLED=false` |
 | `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | production | EdDSA. `npm run keys:generate` |
 | `CANONICAL_ORIGIN`, `TRUST_PROXY` | production | See above |
 | `SMSGLOBAL_API_KEY` / `_API_SECRET` / `_ORIGIN` | to send OTPs | Without them OTP sends are **refused loudly**, never skipped — a second factor that quietly does not send is not a second factor |

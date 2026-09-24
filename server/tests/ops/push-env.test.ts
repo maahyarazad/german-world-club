@@ -10,6 +10,7 @@ const base = {
   DATABASE_URL: 'postgres://localhost/x',
   CANONICAL_ORIGIN: 'https://example.test',
   TRUST_PROXY: '1',
+  REDIS_ENABLED: 'true',
   REDIS_URL: 'redis://localhost',
   JWT_PRIVATE_KEY: 'k',
   JWT_PUBLIC_KEY: 'k',

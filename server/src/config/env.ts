@@ -32,6 +32,13 @@ const schema = z
     LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    // Off by default: the redis plugin then registers no client and falls back
+    // to per-process rate limits and an in-memory session denylist. The flag,
+    // not the presence of REDIS_URL, decides — so a URL left in .env does not
+    // quietly turn Redis on. Production refuses `false` (below).
+    // A boolean default, not 'false': zod 4 returns a default as the *output*
+    // without running the transform, and the string 'false' is truthy.
+    REDIS_ENABLED: bool.default(false),
     REDIS_URL: z.string().min(1).optional(),
 
     JWT_PRIVATE_KEY: z.string().optional(),
@@ -106,6 +113,16 @@ const schema = z
         })
       }
     }
+    // 07-rate-limit would refuse too, but only after half the app has booted;
+    // saying it here names the variable. Across N instances the fallbacks grant
+    // N× every rate limit and let a revoked session live out its access token.
+    if (!v.REDIS_ENABLED) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REDIS_ENABLED'],
+        message: 'REDIS_ENABLED must be "true" in production: without Redis, rate limits and session revocation are per-instance',
+      })
+    }
   })
   /**
    * Push credentials (feature 011, research R8, FR-030).
@@ -138,6 +155,12 @@ const schema = z
         })
       }
     }
+  })
+  // Enabled with nowhere to connect is a typo, not a choice — refused in every
+  // environment rather than silently running on the in-memory fallbacks.
+  .refine((v) => !v.REDIS_ENABLED || v.REDIS_URL !== undefined, {
+    message: 'REDIS_URL must be set when REDIS_ENABLED is "true"',
+    path: ['REDIS_URL'],
   })
   // connectionTimeout must outlast requestTimeout, or the socket closes before
   // the request-level timeout can produce its 408.

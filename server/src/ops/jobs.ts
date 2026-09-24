@@ -128,7 +128,7 @@ export function createJobHandlers(app: GwcApp) {
 
     'denylist.prune': async () => {
       // Redis expires its own keys through SETEX, so this only matters for the
-      // in-memory fallback used when REDIS_URL is unset.
+      // in-memory fallback used when REDIS_ENABLED is false.
       const pruned = await app.denylist?.prune?.()
       return { itemsProcessed: pruned ?? 0 }
     },

@@ -10,14 +10,19 @@ import type { GwcApp } from '../app.ts'
  * development a single process makes per-instance limits equivalent to
  * distributed ones; in a deployed environment they are NOT, which is why
  * REDIS_URL is required in production.
+ *
+ * REDIS_ENABLED gates only the *client*: this plugin itself is always
+ * registered, because 07-rate-limit, 10-auth and ops/health declare `redis` as
+ * a dependency and read the decorators below. Disabled, they get `redis: null`
+ * and the same `withRedis` shape, and take their in-memory fallbacks.
  */
 export default fp(
   async function redis(app: GwcApp, opts) {
     const { env } = opts
-    if (!env.REDIS_URL) {
-      app.log.warn('REDIS_URL unset — rate limits are per-process and the session denylist is unavailable')
+    if (!env.REDIS_ENABLED) {
+      app.log.warn('REDIS_ENABLED=false — rate limits are per-process and the session denylist is in-memory')
       app.decorate('redis', null)
-      app.decorate('redisHealthy', async () => ({ ok: true, skipped: 'not configured' }))
+      app.decorate('redisHealthy', async () => ({ ok: true, skipped: 'disabled' }))
       // Same shape whether Redis is configured or not, so no caller has to ask.
       app.decorate('withRedis', async (_fn, fallback) =>
         typeof fallback === 'function' ? fallback() : fallback,
