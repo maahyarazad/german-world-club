@@ -55,6 +55,37 @@ export const assetSchema = z.object({
   variants: z.array(variantSchema),
 })
 
+/**
+ * A delivered media item, as it appears inside another resource — a thread
+ * post, an avatar, an organisation logo (feature 010).
+ *
+ * Derivatives only: nothing here can name the original, and there is no
+ * `storage_key` or checksum to build one from. Dimensions are the SOURCE's, so
+ * a client can reserve the right box before any variant loads (§10.9).
+ *
+ * `posterUrl` is kept apart from `variants`, the marketplace's rule (FR-040):
+ * a feed renders a video by its poster, so it can neither autoplay nor wait on
+ * a transcode, and a client cannot pick the poster up by accident as a video.
+ */
+export const mediaItemSchema = z.object({
+  assetId: z.string().uuid(),
+  kind: z.enum(ASSET_KINDS),
+  alt: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  durationMs: z.number().int().positive().nullable(),
+  variants: z.array(z.object({
+    variant: z.enum(VARIANTS),
+    format: z.enum(FORMATS),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    url: z.string(),
+  })),
+  posterUrl: z.string().nullable(),
+})
+
+export type MediaItem = z.infer<typeof mediaItemSchema>
+
 /** 201 for an image (every variant present), 202 for a queued video. */
 export const uploadAcceptedSchema = assetSchema
 

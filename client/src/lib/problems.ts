@@ -239,6 +239,22 @@ register(PROBLEMS.RATE_LIMITED, {
   retry: RETRY.AFTER_WAIT,
 })
 
+// --- Profiles and threads (feature 010) ---------------------------------------
+
+register(PROBLEMS.HANDLE_REQUIRED, {
+  de: { title: 'Benutzername erforderlich', body: 'Wählen Sie einen Benutzernamen, bevor Sie posten.' },
+  en: { title: 'Username required', body: 'Choose a username before you post.' },
+  // Not a dead end: the composer opens the username dialog on this type, and
+  // the same post goes through once one is chosen.
+  retry: RETRY.IMMEDIATE,
+})
+
+register(PROBLEMS.HANDLE_CHANGE_TOO_SOON, {
+  de: { title: 'Benutzername kürzlich geändert', body: 'Ein Benutzername kann nur alle 30 Tage geändert werden.' },
+  en: { title: 'Username changed recently', body: 'A username can only be changed once every 30 days.' },
+  retry: RETRY.NEVER,
+})
+
 register(PROBLEMS.QUOTA_EXCEEDED, {
   de: { title: 'Kontingent erreicht', body: 'Das Kontingent für diesen Vorgang ist erschöpft. Ein erneuter Versuch ändert daran nichts.' },
   en: { title: 'Quota reached', body: 'The quota for this operation is exhausted. Trying again will not change that.' },

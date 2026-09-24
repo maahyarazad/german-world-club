@@ -210,6 +210,29 @@ must not turn an ownership-route `22P02` into anything other than the same 404
 an absent id gets. Keep 36's plain-object check. 37, 38, 41 and 42 need no
 action beyond not deleting what they depend on.
 
+
+### 4f. Threads and profiles (added by feature 010) — recommend PRESERVE
+
+Feature 010 re-checks most of its rules by hand in `application/`, precisely so
+Phase 6 can delete the schemas (specs/010-threads-profile/data-model.md §7). What
+the table records is what is left once the schema is gone: which rules already
+survive, and the few that do not.
+
+| # | Rule | Source | Backstop after Phase 6 | What is lost |
+|---|---|---|---|---|
+| 46 | Post body ≤ 500, body-or-media, ≤ 10 media, no duplicate asset, not both `replyToId` and `quoteOfId` | `createPostRequestSchema` (`@gwc/contracts/threads`) | **Survives** — every rule is re-checked in `threads/application/compose.ts`; CHECKs `thread_posts_body_length`, `thread_post_media_position`, `thread_posts_reply_or_quote` and the deferred `thread_posts_has_content` trigger behind it | Nothing, provided `compose.ts`'s checks stay (it already guards a non-array `media`). |
+| 47 | Handle format `^[a-z0-9._]{3,30}$`, no leading/trailing dot, lowercased | `setHandleRequestSchema` | **Survives** — `handle.ts` normalises and tests `HANDLE_PATTERN`; CHECK `members_handle_format` | Nothing. |
+| 48 | Profile links: ≤ 3, `https://` only, ≤ 200 chars, label ≤ 40 | `setLinksRequestSchema` | **Survives** in `profile.ts#setLinks`; CHECKs on `member_links` | Nothing (`setLinks` already refuses a non-array). |
+| 49 | Organisation profile: name 1–120, about ≤ 1000, website https ≤ 200, city ≤ 120 | `updateOrganisationProfileRequestSchema` | **Survives** in `organisation.ts`; CHECKs on `organisation_profiles` | Nothing. |
+| 50 | Designation reason 3–2000 | `designationReasonSchema` | **Survives** in `designations.ts#checkReason`; CHECK on `grant_reason` | Nothing. |
+| 51 | `tab` ∈ threads/replies/media/reposts | `PROFILE_TABS` enum on `/threads/members/:id/posts` | **Survives** — `loadMemberPosts` falls back to `threads` for an unknown tab | An unknown tab is answered as `threads` instead of 400. |
+| 52 | `markSeen.upTo` is an ISO datetime | `markSeenRequestSchema` | `::timestamptz` cast | 400 becomes 500 (`22007`/`22P02`). |
+| 53 | `:id` / `:handle` / `:slug` params: uuid, ≤ 31, ≤ 200 | `threads/routes.ts`, `profile/routes.ts` | None for `:id` | **404 becomes 500** on a malformed uuid — the same class as rule 43, and it breaks the "indistinguishable from absent" guarantee the same way. |
+
+**Recommended Phase 6 disposition:** 46–51 need nothing beyond keeping the hand
+checks already in `application/`. 52 and 53 are fixed by the same
+`22P02`→404/400 mapping 4e recommends.
+
 ---
 
 ## 5. Server-side shapes

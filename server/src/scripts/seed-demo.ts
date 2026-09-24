@@ -91,6 +91,7 @@ try {
   const { seedOperations } = await import('../seed/operations.ts')
   const { seedVehicleFeatures } = await import('../seed/vehicle-features.ts')
   const { seedMarketplace } = await import('../seed/marketplace.ts')
+  const { seedThreads } = await import('../seed/threads.ts')
   const { CREDENTIALS, renderCredentials, writeCredentials } = await import('../seed/credentials.ts')
 
   // One hash per distinct password, before anything inserts (research R5).
@@ -110,6 +111,10 @@ try {
   // hide needs a moderator, and the expiry history joins job_runs alongside
   // the runs operations.ts writes.
   counts.listings = await seedMarketplace(pool, faker, options)
+  // After members, staff and organisations: posts need authors, the
+  // influencer grant needs staff who hold members.write, and organisation
+  // profiles need organisations.
+  counts.threads = await seedThreads(pool, faker, options)
 
   if (!options.quiet) {
     for (const [group, result] of Object.entries(counts)) {

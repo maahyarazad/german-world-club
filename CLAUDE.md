@@ -43,6 +43,8 @@ npm run -w server seed:dev     # a published page and an asset with variants
 npm run -w server seed:demo    # the full demo population, with a credentials table
 npm run -w server test         # vitest; SQL suites skip loudly without a DB
 npm run -w server verify:seo   # crawl the real sitemap, exit non-zero on problems
+npm run -w server seed:perf    # 5k members / 50k posts for measuring (dev only)
+npm run -w server bench:feed   # p95 of the Threads hot paths vs their budgets
 npm test                       # every workspace
 ```
 
@@ -255,6 +257,39 @@ registration (a timestamp, never a DELETE) holds no seat.
 **Threads are never edited, by anyone.** The `thread_posts` trigger refuses a
 changed body and makes `removed`/`deleted` final. Hidden, removed, deleted,
 locked-author and absent posts all answer the same 404.
+
+**Threads and profiles, completed (feature 010, `specs/010-threads-profile/`).**
+Five things that look optional and are not:
+
+- **Media is attached only in the transaction that creates the post.** The
+  `thread_post_media` insert trigger compares the post row's `xmin` to the
+  current transaction, and UPDATE/DELETE are refused outright. There is no
+  attach endpoint on purpose: posts are immutable, so attaching later would be
+  an edit. `compose.ts` is the one write path; a seeder must insert a post and
+  its media in one transaction too (and never inside a SAVEPOINT).
+- **`VISIBLE_POST` in `threads/application/threads.ts` is the single
+  visibility rule** — state, author visibility and blocks in both directions.
+  Quotes, replies, profile tabs, Activity and mention resolution all use it; a
+  second copy is how a hidden post comes back through a side door.
+  `AUTHOR_COLUMNS` is likewise the only place member columns are selected for
+  Threads, and `tests/ops/no-pii-in-social.test.ts` scans every route for
+  contact details, legal names, fee tiers and storage keys.
+- **A quote of a post that is no longer visible is a tombstone,
+  `{ unavailable: true }`, never a snapshot.** Nothing of the quoted post is
+  sent.
+- **Activity is computed on read** from likes, posts, reposts, mentions and
+  follows; only `member_activity_cursor` is stored, and it only moves forward.
+  No `notifications` table until real-time transport exists.
+- **`organisation_profiles` is the only member-visible projection of an
+  organisation.** `organisations` holds contract data (`legal_name`,
+  `fee_tier`); no member route reads it. Organisation users upload logos at
+  `POST /media/{merchant,partner}` — one route per audience, same pipeline.
+
+Influencers are members with a row in `member_designations` (staff-granted,
+audited, never deleted), not a fifth audience. A handle is required to post
+(`403 handle-required`) and changes at most every 30 days; ended members keep
+theirs. The avatar lives in `member_avatars`, not on `members`, so the media
+test reset's `TRUNCATE assets … CASCADE` cannot reach the members table.
 
 ## Conventions
 

@@ -1,6 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { query } from '../../../db/query.ts'
 import { forbidden as refuse } from '../../../authz/require-permission.ts'
+import { loadMediaItems } from '../../media/application/media-items.ts'
 import type { GwcApp } from '../../../app.ts'
 
 /**
@@ -24,10 +25,17 @@ const TRANSITIONS: Record<Transition['action'], Transition> = {
   remove: { action: 'remove', from: ['visible', 'hidden'], to: 'removed' },
 }
 
+/**
+ * A post as staff see it: whatever its state, with its media and the post it
+ * quotes (feature 010, US7). Staff must see what they are judging — a hidden
+ * post's photos included — so nothing here applies the member visibility
+ * rule. The quoted post is shown one level deep, with its own state, so a
+ * moderator can tell a quote of a removed post from a quote of a live one.
+ */
 export async function getPostForStaff(app: GwcApp, { postId, signal }: { postId: string; signal?: AbortSignal }) {
   const { rows } = await query(
     app.pg,
-    `SELECT p.id, p.author_id, m.display_name AS author_name, p.body, p.reply_to_id, p.state,
+    `SELECT p.id, p.author_id, m.display_name AS author_name, p.body, p.reply_to_id, p.quote_of_id, p.state,
             p.state_reason, p.state_changed_at, p.created_at
        FROM thread_posts p JOIN members m ON m.id = p.author_id
       WHERE p.id = $1`,
@@ -36,7 +44,36 @@ export async function getPostForStaff(app: GwcApp, { postId, signal }: { postId:
   )
   const row = rows[0]
   if (!row) throw refuse(PROBLEMS.NOT_FOUND, 'No such post.')
-  return toStaffPost(row)
+  let quoted: Record<string, any> | null = null
+  if (row.quote_of_id) {
+    const { rows: q } = await query(
+      app.pg,
+      `SELECT p.id, p.author_id, m.display_name AS author_name, p.body, p.reply_to_id, p.quote_of_id, p.state,
+              p.state_reason, p.state_changed_at, p.created_at
+         FROM thread_posts p JOIN members m ON m.id = p.author_id
+        WHERE p.id = $1`,
+      [row.quote_of_id],
+      { signal },
+    )
+    quoted = q[0] ?? null
+  }
+  const ids = [row.id, quoted?.id].filter(Boolean)
+  const { rows: mediaRows } = await query(
+    app.pg,
+    'SELECT post_id, asset_id FROM thread_post_media WHERE post_id = ANY($1::uuid[]) ORDER BY post_id, position',
+    [ids],
+    { signal },
+  )
+  const media = await loadMediaItems(app.pg, mediaRows.map((r) => String(r.asset_id)))
+  const mediaOf = (id: string) => mediaRows
+    .filter((r) => String(r.post_id) === id)
+    .map((r) => media.get(String(r.asset_id)))
+    .filter((m) => m !== undefined)
+  return {
+    ...toStaffPost(row),
+    media: mediaOf(String(row.id)),
+    quoted: quoted ? { ...toStaffPost(quoted), media: mediaOf(String(quoted.id)) } : null,
+  }
 }
 
 function toStaffPost(row: Record<string, any>) {
@@ -46,6 +83,7 @@ function toStaffPost(row: Record<string, any>) {
     authorDisplayName: row.author_name ?? null,
     body: String(row.body),
     replyToId: row.reply_to_id ? String(row.reply_to_id) : null,
+    quoteOfId: row.quote_of_id ? String(row.quote_of_id) : null,
     state: String(row.state),
     stateReason: row.state_reason ?? null,
     stateChangedAt: iso(row.state_changed_at)!,

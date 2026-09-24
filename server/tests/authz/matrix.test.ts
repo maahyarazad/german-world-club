@@ -75,6 +75,9 @@ const ROUTE_CLASSES = [
   // partner page references — while ingest and management are member-gated.
   { name: 'media variant', url: '/media/:checksum/:variant.:ext', probe: '/media/deadbeef/medium.webp', method: 'GET', audience: 'public' },
   { name: 'media upload', url: '/media', method: 'POST', audience: 'member' },
+  // Organisation logos (010): the same pipeline, one route per audience.
+  { name: 'media upload (merchant)', url: '/media/merchant', method: 'POST', audience: 'merchant' },
+  { name: 'media upload (partner)', url: '/media/partner', method: 'POST', audience: 'partner' },
   { name: 'media read', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'media delete', url: '/media/:id', probe: `/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   // Push: devices belong to the member holding them; broadcasting to every
@@ -152,6 +155,20 @@ const ROUTE_CLASSES = [
   { name: 'member public profile', url: '/profile/members/:id', probe: `/profile/members/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'merchant profile', url: '/profile/merchant', method: 'GET', audience: 'merchant' },
   { name: 'partner profile', url: '/profile/partner', method: 'GET', audience: 'partner' },
+  // Feature 010: handle, avatar, links, lookups and the organisation public face.
+  { name: 'set handle', url: '/profile/me/handle', method: 'PUT', audience: 'member' },
+  { name: 'handle available', url: '/profile/handles/:handle/available', probe: '/profile/handles/someone/available', method: 'GET', audience: 'member' },
+  { name: 'profile by handle', url: '/profile/handles/:handle', probe: '/profile/handles/someone', method: 'GET', audience: 'member' },
+  { name: 'set avatar', url: '/profile/me/avatar', method: 'PUT', audience: 'member' },
+  { name: 'set links', url: '/profile/me/links', method: 'PUT', audience: 'member' },
+  { name: 'organisation public profile', url: '/profile/organisations/:slug', probe: '/profile/organisations/some-slug', method: 'GET', audience: 'member' },
+  { name: 'merchant edit public profile', url: '/profile/merchant/public', method: 'PATCH', audience: 'merchant' },
+  { name: 'partner edit public profile', url: '/profile/partner/public', method: 'PATCH', audience: 'partner' },
+  // Influencer designation, on the existing members module.
+  { name: 'member by handle (staff)', url: '/admin/members/by-handle/:handle', probe: '/admin/members/by-handle/someone', method: 'GET', audience: 'staff', module: 'members', flag: 'read' },
+  { name: 'designation history', url: '/admin/members/:id/designations', probe: `/admin/members/${randomUUID()}/designations`, method: 'GET', audience: 'staff', module: 'members', flag: 'read' },
+  { name: 'grant influencer', url: '/admin/members/:id/designations/influencer', probe: `/admin/members/${randomUUID()}/designations/influencer`, method: 'POST', audience: 'staff', module: 'members', flag: 'write' },
+  { name: 'revoke influencer', url: '/admin/members/:id/designations/influencer', probe: `/admin/members/${randomUUID()}/designations/influencer`, method: 'DELETE', audience: 'staff', module: 'members', flag: 'write' },
 
   // --- Member events (009) ---------------------------------------------------
   // Under /member, never /events: that prefix is the public, indexed page.
@@ -174,6 +191,20 @@ const ROUTE_CLASSES = [
   { name: 'threads report', url: '/threads/posts/:id/report', probe: `/threads/posts/${randomUUID()}/report`, method: 'POST', audience: 'member' },
   { name: 'threads follow', url: '/threads/follows/:id', probe: `/threads/follows/${randomUUID()}`, method: 'PUT', audience: 'member' },
   { name: 'threads unfollow', url: '/threads/follows/:id', probe: `/threads/follows/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  // Feature 010: quotes, likers, the follow graph, Activity, blocks and mutes.
+  { name: 'threads quotes', url: '/threads/posts/:id/quotes', probe: `/threads/posts/${randomUUID()}/quotes`, method: 'GET', audience: 'member' },
+  { name: 'threads likers', url: '/threads/posts/:id/likes', probe: `/threads/posts/${randomUUID()}/likes`, method: 'GET', audience: 'member' },
+  { name: 'threads followers', url: '/threads/members/:id/followers', probe: `/threads/members/${randomUUID()}/followers`, method: 'GET', audience: 'member' },
+  { name: 'threads following', url: '/threads/members/:id/following', probe: `/threads/members/${randomUUID()}/following`, method: 'GET', audience: 'member' },
+  { name: 'threads activity', url: '/threads/activity', method: 'GET', audience: 'member' },
+  { name: 'threads activity unread', url: '/threads/activity/unread', method: 'GET', audience: 'member' },
+  { name: 'threads activity seen', url: '/threads/activity/seen', method: 'POST', audience: 'member' },
+  { name: 'threads block', url: '/threads/blocks/:id', probe: `/threads/blocks/${randomUUID()}`, method: 'PUT', audience: 'member' },
+  { name: 'threads unblock', url: '/threads/blocks/:id', probe: `/threads/blocks/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  { name: 'threads mute', url: '/threads/mutes/:id', probe: `/threads/mutes/${randomUUID()}`, method: 'PUT', audience: 'member' },
+  { name: 'threads unmute', url: '/threads/mutes/:id', probe: `/threads/mutes/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  { name: 'threads blocks list', url: '/threads/blocks', method: 'GET', audience: 'member' },
+  { name: 'threads mutes list', url: '/threads/mutes', method: 'GET', audience: 'member' },
   // On the EXISTING threads_moderation module. `write`/`edit` are unused on
   // purpose: moderating a post must never become editing it.
   { name: 'threads moderation reports', url: '/admin/threads/reports', method: 'GET', audience: 'staff', module: 'threads_moderation', flag: 'read' },

@@ -17,7 +17,9 @@
     "seed:dev": "node --env-file-if-exists=.env src/scripts/seed-dev.ts",
     "keys:generate": "node --env-file-if-exists=.env src/scripts/keys-generate.ts",
     "token:mint": "node --env-file-if-exists=.env src/scripts/token-mint.ts",
-    "verify:seo": "node --env-file-if-exists=.env src/scripts/verify-seo.ts"
+    "verify:seo": "node --env-file-if-exists=.env src/scripts/verify-seo.ts",
+    "seed:perf": "node --env-file-if-exists=.env src/scripts/seed-perf.ts",
+    "bench:feed": "node --env-file-if-exists=.env src/scripts/bench-feed.ts"
   },
   "dependencies": {
     "@faker-js/faker": "10.6.0",

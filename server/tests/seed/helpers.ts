@@ -14,9 +14,18 @@ const SERVER = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
  * of rows, and a suite that left them behind would change what every other
  * DB-backed suite sees.
  */
+export function databaseUrl(name: string) {
+  const base = new URL(process.env.DATABASE_URL ?? 'postgres://localhost:5432/postgres')
+  base.pathname = `/${name}`
+  return base.toString()
+}
+
 export async function withSeededDatabase(name: string, { args = [] }: { args?: string[] } = {}) {
-  const url = `postgres://localhost:5432/${name}`
-  const admin = new pg.Client({ connectionString: 'postgres://localhost:5432/postgres' })
+  // Same server and credentials as DATABASE_URL, another database: a
+  // password-less literal here failed SCRAM on any server that requires one,
+  // and made every seed suite fail for a reason unrelated to the seed.
+  const url = databaseUrl(name)
+  const admin = new pg.Client({ connectionString: databaseUrl('postgres') })
   await admin.connect()
   await admin.query(`DROP DATABASE IF EXISTS ${name}`)
   await admin.query(`CREATE DATABASE ${name}`)
@@ -33,7 +42,7 @@ export async function withSeededDatabase(name: string, { args = [] }: { args?: s
     url,
     async drop() {
       await pool.end()
-      const cleanup = new pg.Client({ connectionString: 'postgres://localhost:5432/postgres' })
+      const cleanup = new pg.Client({ connectionString: databaseUrl('postgres') })
       await cleanup.connect()
       await cleanup.query(`DROP DATABASE IF EXISTS ${name}`)
       await cleanup.end()

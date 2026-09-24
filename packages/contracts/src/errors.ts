@@ -85,6 +85,20 @@ export const PROBLEMS = {
   REGISTRATION_CLOSED: { type: `${BASE}/registration-closed`, title: 'Registration not open', status: 409 },
   ALREADY_REGISTERED: { type: `${BASE}/already-registered`, title: 'Already registered', status: 409 },
 
+  // --- Profiles and threads (010) --------------------------------------------
+  /**
+   * Authoring in Threads needs a handle, because mentions resolve against
+   * handles and a member without one could not be mentioned in replies to
+   * their own post. 403 like PROFILE_INCOMPLETE, whose remedy is the same
+   * shape: finish the profile, then retry.
+   */
+  HANDLE_REQUIRED: { type: `${BASE}/handle-required`, title: 'Handle required', status: 403 },
+  /**
+   * Distinct from VALIDATION_FAILED: the handle is fine, the timing is not,
+   * and the remedy is waiting until `handleChangeableAt`, not editing it.
+   */
+  HANDLE_CHANGE_TOO_SOON: { type: `${BASE}/handle-change-too-soon`, title: 'Handle changed too recently', status: 409 },
+
   // --- Quotas vs. rate limits ----------------------------------------------
   // 429 is a transport limit: retry later and it will work.
   // 422 is a business quota: retrying changes nothing until state changes.

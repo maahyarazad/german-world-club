@@ -41,6 +41,13 @@ export async function resetAuthTables(pool: Pool) {
     TRUNCATE membership_applications, thread_posts, thread_likes, thread_reposts,
              member_follows, thread_reports, event_registrations, mail_outbox
              RESTART IDENTITY CASCADE`)
+  // Feature 010's. TRUNCATE fires no row triggers, which is why the
+  // append-only guards on member_designations and thread_post_media do not
+  // need suspending here — they refuse DELETE, not TRUNCATE.
+  await pool.query(`
+    TRUNCATE thread_post_media, thread_post_mentions, member_blocks, member_mutes,
+             member_activity_cursor, member_links, member_avatars, member_designations, organisation_profiles
+             RESTART IDENTITY CASCADE`)
   // admin_users guards the last active superadmin (§11). A suite that made one
   // *is* the last one in a clean test database, so tearing it down trips the
   // trigger. Suspend it for the teardown only — the rule stays armed for every
@@ -66,6 +73,8 @@ export type CreateMemberOptions = {
   /** Pass a precomputed hash to skip argon2, or null to leave it unset. */
   passwordHash?: string | null
   permissions?: Record<string, boolean>
+  /** Threads authoring requires one (feature 010); null leaves it unchosen. */
+  handle?: string | null
   displayName?: string
 }
 
@@ -80,18 +89,19 @@ export async function createMember(pool: Pool, {
   passwordHash,
   permissions = {},
   displayName = 'Test Member',
+  handle = null,
 }: CreateMemberOptions = {}) {
   const hash = passwordHash !== undefined ? passwordHash : await hashPassword(password)
   const { rows } = await pool.query(
     `INSERT INTO members (email, password_hash, password_reset_required, status,
-                          email_confirmed_at, mobile, mobile_verified_at, permissions, display_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                          email_confirmed_at, mobile, mobile_verified_at, permissions, display_name, handle)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id, email`,
     [
       email, hash, passwordResetRequired, status,
       emailConfirmed ? new Date() : null,
       mobile, mobileVerified ? new Date() : null,
-      JSON.stringify(permissions), displayName,
+      JSON.stringify(permissions), displayName, handle,
     ],
   )
   return { ...rows[0], password }

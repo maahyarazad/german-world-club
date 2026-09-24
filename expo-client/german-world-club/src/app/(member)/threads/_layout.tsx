@@ -10,6 +10,10 @@ export default function ThreadsLayout() {
       <Stack.Screen name="[id]" options={{ title: t.threads.thread }} />
       <Stack.Screen name="member/[id]" options={{ title: '' }} />
       <Stack.Screen name="compose" options={{ presentation: 'modal', title: t.threads.compose }} />
+      <Stack.Screen name="handle" options={{ presentation: 'modal', title: t.profile.handleTitle }} />
+      <Stack.Screen name="people/[id]" options={{ title: '' }} />
+      <Stack.Screen name="quotes/[id]" options={{ title: t.threads.quotes }} />
+      <Stack.Screen name="organisation/[slug]" options={{ title: '' }} />
     </Stack>
   );
 }

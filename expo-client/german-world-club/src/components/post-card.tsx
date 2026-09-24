@@ -5,6 +5,10 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import type { ThreadAuthor, ThreadPost } from '@gwc/contracts/threads';
 
 import { threadsApi } from '@/api/endpoints';
+import { Avatar } from '@/components/avatar';
+import { MediaCarousel } from '@/components/media-carousel';
+import { PostBody } from '@/components/post-body';
+import { QuoteEmbed } from '@/components/quote-embed';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,12 +30,14 @@ const REPORT_REASONS = {
  * rather than guessing a count: both endpoints return the post as it now is.
  */
 export function PostCard({
-  post, repostedBy, onChange, onRemoved, onOpen = true,
+  post, repostedBy, onChange, onRemoved, onHideAuthor, onOpen = true,
 }: {
   post: ThreadPost
   repostedBy?: ThreadAuthor | null
   onChange: (post: ThreadPost) => void
   onRemoved?: (id: string) => void
+  /** After a mute or block (010 US8): the list drops this author's posts. */
+  onHideAuthor?: (authorId: string) => void
   /** False on the thread view's own subject, which is already open. */
   onOpen?: boolean
 }) {
@@ -70,7 +76,25 @@ export function PostCard({
       ]);
       return;
     }
+    const name = post.author.displayName ?? `@${post.author.handle ?? ''}`;
+    const relate = async (kind: 'mute' | 'block') => {
+      try {
+        await (kind === 'mute' ? threadsApi.setMute(post.author.id, true) : threadsApi.setBlock(post.author.id, true));
+        onHideAuthor?.(post.author.id);
+      } catch (e) {
+        Alert.alert(problemMessage(e));
+      }
+    };
     Alert.alert(t.threads.reportTitle, undefined, [
+      { text: format(t.threads.mute, { name }), onPress: () => void relate('mute') },
+      {
+        text: format(t.threads.block, { name }),
+        style: 'destructive' as const,
+        onPress: () => Alert.alert(t.threads.blockConfirm, undefined, [
+          { text: t.common.cancel, style: 'cancel' },
+          { text: format(t.threads.block, { name }), style: 'destructive', onPress: () => void relate('block') },
+        ]),
+      },
       ...(Object.keys(REPORT_REASONS) as (keyof typeof REPORT_REASONS)[]).map((key) => ({
         text: t.threads.reportReasons[key],
         onPress: async () => {
@@ -87,6 +111,7 @@ export function PostCard({
   };
 
   const openAuthor = () => router.push({ pathname: '/threads/member/[id]', params: { id: post.author.id } });
+  const authorName = post.author.displayName ?? (post.author.handle ? `@${post.author.handle}` : '—');
   const openThread = () => router.push({ pathname: '/threads/[id]', params: { id: post.id } });
 
   return (
@@ -100,12 +125,20 @@ export function PostCard({
         </ThemedText>
       ) : null}
       <View style={styles.header}>
-        <ThemedText type="smallBold" onPress={openAuthor} accessibilityRole="link">
-          {post.author.displayName ?? '—'}
-        </ThemedText>
+        <Pressable onPress={openAuthor} accessibilityRole="link" style={styles.author}>
+          <Avatar author={post.author} size={32} label={format(t.profile.avatarAlt, { name: authorName })} />
+          <View style={{ flexShrink: 1 }}>
+            <ThemedText type="smallBold" numberOfLines={1}>
+              {authorName}{post.author.isInfluencer ? `  · ${t.threads.influencer}` : ''}
+            </ThemedText>
+            {post.author.handle ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>@{post.author.handle}</ThemedText> : null}
+          </View>
+        </Pressable>
         <ThemedText type="small" themeColor="textSecondary">{formatDate(post.createdAt, true)}</ThemedText>
       </View>
-      <ThemedText>{post.body}</ThemedText>
+      <PostBody body={post.body} mentions={post.mentions} />
+      <MediaCarousel media={post.media} />
+      {post.quoted ? <QuoteEmbed quoted={post.quoted} /> : null}
       <View style={styles.actions}>
         <Action
           label={`${t.threads.reply} ${post.replyCount || ''}`}
@@ -120,6 +153,11 @@ export function PostCard({
           label={`↻ ${post.repostCount || ''}`}
           active={post.repostedByMe}
           onPress={() => act(() => threadsApi.setRepost(post.id, !post.repostedByMe))}
+        />
+        <Action
+          label={`❝ ${post.quoteCount || ''}`}
+          accessibilityLabel={t.threads.quote}
+          onPress={() => router.push({ pathname: '/threads/compose', params: { quoteOfId: post.id } })}
         />
         <Action label="•••" onPress={more} accessibilityLabel={post.isMine ? t.threads.delete : t.threads.report} />
       </View>
@@ -150,6 +188,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
+  author: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexShrink: 1 },
   actions: { flexDirection: 'row', gap: Spacing.five, paddingTop: Spacing.one },
 });

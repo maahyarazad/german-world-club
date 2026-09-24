@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "german-world-club",
+    "name": "German World Club",
     "slug": "german-world-club",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/expo.icon/Assets/icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "germanworldclub",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/icon.png",
       "bundleIdentifier": "com.buenapublica.germanworldclub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -16,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/expo.icon/Assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
@@ -24,20 +24,29 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/expo.icon/Assets/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/expo.icon/Assets/splash.png",
+          "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#000000",
-          "imageWidth": 578
+          "imageWidth": 200
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "German World Club uses your photo library so you can attach photos and videos to your posts and choose a profile picture.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
