@@ -219,6 +219,20 @@ register(PROBLEMS.CONFLICT, {
   retry: RETRY.IMMEDIATE,
 })
 
+// --- Push notifications (011) -----------------------------------------------
+
+register(PROBLEMS.PUSH_NO_TEST_RECIPIENTS, {
+  de: { title: 'Keine Testnutzer', body: 'Fügen Sie zuerst mindestens einen Testnutzer hinzu, bevor Sie eine Probe senden.' },
+  en: { title: 'No test users', body: 'Add at least one test user before sending a rehearsal.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.PUSH_IDEMPOTENCY_CONFLICT, {
+  de: { title: 'Bitte erneut senden', body: 'Diese Nachricht wurde geändert, nachdem sie schon einmal gesendet wurde. Senden Sie sie erneut, um sie als neue Nachricht einzureihen.' },
+  en: { title: 'Please send again', body: 'This message changed after it was already sent once. Send it again to queue it as a new message.' },
+  retry: RETRY.IMMEDIATE,
+})
+
 register(PROBLEMS.GONE, {
   de: { title: 'Nicht mehr verfügbar', body: 'Dieser Eintrag ist nicht mehr verfügbar.' },
   en: { title: 'No longer available', body: 'This entry is no longer available.' },

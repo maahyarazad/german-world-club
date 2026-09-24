@@ -228,7 +228,12 @@ export async function rotateRefreshToken(pool: Pool, presentedPlaintext: string,
 // NOTE: the caller's deadline signal is accepted and currently unused —
 // `withTransaction` has no signal path yet. T178 propagates it into every `pg`
 // query; until then the parameter is dropped rather than silently promised.
-export async function revokeSession(pool: Pool, sessionId: string, reason: string) {
+export async function revokeSession(
+  pool: Pool,
+  sessionId: string,
+  reason: string,
+  { forgetPushDevices = false }: { forgetPushDevices?: boolean } = {},
+) {
   await withTransaction(pool, async (client: PoolClient) => {
     await client.query(
       `UPDATE sessions SET revoked_at = now(), revoked_reason = $2
@@ -236,6 +241,19 @@ export async function revokeSession(pool: Pool, sessionId: string, reason: strin
       [sessionId, reason],
     )
     await client.query('DELETE FROM refresh_tokens WHERE session_id = $1', [sessionId])
+    /**
+     * An explicit sign-out stops that phone's notifications (feature 011,
+     * research R3, FR-005), in the same transaction as the revocation. The app
+     * also deletes its device before signing out, but it may be offline; this
+     * is what makes a sign-out in airplane mode still take effect.
+     *
+     * Only on sign-out — never on a superseded or expired session. The platform
+     * allows one session per account, so tying devices to a *live* session
+     * would let a sign-in on the web console silence the member's phone.
+     */
+    if (forgetPushDevices) {
+      await client.query('DELETE FROM push_devices WHERE session_id = $1', [sessionId])
+    }
   })
   return { sessionId, reason }
 }

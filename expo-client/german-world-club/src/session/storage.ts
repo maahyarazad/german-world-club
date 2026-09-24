@@ -15,6 +15,8 @@ const KEYS = {
   session: 'gwc.session',
   deviceId: 'gwc.device-id',
   locale: 'gwc.locale',
+  pushAsked: 'gwc.push-asked',
+  pushDevice: 'gwc.push-device',
 } as const;
 
 export type StoredSession = {
@@ -58,3 +60,17 @@ export async function deviceId(): Promise<string> {
 
 export const loadLocale = () => SecureStore.getItemAsync(KEYS.locale);
 export const saveLocale = (locale: string) => SecureStore.setItemAsync(KEYS.locale, locale);
+
+/**
+ * Whether this installation has already asked for notification permission
+ * (feature 011, FR-002). The app asks once; after that the only way back is
+ * Profile → Notifications, so a "Not now" is respected rather than repeated on
+ * every launch.
+ */
+export const loadPushAsked = async () => (await SecureStore.getItemAsync(KEYS.pushAsked)) === '1';
+export const savePushAsked = () => SecureStore.setItemAsync(KEYS.pushAsked, '1');
+
+/** The server's id for this phone's push registration, kept so sign-out can remove it. */
+export const loadPushDeviceId = () => SecureStore.getItemAsync(KEYS.pushDevice);
+export const savePushDeviceId = (id: string) => SecureStore.setItemAsync(KEYS.pushDevice, id);
+export const clearPushDeviceId = () => SecureStore.deleteItemAsync(KEYS.pushDevice);

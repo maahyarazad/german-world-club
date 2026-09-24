@@ -46,3 +46,9 @@ example
 /ios
 /android
 german-world-club-b103ddfadefe.json
+# Firebase service-account keys (feature 011, research R8). The FCM V1 key
+# lives in EAS credentials and nowhere else: it can send to every member's
+# phone, so a copy in the project folder is one `git add .` from a leak.
+# google-services.json (the *client* config) is NOT matched and is committed.
+*-firebase-adminsdk*.json
+german-world-club-*.json

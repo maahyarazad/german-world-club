@@ -1,4 +1,4 @@
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 /**
@@ -31,7 +31,36 @@ const LIFECYCLE = [
   { state: 'withdrawn', share: 1, window: 'past' },
 ]
 
+/**
+ * Every offer insert runs in one transaction that first sets
+ * `gwc.suppress_offer_push` (feature 011, research R12).
+ *
+ * The seed inserts offers that are already `published`, and publishing an
+ * offer queues a push notification by trigger (029_offer_push_trigger.sql).
+ * A seeded offer was never *announced* — nobody's phone buzzed for it — so
+ * queuing one would be inventing history, which the consistent-history rule
+ * forbids, and on a development database with real devices it would actually
+ * send. `SET LOCAL` ends with the transaction, so nothing outside the seed can
+ * inherit the switch. `tests/seed/safety.test.ts` asserts zero offer
+ * notifications after a run.
+ */
 export async function seedOffers(pool: Pool, faker: Faker, options: SeedOptions) {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(`SET LOCAL gwc.suppress_offer_push = 'on'`)
+    const counts = await seedOffersIn(client, faker, options)
+    await client.query('COMMIT')
+    return counts
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw err
+  } finally {
+    client.release()
+  }
+}
+
+async function seedOffersIn(pool: PoolClient, faker: Faker, options: SeedOptions) {
   /**
    * Already seeded? Then stop.
    *

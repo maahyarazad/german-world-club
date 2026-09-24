@@ -217,9 +217,17 @@ const ROUTE_CLASSES = [
   { name: 'push register device', url: '/push/devices', method: 'POST', audience: 'member' },
   { name: 'push list devices', url: '/push/devices', method: 'GET', audience: 'member' },
   { name: 'push delete device', url: '/push/devices/:id', probe: `/push/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  // Feature 011. Member routes deliberately without `onboarding`: an applicant
+  // who is not yet approved must not be able to register a phone.
+  { name: 'push patch device', url: '/push/devices/:id', probe: `/push/devices/${randomUUID()}`, method: 'PATCH', audience: 'member' },
+  { name: 'push get preferences', url: '/push/preferences', method: 'GET', audience: 'member' },
+  { name: 'push put preferences', url: '/push/preferences', method: 'PUT', audience: 'member' },
+  { name: 'member offer', url: '/member/offers/:id', probe: `/member/offers/${randomUUID()}`, method: 'GET', audience: 'member' },
+  { name: 'push audience', url: '/push/audience', probe: '/push/audience?kind=broadcast', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
   { name: 'push broadcast', url: '/push/campaigns', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'write' },
   { name: 'push preview', url: '/push/campaigns/preview', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'write' },
   { name: 'push history', url: '/push/campaigns', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
+  { name: 'push history entry', url: '/push/campaigns/:id', probe: `/push/campaigns/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
   { name: 'push test list', url: '/push/test-recipients', method: 'GET', audience: 'staff', module: 'mass_messages', flag: 'read' },
   { name: 'push test add', url: '/push/test-recipients', method: 'POST', audience: 'staff', module: 'mass_messages', flag: 'edit' },
   { name: 'push test remove', url: '/push/test-recipients/:id', probe: `/push/test-recipients/${randomUUID()}`, method: 'DELETE', audience: 'staff', module: 'mass_messages', flag: 'edit' },

@@ -46,3 +46,6 @@ server/.seed-credentials.md
 server/migrations/local/
 german-world-club-business-description.md
 server/german-world-club-b103ddfadefe.json
+# Firebase service-account keys (feature 011, research R8): never in the repo.
+*-firebase-adminsdk*.json
+german-world-club-*.json

@@ -2,6 +2,8 @@ import fp from 'fastify-plugin'
 import { Cron } from 'croner'
 import { query } from '../db/query.ts'
 import { deliverDueMail } from '../decorators/mail.ts'
+import { dispatchDue } from '../modules/push/application/dispatch.ts'
+import { checkReceipts } from '../modules/push/application/receipts.ts'
 import type { GwcApp } from '../app.ts'
 
 /**
@@ -67,6 +69,20 @@ export const PLATFORM_JOBS = Object.freeze([
     description: 'Send queued mail from the outbox, retrying with backoff',
   },
   {
+    name: 'push.deliver',
+    schedule: '* * * * *',
+    // The push outbox's sweep (feature 011, research R1). An accepted staff
+    // send also kicks this job at once through pg-boss; the tick is what makes
+    // a lost kick, a crashed send, a due retry or an offer's `not_before` cost
+    // at most a minute. Disabling it stops every push send path.
+    description: 'Send due push notifications in paced batches, retrying with backoff',
+  },
+  {
+    name: 'push.receipts',
+    schedule: '*/15 * * * *',
+    description: 'Fetch Expo push receipts; mark deliveries delivered or failed and disable dead devices',
+  },
+  {
     name: 'marketplace-expiry',
     schedule: '*/5 * * * *',
     // FR-029, data-model.md §7. NOT "every listing past its expiry" — a
@@ -80,6 +96,10 @@ export const PLATFORM_JOBS = Object.freeze([
 export function createJobHandlers(app: GwcApp) {
   return {
     'mail.deliver': async () => deliverDueMail(app),
+    // The transport is read from the decorator on every run rather than
+    // captured here, so a suite that replaces it is heard (decorators/push.ts).
+    'push.deliver': async () => dispatchDue(app, { transport: app.pushTransport }),
+    'push.receipts': async () => checkReceipts(app, { transport: app.pushTransport }),
     'sessions.expire': async () => {
       const { rowCount } = await app.pg.query(
         `UPDATE sessions SET revoked_at = now(), revoked_reason = 'expired'
@@ -108,7 +128,7 @@ export function createJobHandlers(app: GwcApp) {
 
     'denylist.prune': async () => {
       // Redis expires its own keys through SETEX, so this only matters for the
-      // in-memory fallback used when REDIS_URL is unset.
+      // in-memory fallback used when REDIS_ENABLED is false.
       const pruned = await app.denylist?.prune?.()
       return { itemsProcessed: pruned ?? 0 }
     },

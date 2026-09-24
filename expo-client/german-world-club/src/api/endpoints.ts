@@ -14,6 +14,9 @@ import type {
   ActivityPage, AuthorList, CreatePostRequest, Feed, FeedScope, FollowState, PostList, ProfileTab,
   ThreadPost, ThreadView,
 } from '@gwc/contracts/threads';
+import type { Device, DeviceList, DevicePatch, DeviceRegistration, Preferences } from '@gwc/contracts/push';
+import type { MemberOffer } from '@gwc/contracts/offers';
+import type { Listing } from '@gwc/contracts/marketplace';
 
 import { api } from './client';
 
@@ -120,4 +123,30 @@ export const threadsApi = {
     api<{ reported: true }>(`/threads/posts/${id}/report`, { method: 'POST', body: { reason } }),
   setFollow: (memberId: string, on: boolean) =>
     api<FollowState>(`/threads/follows/${memberId}`, { method: on ? 'PUT' : 'DELETE' }),
+};
+
+/**
+ * Push (feature 011). The app registers Expo tokens only; which member, which
+ * language and whether they are eligible at all is the server's decision.
+ */
+export const pushApi = {
+  devices: {
+    register: (body: DeviceRegistration) => api<Device>('/push/devices', { method: 'POST', body }),
+    list: () => api<DeviceList>('/push/devices'),
+    patch: (id: string, body: DevicePatch) => api<Device>(`/push/devices/${id}`, { method: 'PATCH', body }),
+    remove: (id: string) => api<{ id: string; deleted: true }>(`/push/devices/${id}`, { method: 'DELETE' }),
+  },
+  preferences: {
+    get: () => api<Preferences>('/push/preferences'),
+    put: (body: Preferences) => api<Preferences>('/push/preferences', { method: 'PUT', body }),
+  },
+};
+
+/** The targets a notification can open (feature 011, contracts/push-payload.md). */
+export const offersApi = {
+  detail: (id: string) => api<MemberOffer>(`/member/offers/${id}`),
+};
+
+export const marketplaceApi = {
+  listing: (id: string) => api<Listing>(`/marketplace/listings/${id}`),
 };

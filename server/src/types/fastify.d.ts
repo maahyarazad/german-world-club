@@ -158,8 +158,23 @@ declare module 'fastify' {
     invalidateLegacyRedirects(): void
     resolveLegacyRedirect(url: string, signal?: AbortSignal): Promise<string | null>
 
+    // --- push (feature 011) --------------------------------------------------
+    /**
+     * What the push jobs send through (decorators/push.ts). Replaceable in a
+     * suite; read at call time by the job handlers.
+     */
+    pushTransport: import('../modules/push/providers.ts').PushTransport
+
     // --- jobs ---------------------------------------------------------------
     jobQueue: unknown
+    /**
+     * The work queue (pg-boss, or the inline double), the same instance as
+     * `jobQueue`. The push outbox kicks `push.dispatch` through it.
+     */
+    boss: {
+      send(queue: string, data: object, options?: Record<string, unknown>): Promise<unknown>
+      work(queue: string, options: Record<string, unknown>, handler: (jobs: unknown) => Promise<void>): Promise<unknown>
+    }
     jobDefinitions: Map<string, unknown>
     runJob(name: string, ...args: unknown[]): Promise<unknown>
     recentJobRuns(...args: unknown[]): Promise<unknown[]>

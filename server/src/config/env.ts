@@ -32,6 +32,13 @@ const schema = z
     LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    // Off by default: the redis plugin then registers no client and falls back
+    // to per-process rate limits and an in-memory session denylist. The flag,
+    // not the presence of REDIS_URL, decides — so a URL left in .env does not
+    // quietly turn Redis on. Production refuses `false` (below).
+    // A boolean default, not 'false': zod 4 returns a default as the *output*
+    // without running the transform, and the string 'false' is truthy.
+    REDIS_ENABLED: bool.default(false),
     REDIS_URL: z.string().min(1).optional(),
 
     JWT_PRIVATE_KEY: z.string().optional(),
@@ -106,6 +113,54 @@ const schema = z
         })
       }
     }
+    // 07-rate-limit would refuse too, but only after half the app has booted;
+    // saying it here names the variable. Across N instances the fallbacks grant
+    // N× every rate limit and let a revoked session live out its access token.
+    if (!v.REDIS_ENABLED) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REDIS_ENABLED'],
+        message: 'REDIS_ENABLED must be "true" in production: without Redis, rate limits and session revocation are per-instance',
+      })
+    }
+  })
+  /**
+   * Push credentials (feature 011, research R8, FR-030).
+   *
+   * Production needs EXPO_ACCESS_TOKEN because the Expo project runs with
+   * enhanced push security: without the token every send is refused, and the
+   * outbox would quietly fill with failed deliveries instead of the process
+   * saying so at boot.
+   *
+   * FCM is all or nothing, in every environment. Two of the three set is a
+   * typo, not a choice, and the symptom would be every `fcm` device failing
+   * with "credentials are not configured" while the config looks filled in.
+   */
+  .superRefine((v, ctx) => {
+    if (v.NODE_ENV === 'production' && !v.EXPO_ACCESS_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EXPO_ACCESS_TOKEN'],
+        message: 'EXPO_ACCESS_TOKEN must be set in production (enhanced push security refuses unsigned sends)',
+      })
+    }
+    const fcm = ['FCM_PROJECT_ID', 'FCM_CLIENT_EMAIL', 'FCM_PRIVATE_KEY'] as const
+    const set = fcm.filter((key) => Boolean(v[key]))
+    if (set.length > 0 && set.length < fcm.length) {
+      for (const key of fcm.filter((k) => !set.includes(k))) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is unset while ${set.join(', ')} ${set.length === 1 ? 'is' : 'are'} set — FCM needs all three or none`,
+        })
+      }
+    }
+  })
+  // Enabled with nowhere to connect is a typo, not a choice — refused in every
+  // environment rather than silently running on the in-memory fallbacks.
+  .refine((v) => !v.REDIS_ENABLED || v.REDIS_URL !== undefined, {
+    message: 'REDIS_URL must be set when REDIS_ENABLED is "true"',
+    path: ['REDIS_URL'],
   })
   // connectionTimeout must outlast requestTimeout, or the socket closes before
   // the request-level timeout can produce its 408.

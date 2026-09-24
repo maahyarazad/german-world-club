@@ -12,6 +12,13 @@ import type { GwcApp } from '../app.ts'
  * configured, so a single-host install still transcodes.
  */
 export function registerMediaDecorators(app: GwcApp, { storage, jobQueue, env } = {}) {
+  const queue = jobQueue ?? createInlineQueue()
   app.decorate('mediaStorage', storage ?? createStorage(env))
-  app.decorate('jobQueue', jobQueue ?? createInlineQueue())
+  app.decorate('jobQueue', queue)
+  /**
+   * The same queue under the name the push outbox uses (feature 011, T018).
+   * One instance, exposed once: a second PgBoss would be a second set of
+   * connections and a second maintenance loop over the same schema.
+   */
+  app.decorate('boss', queue)
 }

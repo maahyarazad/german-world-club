@@ -172,3 +172,80 @@ describe('the idempotency reference (FR-038, §12.5)', () => {
     expect(errorFilter(error), 'a decline must never count toward the circuit').toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Push providers (feature 011, research R7)
+// ---------------------------------------------------------------------------
+
+describe('push: a dead token is a business outcome, not an outage', () => {
+  it('excludes DeviceNotRegistered and UNREGISTERED, and still counts a 5xx', () => {
+    expect(errorFilter({ code: 'DeviceNotRegistered' })).toBe(true)
+    expect(errorFilter({ code: 'UNREGISTERED' })).toBe(true)
+    // Counter-assertion: a provider that is actually failing must still count.
+    expect(errorFilter({ statusCode: 503 })).toBe(false)
+  })
+
+  async function buildPushBreakerApp() {
+    const app = Fastify({ logger: false })
+    await app.register(breakers, {
+      breakers: {
+        pushExpo: {
+          timeout: 500, errorThresholdPercentage: 50, volumeThreshold: 3, resetTimeout: 60_000,
+          fallback: 'retry-later', retrySafe: true, why: 'Test push',
+        },
+      },
+    })
+    await app.ready()
+    return app
+  }
+
+  const message = (n: number) => ({ token: `ExponentPushToken[t-${n}]`, title: 't', body: 'b', data: {} })
+
+  it('stays closed through a broadcast full of uninstalled apps', async () => {
+    const { createPushTransport } = await import('../../src/modules/push/providers.ts')
+    const app = await buildPushBreakerApp()
+    const send = async (_url: string, options: { body?: string }) => ({
+      statusCode: 200,
+      body: {
+        json: async () => ({
+          data: JSON.parse(options.body!).map(() => ({
+            status: 'error', message: 'not registered', details: { error: 'DeviceNotRegistered' },
+          })),
+        }),
+        text: async () => '',
+      },
+    })
+    const transport = createPushTransport({ breakers: app.breakers, send })
+
+    for (let i = 0; i < 10; i += 1) {
+      const outcomes = await transport.send('expo', [message(i)])
+      expect(outcomes[0]).toMatchObject({ status: 'failed', permanent: true })
+    }
+    expect(app.circuitStates().pushExpo).toBe('closed')
+    await app.close()
+  })
+
+  it('opens on 5xx, and an open circuit is a retry that spends no attempt', async () => {
+    const { createPushTransport } = await import('../../src/modules/push/providers.ts')
+    const app = await buildPushBreakerApp()
+    let calls = 0
+    const send = async () => {
+      calls += 1
+      return { statusCode: 503, body: { json: async () => ({}), text: async () => 'unavailable' } }
+    }
+    const transport = createPushTransport({ breakers: app.breakers, send })
+
+    for (let i = 0; i < 5; i += 1) {
+      const [outcome] = await transport.send('expo', [message(i)])
+      expect(outcome!.status).toBe('retry')
+    }
+    expect(app.circuitStates().pushExpo).toBe('open')
+
+    const before = calls
+    const [outcome] = await transport.send('expo', [message(99)])
+    expect(outcome).toMatchObject({ status: 'retry', notAttempted: true })
+    // Refused by the breaker: the provider was not asked at all.
+    expect(calls).toBe(before)
+    await app.close()
+  })
+})

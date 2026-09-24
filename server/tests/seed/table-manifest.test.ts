@@ -25,14 +25,22 @@ import {
 
 const MIGRATIONS = join(dirname(fileURLToPath(import.meta.url)), '../../migrations')
 
-/** Every table the migrations create, in the order they appear. */
+/**
+ * Every table the migrations leave behind, in the order they appear.
+ *
+ * Renames are applied as they are met (feature 011 renamed push_campaigns to
+ * push_notifications). Reading CREATE TABLE alone would report the old name as
+ * a table that exists and the new one as a phantom.
+ */
 function tablesFromMigrations() {
-  const tables = []
+  let tables: string[] = []
+  const statement = /CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([a-z_]+)|ALTER TABLE(?:\s+IF EXISTS)?\s+([a-z_]+)\s+RENAME TO\s+([a-z_]+)/gi
   for (const file of readdirSync(MIGRATIONS).sort()) {
     if (!file.endsWith('.sql')) continue
-    const sql = readFileSync(join(MIGRATIONS, file), 'utf8')
-    for (const [, name] of sql.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([a-z_]+)/gi)) {
-      tables.push(name.toLowerCase())
+    const sql = readFileSync(join(MIGRATIONS, file), 'utf8').replace(/--.*$/gm, '')
+    for (const [, created, from, to] of sql.matchAll(statement)) {
+      if (created) tables.push(created.toLowerCase())
+      else tables = tables.map((t) => (t === from!.toLowerCase() ? to!.toLowerCase() : t))
     }
   }
   return [...new Set(tables)]

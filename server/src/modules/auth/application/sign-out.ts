@@ -6,7 +6,7 @@ import type { GwcApp } from '../../../app.ts'
  * error for a session that is already gone.
  */
 export async function signOut(app: GwcApp, { principal, requestId, audit = true }) {
-  await revokeSession(app.pg, principal.sid, 'logout')
+  await revokeSession(app.pg, principal.sid, 'logout', { forgetPushDevices: principal.kind === 'member' })
   await app.denylist.add(principal.sid)
   if (audit) {
     await app.audit({
