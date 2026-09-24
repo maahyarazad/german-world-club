@@ -45,3 +45,4 @@ server/.seed-credentials.md
 # Local, non-chain migrations — kept out of the runner and out of git.
 server/migrations/local/
 german-world-club-business-description.md
+server/german-world-club-b103ddfadefe.json

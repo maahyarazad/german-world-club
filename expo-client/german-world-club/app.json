@@ -12,9 +12,11 @@
       "bundleIdentifier": "com.buenapublica.germanworldclub",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "YQFY6269ZL"
     },
     "android": {
+         "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
