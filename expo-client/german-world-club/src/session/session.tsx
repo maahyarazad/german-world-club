@@ -4,9 +4,11 @@ import type { Principal, SignInResponse } from '@gwc/contracts/auth';
 import type { OnboardingStatus } from '@gwc/contracts/onboarding';
 
 import { ApiError, configureAuth } from '@/api/client';
-import { authApi, onboardingApi } from '@/api/endpoints';
+import { authApi, onboardingApi, pushApi } from '@/api/endpoints';
 
-import { clearSession, deviceId, loadSession, saveSession, type StoredSession } from './storage';
+import {
+  clearPushDeviceId, clearSession, deviceId, loadPushDeviceId, loadSession, saveSession, type StoredSession,
+} from './storage';
 
 /**
  * Who is using the app, and therefore which part of it they may see.
@@ -125,6 +127,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (stored.current) await route(stored.current, known);
     },
     signOut: async () => {
+      // This phone stops receiving notifications first, while the session that
+      // may delete its device still exists (feature 011, FR-005). Best effort:
+      // offline, the server's sign-out deletes the device by session instead.
+      const pushDevice = await loadPushDeviceId();
+      if (pushDevice) {
+        try { await pushApi.devices.remove(pushDevice); } catch { /* covered server-side */ }
+        await clearPushDeviceId();
+      }
       // Best effort: the server revokes the session; if it cannot be reached,
       // the tokens are still dropped here and the access token lapses on its own.
       try { await authApi.signOut(); } catch { /* signing out must always work */ }

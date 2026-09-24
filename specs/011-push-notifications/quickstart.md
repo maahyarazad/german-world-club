@@ -12,6 +12,8 @@ Runnable checks that prove the feature end to end. Shapes are in [contracts/](co
 - **Firebase / EAS (one-off)**:
   - FCM V1 service-account key uploaded in `eas credentials` → Android → *Google Service Account Key for Push Notifications (FCM V1)*. Rotate the key that was pasted into chat first.
   - `expo-client/german-world-club/google-services.json` downloaded from Firebase for package `com.germanworldclub.app`.
+    - **TODO(owner), blocking Android builds (tasks T004, T006):** the file isn't in the repo yet. `app.json` already points `android.googleServicesFile` at it, so `npx expo prebuild` and every EAS Android build fail until it's added. Download it from Firebase → Project settings → *Your apps* → Android app `com.germanworldclub.app`, check that its `package_name` matches, and commit it. It's the client config, not a secret. Then run T006 (`npx expo prebuild --clean --platform android` and check that `com.google.gms.google-services` is applied).
+    - The service-account key `expo-client/german-world-club/german-world-club-b103ddfadefe.json` is still on disk (git-ignored). Upload it to EAS if you haven't already, then delete it and rotate it (T005, research R8).
 - **Mobile build**: `cd expo-client/german-world-club && npx expo install expo-notifications && npx expo prebuild --clean`, then `eas build --profile development --platform android` (or iOS). Expo Go can't receive remote pushes on Android.
 
 ## Automated suites
@@ -55,4 +57,23 @@ npm run -w server seed:perf     # 5k members
 npm run -w server bench:push    # optional: -- --latency 300
 ```
 
-Expected: exit code 0, duration under 10 min (about 8.5 min at the default pacing), and `deliveries == distinct devices`. The script registers its own synthetic devices, stubs the transport, and removes everything it created (tasks T079).
+Expected: exit code 0, duration under 10 min (about 1 min at the default pacing of 100 per batch with a 1 s pause; the "≈ 8.5 min" in tasks.md T015 assumed about 600 a minute, which those constants don't produce), and `deliveries == distinct devices`. The script registers its own synthetic devices, stubs the transport, and removes everything it created (tasks T079).
+
+## Validation log
+
+**2026-09-24, implementation run (automated only).** PostgreSQL 17 (`pg17-ai`), Node 22.23.
+
+| Check | Result |
+|---|---|
+| `server` vitest, full suite against `gwc_test` | 126 files, 1,543 passed, 1 skipped (the same skip as before this feature) |
+| `server` push suites (`tests/push`), three runs back to back | 50/50 each run, no flakes |
+| `packages/contracts` vitest (`resolveDestination`, offer template) | 18/18 |
+| `client` vitest · `test:i18n` · `test:tokens` | 360/360 · catalogues agree · no stray colours |
+| `tsc --noEmit`, all four workspaces | No new errors. `server` and `client` carry the same pre-existing errors as `HEAD` (server 1,201 lines at HEAD, 1,179 now; client 4). `expo-client` and `contracts` have none |
+| Migrations 028/029 on a **copy** of the dev database at 027 (6 campaigns, 498 receipts, 120 devices) | Applied cleanly. Campaigns became finished broadcasts with English back-filled, receipts became `sent`, no device lost. Copy dropped |
+| `seed:dev` + `seed:demo` on a scratch database | 35 published offers, **0** push notifications |
+| `verify:seo` on that scratch database | 24 URLs, no problems. No `/member/offers/*` in the sitemap |
+| `bench:push` (SC-002) on a scratch database after `seed:perf` | 5,000 devices, 50 batches, **58.2 s** (budget 600 s), 5,000 deliveries for 5,000 devices. Cleaned up after itself |
+| `npx expo export --platform android` | Bundles |
+
+**Not run yet — manual rows 1–16 on a device.** They need a development build (`eas build --profile development`), which is blocked on `google-services.json` (see Prerequisites, T004/T006). Run them once the file is in place and record the results here.

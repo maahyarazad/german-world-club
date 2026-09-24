@@ -1,5 +1,9 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import type { ProblemResponse } from '@gwc/contracts/errors'
+import type {
+  AudienceKind, CampaignRequestInput, Notification, NotificationKind, NotificationList, PushAudience,
+  TestRecipientAdd, TestRecipientList,
+} from '@gwc/contracts/push'
 import { describeProblem, isRetryable, requiresReauthentication, invalidatesCapabilities } from './problems'
 import type { DescribedProblem } from './problems'
 
@@ -205,3 +209,22 @@ export const post = (path: string, body?: unknown, options?: BodyOptions) => req
 export const patch = (path: string, body?: unknown, options?: BodyOptions) => request(path, { ...options, method: 'PATCH', body })
 export const put = (path: string, body?: unknown, options?: BodyOptions) => request(path, { ...options, method: 'PUT', body })
 export const del = (path: string, options?: BodylessOptions) => request(path, { ...options, method: 'DELETE' })
+
+/**
+ * The push notification endpoints (feature 011), typed from `@gwc/contracts/push`.
+ *
+ * A send answers 202 when it queued a notification and 200 when the same
+ * `clientRef` was already accepted; the console treats both as accepted.
+ * Nothing is delivered inside the request — the history shows it happen.
+ */
+export const pushApi = {
+  testRecipients: () => get('/push/test-recipients') as Promise<TestRecipientList>,
+  addTestRecipient: (body: TestRecipientAdd) => post('/push/test-recipients', body) as Promise<{ memberId: string }>,
+  removeTestRecipient: (memberId: string) => del(`/push/test-recipients/${memberId}`) as Promise<{ id: string; deleted: true }>,
+  audience: (kind: AudienceKind) => get(`/push/audience?kind=${kind}`) as Promise<PushAudience>,
+  rehearse: (body: CampaignRequestInput) => post('/push/campaigns/preview', body) as Promise<Notification>,
+  broadcast: (body: CampaignRequestInput) => post('/push/campaigns', body) as Promise<Notification>,
+  history: (kind?: NotificationKind) =>
+    get(`/push/campaigns${kind ? `?kind=${kind}` : ''}`) as Promise<NotificationList>,
+  notification: (id: string) => get(`/push/campaigns/${id}`) as Promise<Notification>,
+}

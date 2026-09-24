@@ -29,9 +29,10 @@ afterEach(() => vi.unstubAllGlobals())
  * `NotBuilt`'s hint, and asserting the hint against a built screen would make
  * this suite fail for the opposite reason it exists to catch. Feature 010
  * built `threads_moderation` (console/admin/Threads.tsx) and the influencer
- * panel under `members` (console/admin/Influencers.tsx).
+ * panel under `members` (console/admin/Influencers.tsx). Feature 011 built
+ * `mass_messages` (console/admin/Push.tsx).
  */
-const BUILT: readonly string[] = ['marketplace_moderation', 'threads_moderation', 'members']
+const BUILT: readonly string[] = ['marketplace_moderation', 'threads_moderation', 'members', 'mass_messages']
 const GATED = ADMIN_ITEMS.filter((item) => item.module && !BUILT.includes(item.module))
 
 describe('an admin area with no page yet', () => {

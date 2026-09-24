@@ -97,6 +97,29 @@ export const BREAKERS = Object.freeze({
     retrySafe: true,
     why: 'A failed transcode sets failed + reason, never a stuck processing row',
   },
+  // Feature 011, research R7. Only the push jobs call these. An open breaker
+  // leaves deliveries `pending` for the next tick rather than failing them: a
+  // push that cannot go out now can wait, and nothing is lost.
+  pushExpo: {
+    timeout: OUTBOUND.pushExpo,
+    errorThresholdPercentage: 50,
+    volumeThreshold: 5,
+    resetTimeout: 60_000,
+    fallback: 'retry-later',
+    // A batch is only retried when the provider demonstrably did not accept it
+    // (a refusal or no connection); an unknown outcome is never resent.
+    retrySafe: true,
+    why: "A push that can't be delivered now can wait; nothing is lost",
+  },
+  pushFcm: {
+    timeout: OUTBOUND.pushFcm,
+    errorThresholdPercentage: 50,
+    volumeThreshold: 10,
+    resetTimeout: 60_000,
+    fallback: 'retry-later',
+    retrySafe: true,
+    why: "A push that can't be delivered now can wait; nothing is lost",
+  },
 })
 
 /**
@@ -114,6 +137,11 @@ export function errorFilter(err) {
   const status = err?.statusCode ?? err?.status
   if (typeof status === 'number' && status >= 400 && status < 500) return true
   if (err?.code === 'CARD_DECLINED') return true
+  // A dead push token is the provider answering correctly about one phone —
+  // an uninstalled app — not the provider failing. A broadcast that reaches a
+  // few hundred uninstalled apps must not open the breaker for everyone else
+  // (feature 011, research R7).
+  if (err?.code === 'DeviceNotRegistered' || err?.code === 'UNREGISTERED') return true
   return false
 }
 

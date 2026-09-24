@@ -30,7 +30,6 @@ export const SEEDED = Object.freeze([
   'seo_metadata',
   'legacy_redirects',
   'push_devices',
-  'push_campaigns',
   'push_test_recipients',
   'job_definitions',
   'device_approvals',
@@ -80,6 +79,11 @@ export const SEEDED = Object.freeze([
   'member_blocks',
   'member_mutes',
   'member_activity_cursor',
+
+  // --- Push notifications (011) ----------------------------------------------
+  // Not seeded: no seeded fact implies a member chose anything, and no row
+  // means "both on". Holds no credential, so NEVER_SEEDED would be wrong.
+  'member_push_preferences',
 ])
 
 /**
@@ -91,14 +95,18 @@ export const SEEDED = Object.freeze([
  *
  * **The rule: an entry only where a seeded fact implies one, at that fact's own
  * timestamp.** A member whose status is `locked` gets the entry that locked
- * them, stamped `status_changed_at`. A campaign that exists gets the delivery
- * receipts its recipient count implies. Nothing else.
+ * them, stamped `status_changed_at`. Nothing else.
  */
 export const HISTORY = Object.freeze([
   'audit_log',
   'job_runs',
-  'push_campaign_recipients',
   'counters',
+  // Feature 011: renamed from push_campaigns / push_campaign_recipients. The
+  // seed writes neither. A notification is queued work — a seeded one would
+  // be *sent* by the next push.deliver tick — and a delivery is a send that
+  // happened, which no seeded fact implies (seed/operations.ts).
+  'push_notifications',
+  'push_deliveries',
 ])
 
 /**

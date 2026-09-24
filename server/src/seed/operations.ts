@@ -5,7 +5,7 @@ import type { SeedOptions } from './options.ts'
  * Push, jobs, devices — and history, under one rule.
  *
  * ── The consistent-history rule ─────────────────────────────────────────────
- * `audit_log`, `job_runs`, `push_campaign_recipients` and `counters` record
+ * `audit_log`, `job_runs`, `push_deliveries` and `counters` record
  * what *happened*. Filling them with invented events would make the audit log —
  * the one table nobody may edit, append-only by revoked grant — the one table
  * full of fiction, and would leave job runs describing jobs that never ran.
@@ -18,22 +18,20 @@ import type { SeedOptions } from './options.ts'
  */
 
 export async function seedOperations(pool: Pool, faker: Faker, options: SeedOptions) {
-  // Idempotency, for the same reason offers and events need it: campaigns and
-  // job runs have no natural key, so ON CONFLICT has nothing to catch.
-  const { rows: seeded } = await pool.query('SELECT count(*)::int AS n FROM push_campaigns')
-  if (seeded[0].n > 0) {
-    return {
-      push_devices: 0, push_campaigns: 0, push_test_recipients: 0,
-      job_definitions: 0, device_approvals: 0,
-      audit_log: 0, job_runs: 0, push_campaign_recipients: 0,
-    }
-  }
-
+  // Idempotency, for the same reason offers and events need it: devices and
+  // job runs have no natural key the seeder controls, so ON CONFLICT has
+  // nothing to catch. Demo devices are this seeder's first write.
+  const { rows: seeded } = await pool.query(
+    `SELECT count(*)::int AS n
+       FROM push_devices d JOIN members m ON m.id = d.member_id
+      WHERE m.email LIKE '%@demo.invalid'`,
+  )
   const counts = {
-    push_devices: 0, push_campaigns: 0, push_test_recipients: 0,
+    push_devices: 0, push_test_recipients: 0,
     job_definitions: 0, device_approvals: 0,
-    audit_log: 0, job_runs: 0, push_campaign_recipients: 0,
+    audit_log: 0, job_runs: 0,
   }
+  if (seeded[0].n > 0) return counts
 
   const { rows: members } = await pool.query(
     `SELECT id, status, status_changed_at, email_suppressed, email_bounce_count
@@ -47,14 +45,15 @@ export async function seedOperations(pool: Pool, faker: Faker, options: SeedOpti
   // ---- Devices -------------------------------------------------------------
   for (const member of members.slice(0, Math.floor(members.length * 0.6))) {
     const { rowCount } = await pool.query(
-      `INSERT INTO push_devices (member_id, token, provider, platform, enabled, last_seen_at)
-       VALUES ($1, $2, $3::push_provider, $4::push_platform, $5, $6)
-       ON CONFLICT (member_id, token) DO NOTHING`,
+      `INSERT INTO push_devices (member_id, token, provider, platform, locale, enabled, last_seen_at)
+       VALUES ($1, $2, $3::push_provider, $4::push_platform, $5, $6, $7)
+       ON CONFLICT (token) DO NOTHING`,
       [
         member.id,
         `ExponentPushToken[demo-${member.id.slice(0, 18)}]`,
         faker.helpers.arrayElement(['expo', 'expo', 'fcm']),
         faker.helpers.arrayElement(['ios', 'android', 'web']),
+        faker.helpers.arrayElement(['de', 'de', 'en']),
         faker.datatype.boolean({ probability: 0.85 }),
         faker.date.recent({ days: 30 }),
       ],
@@ -89,64 +88,14 @@ export async function seedOperations(pool: Pool, faker: Faker, options: SeedOpti
     counts.push_test_recipients += rowCount
   }
 
-  // ---- Campaigns, and the receipts their own totals imply -------------------
-  const reachable = members.filter((m) => m.status === 'active' && !m.email_suppressed)
-  for (let i = 0; i < 6; i += 1) {
-    const success = Math.max(1, Math.floor(reachable.length * faker.number.float({ min: 0.5, max: 0.95 })))
-    const failure = faker.number.int({ min: 0, max: 4 })
-
-    const { rows } = await pool.query(
-      `INSERT INTO push_campaigns (sent_at, title, body, destination_type, destination_label,
-                                   is_test, sent_by, total_success, total_failure,
-                                   expo_success, expo_failure, fcm_success, fcm_failure)
-       VALUES ($1, $2, $3, 'all', 'Alle Mitglieder', false, $4, $5, $6, $5, $6, 0, 0)
-       ON CONFLICT DO NOTHING
-       RETURNING id, total_success, total_failure`,
-      [
-        faker.date.recent({ days: 90 }),
-        faker.helpers.arrayElement(['Neues Event in Dubai', 'Vorteil des Monats', 'Newsletter erschienen']),
-        faker.lorem.sentence({ min: 6, max: 12 }),
-        actor, success, failure,
-      ],
-    )
-    if (rows.length === 0) continue
-    counts.push_campaigns += 1
-
-    /**
-     * The receipts the campaign's own totals imply — not invented deliveries.
-     *
-     * Keyed by (campaign_id, token) rather than by member: a member with two
-     * devices receives two deliveries, and the table is a record of what was
-     * sent to each device rather than of who was notified.
-     */
-    const { rows: devices } = await pool.query(
-      `SELECT pd.id, pd.member_id, pd.token, pd.provider, pd.platform
-         FROM push_devices pd
-         JOIN members m ON m.id = pd.member_id
-        WHERE pd.enabled AND m.status = 'active' AND NOT m.email_suppressed
-        ORDER BY pd.token
-        LIMIT $1`,
-      [rows[0].total_success + rows[0].total_failure],
-    )
-
-    for (const [index, device] of devices.entries()) {
-      const delivered = index < rows[0].total_success
-      const { rowCount } = await pool.query(
-        `INSERT INTO push_campaign_recipients (campaign_id, device_id, member_id, token,
-                                               provider, platform, status, error_message)
-         VALUES ($1, $2, $3, $4, $5::push_provider, $6::push_platform,
-                 $7::push_recipient_status, $8)
-         ON CONFLICT (campaign_id, token) DO NOTHING`,
-        [
-          rows[0].id, device.id, device.member_id, device.token,
-          device.provider, device.platform,
-          delivered ? 'delivered' : 'failed',
-          delivered ? null : 'DeviceNotRegistered',
-        ],
-      )
-      counts.push_campaign_recipients += rowCount
-    }
-  }
+  // ---- No notifications, and no deliveries ---------------------------------
+  //
+  // Feature 011 made push an outbox: `push_notifications` rows are queued
+  // work, and a `push_deliveries` row says a provider was asked to reach a
+  // phone. A seeded one would be a send that never happened — and a *queued*
+  // one would actually be sent by the next `push.deliver` tick to whatever
+  // real devices a development database holds. So the history rule gives the
+  // answer: no seeded fact implies a send, so there is none.
 
   // ---- Jobs, and runs that correspond to them ------------------------------
   const JOBS = [

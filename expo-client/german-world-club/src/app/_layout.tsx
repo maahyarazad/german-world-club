@@ -3,7 +3,13 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { NotificationPrompt } from '@/components/notification-prompt';
 import { I18nProvider } from '@/i18n';
+import { NotificationRouter } from '@/notifications/notification-router';
+import { useDeviceRegistration } from '@/notifications/registration';
+// Module scope, for its side effect: the foreground handler must be set before
+// the first notification can arrive (feature 011, research R9).
+import '@/notifications/setup';
 import { RegistrationDraftProvider } from '@/session/registration-draft';
 import { SessionProvider, useSession } from '@/session/session';
 
@@ -17,11 +23,21 @@ export default function RootLayout() {
         <SessionProvider>
           <RegistrationDraftProvider>
             <RootStack />
+            {/* Beside the stack, not inside a group, so a tap is followed
+                across the switch from signed-out to member (FR-011). */}
+            <NotificationRouter />
+            <PushRegistration />
           </RegistrationDraftProvider>
         </SessionProvider>
       </I18nProvider>
     </ThemeProvider>
   );
+}
+
+/** Asks an approved member once, then keeps this phone's registration fresh (feature 011). */
+function PushRegistration() {
+  const { asking, allow, notNow } = useDeviceRegistration();
+  return <NotificationPrompt visible={asking} onAllow={allow} onNotNow={notNow} />;
 }
 
 /**

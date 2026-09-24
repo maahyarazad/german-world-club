@@ -167,8 +167,17 @@ describe('the policy table is complete (FR-037)', () => {
 
   it('declares every dependency in the resilience.md table', () => {
     expect(Object.keys(BREAKERS).sort()).toEqual(
-      ['geocoding', 'mail', 'mediaImage', 'mediaVideo', 'payments', 'redis', 'sms'],
+      ['geocoding', 'mail', 'mediaImage', 'mediaVideo', 'payments', 'pushExpo', 'pushFcm', 'redis', 'sms'],
     )
+  })
+
+  it('lets the push providers wait rather than fail (feature 011, research R7)', () => {
+    // A push that cannot go out now stays `pending` in the outbox; nothing is
+    // lost, so neither provider is fail-closed.
+    for (const name of ['pushExpo', 'pushFcm'] as const) {
+      expect(BREAKERS[name].fallback).toBe('retry-later')
+      expect(BREAKERS[name].retrySafe).toBe(true)
+    }
   })
 
   it('keeps payments and media fail-closed', () => {

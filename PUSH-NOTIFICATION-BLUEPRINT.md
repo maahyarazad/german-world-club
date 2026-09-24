@@ -1,3 +1,11 @@
+> **Superseded in part by feature 011 — see [`specs/011-push-notifications/`](specs/011-push-notifications/).**
+> Kept for its history and its mobile client notes. What no longer holds:
+> sending inside the request (§3.2, §8) — sends are now an outbox delivered by
+> the `push.deliver` job; the verb-shaped `/notification/*` routes; one token
+> per `(member, token)` pair (now one member per token); and the `path`/`id`
+> payload keys (now `{ v, nid, type, id }`, contracts/push-payload.md). Where
+> this document and the spec disagree, the spec wins.
+
 # Push Notification Blueprint — GEC
 
 Reference implementation for push notifications across the **React Native app** (token

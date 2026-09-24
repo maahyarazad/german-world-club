@@ -72,6 +72,7 @@ export default function Profile() {
       </Card>
       <Button label={t.profile.edit} onPress={() => router.push('/profile/edit')} variant="secondary" />
       <Button label={t.profile.privacy} onPress={() => router.push('/profile/privacy')} variant="secondary" />
+      <Button label={t.notifications.settingsLink} onPress={() => router.push('/profile/notifications')} variant="secondary" />
 
       <TabChips tab={tab} onChange={setTab} />
       <View>

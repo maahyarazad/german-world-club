@@ -99,6 +99,20 @@ export const PROBLEMS = {
    */
   HANDLE_CHANGE_TOO_SOON: { type: `${BASE}/handle-change-too-soon`, title: 'Handle changed too recently', status: 409 },
 
+  // --- Push notifications (011) ----------------------------------------------
+  /**
+   * A rehearsal with nobody on the test list. Refused rather than accepted as
+   * a notification to zero devices, because "sent" with nothing arriving is
+   * exactly the result that leads staff to broadcast untested.
+   */
+  PUSH_NO_TEST_RECIPIENTS: { type: `${BASE}/push/no-test-recipients`, title: 'No test recipients', status: 409 },
+  /**
+   * The `clientRef` was already used for a *different* message. Answering with
+   * the earlier notification would silently drop the new one, so it is
+   * refused; the console makes a new ref and asks staff to send again.
+   */
+  PUSH_IDEMPOTENCY_CONFLICT: { type: `${BASE}/push/idempotency-conflict`, title: 'Reference already used', status: 409 },
+
   // --- Quotas vs. rate limits ----------------------------------------------
   // 429 is a transport limit: retry later and it will work.
   // 422 is a business quota: retrying changes nothing until state changes.

@@ -10,6 +10,8 @@ import type { StoredSession } from './storage';
 let session: StoredSession | null = null;
 let device: string | null = null;
 let locale: string | null = null;
+let pushAsked = false;
+let pushDevice: string | null = null;
 
 export type { StoredSession };
 
@@ -22,3 +24,9 @@ export async function deviceId() {
 }
 export const loadLocale = async () => locale;
 export const saveLocale = async (next: string) => { locale = next; };
+// Push is native-only (the web build never registers), kept for the shared interface.
+export const loadPushAsked = async () => pushAsked;
+export const savePushAsked = async () => { pushAsked = true; };
+export const loadPushDeviceId = async () => pushDevice;
+export const savePushDeviceId = async (id: string) => { pushDevice = id; };
+export const clearPushDeviceId = async () => { pushDevice = null; };

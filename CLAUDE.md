@@ -211,10 +211,13 @@ rules that look optional and are not:
 **A message is persisted before anyone is told about it.** `converse.ts`
 commits first and notifies after, never inside the transaction, so a failed
 push cannot roll back a message the sender was told was accepted
-(`tests/messaging/persist-before-notify.test.ts`). **Real-time transport is a
-later feature.** Delivery is on read today: there is no `delivered_at` or
-`read_at`, and no WebSocket. They arrive together with the transport that can
-actually set them, not as columns nothing writes.
+(`tests/messaging/persist-before-notify.test.ts`). **In-app real-time
+transport is a later feature.** Messages are delivered on read today: there is
+no `delivered_at` or `read_at` on messages, and no WebSocket. They arrive
+together with the transport that can actually set them, not as columns nothing
+writes. Push (feature 011) is not that transport: a `push_deliveries` row
+records that a provider was asked to reach a phone, not that a member read
+anything.
 
 The demo seed's marketplace corpus follows the history rule like everything
 else: a sold, filled or withdrawn listing gets the owner's state-change entry
@@ -279,7 +282,8 @@ Five things that look optional and are not:
   sent.
 - **Activity is computed on read** from likes, posts, reposts, mentions and
   follows; only `member_activity_cursor` is stored, and it only moves forward.
-  No `notifications` table until real-time transport exists.
+  Push notifications are persisted (below); Activity is not, and the two are
+  not the same record.
 - **`organisation_profiles` is the only member-visible projection of an
   organisation.** `organisations` holds contract data (`legal_name`,
   `fee_tier`); no member route reads it. Organisation users upload logos at
@@ -290,6 +294,38 @@ audited, never deleted), not a fifth audience. A handle is required to post
 (`403 handle-required`) and changes at most every 30 days; ended members keep
 theirs. The avatar lives in `member_avatars`, not on `members`, so the media
 test reset's `TRUNCATE assets … CASCADE` cannot reach the members table.
+
+**Push notifications are an outbox (feature 011, `specs/011-push-notifications/`).**
+No request sends a push. A staff send inserts a `push_notifications` row and
+returns `202`; the `push.deliver` job sends it, kicked at once through pg-boss
+(`push.dispatch`, whose only action is `runJob('push.deliver')`) and swept every
+minute. Disabling `push.deliver` stops every send path. Five rules:
+
+- **`ELIGIBLE_DEVICE` in `push/application/audience.ts` is the single audience
+  rule** — device enabled and not dead, member active, application approved or
+  absent, test list or preference. The confirm dialog's count, materialisation
+  and the per-batch re-check all import it; a second copy is how the number
+  staff confirm stops matching who gets it.
+- **At most once per device.** `push_deliveries` is unique on
+  (notification, device), a claim moves `pending → sending` in the same
+  statement, and only a *provable* refusal (429/5xx, no connection, open
+  breaker) goes back to `pending`. A row left in `sending` past the lease is
+  failed as `outcome unknown` and never resent — a missed notification beats a
+  phone buzzing twice.
+- **Offers announce themselves by trigger** (`029_offer_push_trigger.sql`) on
+  the transition to `published`, once per offer (`idempotency_key =
+  'offer:'||id`), held until `valid_from` and cancelled at dispatch if
+  `VISIBLE_OFFER` no longer holds. The demo seed sets `SET LOCAL
+  gwc.suppress_offer_push = 'on'`: seeded offers were never announced, and
+  `push_notifications` / `push_deliveries` are never seeded.
+- **The app registers Expo tokens only**, once the session is `member`; the
+  device routes carry no `onboarding` flag, so an applicant is refused
+  server-side. A token belongs to one member (`UNIQUE (token)`), and sign-out
+  deletes the devices of the session it revokes.
+- **The FCM service-account key lives in EAS credentials and nowhere else** —
+  never in the repo, the app or `server/`. `EXPO_ACCESS_TOKEN` is required in
+  production; FCM settings are all or none. A token is never logged, returned
+  or copied into history: `tokenPreview` is all anyone sees.
 
 ## Conventions
 

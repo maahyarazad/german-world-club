@@ -79,8 +79,8 @@ prevents boot; it never degrades behaviour silently.
 | `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | production | EdDSA. `npm run keys:generate` |
 | `CANONICAL_ORIGIN`, `TRUST_PROXY` | production | See above |
 | `SMSGLOBAL_API_KEY` / `_API_SECRET` / `_ORIGIN` | to send OTPs | Without them OTP sends are **refused loudly**, never skipped — a second factor that quietly does not send is not a second factor |
-| `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | for FCM push | Service account. The private key is a secret: environment or secret manager, never a JSON file in the repo |
-| `EXPO_ACCESS_TOKEN` | only with Expo enhanced security | Expo needs no server credential otherwise |
+| `EXPO_ACCESS_TOKEN` | **production** | Boot is refused without it. Turn on *enhanced push security* for the Expo project too, so a leaked token alone cannot push to members. Unset outside production with no FCM either, the push jobs use a logging transport that records "would send" and marks deliveries sent |
+| `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | all three or none | Only for devices registered with `provider: 'fcm'`; the app registers Expo tokens, and Android reaches FCM through Expo's own credentials in EAS. A partial set refuses boot in every environment. The private key is a secret: environment or secret manager, never a JSON file in the repo |
 | `MEDIA_*` | defaults are fine locally | Storage driver, size and pixel bounds, per-account quota |
 
 ---
@@ -138,6 +138,7 @@ it — registered last, the document comes out empty.
 | `npm run -w server keys:generate` | A fresh EdDSA keypair |
 | `npm run -w server test` | Vitest. SQL-backed suites skip loudly without a database |
 | `npm run -w server verify:seo` | Crawl the real sitemap: status codes, metadata uniqueness, JSON-LD validity. Exits non-zero, so it can gate a deploy |
+| `npm run -w server bench:push` | Development only. After `seed:perf`: one broadcast to a synthetic device per member through a stub transport, timed against SC-002's 10 minutes. Cleans up after itself |
 
 ---
 

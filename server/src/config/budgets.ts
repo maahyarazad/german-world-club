@@ -28,6 +28,12 @@ export const OUTBOUND: Readonly<Record<string, number>> = Object.freeze({
   // before the callee does.
   ragEmbed: 5000,
   ragGenerate: 20000,
+  // Push providers are called only by the `push.deliver` and `push.receipts`
+  // jobs (feature 011, research R7), never inside a request — which is why
+  // neither appears in any route class's `calls` below. They are here so the
+  // breakers have a declared timeout like every other dependency.
+  pushExpo: 10000,
+  pushFcm: 10000,
 })
 
 /**

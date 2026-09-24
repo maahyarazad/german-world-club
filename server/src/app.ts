@@ -39,6 +39,7 @@ import seoStaffRoutes from './modules/seo/staff-routes.ts'
 import organisationRoutes from './modules/organisations/routes.ts'
 import authRoutes from './modules/auth/routes.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { PushTransport } from './modules/push/providers.ts'
 import mediaRoutes from './modules/media/routes.ts'
 import mediaWorker from './modules/media/worker.ts'
 import pushRoutes from './modules/push/routes.ts'
@@ -57,11 +58,14 @@ import { registerMediaDecorators } from './decorators/media.ts'
 import { registerIntegrations } from './decorators/integrations.ts'
 import { registerSendOtp } from './decorators/send-otp.ts'
 import { registerMail } from './decorators/mail.ts'
+import { registerPush } from './decorators/push.ts'
+import pushWorker from './modules/push/queue.ts'
 import onboardingRoutes from './modules/onboarding/routes.ts'
 import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
 import profileRoutes from './modules/profile/routes.ts'
 import profileStaffRoutes from './modules/profile/staff-routes.ts'
 import eventRoutes from './modules/events/routes.ts'
+import offerRoutes from './modules/offers/routes.ts'
 import threadRoutes from './modules/threads/routes.ts'
 import threadStaffRoutes from './modules/threads/staff-routes.ts'
 
@@ -135,7 +139,7 @@ export type GwcApp = Awaited<ReturnType<typeof buildApp>>
 /**
  * What a caller may inject when building the app.
  *
- * `contentSource`, `storage`, `jobQueue` and `integrations` are the seams the
+ * `contentSource`, `storage`, `jobQueue`, `integrations` and `pushTransport` are the seams the
  * suites drive through; everything else is passed straight to Fastify, which
  * is why the rest is open.
  */
@@ -145,11 +149,12 @@ export type BuildAppOptions = {
   storage?: unknown
   jobQueue?: unknown
   integrations?: Record<string, unknown>
+  pushTransport?: PushTransport
   [key: string]: unknown
 }
 
 export async function buildApp({
-  env = loadEnv(), contentSource, storage, jobQueue, integrations, ...overrides
+  env = loadEnv(), contentSource, storage, jobQueue, integrations, pushTransport, ...overrides
 }: BuildAppOptions = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled
@@ -245,6 +250,7 @@ export async function buildApp({
   registerShutdownHook(app)
   registerSendOtp(app)
   registerMail(app)
+  registerPush(app, { pushTransport })
 
   /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves
@@ -335,6 +341,7 @@ export async function buildApp({
   await app.register(mediaRoutes)
   await app.register(mediaWorker)
   await app.register(pushRoutes)
+  await app.register(pushWorker)
   await app.register(marketplaceRoutes)
   await app.register(marketplaceStaffRoutes)
   await app.register(messagingRoutes)
@@ -343,6 +350,7 @@ export async function buildApp({
   await app.register(profileRoutes)
   await app.register(profileStaffRoutes)
   await app.register(eventRoutes)
+  await app.register(offerRoutes)
   await app.register(threadRoutes)
   await app.register(threadStaffRoutes)
   await app.register(seoStaffRoutes)

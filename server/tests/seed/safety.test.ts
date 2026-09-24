@@ -165,12 +165,19 @@ describe.skipIf(!hasDatabase)('history agrees with the state it describes', () =
     expect(rows[0].n).toBe(0)
   })
 
-  it('matches campaign receipts to the campaign totals', async () => {
+  it('queues no push notification and invents no delivery', async () => {
+    // Feature 011: a notification row is queued work that the next
+    // push.deliver tick would really send, and a delivery row is a send that
+    // happened. Seeded offers are published, and publishing queues an offer
+    // notification by trigger — which the seeder suppresses.
     const { rows } = await db.pool.query(`
-      SELECT c.id FROM push_campaigns c
-        JOIN push_campaign_recipients r ON r.campaign_id = c.id
-       GROUP BY c.id, c.total_success
-      HAVING count(*) FILTER (WHERE r.status = 'delivered') > c.total_success`)
-    expect(rows.map((r) => r.id), 'more deliveries than the campaign claims').toEqual([])
+      SELECT (SELECT count(*)::int FROM push_notifications WHERE kind = 'offer') AS offer_notifications,
+             (SELECT count(*)::int FROM push_notifications WHERE status IN ('queued', 'sending')) AS queued,
+             (SELECT count(*)::int FROM offers WHERE state = 'published') AS published_offers`)
+    expect(rows[0].offer_notifications).toBe(0)
+    expect(rows[0].queued).toBe(0)
+    // Counter-assertion: the seed did publish offers, so the trigger had
+    // something to fire on and was genuinely held back.
+    expect(rows[0].published_offers).toBeGreaterThan(0)
   })
 })

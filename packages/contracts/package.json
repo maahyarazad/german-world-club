@@ -18,9 +18,16 @@
     "./profile": "./src/profile.ts",
     "./events": "./src/events.ts",
     "./threads": "./src/threads.ts",
-    "./countries": "./src/countries.ts"
+    "./countries": "./src/countries.ts",
+    "./offers": "./src/offers.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
   }
 }

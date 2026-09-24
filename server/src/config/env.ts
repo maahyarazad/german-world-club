@@ -107,6 +107,38 @@ const schema = z
       }
     }
   })
+  /**
+   * Push credentials (feature 011, research R8, FR-030).
+   *
+   * Production needs EXPO_ACCESS_TOKEN because the Expo project runs with
+   * enhanced push security: without the token every send is refused, and the
+   * outbox would quietly fill with failed deliveries instead of the process
+   * saying so at boot.
+   *
+   * FCM is all or nothing, in every environment. Two of the three set is a
+   * typo, not a choice, and the symptom would be every `fcm` device failing
+   * with "credentials are not configured" while the config looks filled in.
+   */
+  .superRefine((v, ctx) => {
+    if (v.NODE_ENV === 'production' && !v.EXPO_ACCESS_TOKEN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EXPO_ACCESS_TOKEN'],
+        message: 'EXPO_ACCESS_TOKEN must be set in production (enhanced push security refuses unsigned sends)',
+      })
+    }
+    const fcm = ['FCM_PROJECT_ID', 'FCM_CLIENT_EMAIL', 'FCM_PRIVATE_KEY'] as const
+    const set = fcm.filter((key) => Boolean(v[key]))
+    if (set.length > 0 && set.length < fcm.length) {
+      for (const key of fcm.filter((k) => !set.includes(k))) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is unset while ${set.join(', ')} ${set.length === 1 ? 'is' : 'are'} set — FCM needs all three or none`,
+        })
+      }
+    }
+  })
   // connectionTimeout must outlast requestTimeout, or the socket closes before
   // the request-level timeout can produce its 408.
   .refine((v) => v.CONNECTION_TIMEOUT_MS > v.REQUEST_TIMEOUT_MS, {
