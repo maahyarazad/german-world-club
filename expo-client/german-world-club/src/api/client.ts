@@ -89,15 +89,19 @@ type Options = {
 };
 
 export async function api<T>(path: string, { method = 'GET', body, anonymous = false }: Options = {}): Promise<T> {
+  // FormData goes as-is (feature 010's media uploads): fetch writes the
+  // multipart content-type itself, boundary included, and a hand-set one
+  // would lack it.
+  const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
   const send = () => {
     const headers: Record<string, string> = { accept: 'application/json' };
-    if (body !== undefined) headers['content-type'] = 'application/json';
+    if (body !== undefined && !multipart) headers['content-type'] = 'application/json';
     const tokens = anonymous ? null : auth?.current();
     if (tokens) headers.authorization = `Bearer ${tokens.accessToken}`;
     return fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : multipart ? (body as FormData) : JSON.stringify(body),
     });
   };
 

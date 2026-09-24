@@ -20,7 +20,9 @@ describe.skipIf(!hasDatabase)('threads (§7)', () => {
   afterAll(async () => { await app.close() })
 
   const memberWithBearer = async (displayName: string) => {
-    const row = await createMember(app.pg, { displayName })
+    // A handle, because authoring requires one since feature 010.
+    const handle = `${displayName.toLowerCase()}_${Math.random().toString(36).slice(2, 8)}`
+    const row = await createMember(app.pg, { displayName, handle })
     return { id: String(row.id), headers: await bearerFor(app, { accountId: String(row.id), accountKind: 'member' }) }
   }
 

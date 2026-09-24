@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -37,6 +38,7 @@ export default function OrganisationHome() {
           </View>
         </Card>
       ) : null}
+      <Button label={t.profile.publicProfile} onPress={() => router.push('/public-profile')} variant="secondary" />
       <Button label={t.common.signOut} onPress={signOut} variant="danger" />
     </FormScreen>
   );

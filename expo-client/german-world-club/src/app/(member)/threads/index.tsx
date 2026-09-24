@@ -54,6 +54,7 @@ export default function Feed() {
               repostedBy={item.repostedBy}
               onChange={(post) => feed.setItems((all) => all.map((i) => (i.post.id === post.id ? { ...i, post } : i)))}
               onRemoved={(id) => feed.setItems((all) => all.filter((i) => i.post.id !== id))}
+              onHideAuthor={(authorId) => feed.setItems((all) => all.filter((i) => i.post.author.id !== authorId))}
             />
           )}
           onEndReached={feed.loadMore}

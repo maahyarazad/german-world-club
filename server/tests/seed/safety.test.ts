@@ -97,9 +97,15 @@ describe.skipIf(!hasDatabase)('history agrees with the state it describes', () =
   beforeAll(async () => { db = await withSeededDatabase('gwc_seed_history') }, 120_000)
   afterAll(async () => { await db?.drop() })
 
+  // Status entries only. Feature 010 adds a second member fact that implies
+  // history — the influencer grant, `member.designation.granted` at its own
+  // `granted_at` — which tests/seed/threads.test.ts holds to the same rule.
+  const STATUS_ACTIONS = `('member_locked', 'member_deactivated', 'membership_ended')`
+
   it('writes an audit entry only where a member state implies one', async () => {
     const { rows } = await db.pool.query(`
-      SELECT count(*)::int AS entries FROM audit_log WHERE target_type = 'member'`)
+      SELECT count(*)::int AS entries FROM audit_log
+       WHERE target_type = 'member' AND action IN ${STATUS_ACTIONS}`)
     const { rows: nonActive } = await db.pool.query(`
       SELECT count(*)::int AS n FROM members WHERE email LIKE '%@demo.invalid' AND status <> 'active'`)
 
@@ -112,7 +118,7 @@ describe.skipIf(!hasDatabase)('history agrees with the state it describes', () =
     const { rows } = await db.pool.query(`
       SELECT count(*)::int AS n
         FROM audit_log a JOIN members m ON m.id = a.target_id
-       WHERE a.target_type = 'member' AND a.occurred_at <> m.status_changed_at`)
+       WHERE a.target_type = 'member' AND a.action IN ${STATUS_ACTIONS} AND a.occurred_at <> m.status_changed_at`)
     expect(rows[0].n).toBe(0)
   })
 

@@ -3,21 +3,35 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 
 import type { MemberProfile } from '@gwc/contracts/profile';
+import type { ProfileTab, ThreadPost } from '@gwc/contracts/threads';
 
-import { profileApi } from '@/api/endpoints';
+import { profileApi, threadsApi } from '@/api/endpoints';
 import { countryName } from '@/components/country-picker';
+import { PostCard } from '@/components/post-card';
+import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Centered, Chip, FormScreen, Loading, Message, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations, type Locale } from '@/i18n';
 import { useSession } from '@/session/session';
 
-/** Your own profile, with the contact details only you see. */
+/**
+ * Your own profile: the header others see (010), the contact details only you
+ * see, and your posts in the four tabs.
+ */
 export default function Profile() {
   const { t, locale, setLocale, format, formatDate, problemMessage } = useTranslations();
   const { signOut } = useSession();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [tab, setTab] = useState<ProfileTab>('threads');
+  const [posts, setPosts] = useState<ThreadPost[]>([]);
+  const profileId = profile?.id;
+
+  useFocusEffect(useCallback(() => {
+    if (!profileId) return;
+    threadsApi.memberPosts(profileId, null, tab).then((p) => setPosts(p.items)).catch(() => setPosts([]));
+  }, [profileId, tab]));
 
   // On focus, so returning from the edit modal shows the saved values.
   useFocusEffect(useCallback(() => {
@@ -42,14 +56,12 @@ export default function Profile() {
   ) : null);
 
   return (
-    <FormScreen title={profile.displayName ?? ''} subtitle={format(t.profile.memberSince, { date: formatDate(profile.memberSince) })}>
-      <View style={styles.row}>
-        <ThemedText type="smallBold">{profile.followers}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">{t.profile.followers}</ThemedText>
-        <ThemedText type="smallBold">{profile.following}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">{t.profile.following}</ThemedText>
-      </View>
-      {profile.bio ? <ThemedText>{profile.bio}</ThemedText> : null}
+    <FormScreen>
+      <ProfileHeader profile={profile}>
+        <ThemedText type="small" themeColor="textSecondary">
+          {format(t.profile.memberSince, { date: formatDate(profile.memberSince) })}
+        </ThemedText>
+      </ProfileHeader>
       <Card>
         {row(t.profile.email, profile.email)}
         {row(t.profile.mobile, profile.mobile)}
@@ -59,6 +71,18 @@ export default function Profile() {
         {row(t.profile.country, countryName(profile.countryOfResidence, locale))}
       </Card>
       <Button label={t.profile.edit} onPress={() => router.push('/profile/edit')} variant="secondary" />
+      <Button label={t.profile.privacy} onPress={() => router.push('/profile/privacy')} variant="secondary" />
+
+      <TabChips tab={tab} onChange={setTab} />
+      <View>
+        {posts.length === 0
+          ? <ThemedText themeColor="textSecondary">{t.common.empty}</ThemedText>
+          : posts.map((post) => (
+            <PostCard key={post.id} post={post}
+              onChange={(next) => setPosts((all) => all.map((p) => (p.id === next.id ? next : p)))}
+              onRemoved={(id) => setPosts((all) => all.filter((p) => p.id !== id))} />
+          ))}
+      </View>
 
       <View style={{ gap: Spacing.two }}>
         <ThemedText type="smallBold">{t.common.language}</ThemedText>

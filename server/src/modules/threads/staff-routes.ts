@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { z } from 'zod'
 import { THREAD_REPORT_STATES, moderationReasonSchema } from '@gwc/contracts/threads'
+import { mediaItemSchema } from '@gwc/contracts/media'
 import { createThreadStaffController } from './staff-controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -22,16 +23,22 @@ export default fp(
       rateLimit: app.bucket('admin-api'),
     } as const)
 
-    const staffPostSchema = z.object({
+    const staffPostFields = {
       id: z.string(),
       authorId: z.string(),
       authorDisplayName: z.string().nullable(),
       body: z.string(),
       replyToId: z.string().nullable(),
+      quoteOfId: z.string().nullable(),
       state: z.string(),
       stateReason: z.string().nullable(),
       stateChangedAt: z.string(),
       createdAt: z.string(),
+      media: z.array(mediaItemSchema),
+    }
+    const staffPostSchema = z.object({
+      ...staffPostFields,
+      quoted: z.object(staffPostFields).nullable(),
     })
 
     app.get(

@@ -60,6 +60,7 @@ import { registerMail } from './decorators/mail.ts'
 import onboardingRoutes from './modules/onboarding/routes.ts'
 import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
 import profileRoutes from './modules/profile/routes.ts'
+import profileStaffRoutes from './modules/profile/staff-routes.ts'
 import eventRoutes from './modules/events/routes.ts'
 import threadRoutes from './modules/threads/routes.ts'
 import threadStaffRoutes from './modules/threads/staff-routes.ts'
@@ -340,6 +341,7 @@ export async function buildApp({
   await app.register(onboardingRoutes)
   await app.register(onboardingStaffRoutes)
   await app.register(profileRoutes)
+  await app.register(profileStaffRoutes)
   await app.register(eventRoutes)
   await app.register(threadRoutes)
   await app.register(threadStaffRoutes)

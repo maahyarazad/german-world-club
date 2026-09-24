@@ -60,6 +60,23 @@ export default function Thread() {
             <PostCard post={view.post} onChange={replace} onOpen={false}
               onRemoved={() => router.back()} />
           </View>
+          <View style={{ flexDirection: 'row', gap: Spacing.four, paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
+            {view.post.likeCount > 0 ? (
+              <ThemedText type="small" style={{ color: theme.tint }}
+                onPress={() => router.push({ pathname: '/threads/people/[id]', params: { id: view.post.id, kind: 'likes' } })}>
+                {t.threads.likes} {view.post.likeCount}
+              </ThemedText>
+            ) : null}
+            {view.post.quoteCount > 0 ? (
+              <ThemedText type="small" style={{ color: theme.tint }}
+                onPress={() => router.push({ pathname: '/threads/quotes/[id]', params: { id: view.post.id } })}>
+                {t.threads.quotes} {view.post.quoteCount}
+              </ThemedText>
+            ) : null}
+          </View>
+          {view.post.replyToId && !view.parent
+            ? <ThemedText type="small" themeColor="textSecondary" style={{ padding: Spacing.three }}>{t.threads.unavailable}</ThemedText>
+            : null}
           <ThemedText type="smallBold" style={{ padding: Spacing.three }}>{t.threads.replies}</ThemedText>
         </View>
       }

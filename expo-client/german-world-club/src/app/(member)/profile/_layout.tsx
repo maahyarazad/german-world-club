@@ -8,6 +8,8 @@ export default function ProfileLayout() {
     <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
       <Stack.Screen name="index" options={{ title: t.profile.title }} />
       <Stack.Screen name="edit" options={{ presentation: 'modal', title: t.profile.edit }} />
+      <Stack.Screen name="handle" options={{ presentation: 'modal', title: t.profile.handleTitle }} />
+      <Stack.Screen name="privacy" options={{ title: t.profile.privacy }} />
     </Stack>
   );
 }

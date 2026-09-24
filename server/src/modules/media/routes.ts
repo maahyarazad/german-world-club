@@ -39,21 +39,32 @@ export default fp(
       },
     })
 
-    // ---- POST /media --------------------------------------------------------
-
-    app.post(
-      '/media',
-      {
-        config: {
-          auth: { audience: 'member' },
-          budget: 'media-upload',
-          rateLimit: app.bucket('upload'),
+    // ---- POST /media, POST /media/{merchant,partner} ---------------------------
+    //
+    // Members upload at /media. An organisation's logo (feature 010) goes
+    // through the same pipeline — same streaming size limit, magic-byte
+    // check, metadata strip and derivatives — at a route of its own, only
+    // because a route's audience is part of its posture and is one value
+    // (plugins/10-auth.ts). Widening /media to three audiences would make
+    // every member upload depend on the organisation gates as well. The asset
+    // records its uploader's kind, which is how a logo is later proven theirs.
+    for (const [path, audience] of [
+      ['/media', 'member'], ['/media/merchant', 'merchant'], ['/media/partner', 'partner'],
+    ] as const) {
+      app.post(
+        path,
+        {
+          config: {
+            auth: { audience },
+            budget: 'media-upload',
+            rateLimit: app.bucket('upload'),
+          },
+          onRequest: app.guard,
+          schema: { response: { 201: assetSchema, 202: assetSchema } },
         },
-        onRequest: app.guard,
-        schema: { response: { 201: assetSchema, 202: assetSchema } },
-      },
-      controller.upload,
-    )
+        controller.upload,
+      )
+    }
 
     // ---- GET /media/:id -----------------------------------------------------
 

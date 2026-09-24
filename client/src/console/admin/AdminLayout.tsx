@@ -14,6 +14,7 @@ export const ADMIN_ITEMS: readonly SidebarItem[] = [
   { to: '/konsole/admin', label: 'Dashboard', end: true },
   { to: '/konsole/admin/mitglieder', module: 'members' },
   { to: '/konsole/admin/angebote', module: 'marketplace_moderation' },
+  { to: '/konsole/admin/threads', module: 'threads_moderation' },
   { to: '/konsole/admin/partner-inhalte', module: 'partners' },
   { to: '/konsole/admin/beschwerden', module: 'support_tickets' },
   { to: '/konsole/admin/events', module: 'events' },

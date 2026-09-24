@@ -11,6 +11,17 @@ import AdminDashboard from './AdminDashboard'
 import Marketplace from './admin/Marketplace'
 import MemberLayout from '../member/MemberLayout'
 import MemberMarketplace from '../member/Marketplace'
+import Feed from '../member/threads/Feed'
+import PostView, { QuotesView, LikesView } from '../member/threads/PostView'
+import Activity from '../member/threads/Activity'
+import MyProfile from '../member/profile/MyProfile'
+import EditProfile from '../member/profile/EditProfile'
+import MemberProfile, { FollowList } from '../member/profile/MemberProfile'
+import Privacy from '../member/profile/Privacy'
+import OrganisationView from '../member/profile/OrganisationView'
+import OrganisationProfilePage from '../organisation/Profile'
+import ThreadsModeration from './admin/Threads'
+import Influencers from './admin/Influencers'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
 import NotBuilt from './NotBuilt'
@@ -168,6 +179,8 @@ export function ConsoleRoutes() {
       >
         <Route index element={<AdminDashboard />} />
         <Route path="angebote" element={<Marketplace />} />
+        <Route path="threads" element={<ThreadsModeration />} />
+        <Route path="mitglieder" element={<Influencers />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}
@@ -183,6 +196,21 @@ export function ConsoleRoutes() {
         }
       >
         <Route index element={<MemberMarketplace />} />
+        {/* Threads and profiles (feature 010). A member is addressed by
+            handle or id under one segment — react-router matches whole
+            segments, so `@handle` cannot be a route of its own. */}
+        <Route path="threads" element={<Feed />} />
+        <Route path="threads/:id" element={<PostView />} />
+        <Route path="threads/:id/zitate" element={<QuotesView />} />
+        <Route path="threads/:id/likes" element={<LikesView />} />
+        <Route path="aktivitaet" element={<Activity />} />
+        <Route path="profil" element={<MyProfile />} />
+        <Route path="profil/bearbeiten" element={<EditProfile />} />
+        <Route path="profil/privatsphaere" element={<Privacy />} />
+        <Route path="mitglieder/:ref" element={<MemberProfile />} />
+        <Route path="mitglieder/:ref/follower" element={<FollowList direction="followers" />} />
+        <Route path="mitglieder/:ref/folgt" element={<FollowList direction="following" />} />
+        <Route path="organisationen/:slug" element={<OrganisationView />} />
         {/* Same reasoning as the admin area's `*`: an unbuilt member path must
             not fall through to the top-level `*` and read as a logout on a
             session that is still perfectly valid. */}
@@ -203,6 +231,7 @@ export function ConsoleRoutes() {
           }
         >
           <Route index element={<OrganisationHome />} />
+          <Route path="profil" element={<OrganisationProfilePage kind={kind} />} />
           <Route path="*" element={<NotBuilt />} />
         </Route>
       ))}

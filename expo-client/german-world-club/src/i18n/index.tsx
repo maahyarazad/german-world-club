@@ -100,6 +100,8 @@ const PROBLEM_KEYS: Record<string, keyof Catalogue['problems']> = {
   [PROBLEMS.REGISTRATION_CLOSED.type]: 'registrationClosed',
   [PROBLEMS.ALREADY_REGISTERED.type]: 'alreadyRegistered',
   [PROBLEMS.CONFLICT.type]: 'conflict',
+  [PROBLEMS.HANDLE_REQUIRED.type]: 'handleRequired',
+  [PROBLEMS.HANDLE_CHANGE_TOO_SOON.type]: 'handleChangeTooSoon',
   [PROBLEMS.NOT_FOUND.type]: 'notFound',
   [PROBLEMS.SERVICE_UNAVAILABLE.type]: 'unavailable',
   [PROBLEMS.REQUEST_DEADLINE_EXCEEDED.type]: 'unavailable',

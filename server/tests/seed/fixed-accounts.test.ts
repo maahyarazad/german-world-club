@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import pg from 'pg'
 import { hasDatabase } from '../helpers/db.ts'
 import { readFileSync } from 'node:fs'
-import { runSeed } from './helpers.ts'
+import { runSeed, databaseUrl } from './helpers.ts'
 
 const run = promisify(execFile)
 const SERVER = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -45,7 +45,7 @@ const FIXED = [
 
 describe.skipIf(!hasDatabase)('the demo seed leaves the fixed accounts exactly as they were', () => {
   const name = 'gwc_seed_fixed'
-  const url = `postgres://localhost:5432/${name}`
+  const url = databaseUrl(name)
   const env = { DATABASE_URL: url, NODE_ENV: 'development' }
   let pool: pg.Pool
   let before
@@ -64,7 +64,7 @@ describe.skipIf(!hasDatabase)('the demo seed leaves the fixed accounts exactly a
   }
 
   beforeAll(async () => {
-    const admin = new pg.Client({ connectionString: 'postgres://localhost:5432/postgres' })
+    const admin = new pg.Client({ connectionString: databaseUrl('postgres') })
     await admin.connect()
     await admin.query(`DROP DATABASE IF EXISTS ${name}`)
     await admin.query(`CREATE DATABASE ${name}`)
@@ -79,7 +79,7 @@ describe.skipIf(!hasDatabase)('the demo seed leaves the fixed accounts exactly a
 
   afterAll(async () => {
     await pool?.end()
-    const cleanup = new pg.Client({ connectionString: 'postgres://localhost:5432/postgres' })
+    const cleanup = new pg.Client({ connectionString: databaseUrl('postgres') })
     await cleanup.connect()
     await cleanup.query(`DROP DATABASE IF EXISTS ${name}`)
     await cleanup.end()

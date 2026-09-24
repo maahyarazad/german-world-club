@@ -41,7 +41,7 @@ export const CONSOLE_ENTRY = '/konsole.html'
  * everywhere else. `tests/dev-server.test.ts` now scans the client's own
  * fetch calls and fails when one names a prefix this list does not.
  */
-export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding']
+export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding', '/threads', '/profile']
 
 /**
  * Static pages Vite serves from a file whose name is not the URL.

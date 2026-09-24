@@ -64,6 +64,22 @@ export const SEEDED = Object.freeze([
   'thread_reposts',
   'member_follows',
   'thread_reports',
+
+  // --- Profiles and threads, completed (010) ---------------------------------
+  // Content, not credentials. The designation's audit entry follows the
+  // history rule (stamped `granted_at`); the row itself is domain state.
+  'member_links',
+  'member_avatars',
+  'member_designations',
+  'organisation_profiles',
+  'thread_post_media',
+  'thread_post_mentions',
+  // Not seeded, but writable in principle: no seeded fact implies a block, a
+  // mute or where somebody stopped reading Activity, so the demo leaves them
+  // empty (data-model §6). They hold no credential, so NEVER_SEEDED is wrong.
+  'member_blocks',
+  'member_mutes',
+  'member_activity_cursor',
 ])
 
 /**
