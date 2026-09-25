@@ -94,6 +94,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         await route(session);
       } catch (error) {
+        console.error('SessionProvider.restore', error instanceof ApiError ? error.problem : error);
         // Offline at launch: keep the session and show the member area, which
         // will surface the network error itself. Only an answer from the
         // server that the session is over signs anybody out.

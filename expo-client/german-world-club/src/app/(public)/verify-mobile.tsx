@@ -6,6 +6,7 @@ import { Button, CodeField, FormScreen, Message } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
 import { useSession } from '@/session/session';
+import { ApiError } from '@/api/client';
 
 /**
  * Onboarding step 3 (§6.1): prove the mobile number.
@@ -15,7 +16,7 @@ import { useSession } from '@/session/session';
  * verification — this screen never navigates on success itself.
  */
 export default function VerifyMobile() {
-  const { t, format, problemMessage } = useTranslations();
+  const { t, format } = useTranslations();
   const { adopt, deviceId } = useSession();
   const { clear } = useRegistrationDraft();
   const params = useLocalSearchParams<{ challengeId: string; sentTo: string }>();
@@ -24,12 +25,10 @@ export default function VerifyMobile() {
   const [challengeId, setChallengeId] = useState(params.challengeId);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
-    setError(null);
     try {
       const pair = await onboardingApi.verifyMobile({ challengeId, code, deviceId: deviceId! });
       // The body carries tokens because this request carried a deviceId — the
@@ -40,7 +39,7 @@ export default function VerifyMobile() {
       clear();
       await adopt({ accessToken: pair.accessToken, refreshToken: pair.refreshToken, principal: pair.principal });
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('VerifyMobile.submit', e instanceof ApiError ? e.problem : e);
       setCode('');
     } finally {
       setBusy(false);
@@ -48,19 +47,18 @@ export default function VerifyMobile() {
   };
 
   const resend = async () => {
-    setError(null);
     try {
       const resent = await authApi.resendOtp(challengeId);
       setChallengeId(resent.challengeId);
       setNotice(format(t.common.codeSentTo, { target: sentTo }));
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('VerifyMobile.resend', e instanceof ApiError ? e.problem : e);
     }
   };
 
   return (
     <FormScreen title={t.register.mobileTitle} subtitle={`${t.register.mobileHint2} ${format(t.common.codeSentTo, { target: sentTo })}`}>
-      <CodeField label={t.register.mobileTitle} length={4} value={code} onChangeText={setCode} error={error} />
+      <CodeField label={t.register.mobileTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />
       <Button label={t.common.resendCode} onPress={resend} variant="secondary" />

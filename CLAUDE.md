@@ -327,6 +327,50 @@ minute. Disabling `push.deliver` stops every send path. Five rules:
   production; FCM settings are all or none. A token is never logged, returned
   or copied into history: `tokenPreview` is all anyone sees.
 
+**Server faults are recorded, not just logged (feature 012,
+`specs/012-error-persistence/`).** A request the error handler answers with the
+generic `INTERNAL` problem also leaves a row in `server_faults`, keyed on the
+request id the member was shown. Six rules:
+
+- **Request ids are always the server's.** `genReqId` returns a monotonic ULID
+  and ignores every inbound header. A client's own `x-request-id` is kept as
+  `clientRequestId`: echoed on `x-client-request-id`, bound into every log line
+  through `childLoggerFactory` (a hook rebinding `request.log` would miss
+  Fastify's own request lines), stored on a fault record — never the id
+  `audit_log` or `server_faults` is keyed on. Both patterns live in
+  `@gwc/contracts/request-id`.
+- **`INTERNAL`, not `status >= 500`.** Every deliberate 5xx (load shedding, an
+  open breaker, a passed deadline) has its own problem type; storing those would
+  flood the table during the outage they describe.
+- **Recorded after the answer is decided, never awaited.** `app.recordServerFault`
+  never throws, holds at most two pool connections, stores at most
+  `SERVER_FAULTS_PER_MINUTE` rows per instance and counts the rest in
+  `server_fault_suppressions`. A dead database changes nothing about the
+  response (`tests/server-faults/db-down.test.ts`).
+- **An allowlisted shape, scrubbed.** The recorder never sees `request` or the
+  error object: route pattern not URL, no bodies, headers or query strings, and
+  `message`/`stack` pass through `ops/scrub.ts`. Driver fields like pg's
+  `detail` (which echoes values) are never copied.
+- **Immutable, with a 30-day delete floor, both by trigger.** Only
+  `server-faults.prune` removes rows; even an ad-hoc `DELETE` cannot touch a
+  fresh one. The tables sit under `HISTORY` in `seed/tables.ts` and get no rows
+  (`NEVER_SEEDED` is for live credentials only).
+- **Read-only access on `server_faults.read`** — the console's Fehlerprotokoll
+  and two GET routes. No staff action edits or deletes a record.
+
+**Clients report failures to the console, not on screen.** In both the web
+console (`client/`) and the Expo app, a catch logs
+`console.error('<Component>.<function>', error instanceof ApiError ? error.problem : error)`
+and stores nothing: there is no `problem`/`error` state holding a server
+refusal, and no pop-up showing one. Info goes to `console.log`, including one
+line per API request in the Expo client (`src/api/client.ts`: method, path,
+status, timing and the server's request id — never headers or bodies, which
+carry tokens). This is plain `console.*` with no `__DEV__` guard, so release
+builds log too. What survives in state is only what changes behaviour: a local
+form check (a missing alt text, a photo permission), a flag that stops a
+spinner or keeps sign-out reachable when a screen cannot load, a retry flag, and
+the redirects a refusal triggers (`needsSignIn`, `HANDLE_REQUIRED`).
+
 ## Conventions
 
 - ES modules, Node 22, no TypeScript in the server.

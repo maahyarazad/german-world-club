@@ -6,7 +6,7 @@ import type { EventSummary } from '@gwc/contracts/events';
 
 import { eventsApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Card, Chip, Loading, Message, styles } from '@/components/ui';
+import { Card, Chip, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
 import { useTheme } from '@/hooks/use-theme';
@@ -15,7 +15,7 @@ import { useTranslations } from '@/i18n';
 /** Club events (§4), soonest first; past ones on the other tab. */
 export default function Events() {
   const theme = useTheme();
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const [when, setWhen] = useState<'upcoming' | 'past'>('upcoming');
   const fetchPage = useCallback((cursor: string | null) => eventsApi.list(when, cursor), [when]);
   const events = usePaged<EventSummary>(fetchPage, [when]);
@@ -42,7 +42,6 @@ export default function Events() {
           renderItem={({ item }) => <EventCard event={item} />}
           onEndReached={events.loadMore}
           refreshControl={<RefreshControl refreshing={events.refreshing} onRefresh={() => events.reload(true)} />}
-          ListHeaderComponent={events.error ? <Message text={problemMessage(events.error)} /> : null}
           ListEmptyComponent={<ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>{t.common.empty}</ThemedText>}
         />
       )}

@@ -4,19 +4,18 @@ import { useState } from 'react';
 import { Button, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
+import { ApiError } from '@/api/client';
 
 export default function SignIn() {
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
-    setError(null);
     setNotice(null);
     try {
       const result = await signIn(email.trim().toLowerCase(), password);
@@ -39,7 +38,7 @@ export default function SignIn() {
           break;
       }
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('SignIn.submit', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }
@@ -65,7 +64,6 @@ export default function SignIn() {
         textContentType="password"
         onSubmitEditing={submit}
       />
-      <Message text={error} />
       <Message text={notice} tone="info" />
       <Button label={t.signIn.submit} onPress={submit} loading={busy} disabled={!email || password.length < 8} />
     </FormScreen>

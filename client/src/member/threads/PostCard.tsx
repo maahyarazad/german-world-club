@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import type { ThreadAuthor, ThreadPost } from '@gwc/contracts/threads'
 import { del, post as send, put, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { fill, formatDateTime, formatNumber } from '../../lib/format'
 import Button from '../../components/ui/Button'
-import Field, { FormMessage } from '../../components/ui/Field'
+import Field from '../../components/ui/Field'
 import { useLocale, useTranslations } from '../../i18n/index'
 import Avatar from './Avatar'
 import AuthorLine from './AuthorLine'
@@ -42,28 +41,27 @@ export function PostCard({ post, repostedBy, onChange, onRemoved, onReply, onQuo
   const [reporting, setReporting] = useState(false)
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  const failed = (err: unknown) =>
-    setError(err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed)
+  const failed = (where: string, err: unknown) =>
+    console.error(`PostCard.${where}`, err instanceof ApiError ? err.problem : err)
 
   const toggle = async (kind: 'like' | 'repost', on: boolean) => {
     try {
       const url = `/threads/posts/${post.id}/${kind}`
       onChange((await (on ? put(url) : del(url))) as ThreadPost)
-    } catch (err) { failed(err) }
+    } catch (err) { failed('toggle', err) }
   }
 
   const remove = async () => {
     setMenu(false)
     if (!window.confirm(t.memberThreads.deleteConfirm)) return
-    try { await del(`/threads/posts/${post.id}`); onRemoved?.(post.id) } catch (err) { failed(err) }
+    try { await del(`/threads/posts/${post.id}`); onRemoved?.(post.id) } catch (err) { failed('remove', err) }
   }
 
   const relate = async (relation: 'blocks' | 'mutes') => {
     setMenu(false)
     if (relation === 'blocks' && !window.confirm(t.memberProfile.blockConfirm)) return
-    try { await put(`/threads/${relation}/${post.author.id}`); onHideAuthor?.(post.author.id) } catch (err) { failed(err) }
+    try { await put(`/threads/${relation}/${post.author.id}`); onHideAuthor?.(post.author.id) } catch (err) { failed('relate', err) }
   }
 
   const report = async () => {
@@ -72,7 +70,7 @@ export function PostCard({ post, repostedBy, onChange, onRemoved, onReply, onQuo
       setReporting(false)
       setReason('')
       setNotice(t.memberThreads.reported)
-    } catch (err) { failed(err) }
+    } catch (err) { failed('report', err) }
   }
 
   const count = (n: number) => (n > 0 ? formatNumber(n, locale) : '')
@@ -140,7 +138,6 @@ export function PostCard({ post, repostedBy, onChange, onRemoved, onReply, onQuo
         </div>
 
         {notice && <p role="status" className="mt-1 text-[12px] text-text-muted">{notice}</p>}
-        {error && <FormMessage>{error}</FormMessage>}
       </div>
 
       <Modal title={t.memberThreads.report} open={reporting} onClose={() => setReporting(false)}>

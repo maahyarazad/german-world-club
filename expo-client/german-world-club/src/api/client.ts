@@ -5,9 +5,12 @@ import { API_URL } from '@/config';
 /**
  * The one HTTP client. Every screen goes through `api()`; none calls `fetch`.
  *
- * It does three things and nothing else: attach the bearer token, rotate it
- * once when the server says it has expired, and turn every non-2xx answer into
- * an `ApiError` carrying the RFC 9457 problem. Screens branch on
+ * It does four things and nothing else: attach the bearer token, rotate it
+ * once when the server says it has expired, turn every non-2xx answer into
+ * an `ApiError` carrying the RFC 9457 problem, and `console.log` each
+ * request's method, path, status, timing and the server's request id. Headers
+ * and bodies are never logged: they carry the tokens. A failure is logged with
+ * `console.error` by the screen that catches it, under its own name. Screens branch on
  * `error.problem.type`, never on `detail` — the same rule the console follows,
  * and the reason the server never localises its errors.
  */
@@ -57,12 +60,15 @@ async function refresh(): Promise<boolean> {
   const tokens = auth?.current();
   if (!tokens) return false;
   refreshing ??= (async () => {
+    const started = Date.now();
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ refreshToken: tokens.refreshToken }),
       });
+      // Status and id only: the body carries the rotated tokens.
+      console.log('api POST /auth/refresh', response.status, `${Date.now() - started}ms`, response.headers.get('x-request-id'));
       if (!response.ok) {
         await auth?.lost();
         return false;
@@ -70,9 +76,10 @@ async function refresh(): Promise<boolean> {
       const body = await response.json();
       await auth?.rotated({ accessToken: body.accessToken, refreshToken: body.refreshToken });
       return true;
-    } catch {
+    } catch (err) {
       // A network failure is not a revoked session: keep the tokens and let
       // the caller's request fail as a network error.
+      console.error('api.refresh', err);
       return false;
     } finally {
       refreshing = null;
@@ -105,6 +112,9 @@ export async function api<T>(path: string, { method = 'GET', body, anonymous = f
     });
   };
 
+  const started = Date.now();
+  // A fetch that throws never reached the server: there is no status or
+  // request id to log here, and the caller's catch logs the error itself.
   let response = await send();
 
   // 401 means the credential itself — expired or revoked. 403 is the server
@@ -114,10 +124,15 @@ export async function api<T>(path: string, { method = 'GET', body, anonymous = f
     if (await refresh()) response = await send();
   }
 
+  // One line per request; the id is the key the console's Fehlerprotokoll
+  // looks a 500 up by. Never headers or bodies.
+  console.log(`api ${method} ${path}`, response.status, `${Date.now() - started}ms`, response.headers.get('x-request-id'));
   if (response.status === 204) return undefined as T;
   const text = await response.text();
   const parsed = text ? safeJson(text) : null;
-  if (!response.ok) throw new ApiError(response.status, (parsed as ProblemResponse | null) ?? null);
+  if (!response.ok) {
+    throw new ApiError(response.status, (parsed as ProblemResponse | null) ?? null);
+  }
   return parsed as T;
 }
 

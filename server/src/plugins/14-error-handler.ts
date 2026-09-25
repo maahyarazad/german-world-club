@@ -80,6 +80,38 @@ export default fp(
         request.log.warn({ statusCode: body.status, type: body.type }, 'request rejected')
       }
 
+      /**
+       * Feature 012: an unexpected fault is also stored, so the request id a
+       * member reads out still leads somewhere once the log has scrolled away.
+       *
+       * INTERNAL, not `status >= 500`: every deliberate 5xx — load shedding,
+       * an open breaker, a passed deadline — carries its own problem type, so
+       * INTERNAL is exactly "the platform did not anticipate this". Storing the
+       * deliberate ones would flood the table during the outage they describe.
+       *
+       * Not awaited, on purpose (FR-004): the answer below must not wait on,
+       * or be changed by, the database — which is often the very thing that
+       * failed. The recorder never rejects; `void` only says so.
+       */
+      if (body.type === PROBLEMS.INTERNAL.type) {
+        // Anything can be thrown; read only these four fields, defensively.
+        const failure = (error ?? {}) as { name?: unknown; code?: unknown; message?: unknown; stack?: unknown }
+        void app.recordServerFault?.({
+          requestId: request.id,
+          clientRequestId: request.requestContext?.get('clientRequestId') ?? null,
+          method: request.method,
+          // The pattern, never request.url: no path values, no query string.
+          route: request.routeOptions?.url ?? null,
+          status: body.status,
+          errorName: typeof failure.name === 'string' ? failure.name : 'Error',
+          errorCode: typeof failure.code === 'string' ? failure.code : null,
+          message: String(failure.message ?? ''),
+          stack: typeof failure.stack === 'string' ? failure.stack : null,
+          principalKind: request.principal?.kind ?? null,
+          principalId: request.principal?.id ?? null,
+        })
+      }
+
       if (wantsHtml(request)) {
         return reply
           .code(body.status)

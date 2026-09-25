@@ -107,6 +107,11 @@ export const HISTORY = Object.freeze([
   // happened, which no seeded fact implies (seed/operations.ts).
   'push_notifications',
   'push_deliveries',
+  // Feature 012. The seed writes neither: no seeded fact implies a server
+  // fault, so under the rule above they get no rows. A seeded fault would be
+  // fiction in the one table read as evidence of what actually broke.
+  'server_faults',
+  'server_fault_suppressions',
 ])
 
 /**

@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import type { Designation } from '@gwc/contracts/profile'
 import { get, post, request, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { fill, formatDate } from '../../lib/format'
 import PageHeader from '../../components/ui/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import Field, { FormMessage } from '../../components/ui/Field'
+import Field from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import { useCapabilities } from '../../lib/capabilities'
 import { hasGrant } from '@gwc/contracts/capabilities'
@@ -30,19 +29,18 @@ export function Influencers() {
   const [member, setMember] = useState<Found | null>(null)
   const [history, setHistory] = useState<Designation[]>([])
   const [reason, setReason] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const failed = (where: string, err: unknown) =>
+    console.error(`Influencers.${where}`, err instanceof ApiError ? err.problem : err)
 
-  const failed = (err: unknown) => setError(err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed)
 
   const find = async () => {
-    setError(null); setMember(null); setHistory([])
+    setMember(null); setHistory([])
     try {
       const found = (await get(`/admin/members/by-handle/${encodeURIComponent(query.trim().replace(/^@/, ''))}`)) as Found
       setMember(found)
       setHistory(((await get(`/admin/members/${found.id}/designations`)) as { items: Designation[] }).items)
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) setError(t.influencerAdmin.notFound)
-      else failed(err)
+      failed('find', err)
     }
   }
 
@@ -53,7 +51,7 @@ export function Influencers() {
       const body = (grant ? await post(url, { reason: reason.trim() }) : await request(url, { method: 'DELETE', body: { reason: reason.trim() } })) as { items: Designation[] }
       setHistory(body.items)
       setReason('')
-    } catch (err) { failed(err) }
+    } catch (err) { failed('change', err) }
   }
 
   const active = history.some((d) => d.revokedAt === null)
@@ -67,7 +65,6 @@ export function Influencers() {
           <Button type="submit" disabled={!query.trim()}>{t.influencerAdmin.find}</Button>
         </form>
       </Card>
-      {error && <FormMessage>{error}</FormMessage>}
       {member && (
         <Card title={`${member.displayName ?? ''} @${member.handle}`}>
           <h3 className="text-[12px] font-semibold uppercase text-text-muted">{t.influencerAdmin.history}</h3>

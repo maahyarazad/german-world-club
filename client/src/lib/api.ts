@@ -1,4 +1,5 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
+import type { ServerFaultListQuery, ServerFaultListResponse, ServerFaultLookupResponse } from '@gwc/contracts/server-faults'
 import type { ProblemResponse } from '@gwc/contracts/errors'
 import type {
   AudienceKind, CampaignRequestInput, Notification, NotificationKind, NotificationList, PushAudience,
@@ -227,4 +228,19 @@ export const pushApi = {
   history: (kind?: NotificationKind) =>
     get(`/push/campaigns${kind ? `?kind=${kind}` : ''}`) as Promise<NotificationList>,
   notification: (id: string) => get(`/push/campaigns/${id}`) as Promise<Notification>,
+}
+
+/**
+ * The server fault records (feature 012), typed from `@gwc/contracts/server-faults`.
+ * Read-only: there is no endpoint that edits or deletes one.
+ */
+export const serverFaultsApi = {
+  list: (query: ServerFaultListQuery = {}) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) if (value !== undefined) params.set(key, String(value))
+    const qs = params.toString()
+    return get(`/admin/server-faults${qs ? `?${qs}` : ''}`) as Promise<ServerFaultListResponse>
+  },
+  byRequest: (requestId: string) =>
+    get(`/admin/server-faults/by-request/${encodeURIComponent(requestId)}`) as Promise<ServerFaultLookupResponse>,
 }

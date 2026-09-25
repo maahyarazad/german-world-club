@@ -5,6 +5,7 @@ import { authApi } from '@/api/endpoints';
 import { Button, CodeField, FormScreen, Message } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
+import { ApiError } from '@/api/client';
 
 /**
  * The SMS second factor (§6.2). Also how an applicant resumes onboarding on
@@ -12,7 +13,7 @@ import { useSession } from '@/session/session';
  * too, and the session then routes them back to the step they were on.
  */
 export default function SignInCode() {
-  const { t, format, problemMessage } = useTranslations();
+  const { t, format } = useTranslations();
   const { adopt, deviceId } = useSession();
   const params = useLocalSearchParams<{ challengeId: string; sentTo: string }>();
   const { sentTo } = params;
@@ -20,17 +21,15 @@ export default function SignInCode() {
   const [challengeId, setChallengeId] = useState(params.challengeId);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
-    setError(null);
     try {
       const pair = await authApi.verifyOtp({ challengeId, code, deviceId: deviceId! });
       await adopt({ accessToken: pair.accessToken!, refreshToken: pair.refreshToken!, principal: pair.principal! });
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('SignInCode.submit', e instanceof ApiError ? e.problem : e);
       setCode('');
     } finally {
       setBusy(false);
@@ -38,19 +37,18 @@ export default function SignInCode() {
   };
 
   const resend = async () => {
-    setError(null);
     try {
       const resent = await authApi.resendOtp(challengeId);
       setChallengeId(resent.challengeId);
       setNotice(format(t.common.codeSentTo, { target: sentTo }));
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('SignInCode.resend', e instanceof ApiError ? e.problem : e);
     }
   };
 
   return (
     <FormScreen subtitle={`${t.signIn.otpHint} ${sentTo ? format(t.common.codeSentTo, { target: sentTo }) : ''}`}>
-      <CodeField label={t.signIn.otpTitle} length={4} value={code} onChangeText={setCode} error={error} />
+      <CodeField label={t.signIn.otpTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />
       <Button label={t.common.resendCode} onPress={resend} variant="secondary" />

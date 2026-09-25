@@ -83,6 +83,7 @@ prevents boot; it never degrades behaviour silently.
 | `EXPO_ACCESS_TOKEN` | **production** | Boot is refused without it. Turn on *enhanced push security* for the Expo project too, so a leaked token alone cannot push to members. Unset outside production with no FCM either, the push jobs use a logging transport that records "would send" and marks deliveries sent |
 | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | all three or none | Only for devices registered with `provider: 'fcm'`; the app registers Expo tokens, and Android reaches FCM through Expo's own credentials in EAS. A partial set refuses boot in every environment. The private key is a secret: environment or secret manager, never a JSON file in the repo |
 | `MEDIA_*` | defaults are fine locally | Storage driver, size and pixel bounds, per-account quota |
+| `SERVER_FAULTS_PER_MINUTE` | no (default `60`) | Unexpected 500s stored per instance per minute; beyond it they are only counted, so a dependency outage cannot turn fault recording into extra database load |
 
 ---
 
@@ -194,6 +195,28 @@ referrer should not become a search result.
 
 If you need the document in CI without a staff session, generate it from the
 built app rather than loosening the route or setting `NODE_ENV=development`.
+
+---
+
+## When something fails: request ids and fault records
+
+Every response carries `x-request-id`, a ULID the server generates, and every
+error body repeats it as `requestId`. That is the reference a member reads out
+from an error page. For an unexpected 500 it leads to a stored record (feature
+012):
+
+- in the console: **Fehlerprotokoll** (`server_faults.read`; superadmins have it)
+- in SQL: `SELECT * FROM server_faults WHERE request_id = '<id>'`
+
+Records are kept 30 days, never edited, and pruned by `server-faults.prune`.
+Refusals (4xx) and deliberate 503s are not stored; neither are failures in
+scheduled jobs or at startup. Those remain log-only.
+
+> **Breaking change (feature 012).** The server no longer adopts a
+> client-supplied `x-request-id` as the request's id. An integration that sent
+> its own id and expected it back in `x-request-id` must now read
+> `x-client-request-id`. The value is still logged, as `clientRequestId`, next
+> to the server's `requestId`.
 
 ---
 

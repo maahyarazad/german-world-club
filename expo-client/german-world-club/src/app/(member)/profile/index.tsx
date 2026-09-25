@@ -10,38 +10,46 @@ import { countryName } from '@/components/country-picker';
 import { PostCard } from '@/components/post-card';
 import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, Centered, Chip, FormScreen, Loading, Message, styles } from '@/components/ui';
+import { Button, Card, Centered, Chip, FormScreen, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations, type Locale } from '@/i18n';
 import { useSession } from '@/session/session';
+import { ApiError } from '@/api/client';
 
 /**
  * Your own profile: the header others see (010), the contact details only you
  * see, and your posts in the four tabs.
  */
 export default function Profile() {
-  const { t, locale, setLocale, format, formatDate, problemMessage } = useTranslations();
+  const { t, locale, setLocale, format, formatDate } = useTranslations();
   const { signOut } = useSession();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
-  const [error, setError] = useState<unknown>(null);
+  // Not the problem itself (that goes to the console): whether to offer the
+  // way out, since a profile that will not load leaves nothing else to do.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [tab, setTab] = useState<ProfileTab>('threads');
   const [posts, setPosts] = useState<ThreadPost[]>([]);
   const profileId = profile?.id;
 
   useFocusEffect(useCallback(() => {
     if (!profileId) return;
-    threadsApi.memberPosts(profileId, null, tab).then((p) => setPosts(p.items)).catch(() => setPosts([]));
+    threadsApi.memberPosts(profileId, null, tab).then((p) => setPosts(p.items)).catch((e) => {
+      console.error('Profile.loadPosts', e instanceof ApiError ? e.problem : e);
+      setPosts([]);
+    });
   }, [profileId, tab]));
 
   // On focus, so returning from the edit modal shows the saved values.
   useFocusEffect(useCallback(() => {
-    profileApi.me().then((p) => { setProfile(p); setError(null); }, setError);
+    profileApi.me().then((p) => { setProfile(p); setLoadFailed(false); }, (e) => {
+      console.error('Profile.load', e instanceof ApiError ? e.problem : e);
+      setLoadFailed(true);
+    });
   }, []));
 
-  if (error && !profile) {
+  if (loadFailed && !profile) {
     return (
       <Centered>
-        <Message text={problemMessage(error)} />
         <Button label={t.common.signOut} onPress={signOut} variant="secondary" />
       </Centered>
     );

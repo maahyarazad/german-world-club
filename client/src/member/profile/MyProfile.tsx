@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import type { MemberProfile } from '@gwc/contracts/profile'
-import { get } from '../../lib/api'
+import { get, ApiError } from '../../lib/api'
 import Callout from '../../components/ui/Callout'
 import { useTranslations } from '../../i18n/index'
 import ProfileHeader from './ProfileHeader'
@@ -13,7 +13,10 @@ export function MyProfile() {
   const [profile, setProfile] = useState<MemberProfile | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
-    void get('/profile/me').then((p) => setProfile(p as MemberProfile)).catch(() => setFailed(true))
+    void get('/profile/me').then((p) => setProfile(p as MemberProfile)).catch((err) => {
+      console.error('MyProfile.load', err instanceof ApiError ? err.problem : err)
+      setFailed(true)
+    })
   }, [])
   if (failed) return <Callout variant="gold" title={t.memberThreads.loadFailed}>{null}</Callout>
   if (!profile) return null

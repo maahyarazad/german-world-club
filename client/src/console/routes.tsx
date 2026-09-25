@@ -23,6 +23,7 @@ import OrganisationProfilePage from '../organisation/Profile'
 import ThreadsModeration from './admin/Threads'
 import Influencers from './admin/Influencers'
 import Push from './admin/Push'
+import ServerFaults from './admin/ServerFaults'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
 import NotBuilt from './NotBuilt'
@@ -185,6 +186,7 @@ export function ConsoleRoutes() {
         {/* Feature 011. Push.tsx wraps itself in RequireGrant mass_messages,
             like Marketplace does, so a direct URL gets "not available". */}
         <Route path="push" element={<Push />} />
+        <Route path="fehlerprotokoll" element={<ServerFaults />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}

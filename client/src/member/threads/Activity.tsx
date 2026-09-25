@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router'
 import type { ActivityItem } from '@gwc/contracts/threads'
-import { post } from '../../lib/api'
+import { post, ApiError } from '../../lib/api'
 import PageHeader from '../../components/ui/PageHeader'
 import { fill, formatDateTime } from '../../lib/format'
 import { useLocale, useTranslations } from '../../i18n/index'
@@ -23,7 +23,8 @@ export function Activity({ onSeen }: { onSeen?: () => void }) {
 
   useEffect(() => {
     if (!newest) return
-    void post('/threads/activity/seen', { upTo: newest }).then(() => onSeen?.()).catch(() => {})
+    void post('/threads/activity/seen', { upTo: newest }).then(() => onSeen?.())
+      .catch((err) => console.error('Activity.markSeen', err instanceof ApiError ? err.problem : err))
   }, [newest, onSeen])
 
   return (

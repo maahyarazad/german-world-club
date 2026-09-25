@@ -4,8 +4,10 @@ import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { tokenPreview } from '@gwc/contracts/push';
 import type { PushLocale } from '@gwc/contracts/push';
 
+import { ApiError } from '@/api/client';
 import { pushApi } from '@/api/endpoints';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
@@ -33,7 +35,10 @@ export const pushSupported = Platform.OS !== 'web' && Device.isDevice;
 
 /** Fetch the Expo token and tell the server. Returns the server's device id. */
 export async function registerThisDevice(locale: PushLocale): Promise<string | null> {
-  if (!pushSupported) return null;
+  if (!pushSupported) {
+    console.log('registerThisDevice: skipped', Platform.OS === 'web' ? 'web' : 'not-a-device');
+    return null;
+  }
   const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
   const { data: token } = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
   const device = await pushApi.devices.register({
@@ -44,8 +49,16 @@ export async function registerThisDevice(locale: PushLocale): Promise<string | n
     locale,
   });
   await savePushDeviceId(device.id);
+  // The preview only: the token addresses this phone (feature 011's rule).
+  console.log('registerThisDevice: registered', tokenPreview(token), locale);
   return device.id;
 }
+
+/** The registration calls below are best-effort; a failure is logged, not shown. */
+const reportRegistrationFailure = (err: unknown) => {
+  console.error('registerThisDevice', err instanceof ApiError ? err.problem : err);
+  return null;
+};
 
 /**
  * Ask for permission with the explanation already shown. Records that the app
@@ -55,7 +68,7 @@ export async function requestAndRegister(locale: PushLocale): Promise<boolean> {
   await ensureAndroidChannel();
   const result = await Notifications.requestPermissionsAsync();
   await savePushAsked();
-  if (result.granted) await registerThisDevice(locale).catch(() => null);
+  if (result.granted) await registerThisDevice(locale).catch(reportRegistrationFailure);
   return result.granted;
 }
 
@@ -75,7 +88,7 @@ export function useDeviceRegistration() {
       const permission = await Notifications.getPermissionsAsync();
       if (permission.granted) {
         // Cold start, sign-in or a language change: refresh the registration.
-        await registerThisDevice(locale).catch(() => null);
+        await registerThisDevice(locale).catch(reportRegistrationFailure);
         return;
       }
       if (!(await loadPushAsked()) && !cancelled) setAsking(true);
@@ -88,7 +101,7 @@ export function useDeviceRegistration() {
     // The native token rotated (reinstall, OS restore). The Expo token is
     // derived from it, so fetch that again and re-register.
     const subscription = Notifications.addPushTokenListener(() => {
-      void registerThisDevice(localeRef.current).catch(() => null);
+      void registerThisDevice(localeRef.current).catch(reportRegistrationFailure);
     });
     return () => subscription.remove();
   }, [isMember]);

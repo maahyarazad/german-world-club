@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /** Who you blocked and muted, with undo (010 US8). */
 export default function Privacy() {
@@ -17,8 +18,8 @@ export default function Privacy() {
   const [blocked, setBlocked] = useState<ThreadAuthor[]>([]);
   const [muted, setMuted] = useState<ThreadAuthor[]>([]);
   const load = useCallback(() => {
-    threadsApi.blocks().then((r) => setBlocked(r.items)).catch(() => {});
-    threadsApi.mutes().then((r) => setMuted(r.items)).catch(() => {});
+    threadsApi.blocks().then((r) => setBlocked(r.items)).catch((e) => { console.error('Privacy.loadBlocks', e instanceof ApiError ? e.problem : e); });
+    threadsApi.mutes().then((r) => setMuted(r.items)).catch((e) => { console.error('Privacy.loadMutes', e instanceof ApiError ? e.problem : e); });
   }, []);
   useEffect(load, [load]);
 

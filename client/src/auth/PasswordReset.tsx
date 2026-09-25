@@ -1,12 +1,10 @@
 import type { ChangeEvent, FormEvent } from 'react'
-import type { ProblemResponse } from '@gwc/contracts/errors'
 import { useState } from 'react'
 import { post, ApiError } from '../lib/api'
-import { describeProblem } from '../lib/problems'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
 import AuthCard from './AuthCard'
-import { useLocale, useTranslations } from '../i18n/index'
+import { useTranslations } from '../i18n/index'
 
 /** The server's floor, restated. It refuses anything shorter regardless. */
 const MIN_PASSWORD_LENGTH = 8
@@ -58,10 +56,8 @@ export function PasswordReset({ token = null, hasTokenParam = false, onRequestNe
 /** Step one: ask for a link. */
 function RequestReset() {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [email, setEmail] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -73,21 +69,18 @@ function RequestReset() {
     }
     setFieldError(null)
     setBusy(true)
-    setProblem(null)
     try {
       await post('/auth/password-reset/request', { email: email.trim() })
       setDone(true)
     } catch (error) {
       // A rate limit is the one refusal this step can produce. Everything else
       // — including an address with no account — is a 202.
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('PasswordReset.RequestReset.submit', error instanceof ApiError ? error.problem : error)
     } finally {
       setBusy(false)
     }
   }
 
-  const described = problem ? describeProblem(problem, locale) : null
 
   return (
     <AuthCard
@@ -117,7 +110,6 @@ function RequestReset() {
             error={fieldError}
           />
 
-          {described && <FormMessage title={described.title}>{described.body}</FormMessage>}
 
           <Button type="submit" disabled={busy}>
             {t.passwordReset.requestSubmit}
@@ -133,11 +125,9 @@ type ConfirmResetProps = { token: string | null; onRequestNewLink?: () => void }
 
 function ConfirmReset({ token, onRequestNewLink }: ConfirmResetProps) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; repeat?: string }>({})
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -175,19 +165,16 @@ function ConfirmReset({ token, onRequestNewLink }: ConfirmResetProps) {
     if (Object.keys(errors).length > 0) return
 
     setBusy(true)
-    setProblem(null)
     try {
       await post('/auth/password-reset/confirm', { token, password })
       setDone(true)
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('PasswordReset.ConfirmReset.submit', error instanceof ApiError ? error.problem : error)
     } finally {
       setBusy(false)
     }
   }
 
-  const described = problem ? describeProblem(problem) : null
 
   return (
     <AuthCard
@@ -231,7 +218,6 @@ function ConfirmReset({ token, onRequestNewLink }: ConfirmResetProps) {
           {/* An expired, consumed or unknown token lands here. The server
               cannot distinguish the three without telling an attacker which
               tokens have existed, so neither does this. */}
-          {described && <FormMessage title={described.title}>{described.body}</FormMessage>}
 
           <Button type="submit" disabled={busy}>
             {t.passwordReset.confirmSubmit}

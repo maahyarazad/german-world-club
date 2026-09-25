@@ -1,14 +1,12 @@
 import type { ChangeEvent, FormEvent } from 'react'
-import type { ProblemResponse } from '@gwc/contracts/errors'
 import type { Snapshot } from '../lib/capabilities'
 import { useState } from 'react'
 import { post, ApiError } from '../lib/api'
 import { useCapabilities } from '../lib/capabilities'
-import { describeProblem } from '../lib/problems'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
 import AuthCard from './AuthCard'
-import { useLocale, useTranslations } from '../i18n/index'
+import { useTranslations } from '../i18n/index'
 
 /**
  * One sign-in screen for all four principal kinds.
@@ -54,12 +52,10 @@ export type SignInProps = {
 
 export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const { refresh } = useCapabilities()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [outcome, setOutcome] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -75,7 +71,6 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
     if (Object.keys(errors).length > 0) return
 
     setBusy(true)
-    setProblem(null)
     setOutcome(null)
 
     try {
@@ -96,14 +91,11 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
 
       setOutcome(result?.outcome ?? 'unknown')
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('SignIn.submit', error instanceof ApiError ? error.problem : error)
     } finally {
       setBusy(false)
     }
   }
-
-  const described = problem ? describeProblem(problem, locale) : null
 
   return (
     <AuthCard
@@ -140,13 +132,6 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
           onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
           error={fieldErrors.password}
         />
-
-        {/* A refusal: wrong credentials, a locked account, a rate limit. The
-            server states the remedy and the console shows it rather than
-            inventing one. */}
-        {described && (
-          <FormMessage title={described.title}>{described.body}</FormMessage>
-        )}
 
         {outcome && <OutcomeMessage outcome={outcome} onResetPassword={onResetPassword} />}
 

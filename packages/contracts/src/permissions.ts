@@ -55,6 +55,11 @@ export const MODULES = Object.freeze([
   'admins',
   'settings',
   'jobs',
+  // Server fault records (feature 012). Only `read` is used: records are never
+  // edited or deleted by staff, only by the retention job. A module of its own
+  // rather than `settings` or `jobs`, because stack traces reveal internals and
+  // granting either of those should not quietly grant them too.
+  'server_faults',
 ] as const)
 
 /** Per-member permission flags — members have no module matrix. */

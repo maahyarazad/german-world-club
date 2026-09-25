@@ -15,7 +15,7 @@ import type { RouteHandler } from '../helpers/console'
  * between a message and its retry (research R2, analysis U1).
  */
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 const json = (body: unknown, status = 200) => ({
   body: JSON.stringify(body), status, headers: { 'content-type': 'application/json' },
@@ -113,7 +113,9 @@ describe('the push console', () => {
     expect(sends(fetchMock, '/push/campaigns/preview')).toHaveLength(1)
   })
 
-  it('translates the empty-test-list refusal', async () => {
+  it('logs the empty-test-list refusal under Compose.send', async () => {
+    // Refusals are reflected in the console, not on screen.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockCapabilityFetch(holder(), {
       extraRoutes: routes({ '/push/campaigns/preview': () => problem(PROBLEMS.PUSH_NO_TEST_RECIPIENTS) }),
     })
@@ -122,10 +124,13 @@ describe('the push console', () => {
 
     fireEvent.click(screen.getByRole('button', { name: t.pushAdmin.sendRehearsal }))
 
-    await waitFor(() => expect(screen.getByText(/Keine Testnutzer/)).toBeInTheDocument())
+    await waitFor(() => expect(error.mock.calls).toContainEqual(
+      expect.arrayContaining(['Compose.send', expect.objectContaining({ type: PROBLEMS.PUSH_NO_TEST_RECIPIENTS.type })])))
+    expect(screen.queryByText(/Keine Testnutzer/)).not.toBeInTheDocument()
   })
 
   it('uses a new clientRef for the next message, and the same one for a retry', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     let failNext = false
     const fetchMock = mockCapabilityFetch(holder(), {
       extraRoutes: routes({
@@ -146,7 +151,9 @@ describe('the push console', () => {
     fill(' zwei')
     failNext = true
     fireEvent.click(button())
-    await waitFor(() => expect(screen.getByText(t.pushAdmin.networkError)).toBeInTheDocument())
+    // The network failure is logged, and the send button comes back for a retry.
+    await waitFor(() => expect(error.mock.calls.some(([label]) => label === 'Compose.send')).toBe(true))
+    await waitFor(() => expect(button()).not.toBeDisabled())
     fireEvent.click(button())
     await waitFor(() => expect(sends(fetchMock, '/push/campaigns/preview')).toHaveLength(3))
 

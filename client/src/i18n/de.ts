@@ -292,6 +292,7 @@ export const de = {
     admins: 'Rollen & Rechte',
     settings: 'Einstellungen',
     jobs: 'Jobs',
+    server_faults: 'Fehlerprotokoll',
   },
 
   flags: {
@@ -597,6 +598,34 @@ export const de = {
     statuses: {
       queued: 'Eingereiht', sending: 'Wird gesendet', done: 'Fertig', partial: 'Teilweise zugestellt',
       failed: 'Fehlgeschlagen', cancelled: 'Abgebrochen',
+    },
+  },
+  serverFaults: {
+    pageTitle: 'Fehlerprotokoll',
+    subtitle: 'Unerwartete Serverfehler der letzten 30 Tage. Nur lesen: Einträge werden nie geändert.',
+    lookupLabel: 'Anfrage-ID',
+    lookupHint: 'Die Kennung von der Fehlerseite. Eine eigene Kennung des Clients wird als Korrelations-ID gesucht.',
+    lookupButton: 'Suchen',
+    invalidId: 'Das ist weder eine Anfrage-ID noch eine gültige Korrelations-ID.',
+    notFound: 'Für diese Anfrage-ID ist kein Fehler gespeichert.',
+    detailTitle: 'Fehlerdetails',
+    closeDetail: 'Schließen',
+    empty: 'Keine Fehler gespeichert.',
+    loadError: 'Das Fehlerprotokoll konnte nicht geladen werden.',
+    loadOlder: 'Ältere laden',
+    filterByFault: 'Nur diesen Fehler zeigen',
+    clearFilter: 'Filter entfernen',
+    filteredByFault: 'Gefiltert nach Fehler {fingerprint}',
+    filteredByClient: 'Gefiltert nach Korrelations-ID {id}',
+    suppressedTitle: 'Nicht alle Fehler gespeichert',
+    suppressedBody: '{count} Fehler in den letzten 24 Stunden wurden nur gezählt, weil zu viele gleichzeitig auftraten.',
+    anonymous: 'anonym',
+    columns: {
+      occurredAt: 'Zeit', request: 'Anfrage', status: 'Status', error: 'Fehler', requestId: 'Anfrage-ID',
+    },
+    fields: {
+      clientRequestId: 'Korrelations-ID', principal: 'Aufrufer', fingerprint: 'Fingerabdruck',
+      message: 'Meldung', stack: 'Stacktrace',
     },
   },
   influencerAdmin: {

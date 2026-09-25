@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * Report reasons as sent to staff. English and fixed, because they are data
@@ -42,7 +43,7 @@ export function PostCard({
   onOpen?: boolean
 }) {
   const theme = useTheme();
-  const { t, format, formatDate, problemMessage } = useTranslations();
+  const { t, format, formatDate } = useTranslations();
   const [pending, setPending] = useState(false);
 
   const act = async (run: () => Promise<ThreadPost>) => {
@@ -51,7 +52,7 @@ export function PostCard({
     try {
       onChange(await run());
     } catch (e) {
-      Alert.alert(problemMessage(e));
+      console.error('PostCard.act', e instanceof ApiError ? e.problem : e);
     } finally {
       setPending(false);
     }
@@ -69,7 +70,7 @@ export function PostCard({
               await threadsApi.remove(post.id);
               onRemoved?.(post.id);
             } catch (e) {
-              Alert.alert(problemMessage(e));
+              console.error('PostCard.remove', e instanceof ApiError ? e.problem : e);
             }
           },
         },
@@ -82,7 +83,7 @@ export function PostCard({
         await (kind === 'mute' ? threadsApi.setMute(post.author.id, true) : threadsApi.setBlock(post.author.id, true));
         onHideAuthor?.(post.author.id);
       } catch (e) {
-        Alert.alert(problemMessage(e));
+        console.error('PostCard.relate', e instanceof ApiError ? e.problem : e);
       }
     };
     Alert.alert(t.threads.reportTitle, undefined, [
@@ -102,7 +103,7 @@ export function PostCard({
             await threadsApi.report(post.id, REPORT_REASONS[key]);
             Alert.alert(t.threads.reported);
           } catch (e) {
-            Alert.alert(problemMessage(e));
+            console.error('PostCard.report', e instanceof ApiError ? e.problem : e);
           }
         },
       })),

@@ -375,3 +375,10 @@ export type TestRecipient = z.infer<typeof testRecipientSchema>
 export type TestRecipientAdd = z.input<typeof testRecipientAddSchema>
 export type TestRecipientList = z.infer<typeof testRecipientListSchema>
 export type Deleted = z.infer<typeof deletedSchema>
+
+/**
+ * A push token is a credential for addressing someone's phone; this is all of
+ * it anyone sees — in history, in logs, in the app's development console.
+ * Shared (feature 012) so the app's masking cannot drift from the server's.
+ */
+export const tokenPreview = (token: unknown) => `${String(token).slice(0, 12)}…${String(token).slice(-4)}`

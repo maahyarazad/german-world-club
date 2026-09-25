@@ -2,17 +2,15 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
-import type { ProblemResponse } from '@gwc/contracts/errors'
 import type { ResendOtpResponse } from '@gwc/contracts/auth'
 
 import { post, ApiError } from '../lib/api'
 import { useCapabilities } from '../lib/capabilities'
-import { describeProblem } from '../lib/problems'
 import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
-import { useLocale, useTranslations } from '../i18n/index'
+import { useTranslations } from '../i18n/index'
 
 /**
  * Onboarding step 3 (§6.1): prove the mobile number.
@@ -23,7 +21,6 @@ import { useLocale, useTranslations } from '../i18n/index'
  */
 export function VerifyMobile() {
   const copy = useTranslations().onboarding
-  const { locale } = useLocale()
   const navigate = useNavigate()
   const { refresh } = useCapabilities()
   const location = useLocation()
@@ -33,7 +30,6 @@ export function VerifyMobile() {
   const [challengeId, setChallengeId] = useState(initial?.challengeId ?? null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -62,7 +58,6 @@ export function VerifyMobile() {
     }
     setBusy(true)
     setCodeError(null)
-    setProblem(null)
     try {
       await post('/onboarding/verify-mobile', { challengeId, code })
       // The cookie session exists now. The capability layer reports the
@@ -70,8 +65,7 @@ export function VerifyMobile() {
       await refresh()
       navigate('/konsole/bewerbung', { replace: true })
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('VerifyMobile.submit', error instanceof ApiError ? error.problem : error)
       setCode('')
     } finally {
       setBusy(false)
@@ -79,19 +73,16 @@ export function VerifyMobile() {
   }
 
   const resend = async () => {
-    setProblem(null)
     setNotice(null)
     try {
       const resent = (await post('/auth/otp/resend', { challengeId })) as ResendOtpResponse
       setChallengeId(resent.challengeId)
       setNotice(copy.resent)
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('VerifyMobile.resend', error instanceof ApiError ? error.problem : error)
     }
   }
 
-  const described = problem ? describeProblem(problem, locale) : null
 
   return (
     <AuthCard title={copy.mobileTitle} subtitle={fill(copy.stepOf, { step: 3 })}>
@@ -108,7 +99,6 @@ export function VerifyMobile() {
           error={codeError}
           autoFocus
         />
-        {described && <FormMessage title={described.title}>{described.body}</FormMessage>}
         {notice && <FormMessage tone="info">{notice}</FormMessage>}
         <Button type="submit" disabled={busy}>{busy ? copy.verifying : copy.verify}</Button>
         <Button variant="quiet" onClick={resend}>{copy.resend}</Button>

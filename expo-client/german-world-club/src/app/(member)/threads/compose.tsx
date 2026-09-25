@@ -30,7 +30,7 @@ type Pending = Picked & { alt: string; assetId?: string };
  */
 export default function Compose() {
   const theme = useTheme();
-  const { t, format, problemMessage } = useTranslations();
+  const { t, format } = useTranslations();
   const { replyToId, replyToName, quoteOfId } =
     useLocalSearchParams<{ replyToId?: string; replyToName?: string; quoteOfId?: string }>();
   const [body, setBody] = useState('');
@@ -41,7 +41,10 @@ export default function Compose() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (quoteOfId) threadsApi.thread(quoteOfId).then((v) => setQuoted(v.post)).catch(() => setQuoted(null));
+    if (quoteOfId) threadsApi.thread(quoteOfId).then((v) => setQuoted(v.post)).catch((e) => {
+      console.error('Compose.loadQuoted', e instanceof ApiError ? e.problem : e);
+      setQuoted(null);
+    });
   }, [quoteOfId]);
 
   const add = async () => {
@@ -77,7 +80,7 @@ export default function Compose() {
         // The server's answer, not a local guess: choose a handle, then post again.
         router.push('/threads/handle');
       } else {
-        setError(e instanceof ApiError ? problemMessage(e) : t.threads.uploadFailed);
+        console.error('Compose.submit', e instanceof ApiError ? e.problem : e);
       }
     } finally {
       setBusy(false);

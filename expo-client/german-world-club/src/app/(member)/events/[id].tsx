@@ -6,10 +6,11 @@ import { MAX_GUESTS, MOBILE_PAYMENT_METHODS, type EventDetail, type MobilePaymen
 
 import { eventsApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, Centered, Chip, FormScreen, Loading, Message, Stepper, styles } from '@/components/ui';
+import { Button, Card, Chip, FormScreen, Loading, Stepper, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * One event: what, when, where, the price that applies now, and registration
@@ -22,28 +23,25 @@ import { useTranslations } from '@/i18n';
  */
 export default function EventScreen() {
   const theme = useTheme();
-  const { t, format, formatDate, formatMoney, problemMessage } = useTranslations();
+  const { t, format, formatDate, formatMoney } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<EventDetail | null>(null);
-  const [loadError, setLoadError] = useState<unknown>(null);
   const [guests, setGuests] = useState(0);
   const [kidsFree, setKidsFree] = useState(0);
   const [kidsCharged, setKidsCharged] = useState(0);
   const [payment, setPayment] = useState<MobilePaymentMethod>('door');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setEvent(await eventsApi.detail(id));
     } catch (e) {
-      setLoadError(e);
+      console.error('EventScreen.load', e instanceof ApiError ? e.problem : e);
     }
   }, [id]);
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loadError && !event) return <Centered><Message text={problemMessage(loadError)} /></Centered>;
   if (!event) return <Loading />;
 
   const open = event.phase === 'early' || event.phase === 'standard' || event.phase === 'late';
@@ -52,12 +50,11 @@ export default function EventScreen() {
 
   const register = async () => {
     setBusy(true);
-    setError(null);
     try {
       await eventsApi.register(event.id, { guestCount: guests, kidsFree, kidsCharged, paymentMethod: payment });
       await load();
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('EventScreen.register', e instanceof ApiError ? e.problem : e);
       // Seats or phase may have moved while the screen was open.
       await load();
     } finally {
@@ -71,12 +68,11 @@ export default function EventScreen() {
       text: t.events.cancelRegistration,
       style: 'destructive',
       onPress: async () => {
-        setError(null);
         try {
           await eventsApi.cancel(event.id);
           await load();
         } catch (e) {
-          setError(problemMessage(e));
+          console.error('EventScreen.cancel', e instanceof ApiError ? e.problem : e);
         }
       },
     },
@@ -110,8 +106,6 @@ export default function EventScreen() {
           </>
         ) : null}
       </Card>
-
-      <Message text={error} />
 
       {mine ? (
         <Card>

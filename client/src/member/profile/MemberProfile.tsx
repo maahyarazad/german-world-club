@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import type { PublicMemberProfile } from '@gwc/contracts/profile'
-import { del, get, put } from '../../lib/api'
+import { del, get, put, ApiError } from '../../lib/api'
 import Button from '../../components/ui/Button'
 import Callout from '../../components/ui/Callout'
 import { fill } from '../../lib/format'
@@ -19,7 +19,10 @@ function useProfile(ref: string | undefined) {
   const load = useCallback(async () => {
     if (!ref) return
     const url = UUID.test(ref) ? `/profile/members/${ref}` : `/profile/handles/${encodeURIComponent(ref)}`
-    try { setProfile((await get(url)) as PublicMemberProfile); setMissing(false) } catch { setMissing(true) }
+    try { setProfile((await get(url)) as PublicMemberProfile); setMissing(false) } catch (err) {
+      console.error('useProfile.load', err instanceof ApiError ? err.problem : err)
+      setMissing(true)
+    }
   }, [ref])
   useEffect(() => { void load() }, [load])
   return { profile, missing, reload: load }

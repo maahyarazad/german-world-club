@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import ConsoleShell from '../console/ConsoleShell'
 import type { SidebarItem } from '../console/Sidebar'
-import { get } from '../lib/api'
+import { get, ApiError } from '../lib/api'
 import { formatNumber } from '../lib/format'
 import { useLocale, useTranslations } from '../i18n/index'
 
@@ -25,7 +25,8 @@ function useUnread() {
   const [unread, setUnread] = useState(0)
   const refresh = useCallback(() => {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-    void get('/threads/activity/unread').then((b) => setUnread((b as { unread: number }).unread)).catch(() => {})
+    void get('/threads/activity/unread').then((b) => setUnread((b as { unread: number }).unread))
+      .catch((err) => console.error('useUnread.refresh', err instanceof ApiError ? err.problem : err))
   }, [])
   useEffect(() => {
     refresh()

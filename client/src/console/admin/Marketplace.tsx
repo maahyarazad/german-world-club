@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { get, post, request, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { useCanEdit } from '../RequireGrant'
 import RequireGrant from '../RequireGrant'
 import PageHeader from '../../components/ui/PageHeader'
@@ -56,21 +55,17 @@ function ModerationQueue() {
   const canDelete = useCanEdit('marketplace_moderation', 'delete')
 
   const [reports, setReports] = useState<Report[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const body = (await get('/admin/marketplace/reports', { signal })) as { items: Report[] }
       setReports(body.items)
-      setLoadError(null)
     } catch (err) {
-      setLoadError(err instanceof ApiError ? describeProblem(err.problem, locale).title : String(err))
+      console.error('ModerationQueue.load', err instanceof ApiError ? err.problem : err)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -82,13 +77,11 @@ function ModerationQueue() {
   const startAction = (reportId: string, kind: PendingAction['kind']) => {
     setPending({ reportId, kind })
     setReason('')
-    setActionError(null)
   }
 
   const cancelAction = () => {
     setPending(null)
     setReason('')
-    setActionError(null)
   }
 
   const confirmAction = async () => {
@@ -97,7 +90,6 @@ function ModerationQueue() {
     if (!report) return
 
     setBusy(true)
-    setActionError(null)
     try {
       if (pending.kind === 'hide') {
         await post(`/admin/marketplace/listings/${report.listingId}/hide`, { reason })
@@ -112,7 +104,7 @@ function ModerationQueue() {
       setReason('')
       await load()
     } catch (err) {
-      setActionError(err instanceof ApiError ? describeProblem(err.problem, locale).title : String(err))
+      console.error('ModerationQueue.confirmAction', err instanceof ApiError ? err.problem : err)
     } finally {
       setBusy(false)
     }
@@ -163,7 +155,6 @@ function ModerationQueue() {
     <div className="flex flex-col gap-6">
       <PageHeader title={t.marketplaceModeration.title} subtitle={t.marketplaceModeration.subtitle} />
 
-      {loadError && <Callout variant="neutral" title={loadError} />}
 
       <Card title={t.marketplaceModeration.queue}>
         <DataTable columns={columns} rows={reports ?? []} empty={t.marketplaceModeration.empty} />
@@ -185,7 +176,6 @@ function ModerationQueue() {
                 className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
               />
             </label>
-            {actionError && <Callout variant="neutral" title={actionError} />}
             <div className="flex gap-2">
               <Button variant="secondary" disabled={busy || reason.trim().length < 3} onClick={confirmAction}>
                 {t.marketplaceModeration.confirm}

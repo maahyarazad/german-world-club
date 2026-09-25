@@ -5,8 +5,9 @@ import type { MemberProfile } from '@gwc/contracts/profile';
 
 import { profileApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Button, FormScreen, Message, TextField } from '@/components/ui';
+import { Button, FormScreen, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * Choosing or changing the @handle (010 US1/US3). The pattern and reserved
@@ -14,11 +15,10 @@ import { useTranslations } from '@/i18n';
  * answers — two members can race for one handle, and the database decides.
  */
 export function HandleForm({ current, onSaved }: { current: string | null; onSaved: (profile: MemberProfile) => void }) {
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const [value, setValue] = useState(current ?? '');
   const [available, setAvailable] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handle = normaliseHandle(value);
   const wellFormed = HANDLE_PATTERN.test(handle) && !(RESERVED_HANDLES as readonly string[]).includes(handle);
@@ -27,18 +27,20 @@ export function HandleForm({ current, onSaved }: { current: string | null; onSav
     setAvailable(null);
     if (!wellFormed || handle === current) return;
     const timer = setTimeout(() => {
-      profileApi.handleAvailable(handle).then((r) => setAvailable(r.available)).catch(() => setAvailable(null));
+      profileApi.handleAvailable(handle).then((r) => setAvailable(r.available)).catch((e) => {
+        console.error('HandleForm.checkAvailability', e instanceof ApiError ? e.problem : e);
+        setAvailable(null);
+      });
     }, 350);
     return () => clearTimeout(timer);
   }, [handle, wellFormed, current]);
 
   const save = async () => {
     setBusy(true);
-    setError(null);
     try {
       onSaved(await profileApi.setHandle(handle));
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('HandleForm.save', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,6 @@ export function HandleForm({ current, onSaved }: { current: string | null; onSav
       <ThemedText type="small" themeColor="textSecondary">
         {!wellFormed ? t.profile.handleHint : available === false ? t.profile.handleTaken : available ? t.profile.handleAvailable : ' '}
       </ThemedText>
-      <Message text={error} />
       <Button label={t.profile.handleSave} onPress={save} loading={busy} disabled={!wellFormed || available === false} />
     </FormScreen>
   );

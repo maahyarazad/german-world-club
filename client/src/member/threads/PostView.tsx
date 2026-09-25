@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import type { ThreadAuthor, ThreadPost, ThreadView } from '@gwc/contracts/threads'
-import { get } from '../../lib/api'
+import { get, ApiError } from '../../lib/api'
 import Callout from '../../components/ui/Callout'
 import { fill } from '../../lib/format'
 import { useTranslations } from '../../i18n/index'
@@ -27,7 +27,8 @@ export function PostView() {
     try {
       setView((await get(`/threads/posts/${id}`)) as ThreadView)
       setMissing(false)
-    } catch {
+    } catch (err) {
+      console.error('PostView.load', err instanceof ApiError ? err.problem : err)
       setMissing(true)
     }
   }, [id])

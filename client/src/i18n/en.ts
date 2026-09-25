@@ -298,6 +298,7 @@ export const en = {
     admins: 'Roles & permissions',
     settings: 'Settings',
     jobs: 'Jobs',
+    server_faults: 'Error log',
   },
 
   flags: {
@@ -603,6 +604,34 @@ export const en = {
     statuses: {
       queued: 'Queued', sending: 'Sending', done: 'Done', partial: 'Partly delivered',
       failed: 'Failed', cancelled: 'Cancelled',
+    },
+  },
+  serverFaults: {
+    pageTitle: 'Error log',
+    subtitle: 'Unexpected server errors from the last 30 days. Read-only: records are never changed.',
+    lookupLabel: 'Request ID',
+    lookupHint: 'The reference from the error page. A client\'s own id is searched as a correlation ID.',
+    lookupButton: 'Search',
+    invalidId: 'That is neither a request ID nor a valid correlation ID.',
+    notFound: 'No error is recorded for this request ID.',
+    detailTitle: 'Error details',
+    closeDetail: 'Close',
+    empty: 'No errors recorded.',
+    loadError: 'The error log could not be loaded.',
+    loadOlder: 'Load older',
+    filterByFault: 'Show only this error',
+    clearFilter: 'Clear filter',
+    filteredByFault: 'Filtered by error {fingerprint}',
+    filteredByClient: 'Filtered by correlation ID {id}',
+    suppressedTitle: 'Not every error was recorded',
+    suppressedBody: '{count} errors in the last 24 hours were only counted, because too many happened at once.',
+    anonymous: 'anonymous',
+    columns: {
+      occurredAt: 'Time', request: 'Request', status: 'Status', error: 'Error', requestId: 'Request ID',
+    },
+    fields: {
+      clientRequestId: 'Correlation ID', principal: 'Caller', fingerprint: 'Fingerprint',
+      message: 'Message', stack: 'Stack trace',
     },
   },
   influencerAdmin: {

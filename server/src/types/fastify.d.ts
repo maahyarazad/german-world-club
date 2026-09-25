@@ -117,6 +117,8 @@ declare module 'fastify' {
     dbHealthy(): Promise<boolean>
     redisHealthy(): Promise<boolean>
     metrics: unknown
+    /** Feature 012: records an INTERNAL fault; never awaited by the error handler. */
+    recordServerFault: import('../decorators/server-faults.ts').ServerFaultRecorder
 
     // --- domain seams -------------------------------------------------------
     /**
@@ -222,6 +224,16 @@ declare module 'fastify' {
      * Set by the auth routes before the limiter runs; absent elsewhere.
      */
     otpPhoneKey?: string
+  }
+}
+
+declare module '@fastify/request-context' {
+  interface RequestContextData {
+    /** The server-generated ULID (00-request-context.ts). */
+    requestId?: string
+    /** The client's own correlation id, when well-formed (feature 012, R10). */
+    clientRequestId?: string | null
+    principal?: unknown
   }
 }
 

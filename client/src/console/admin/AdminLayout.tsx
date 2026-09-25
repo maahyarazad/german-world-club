@@ -21,6 +21,7 @@ export const ADMIN_ITEMS: readonly SidebarItem[] = [
   { to: '/konsole/admin/billing', module: 'membership_orders' },
   { to: '/konsole/admin/seo', module: 'seo' },
   { to: '/konsole/admin/push', module: 'mass_messages' },
+  { to: '/konsole/admin/fehlerprotokoll', module: 'server_faults' },
   { to: '/konsole/admin/jobs', module: 'jobs' },
   { to: '/konsole/admin/rollen', module: 'admins' },
   { to: '/konsole/admin/einstellungen', module: 'settings' },

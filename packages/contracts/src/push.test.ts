@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   DESTINATION_ROUTES, DESTINATION_TYPES, PUSH_PAYLOAD_VERSION, TITLE_MAX, BODY_MAX,
-  resolveDestination, renderOfferPush, truncate,
+  resolveDestination, renderOfferPush, truncate, tokenPreview,
 } from './push.ts'
 
 /**
@@ -71,5 +71,16 @@ describe('renderOfferPush', () => {
     expect(truncate('short', 10)).toBe('short')
     // Counts characters, not UTF-16 units, so an emoji is not split in half.
     expect(truncate('😀😀😀', 3)).toBe('😀😀😀')
+  })
+})
+
+describe('tokenPreview', () => {
+  it('shows only the first 12 and last 4 characters of a token', () => {
+    const token = 'ExponentPushToken[abcdefghijklmnop1234]'
+    const preview = tokenPreview(token)
+    expect(preview).toBe('ExponentPush…234]')
+    // Counter-assertion: the middle of the token, the part that addresses the
+    // phone, is gone.
+    expect(preview).not.toContain('abcdefghijklmnop')
   })
 })

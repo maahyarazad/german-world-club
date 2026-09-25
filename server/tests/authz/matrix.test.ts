@@ -255,6 +255,12 @@ const ROUTE_CLASSES = [
   { name: 'partner organisation by id', url: '/partner/organisations/:id', probe: `/partner/organisations/${randomUUID()}`, method: 'GET', audience: 'partner' },
   { name: 'SEO read', url: '/admin/seo/:recordType/:recordId', method: 'GET', audience: 'staff', module: 'seo', flag: 'read' },
   { name: 'SEO edit', url: '/admin/seo/:recordType/:recordId', method: 'PATCH', audience: 'staff', module: 'seo', flag: 'edit' },
+  // --- Server faults (012) ---------------------------------------------------
+  // Read-only by design: records are never edited, and only the retention job
+  // deletes them. The probe is a well-formed ULID that no fault carries, so a
+  // reached route answers 404.
+  { name: 'server faults list', url: '/admin/server-faults', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
+  { name: 'server fault by request id', url: '/admin/server-faults/by-request/:requestId', probe: '/admin/server-faults/by-request/01J8Z3K2QX0000000000000000', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
   // The console's SPA shell. Public because it IS public: an empty application
   // shell with no member content, no capability data and no principal in it.
   // The surface it opens is gated — modules/seo/surfaces.js declares /konsole gated and

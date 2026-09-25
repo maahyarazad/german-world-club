@@ -19,7 +19,9 @@
     "./events": "./src/events.ts",
     "./threads": "./src/threads.ts",
     "./countries": "./src/countries.ts",
-    "./offers": "./src/offers.ts"
+    "./offers": "./src/offers.ts",
+    "./server-faults": "./src/server-faults.ts",
+    "./request-id": "./src/request-id.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"

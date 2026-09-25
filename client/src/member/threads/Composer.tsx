@@ -4,7 +4,6 @@ import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
 import { THREAD_MEDIA_MAX, THREAD_POST_MAX } from '@gwc/contracts/threads'
 import type { ThreadPost } from '@gwc/contracts/threads'
 import { get, post, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { fill } from '../../lib/format'
 import Button from '../../components/ui/Button'
 import Field, { FormMessage } from '../../components/ui/Field'
@@ -12,7 +11,7 @@ import Modal from './Modal'
 import QuoteEmbed from './QuoteEmbed'
 import HandleDialog from '../profile/HandleDialog'
 import { MEDIA_TYPES } from '../MediaPicker'
-import { useLocale, useTranslations } from '../../i18n/index'
+import { useTranslations } from '../../i18n/index'
 
 /**
  * Writing a post, a reply or a quote, with up to ten photos or videos
@@ -55,7 +54,6 @@ export function Composer({ open, onClose, onPosted, replyTo, quote }: {
   quote?: ThreadPost | null
 }) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [body, setBody] = useState('')
   const [media, setMedia] = useState<Pending[]>([])
   const [busy, setBusy] = useState(false)
@@ -112,10 +110,8 @@ export function Composer({ open, onClose, onPosted, replyTo, quote }: {
         // The server's answer, not a guess from local state: open the
         // username dialog, and post again once one is chosen.
         setAskHandle(true)
-      } else if (err instanceof ApiError) {
-        setError(describeProblem(err.problem, locale).title)
       } else {
-        setError(t.memberThreads.mediaFailed)
+        console.error('Composer.submit', err instanceof ApiError ? err.problem : err)
       }
     } finally {
       setBusy(false)

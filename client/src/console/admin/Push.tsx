@@ -6,14 +6,13 @@ import {
 } from '@gwc/contracts/push'
 import type { DestinationType, Notification, PushAudience, TestRecipientList } from '@gwc/contracts/push'
 import { ApiError, pushApi } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { fill, formatDateTime, formatNumber } from '../../lib/format'
 import { useCapabilities } from '../../lib/capabilities'
 import PageHeader from '../../components/ui/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Callout from '../../components/ui/Callout'
-import Field, { FormMessage } from '../../components/ui/Field'
+import Field from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import type { StatusTone } from '../../components/ui/StatusPill'
 import RequireGrant from '../RequireGrant'
@@ -52,17 +51,6 @@ const STATUS_TONE: Record<Notification['status'], StatusTone> = {
   cancelled: 'neutral',
 }
 
-function useProblemText() {
-  const t = useTranslations()
-  const { locale } = useLocale()
-  return useCallback((err: unknown) => {
-    if (err instanceof ApiError) {
-      const described = describeProblem(err.problem, locale)
-      return described.body ? `${described.title}: ${described.body}` : described.title
-    }
-    return t.pushAdmin.networkError
-  }, [locale, t])
-}
 
 // ---------------------------------------------------------------------------
 // Test users
@@ -70,39 +58,35 @@ function useProblemText() {
 
 function TestUsers({ canEdit }: { canEdit: boolean }) {
   const t = useTranslations()
-  const problemText = useProblemText()
   const [recipients, setRecipients] = useState<TestRecipientList['recipients'] | null>(null)
   const [handle, setHandle] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setRecipients((await pushApi.testRecipients()).recipients)
     } catch (err) {
-      setError(problemText(err))
+      console.error('TestUsers.load', err instanceof ApiError ? err.problem : err)
     }
-  }, [problemText])
+  }, [])
 
   useEffect(() => { void load() }, [load])
 
   const add = async () => {
-    setError(null)
     try {
       await pushApi.addTestRecipient({ handle: handle.trim() })
       setHandle('')
       await load()
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 404 ? t.pushAdmin.handleNotFound : problemText(err))
+      console.error('TestUsers.add', err instanceof ApiError ? err.problem : err)
     }
   }
 
   const remove = async (memberId: string) => {
-    setError(null)
     try {
       await pushApi.removeTestRecipient(memberId)
       await load()
     } catch (err) {
-      setError(problemText(err))
+      console.error('TestUsers.remove', err instanceof ApiError ? err.problem : err)
     }
   }
 
@@ -115,7 +99,6 @@ function TestUsers({ canEdit }: { canEdit: boolean }) {
           <Button type="submit" disabled={!handle.trim()}>{t.pushAdmin.add}</Button>
         </form>
       )}
-      {error && <FormMessage>{error}</FormMessage>}
       {recipients === null ? null : recipients.length === 0 ? (
         <p className="text-[13px] text-text-muted">{t.pushAdmin.noTestUsers}</p>
       ) : (
@@ -156,7 +139,6 @@ const within = (text: string, max: number) => text.trim().length > 0 && text.tri
 function Compose({ onQueued }: { onQueued: () => void }) {
   const t = useTranslations()
   const { locale } = useLocale()
-  const problemText = useProblemText()
   const [draft, setDraft] = useState<Draft>(EMPTY)
   // Made when the form opens and again after every accepted send. Kept across
   // a network error, so resending the same message is deduplicated.
@@ -166,7 +148,6 @@ function Compose({ onQueued }: { onQueued: () => void }) {
   const inFlight = useRef(false)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<PushAudience | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
   const set = (key: keyof Draft) => (e: { target: { value: string } }) =>
@@ -180,7 +161,6 @@ function Compose({ onQueued }: { onQueued: () => void }) {
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
-    setError(null)
     setNotice(null)
     try {
       const body = {
@@ -206,7 +186,7 @@ function Compose({ onQueued }: { onQueued: () => void }) {
         // The ref belongs to a message already sent; this one gets its own.
         clientRef.current = newRef()
       }
-      setError(problemText(err))
+      console.error('Compose.send', err instanceof ApiError ? err.problem : err)
     } finally {
       inFlight.current = false
       setBusy(false)
@@ -215,11 +195,10 @@ function Compose({ onQueued }: { onQueued: () => void }) {
 
   const askBroadcast = async () => {
     if (inFlight.current) return
-    setError(null)
     try {
       setConfirm(await pushApi.audience('broadcast'))
     } catch (err) {
-      setError(problemText(err))
+      console.error('Compose.askBroadcast', err instanceof ApiError ? err.problem : err)
     }
   }
 
@@ -274,7 +253,6 @@ function Compose({ onQueued }: { onQueued: () => void }) {
         )}
       </div>
 
-      {error && <FormMessage>{error}</FormMessage>}
       {notice && <Callout variant="neutral" title={notice}>{t.pushAdmin.queuedHint}</Callout>}
 
       {confirm ? (
@@ -310,18 +288,15 @@ const POLL_MS = 5000
 function History({ refreshKey }: { refreshKey: number }) {
   const t = useTranslations()
   const { locale } = useLocale()
-  const problemText = useProblemText()
   const [items, setItems] = useState<Notification[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setItems((await pushApi.history()).notifications)
-      setError(null)
     } catch (err) {
-      setError(problemText(err))
+      console.error('History.load', err instanceof ApiError ? err.problem : err)
     }
-  }, [problemText])
+  }, [])
 
   useEffect(() => { void load() }, [load, refreshKey])
 
@@ -336,7 +311,6 @@ function History({ refreshKey }: { refreshKey: number }) {
 
   return (
     <Card title={t.pushAdmin.history}>
-      {error && <FormMessage>{error}</FormMessage>}
       {items === null ? null : items.length === 0 ? (
         <p className="text-[13px] text-text-muted">{t.pushAdmin.noHistory}</p>
       ) : (

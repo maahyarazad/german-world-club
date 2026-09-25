@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { REQUEST_ID } from '@gwc/contracts/request-id'
 import { buildApp } from '../../src/app.ts'
 import type { GwcApp } from '../../src/app.ts'
 
@@ -54,14 +55,30 @@ describe('problem+json envelope (FR-049)', () => {
     expect(r.json().requestId).toBe(r.headers['x-request-id'])
   })
 
-  it('reuses a validly-shaped client-supplied request id', async () => {
+  // Feature 012, research R10: the request id is always the server's. A
+  // client's own id is correlation only — echoed on its own header, never
+  // adopted, because the id keys the logs and audit_log and must stay unique
+  // and time-sortable.
+  it('never adopts a client-supplied request id, but echoes it as correlation', async () => {
     const r = await app.inject({ method: 'GET', url: '/boom', headers: { 'x-request-id': 'client-supplied-1234' } })
-    expect(r.headers['x-request-id']).toBe('client-supplied-1234')
+    expect(r.headers['x-request-id']).toMatch(REQUEST_ID)
+    expect(r.headers['x-request-id']).not.toBe('client-supplied-1234')
+    expect(r.json().requestId).toBe(r.headers['x-request-id'])
+    expect(r.headers['x-client-request-id']).toBe('client-supplied-1234')
   })
 
-  it('ignores a malformed client-supplied request id', async () => {
+  it('ignores a malformed client-supplied request id entirely', async () => {
     const r = await app.inject({ method: 'GET', url: '/boom', headers: { 'x-request-id': 'no spaces allowed!' } })
-    expect(r.headers['x-request-id']).not.toBe('no spaces allowed!')
+    expect(r.headers['x-request-id']).toMatch(REQUEST_ID)
+    expect(r.headers).not.toHaveProperty('x-client-request-id')
+  })
+
+  it('sends no correlation header when the client sent no id', async () => {
+    // Counter-assertion: an echo of *something* on every response would pass
+    // the first test above while leaking a header nobody asked for.
+    const r = await app.inject({ method: 'GET', url: '/boom' })
+    expect(r.headers['x-request-id']).toMatch(REQUEST_ID)
+    expect(r.headers).not.toHaveProperty('x-client-request-id')
   })
 })
 

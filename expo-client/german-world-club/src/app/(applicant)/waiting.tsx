@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, Centered, Message } from '@/components/ui';
+import { Button, Centered } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
+import { ApiError } from '@/api/client';
 
 /**
  * §6.1's "Waiting for approval" screen, and its denied counterpart.
@@ -17,21 +18,19 @@ import { useSession } from '@/session/session';
  */
 export default function Waiting() {
   const theme = useTheme();
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const { state, refreshStatus, signOut } = useSession();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (state.status !== 'applicant') return null;
   const denied = state.onboarding.step === 'denied';
 
   const check = async () => {
     setBusy(true);
-    setError(null);
     try {
       await refreshStatus();
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('Waiting.check', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }
@@ -53,7 +52,6 @@ export default function Waiting() {
           <ThemedText>{state.onboarding.denialReason}</ThemedText>
         </View>
       ) : null}
-      <Message text={error} />
       <View style={{ alignSelf: 'stretch', gap: Spacing.two }}>
         {denied ? null : <Button label={t.waiting.check} onPress={check} loading={busy} />}
         <Button label={t.common.signOut} onPress={signOut} variant="secondary" />

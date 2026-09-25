@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { get } from '../../lib/api'
+import { get, ApiError } from '../../lib/api'
 
 /**
  * Keyset pagination against a Threads list endpoint: `{ items, nextCursor }`.
@@ -26,7 +26,8 @@ export function usePaged<T>(url: string | null) {
       if (current.current !== url) return
       setItems((prev) => (append ? [...prev, ...page.items] : page.items))
       setCursor(page.nextCursor)
-    } catch {
+    } catch (err) {
+      console.error('usePaged.load', err instanceof ApiError ? err.problem : err)
       if (current.current === url) setFailed(true)
     } finally {
       if (current.current === url) setLoading(false)

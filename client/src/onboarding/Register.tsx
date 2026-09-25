@@ -5,14 +5,12 @@ import { useNavigate } from 'react-router'
 import { GENDERS, registerRequestSchema } from '@gwc/contracts/onboarding'
 import type { Gender, RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
 import { COUNTRIES, PINNED } from '@gwc/contracts/countries'
-import type { ProblemResponse } from '@gwc/contracts/errors'
 
 import { post, ApiError } from '../lib/api'
-import { describeProblem } from '../lib/problems'
 import { collatorFor, fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
-import Field, { FormMessage } from '../components/ui/Field'
+import Field from '../components/ui/Field'
 import { useLocale, useTranslations } from '../i18n/index'
 
 /**
@@ -53,7 +51,6 @@ export function Register() {
   })
   const [country, setCountry] = useState('')
   const [errors, setErrors] = useState<Errors>({})
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [busy, setBusy] = useState(false)
 
   const set = (key: keyof Details) => (event: ChangeEvent<HTMLInputElement>) =>
@@ -82,7 +79,6 @@ export function Register() {
       return
     }
     setBusy(true)
-    setProblem(null)
     try {
       const request: RegisterRequest = {
         fullName: details.fullName.trim(),
@@ -98,8 +94,7 @@ export function Register() {
       // history or a referrer header.
       navigate('/konsole/registrieren/mobil', { state: { challengeId: sent.challengeId, sentTo: sent.sentTo } })
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('Register.submit', error instanceof ApiError ? error.problem : error)
     } finally {
       setBusy(false)
     }
@@ -114,7 +109,6 @@ export function Register() {
     return { pinned, rest }
   }, [locale])
 
-  const described = problem ? describeProblem(problem, locale) : null
   const footer = (
     <a href="/konsole/anmelden" className="text-navy underline underline-offset-2">{copy.haveAccount}</a>
   )
@@ -201,7 +195,6 @@ export function Register() {
           )}
         </div>
 
-        {described && <FormMessage title={described.title}>{described.body}</FormMessage>}
 
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setStep(1)}>{copy.back}</Button>

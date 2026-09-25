@@ -57,6 +57,12 @@ const schema = z
     KEEP_ALIVE_TIMEOUT_MS: int(72000),
 
     REQUEST_TIMEOUT_MS: int(30000),
+
+    // Server fault records stored per minute, per instance (feature 012,
+    // research R3). Beyond it faults are counted, not stored: a dependency
+    // outage makes every request fail at once, and recording each one would add
+    // load to the database at exactly the moment it can least take it.
+    SERVER_FAULTS_PER_MINUTE: int(60),
     CONNECTION_TIMEOUT_MS: int(35000),
 
     MEDIA_STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),

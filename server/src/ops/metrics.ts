@@ -32,6 +32,9 @@ export function createMetrics() {
     timeouts: emptyCounts(),
     loadShed: emptyCounts(),
     jobFailures: emptyCounts(),
+    // Feature 012: visible without the database, which is the point when the
+    // database is the reason faults are failing to record.
+    serverFaults: { stored: 0, suppressed: 0, failed: 0 },
     startedAt: Date.now(),
   }
 
@@ -57,6 +60,15 @@ export function createMetrics() {
     jobFailure(name) {
       bump(state.jobFailures, name ?? 'unknown')
     },
+    serverFaultStored() {
+      state.serverFaults.stored += 1
+    },
+    serverFaultSuppressed() {
+      state.serverFaults.suppressed += 1
+    },
+    serverFaultFailed() {
+      state.serverFaults.failed += 1
+    },
     /** A plain snapshot — the shape an exporter or a health payload reads. */
     snapshot() {
       return {
@@ -67,6 +79,7 @@ export function createMetrics() {
         timeouts: { total: state.timeouts.total, byRouteClass: { ...state.timeouts.byKey } },
         loadShed: { total: state.loadShed.total, byType: { ...state.loadShed.byKey } },
         jobFailures: { total: state.jobFailures.total, byJob: { ...state.jobFailures.byKey } },
+        serverFaults: { ...state.serverFaults },
       }
     },
   }
