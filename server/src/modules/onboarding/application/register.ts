@@ -31,6 +31,13 @@ export async function register(
 ): Promise<RegisterResponse> {
   const { email, password, mobile, deviceId, requestId, signal } = input
 
+  // The SMS country policy, before any lookup or any row: an applicant whose
+  // number the club cannot text would otherwise be left with an account they
+  // can never verify. The verdict depends only on the number typed, so it
+  // answers identically whether or not the address is registered — it cannot
+  // be used to probe for members.
+  app.assertSmsDestination(mobile, 'onboarding.register')
+
   const { rows } = await query(
     app.pg,
     `SELECT m.id, m.password_hash, m.mobile_verified_at, a.state AS application_state
@@ -119,7 +126,9 @@ async function challengeAndSend(
   const challenge = await issueChallenge(client, {
     accountId: memberId, accountKind: 'member', deviceId: deviceId ?? WEB_DEVICE, purpose: 'mobile_verification',
   })
-  await app.sendOtp({ mobile, code: challenge.code })
+  // Through the SMS gateway like every send; inside the transaction, so a
+  // refused or failed send rolls the new account back with it.
+  await app.sendOtp({ mobile, code: challenge.code, route: 'onboarding.register', accountId: memberId })
   return { challengeId: challenge.challengeId, expiresIn: OTP_TTL_SECONDS, sentTo: maskPhone(mobile) }
 }
 

@@ -84,6 +84,24 @@ const schema = z
     SMSGLOBAL_API_KEY: z.string().optional(),
     SMSGLOBAL_API_SECRET: z.string().optional(),
     SMSGLOBAL_ORIGIN: z.string().default('GWC'),
+    // Outbound SMS country policy (integrations/sms-country-policy.ts). Both
+    // optional and read once at boot. SMS_BLOCKED_COUNTRIES is dialing codes
+    // and REPLACES the shipped sanctions denylist, so a code can be removed as
+    // well as added; SMS_ALLOWED_COUNTRIES is ISO alpha-2 and NARROWS the
+    // allowlist. An invalid entry is logged and skipped, never fatal.
+    SMS_BLOCKED_COUNTRIES: z.string().optional(),
+    SMS_ALLOWED_COUNTRIES: z.string().optional(),
+
+    // --- Mail (SMTP, through nodemailer) --------------------------------
+    // All optional: without SMTP_HOST the mail.deliver job cannot send, and
+    // queued mail waits in mail_outbox, retrying with backoff, until it can.
+    // Port 465 means TLS from the first byte; any other port upgrades with
+    // STARTTLS. MAIL_FROM defaults to SMTP_USER.
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: int(587),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    MAIL_FROM: z.string().optional(),
 
     // --- Push notifications ---------------------------------------------
     // Expo needs no server credential unless the project enables enhanced

@@ -245,6 +245,19 @@ phone by SMS, or a browser by password — so they can resume.
 mints a *new* challenge and returns its id — the old id never accepts the new
 code.
 
+**Every SMS goes through one gateway, behind a country policy.**
+`app.sendOtp` (`decorators/send-otp.ts`) is the only caller of the provider
+(`tests/auth/sms-gateway.test.ts` scans `src/` for any other), and it checks
+`integrations/sms-country-policy.ts` first. The precedence is fixed:
+the sanctions denylist, then the US-only +1 area codes (Canada and the
+Caribbean share +1), then the allowlist generated from the business's
+accepted-zone list. A refusal is one masked `SMS_BLOCKED_COUNTRY` log line and
+a `sms-destination-not-allowed` 422. Registration asks `app.smsDestination()`
+before writing any row. The server still issues, hashes and verifies its own
+codes, and verification is deliberately **not** gated, so a code sent before
+the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
+from another project's build; do not hand-edit it.
+
 **Mail goes through the outbox, never inline.** `app.enqueueMail()` writes
 `mail_outbox`; the `mail.deliver` job sends with backoff and clears the row's
 variables once delivered (they hold codes and reset tokens). Pass `{ client }`

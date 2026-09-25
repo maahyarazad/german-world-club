@@ -48,7 +48,7 @@ export const ROUTE_BUDGETS = Object.freeze({
   'public-page': { deadlineMs: 3000, calls: ['redis'] },
   sitemap: { deadlineMs: 10000, calls: ['redis'] },
   auth: { deadlineMs: 5000, calls: ['redis'] },
-  'otp-send': { deadlineMs: 6000, calls: ['sms', 'redis'] },
+  'otp-send': { deadlineMs: 10000, calls: ['sms', 'redis'] },
   'member-read': { deadlineMs: 2000, calls: ['redis'] },
   'member-write': { deadlineMs: 5000, calls: ['geocoding', 'redis'] },
   'media-upload': { deadlineMs: 8000, calls: ['mediaImage', 'redis'] },

@@ -87,6 +87,11 @@ export async function issueChallenge(pool: Pool | PoolClient, {
 /**
  * Verify a presented code.
  *
+ * Deliberately NOT gated by the SMS country policy (decorators/send-otp.ts
+ * gates sending only): a code that was legitimately sent must stay redeemable
+ * even if the allowlist narrows while the member is typing it. Checking a code
+ * costs nothing, and refusing it would strand someone mid-flow.
+ *
  * A `deviceId` mismatch returns `invalid`, **not** a distinct error: a distinct
  * one would let a challenge be probed across devices, which is the thing
  * binding it to a device was meant to prevent (§12.6).

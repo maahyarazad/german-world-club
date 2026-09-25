@@ -80,6 +80,8 @@ prevents boot; it never degrades behaviour silently.
 | `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | production | EdDSA. `npm run keys:generate` |
 | `CANONICAL_ORIGIN`, `TRUST_PROXY` | production | See above |
 | `SMSGLOBAL_API_KEY` / `_API_SECRET` / `_ORIGIN` | to send OTPs | Without them OTP sends are **refused loudly**, never skipped — a second factor that quietly does not send is not a second factor |
+| `SMS_BLOCKED_COUNTRIES` | no | Dialing codes, comma-separated. **Replaces** the shipped sanctions denylist (`850,53,963,98`), so a code can be removed as well as added. Invalid entries are logged and skipped |
+| `SMS_ALLOWED_COUNTRIES` | no | ISO alpha-2, comma-separated. **Narrows** the allowlist by matching the start of zone names — best-effort: `DE` does not match "Germany" |
 | `EXPO_ACCESS_TOKEN` | **production** | Boot is refused without it. Turn on *enhanced push security* for the Expo project too, so a leaked token alone cannot push to members. Unset outside production with no FCM either, the push jobs use a logging transport that records "would send" and marks deliveries sent |
 | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | all three or none | Only for devices registered with `provider: 'fcm'`; the app registers Expo tokens, and Android reaches FCM through Expo's own credentials in EAS. A partial set refuses boot in every environment. The private key is a secret: environment or secret manager, never a JSON file in the repo |
 | `MEDIA_*` | defaults are fine locally | Storage driver, size and pixel bounds, per-account quota |

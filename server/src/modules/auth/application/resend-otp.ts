@@ -39,6 +39,6 @@ export async function resendOtp(app: GwcApp, { challenge, phoneKey, signal }) {
     purpose: challenge.purpose,
     signal,
   })
-  await app.sendOtp?.({ mobile: phoneKey, code: fresh.code })
+  await app.sendOtp({ mobile: phoneKey, code: fresh.code, route: 'auth.otp.resend', accountId: challenge.account_id })
   return { outcome: 'resent', resent: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS, challengeId: fresh.challengeId }
 }

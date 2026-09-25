@@ -145,7 +145,14 @@ declare module 'fastify' {
     }
     mediaStorage: unknown
     integrations: Record<string, unknown>
-    sendOtp(...args: unknown[]): Promise<unknown>
+    /** The one way to send an SMS (decorators/send-otp.ts): country policy, then SMSGlobal. */
+    sendOtp(input: import('../decorators/send-otp.ts').SendOtpInput): Promise<unknown>
+    /** Throws `sms-destination-not-allowed` (and logs it, masked) for a number the club does not text. */
+    assertSmsDestination(
+      mobile: string,
+      route: string,
+      accountId?: string | null,
+    ): import('../integrations/sms-country-policy.ts').SmsDecision
     /**
      * Queue a message for the `mail.deliver` job (decorators/mail.ts). Never
      * sends inline: mail is in no route's budget. Pass the caller's transaction

@@ -4,7 +4,7 @@ import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { createPaymentsClient } from '../../src/integrations/payments.ts'
 import { createMailClient } from '../../src/integrations/mail.ts'
 import { createGeocodingClient } from '../../src/integrations/geocoding.ts'
-import type { GwcApp } from '../../src/app.ts'
+import type { BuildAppOptions, GwcApp } from '../../src/app.ts'
 
 /**
  * An app whose SMS provider is a recorder.
@@ -13,9 +13,10 @@ import type { GwcApp } from '../../src/app.ts'
  * only honest place to read it is where it was sent to. Everything else is the
  * real integration set, so the suite exercises the same wiring that boots.
  */
-export async function buildOnboardingApp() {
+export async function buildOnboardingApp(options: BuildAppOptions = {}) {
   const sms: { mobile: string; code: string }[] = []
   const app = await buildApp({
+    ...options,
     contentSource: createFixtureContentSource([]),
     integrations: {
       payments: createPaymentsClient(),

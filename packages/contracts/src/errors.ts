@@ -24,6 +24,13 @@ export const PROBLEMS = {
   INVALID_OTP: { type: `${BASE}/invalid-otp`, title: 'Invalid one-time code', status: 401 },
   OTP_EXPIRED: { type: `${BASE}/otp-expired`, title: 'One-time code expired', status: 410 },
   OTP_ATTEMPTS_EXCEEDED: { type: `${BASE}/otp-attempts-exceeded`, title: 'Too many attempts', status: 429 },
+  /**
+   * The club does not send SMS to this number's country (or +1 area): the
+   * sanctions denylist, a non-US +1 number, or a country outside the allowlist.
+   * Retrying changes nothing — only a different number does — which is why it
+   * is a 422 and not the 503 of a provider outage (integrations/sms-country-policy.ts).
+   */
+  SMS_DESTINATION_NOT_ALLOWED: { type: `${BASE}/sms-destination-not-allowed`, title: 'SMS not available for this number', status: 422 },
   INVALID_REFRESH_TOKEN: { type: `${BASE}/invalid-refresh-token`, title: 'Invalid refresh token', status: 401 },
   /**
    * A password-reset link that is unknown, already consumed or expired.
