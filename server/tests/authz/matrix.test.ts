@@ -139,6 +139,8 @@ const ROUTE_CLASSES = [
   // credential at all. Everything after is a member route carrying the
   // `onboarding` posture, which tests/onboarding/gates.test.ts exercises.
   { name: 'onboarding register', url: '/onboarding/register', method: 'POST', audience: 'public' },
+  // Public like register: it is authorised by the pending challenge in the body, not a session.
+  { name: 'onboarding contact change', url: '/onboarding/contact', method: 'POST', audience: 'public' },
   { name: 'onboarding verify mobile', url: '/onboarding/verify-mobile', method: 'POST', audience: 'public' },
   { name: 'onboarding status', url: '/onboarding/status', method: 'GET', audience: 'member' },
   { name: 'onboarding send email code', url: '/onboarding/email/send', method: 'POST', audience: 'member' },

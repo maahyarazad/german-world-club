@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { createPaymentsClient } from '../../src/integrations/payments.ts'
@@ -48,12 +48,19 @@ export const nextAddress = () => `10.20.${Math.floor(addressCounter / 250)}.${(a
 export const register = (app: GwcApp, payload: Record<string, unknown>, remoteAddress = nextAddress()) =>
   app.inject({ method: 'POST', url: '/onboarding/register', payload, remoteAddress })
 
+/**
+ * A distinct mobile number per applicant: members.mobile is unique (migration
+ * 031), and suites share one database. The fixed 5678 ending keeps the masked
+ * "•••• 5678" that several assertions read.
+ */
+export const uniqueMobile = () => `+4915${String(randomInt(0, 1_000_000)).padStart(6, '0')}5678`
+
 export function applicant(overrides: Record<string, unknown> = {}) {
   return {
     fullName: 'Anna Applicant',
     email: `applicant-${randomUUID()}@test.invalid`,
     password: 'correct-horse-battery',
-    mobile: '+4915112345678',
+    mobile: uniqueMobile(),
     birthday: '1990-04-12',
     gender: 'female',
     countryOfResidence: 'DE',

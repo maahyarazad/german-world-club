@@ -30,6 +30,16 @@ export const PROBLEMS = {
    * Retrying changes nothing — only a different number does — which is why it
    * is a 422 and not the 503 of a provider outage (integrations/sms-country-policy.ts).
    */
+  /**
+   * Registration step 3: the applicant changed their email or mobile number to
+   * one another member already has. Said plainly, so they can pick another —
+   * a deliberate difference from `/onboarding/register`, which never reveals a
+   * taken email address. Only an applicant holding a pending verification
+   * code can ask, and the route is rate-limited.
+   */
+  EMAIL_IN_USE: { type: `${BASE}/email-in-use`, title: 'Email address already in use', status: 409 },
+  /** A mobile number belongs to one member (migration 031); registration and the step-3 change both refuse one in use. */
+  MOBILE_IN_USE: { type: `${BASE}/mobile-in-use`, title: 'Mobile number already in use', status: 409 },
   SMS_DESTINATION_NOT_ALLOWED: { type: `${BASE}/sms-destination-not-allowed`, title: 'SMS not available for this number', status: 422 },
   INVALID_REFRESH_TOKEN: { type: `${BASE}/invalid-refresh-token`, title: 'Invalid refresh token', status: 401 },
   /**

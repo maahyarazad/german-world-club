@@ -3,6 +3,7 @@ import {
   registerRequestSchema, registerResponseSchema,
   verifyMobileRequestSchema, verifyMobileResponseSchema,
   emailCodeSentSchema, verifyEmailRequestSchema, onboardingStatusSchema,
+  changeContactRequestSchema,
 } from '@gwc/contracts/onboarding'
 import { createOnboardingController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
@@ -42,6 +43,17 @@ export default fp(
         schema: { body: registerRequestSchema, response: { 202: registerResponseSchema } },
       },
       controller.register,
+    )
+
+    // Step 3's correction of a mistyped email or number (application/contact.ts).
+    // Same budget and bucket as register: it too texts a code, inline.
+    app.post(
+      '/onboarding/contact',
+      {
+        config: { auth: { audience: 'public' }, budget: 'otp-send', rateLimit: app.bucket('register') },
+        schema: { body: changeContactRequestSchema, response: { 202: registerResponseSchema } },
+      },
+      controller.changeContact,
     )
 
     app.post(

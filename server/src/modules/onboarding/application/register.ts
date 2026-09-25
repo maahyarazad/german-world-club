@@ -1,8 +1,10 @@
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { randomUUID } from 'node:crypto'
 import { OTP_TTL_SECONDS } from '@gwc/contracts/auth'
 import { query, withTransaction } from '../../../db/query.ts'
 import { hashPassword, verifyPassword } from '../../auth/passwords.ts'
 import { issueChallenge, maskPhone, WEB_DEVICE } from '../../auth/otp.ts'
+import { forbidden as refuse } from '../../../authz/require-permission.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 import type { RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
@@ -48,6 +50,13 @@ export async function register(
     { signal },
   )
   const existing = rows[0]
+
+  // One number, one member (migration 031). Resuming one's own application
+  // with the same number is not a conflict.
+  const { rows: holders } = await query(app.pg, 'SELECT id FROM members WHERE mobile = $1', [mobile], { signal })
+  if (holders[0] && (!existing || String(holders[0].id) !== String(existing.id))) {
+    throw refuse(PROBLEMS.MOBILE_IN_USE, 'This mobile number is already in use.')
+  }
 
   if (existing) {
     // Resuming an application that stalled before its SMS code was entered —
@@ -102,7 +111,11 @@ export async function register(
   } catch (err) {
     // Two registrations for one address raced, and the other won. From here it
     // is simply an address that is in use.
-    if ((err as { code?: string })?.code === '23505') return addressInUse(app, { email, mobile, requestId })
+    const conflict = err as { code?: string; constraint?: string }
+    if (conflict?.code === '23505' && conflict.constraint === 'members_mobile_unique') {
+      throw refuse(PROBLEMS.MOBILE_IN_USE, 'This mobile number is already in use.')
+    }
+    if (conflict?.code === '23505') return addressInUse(app, { email, mobile, requestId })
     throw err
   }
 }

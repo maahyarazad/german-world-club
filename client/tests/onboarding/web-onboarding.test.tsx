@@ -107,6 +107,53 @@ describe('steps 1 and 2: details, then country', () => {
 })
 
 describe('step 3: the SMS code', () => {
+  /** Registers through the real screens and lands on step 3, like an applicant would. */
+  async function reachStepThree(contact: RouteHandler) {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
+        '/onboarding/contact': contact,
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.change(await screen.findByLabelText(t.country), { target: { value: 'DE' } })
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    await screen.findByRole('heading', { name: t.mobileTitle })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetails }))
+    return fetchMock
+  }
+
+  it('corrects a mistyped number without starting over, and texts the new one', async () => {
+    const fetchMock = await reachStepThree(() =>
+      json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 300, sentTo: '•••• 9999' }, 202))
+
+    // Pre-filled with what was registered, so only the wrong part is retyped.
+    expect(screen.getByLabelText(t.email)).toHaveValue('anna@example.com')
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+49 176 1234 9999' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    // In the subtitle and in the confirmation notice.
+    expect(await screen.findAllByText(/•••• 9999/)).toHaveLength(2)
+    // Only what changed is sent, against the pending challenge.
+    expect(bodyOf(fetchMock, '/onboarding/contact')).toEqual({
+      challengeId: '11111111-1111-4111-8111-111111111111', mobile: '+4917612349999',
+    })
+  })
+
+  it('says so when the new number already belongs to someone', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.MOBILE_IN_USE))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+49 176 1234 9999' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.mobileInUse)).toBeInTheDocument()
+    // Still on the form, so another number can be entered.
+    expect(screen.getByRole('button', { name: t.changeDetailsSave })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('after a reload, sends the applicant back to registration rather than to a dead form', async () => {
     mockCapabilityFetch(null)
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren/mobil' })

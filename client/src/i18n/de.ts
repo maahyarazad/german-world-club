@@ -100,6 +100,12 @@ export const de = {
     verifying: 'Wird geprüft …',
     resend: 'Neuen Code senden',
     resent: 'Ein neuer Code ist unterwegs.',
+    changeDetails: 'Falsche E-Mail oder Nummer? Jetzt ändern',
+    changeDetailsSave: 'Speichern und neuen Code senden',
+    changeDetailsCancel: 'Abbrechen',
+    detailsChanged: 'Gespeichert. Ein neuer Code ist unterwegs an {target}.',
+    emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
+    mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
     missingChallengeTitle: 'Registrierung unterbrochen',
     missingChallengeBody:
       'Diese Seite wurde neu geladen, bevor der Code eingegeben war. Starten Sie die Registrierung '

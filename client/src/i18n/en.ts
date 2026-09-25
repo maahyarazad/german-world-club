@@ -106,6 +106,12 @@ export const en = {
     verifying: 'Checking …',
     resend: 'Send a new code',
     resent: 'A new code is on its way.',
+    changeDetails: 'Wrong email or number? Change it',
+    changeDetailsSave: 'Save and send a new code',
+    changeDetailsCancel: 'Cancel',
+    detailsChanged: 'Saved. A new code is on its way to {target}.',
+    emailInUse: 'This email address is already in use.',
+    mobileInUse: 'This mobile number is already in use.',
     missingChallengeTitle: 'Registration interrupted',
     missingChallengeBody:
       'This page was reloaded before the code was entered. Start the registration again with the '

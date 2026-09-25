@@ -1,10 +1,11 @@
 import { register } from './application/register.ts'
+import { changeContact } from './application/contact.ts'
 import { verifyMobile, sendEmailCode, verifyEmail } from './application/verify.ts'
 import { loadStatus } from './application/status.ts'
 import { setAuthCookies } from '../auth/cookies.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
-import type { RegisterRequest, VerifyMobileRequest, VerifyEmailRequest } from '@gwc/contracts/onboarding'
+import type { RegisterRequest, VerifyMobileRequest, VerifyEmailRequest, ChangeContactRequest } from '@gwc/contracts/onboarding'
 
 /**
  * Request and reply shaping for onboarding. Every rule lives in `application/`.
@@ -19,6 +20,13 @@ export function createOnboardingController(app: GwcApp) {
         ...body, ip: request.ip, requestId: request.id, signal: request.deadlineSignal,
       })
       // 202: a code is on its way; nothing is usable until it comes back.
+      return reply.code(202).send(result)
+    },
+
+    changeContact: async (request: GwcRequest, reply: GwcReply) => {
+      const body = request.body as ChangeContactRequest
+      const result = await changeContact(app, { ...body, requestId: request.id, signal: request.deadlineSignal })
+      // 202, like register: a new code is on its way.
       return reply.code(202).send(result)
     },
 

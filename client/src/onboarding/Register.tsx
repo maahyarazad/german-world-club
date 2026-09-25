@@ -92,7 +92,10 @@ export function Register() {
       const sent = (await post('/onboarding/register', request)) as RegisterResponse
       // Router state, not the URL: a challenge id has no business in browser
       // history or a referrer header.
-      navigate('/konsole/registrieren/mobil', { state: { challengeId: sent.challengeId, sentTo: sent.sentTo } })
+      // The email and number travel along so step 3 can offer to correct them.
+      navigate('/konsole/registrieren/mobil', {
+        state: { challengeId: sent.challengeId, sentTo: sent.sentTo, email: request.email, mobile: request.mobile },
+      })
     } catch (error) {
       console.error('Register.submit', error instanceof ApiError ? error.problem : error)
     } finally {

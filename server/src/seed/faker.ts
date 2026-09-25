@@ -96,9 +96,15 @@ export const EMAIL_DOMAIN = Object.freeze({
  * A British number on a member living in Dubai reads slightly oddly. A real
  * handset receiving a real one-time code reads much worse.
  */
-export function safeMobile(faker: Faker): string {
-  const suffix = faker.number.int({ min: 0, max: 999 }).toString().padStart(3, '0')
-  return `+447700900${suffix}`
+export function safeMobile(index: number): string {
+  // By position, not at random: members.mobile is unique, and the range holds
+  // only 1,000 numbers, so random picks for a 200-member population collide.
+  // An index is distinct within a run and identical across reruns, which keeps
+  // the seed idempotent.
+  if (!Number.isInteger(index) || index < 0 || index > 999) {
+    throw new RangeError(`safeMobile: index ${index} is outside the 1,000 reserved numbers`)
+  }
+  return `+447700900${String(index).padStart(3, '0')}`
 }
 
 /** True for anything safeEmail/safeMobile produced. Used by the safety suites. */

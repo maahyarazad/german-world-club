@@ -1,7 +1,6 @@
 import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
-  EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse,
-} from '@gwc/contracts/onboarding';
+  EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
 import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
@@ -45,6 +44,9 @@ export const authApi = {
 export const onboardingApi = {
   register: (body: RegisterRequest) =>
     api<RegisterResponse>('/onboarding/register', { method: 'POST', body, anonymous: true }),
+  /** Step 3: correct the email or number; answers with a new challenge (server onboarding/application/contact.ts). */
+  changeContact: (body: ChangeContactRequest) =>
+    api<RegisterResponse>('/onboarding/contact', { method: 'POST', body, anonymous: true }),
   verifyMobile: (body: { challengeId: string; code: string; deviceId: string }) =>
     api<VerifyMobileResponse>('/onboarding/verify-mobile', { method: 'POST', body, anonymous: true }),
   status: () => api<OnboardingStatus>('/onboarding/status'),
