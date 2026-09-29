@@ -27,11 +27,18 @@ export type SessionState =
 
 type TokenPair = { accessToken: string; refreshToken: string; principal: Principal };
 
+/**
+ * What the sign-in screen routes on: the server's outcome, plus one the app
+ * adds itself. `staff_account` is not a server shape — the server signs staff
+ * in happily; it is this app that has nowhere to put them.
+ */
+export type SignInResult = SignInResponse | { outcome: 'staff_account' };
+
 type Ctx = {
   state: SessionState;
   deviceId: string | null;
   /** Returns the outcome so the sign-in screen can route OTP / pending cases. */
-  signIn: (email: string, password: string) => Promise<SignInResponse>;
+  signIn: (email: string, password: string) => Promise<SignInResult>;
   /** Store a freshly issued pair (after an OTP or mobile verification) and route. */
   adopt: (tokens: TokenPair) => Promise<void>;
   /** Re-read onboarding status from the server, e.g. after email verification. */
@@ -94,6 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         await route(session);
       } catch (error) {
+        console.error('SessionProvider.restore', error instanceof ApiError ? error.problem : error);
         // Offline at launch: keep the session and show the member area, which
         // will surface the network error itself. Only an answer from the
         // server that the session is over signs anybody out.
@@ -118,6 +126,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A bearer client receives the pair in the body only on `authenticated`;
       // every other outcome is for the screen to route.
       if (outcome.outcome === 'authenticated' && outcome.accessToken && outcome.refreshToken && outcome.principal) {
+        if (outcome.principal.kind === 'admin') {
+          // A staff credential has no place in the member app. Adopting it
+          // would only have `route()` drop it again in silence, leaving the
+          // screen apparently stuck and the server session live on a phone.
+          // Revoke it with its own token instead, then tell the screen why.
+          stored.current = { accessToken: outcome.accessToken, refreshToken: outcome.refreshToken, principal: outcome.principal };
+          try { await authApi.staffSignOut(); } catch (error) {
+            console.error('SessionProvider.signIn', error instanceof ApiError ? error.problem : error);
+          }
+          stored.current = null;
+          return { outcome: 'staff_account' };
+        }
         await adopt({ accessToken: outcome.accessToken, refreshToken: outcome.refreshToken, principal: outcome.principal });
       }
       return outcome;

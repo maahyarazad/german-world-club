@@ -86,7 +86,7 @@ export async function seedMembers(pool: Pool, faker: Faker, options: SeedOptions
         : slice.credential === 'none' ? null
           : usable
 
-    const mobile = slice.mobile === 'none' ? null : safeMobile(faker)
+    const mobile = slice.mobile === 'none' ? null : safeMobile(index)
     const mobileVerified = slice.mobile === 'verified'
 
     const { rowCount } = await pool.query(

@@ -107,6 +107,53 @@ describe('steps 1 and 2: details, then country', () => {
 })
 
 describe('step 3: the SMS code', () => {
+  /** Registers through the real screens and lands on step 3, like an applicant would. */
+  async function reachStepThree(contact: RouteHandler) {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
+        '/onboarding/contact': contact,
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.change(await screen.findByLabelText(t.country), { target: { value: 'DE' } })
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    await screen.findByRole('heading', { name: t.mobileTitle })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetails }))
+    return fetchMock
+  }
+
+  it('corrects a mistyped number without starting over, and texts the new one', async () => {
+    const fetchMock = await reachStepThree(() =>
+      json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 300, sentTo: '•••• 9999' }, 202))
+
+    // Pre-filled with what was registered, so only the wrong part is retyped.
+    expect(screen.getByLabelText(t.email)).toHaveValue('anna@example.com')
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+49 176 1234 9999' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    // In the subtitle and in the confirmation notice.
+    expect(await screen.findAllByText(/•••• 9999/)).toHaveLength(2)
+    // Only what changed is sent, against the pending challenge.
+    expect(bodyOf(fetchMock, '/onboarding/contact')).toEqual({
+      challengeId: '11111111-1111-4111-8111-111111111111', mobile: '+4917612349999',
+    })
+  })
+
+  it('says so when the new number already belongs to someone', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.MOBILE_IN_USE))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+49 176 1234 9999' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.mobileInUse)).toBeInTheDocument()
+    // Still on the form, so another number can be entered.
+    expect(screen.getByRole('button', { name: t.changeDetailsSave })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('after a reload, sends the applicant back to registration rather than to a dead form', async () => {
     mockCapabilityFetch(null)
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren/mobil' })
@@ -143,6 +190,54 @@ describe('an applicant with a session', () => {
     expect(bodyOf(fetchMock, '/onboarding/email/verify')).toEqual({
       challengeId: '22222222-2222-4222-8222-222222222222', code: '123456',
     })
+  })
+
+  it('corrects a mistyped email at step 4, and verifies against the new code', async () => {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/auth/me': applicantMe,
+        '/onboarding/status': status('verify_email'),
+        '/onboarding/email/send': () => json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 1800, sentTo: 'a•••@exmaple.com' }, 202),
+        '/onboarding/email': () => json({ challengeId: '33333333-3333-4333-8333-333333333333', expiresIn: 1800, sentTo: 'a•••@example.com' }, 202),
+        '/onboarding/email/verify': status('awaiting_approval'),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/bewerbung' })
+    await screen.findByText(/a•••@exmaple.com/)
+
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmail }))
+    fireEvent.change(screen.getByLabelText(t.newEmail), { target: { value: 'Anna@Example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmailSave }))
+
+    expect(await screen.findByText(/a•••@example.com/)).toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/onboarding/email')).toEqual({ email: 'anna@example.com' })
+
+    // The code now belongs to the new challenge, not the one for the typo.
+    fireEvent.change(screen.getByLabelText(t.code), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: t.verify }))
+    expect(await screen.findByRole('heading', { name: t.waitingTitle })).toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/onboarding/email/verify')).toEqual({
+      challengeId: '33333333-3333-4333-8333-333333333333', code: '123456',
+    })
+  })
+
+  it('says so when the corrected email already belongs to someone', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/auth/me': applicantMe,
+        '/onboarding/status': status('verify_email'),
+        '/onboarding/email/send': () => json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 1800, sentTo: 'a•••@example.com' }, 202),
+        '/onboarding/email': () => refusal(PROBLEMS.EMAIL_IN_USE),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/bewerbung' })
+    fireEvent.click(await screen.findByRole('button', { name: t.changeEmail }))
+    fireEvent.change(screen.getByLabelText(t.newEmail), { target: { value: 'taken@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmailSave }))
+
+    expect(await screen.findByText(t.emailInUse)).toBeInTheDocument()
+    error.mockRestore()
   })
 
   it('shows the reason staff gave for a denial', async () => {

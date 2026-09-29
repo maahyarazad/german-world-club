@@ -7,33 +7,31 @@ import type { ThreadPost, ThreadView } from '@gwc/contracts/threads';
 import { threadsApi } from '@/api/endpoints';
 import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
-import { Centered, Loading, Message } from '@/components/ui';
+import { Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /** A post in context: what it answers, the post, and its direct replies. */
 export default function Thread() {
   const theme = useTheme();
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [view, setView] = useState<ThreadView | null>(null);
-  const [error, setError] = useState<unknown>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setView(await threadsApi.thread(id));
-      setError(null);
     } catch (e) {
-      setError(e);
+      console.error('Thread.load', e instanceof ApiError ? e.problem : e);
     }
   }, [id]);
 
   // Reload on focus: returning from compose should show the new reply.
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  if (error && !view) return <Centered><Message text={problemMessage(error)} /></Centered>;
   if (!view) return <Loading />;
 
   const replace = (post: ThreadPost) => setView((v) => v && ({

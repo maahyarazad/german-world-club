@@ -121,6 +121,58 @@ export async function sendEmailCode(
 }
 
 /**
+ * Step 4: correct the email address before it is confirmed.
+ *
+ * Only while unconfirmed — a confirmed address is changed through the member's
+ * profile, not onboarding. A taken address is refused with `email-in-use` so
+ * the applicant can choose another. Codes already sent to the old address stop
+ * working, and a new one is mailed to the new address.
+ */
+export async function changeEmail(
+  app: GwcApp,
+  { memberId, deviceId, email, requestId, signal }:
+    { memberId: string; deviceId: string | null; email: string; requestId?: string; signal?: AbortSignal },
+) {
+  try {
+    await withTransaction(app.pg, async (client) => {
+      const { rows } = await client.query(
+        'SELECT email, email_confirmed_at FROM members WHERE id = $1 FOR UPDATE',
+        [memberId],
+      )
+      const member = rows[0]
+      if (!member) throw refuse(PROBLEMS.NOT_FOUND, 'No such account.')
+      if (member.email_confirmed_at !== null) {
+        throw refuse(PROBLEMS.CONFLICT, 'This email address is already confirmed.')
+      }
+      const taken = await client.query('SELECT 1 FROM members WHERE email = $1 AND id <> $2', [email, memberId])
+      if (taken.rows.length) throw refuse(PROBLEMS.EMAIL_IN_USE, 'This email address is already in use.')
+
+      await client.query('UPDATE members SET email = $2 WHERE id = $1', [memberId, email])
+      // A code mailed to the mistyped address must not confirm the new one.
+      await client.query(
+        `UPDATE otp_challenges SET consumed_at = now()
+          WHERE account_id = $1 AND purpose = 'email_verification' AND consumed_at IS NULL`,
+        [memberId],
+      )
+    }, { signal })
+  } catch (err) {
+    // Two accounts racing for the same address: the unique constraint decides.
+    const conflict = err as { code?: string; constraint?: string }
+    if (conflict?.code === '23505' && conflict.constraint === 'members_email_key') {
+      throw refuse(PROBLEMS.EMAIL_IN_USE, 'This email address is already in use.')
+    }
+    throw err
+  }
+
+  // After the commit, without the addresses: the log records that it changed.
+  await app.audit({
+    action: 'membership_application_email_changed', outcome: 'allowed', requestId,
+    actorId: memberId, actorKind: 'member', targetType: 'membership_application', targetId: memberId,
+  })
+  return sendEmailCode(app, { memberId, deviceId, signal })
+}
+
+/**
  * Confirm the address, which completes the application and puts it in front
  * of staff (`submitted_at`). Both in one transaction: a confirmed address on an
  * application nobody can see in the queue is an applicant waiting forever.

@@ -7,7 +7,7 @@ import type { FeedItem, FeedScope } from '@gwc/contracts/threads';
 import { threadsApi } from '@/api/endpoints';
 import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
-import { Chip, Loading, Message, styles } from '@/components/ui';
+import { Chip, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
 import { useTheme } from '@/hooks/use-theme';
@@ -16,7 +16,7 @@ import { useTranslations } from '@/i18n';
 /** The feed (§7): people you follow, or everybody. */
 export default function Feed() {
   const theme = useTheme();
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const [scope, setScope] = useState<FeedScope>('following');
   const fetchPage = useCallback((cursor: string | null) => threadsApi.feed(scope, cursor), [scope]);
   const feed = usePaged<FeedItem>(fetchPage, [scope]);
@@ -60,7 +60,6 @@ export default function Feed() {
           onEndReached={feed.loadMore}
           onEndReachedThreshold={0.5}
           refreshControl={<RefreshControl refreshing={feed.refreshing} onRefresh={() => feed.reload(true)} />}
-          ListHeaderComponent={feed.error ? <View style={{ padding: Spacing.three }}><Message text={problemMessage(feed.error)} /></View> : null}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>
               {scope === 'following' ? t.threads.emptyFollowing : t.common.empty}

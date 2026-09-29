@@ -10,6 +10,7 @@
  * secondary button behind a confirmation (FR-020), not a red button that
  * invites the click it is warning about.
  */
+import { memo } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 const VARIANTS = {
@@ -27,14 +28,14 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> 
   children?: ReactNode
 }
 
-export function Button({
+export const Button = memo(({
   variant = 'primary',
   type = 'button',
   disabled = false,
   children,
   className = '',
   ...rest
-}: ButtonProps) {
+}: ButtonProps) => {
   return (
     <button
       type={type}
@@ -47,6 +48,6 @@ export function Button({
       {children}
     </button>
   )
-}
+})
 
 export default Button

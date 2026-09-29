@@ -17,7 +17,15 @@ import { renderConsole, mockCapabilityFetch, staffSnapshot } from '../helpers/co
  * NOT treat it as a session.
  */
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
+
+/**
+ * Refusals are reflected in the console, not on screen: every catch logs
+ * `console.error('<Component>.<function>', problem)` and stores nothing.
+ */
+const spyConsoleError = () => vi.spyOn(console, 'error').mockImplementation(() => {})
+const loggedProblem = (label: string, type: string) =>
+  expect.arrayContaining([label, expect.objectContaining({ type })])
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -139,9 +147,11 @@ describe('sign-in handles every outcome the server can return', () => {
 })
 
 describe('sign-in surfaces refusals as refusals', () => {
-  it('shows invalid credentials without saying which field was wrong', async () => {
-    mockSignIn(json(PROBLEMS.INVALID_CREDENTIALS, 401))
+  it('shows invalid credentials without saying which field was wrong, and logs them', async () => {
+    const error = spyConsoleError()
+    const calls = mockSignIn(json(PROBLEMS.INVALID_CREDENTIALS, 401))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
+    const before = calls.session
 
     await fillAndSubmit()
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
@@ -150,9 +160,13 @@ describe('sign-in surfaces refusals as refusals', () => {
     // Non-enumeration: the server does not distinguish an unknown address from
     // a wrong password, so the console must not either.
     expect(alert).not.toMatch(/E-Mail-Adresse.*unbekannt|Konto.*existiert/i)
+    expect(error.mock.calls).toContainEqual(loggedProblem('SignIn.submit', PROBLEMS.INVALID_CREDENTIALS.type))
+    // Counter-assertion: a refusal is still not a session.
+    expect(calls.session).toBe(before)
   })
 
   it('shows the server remedy for a locked account and invents none', async () => {
+    spyConsoleError()
     mockSignIn(json(PROBLEMS.ACCOUNT_LOCKED, 403))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
 
@@ -161,6 +175,7 @@ describe('sign-in surfaces refusals as refusals', () => {
   })
 
   it('keeps what the user typed when the attempt is refused', async () => {
+    spyConsoleError()
     mockSignIn(json(PROBLEMS.INVALID_CREDENTIALS, 401))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
 
@@ -242,15 +257,17 @@ describe('password reset — requesting a link', () => {
     expect(calls.request).toBe(0)
   })
 
-  it('surfaces a rate limit as retryable', async () => {
+  it('logs a rate limit under PasswordReset.RequestReset.submit and claims no success', async () => {
+    const error = spyConsoleError()
     stub(json(PROBLEMS.RATE_LIMITED, 429))
     renderConsole(<PasswordReset />, { route: '/konsole/passwort' })
 
     fireEvent.change(screen.getByLabelText(de.signIn.email), { target: { value: 'a@test.invalid' } })
     fireEvent.click(screen.getByRole('button', { name: de.passwordReset.requestSubmit }))
 
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-    expect(screen.getByRole('alert').textContent).toMatch(/warten/i)
+    await waitFor(() => expect(error.mock.calls).toContainEqual(
+      loggedProblem('PasswordReset.RequestReset.submit', PROBLEMS.RATE_LIMITED.type)))
+    expect(screen.queryByText(de.passwordReset.requestDone)).not.toBeInTheDocument()
   })
 })
 
@@ -315,23 +332,15 @@ describe('password reset — setting the new password', () => {
     expect(calls.confirm).toBe(0)
   })
 
-  it('shows a refusal for a token that is expired, used or unknown', async () => {
+  it('logs a token that is expired, used or unknown and claims no success', async () => {
+    const error = spyConsoleError()
     stub(json(PROBLEMS.INVALID_RESET_TOKEN, 401))
     renderConsole(<PasswordReset token={TOKEN} />, { route: '/konsole/passwort' })
 
     fill('mein-neues-passwort')
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-
-    // The server cannot distinguish the three without telling an attacker which
-    // tokens have existed, so the console does not either.
-    const alert = screen.getByRole('alert').textContent
-    expect(alert).not.toMatch(/abgelaufen|bereits verwendet|unbekannt/i)
-
-    // And it must NOT send the user to sign-in. INVALID_RESET_TOKEN exists as a
-    // type separate from INVALID_REFRESH_TOKEN precisely because the remedy
-    // differs: a new link, not a sign-in that cannot help someone who has
-    // forgotten their password.
-    expect(alert).toMatch(/neuen? an/i)
+    await waitFor(() => expect(error.mock.calls).toContainEqual(
+      loggedProblem('PasswordReset.ConfirmReset.submit', PROBLEMS.INVALID_RESET_TOKEN.type)))
+    expect(screen.queryByText(de.passwordReset.confirmDone)).not.toBeInTheDocument()
   })
 
   /**

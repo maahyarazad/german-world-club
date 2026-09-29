@@ -1,7 +1,6 @@
 import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
-  EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse,
-} from '@gwc/contracts/onboarding';
+  EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
 import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
@@ -40,15 +39,22 @@ export const authApi = {
   resendOtp: (challengeId: string) =>
     api<ResendOtpResponse>('/auth/otp/resend', { method: 'POST', body: { challengeId }, anonymous: true }),
   signOut: () => api<void>('/auth/sign-out', { method: 'POST' }),
+  /** Only to revoke a staff session the app just refused; see session.tsx. */
+  staffSignOut: () => api<void>('/auth/staff/sign-out', { method: 'POST' }),
 };
 
 export const onboardingApi = {
   register: (body: RegisterRequest) =>
     api<RegisterResponse>('/onboarding/register', { method: 'POST', body, anonymous: true }),
+  /** Step 3: correct the email or number; answers with a new challenge (server onboarding/application/contact.ts). */
+  changeContact: (body: ChangeContactRequest) =>
+    api<RegisterResponse>('/onboarding/contact', { method: 'POST', body, anonymous: true }),
   verifyMobile: (body: { challengeId: string; code: string; deviceId: string }) =>
     api<VerifyMobileResponse>('/onboarding/verify-mobile', { method: 'POST', body, anonymous: true }),
   status: () => api<OnboardingStatus>('/onboarding/status'),
   sendEmailCode: () => api<EmailCodeSent>('/onboarding/email/send', { method: 'POST' }),
+  /** Step 4: correct the address while unconfirmed; answers with the new code's challenge. */
+  changeEmail: (email: string) => api<EmailCodeSent>('/onboarding/email', { method: 'PUT', body: { email } }),
   verifyEmail: (body: { challengeId: string; code: string }) =>
     api<OnboardingStatus>('/onboarding/email/verify', { method: 'POST', body }),
 };

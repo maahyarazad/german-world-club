@@ -96,8 +96,11 @@ export const EXPO_RECEIPT_CHUNK = 1000
 /** FCM HTTP v1 sends one message per call, so this bounds the concurrency. */
 const FCM_CONCURRENCY = 20
 
-/** A token is a credential for addressing someone's phone; this is all of it anyone sees. */
-export const tokenPreview = (token: unknown) => `${String(token).slice(0, 12)}…${String(token).slice(-4)}`
+// Defined once in @gwc/contracts (feature 012) so the app's development log
+// masks a token exactly as the server does. Imported for use below, and
+// re-exported for existing callers.
+import { tokenPreview } from '@gwc/contracts/push'
+export { tokenPreview }
 
 /**
  * Remove every push token from provider text before it is stored or logged.

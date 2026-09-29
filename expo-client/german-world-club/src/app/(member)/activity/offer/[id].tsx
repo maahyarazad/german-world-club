@@ -8,9 +8,10 @@ import type { MemberOffer } from '@gwc/contracts/offers';
 import { offersApi } from '@/api/endpoints';
 import { imageUrl } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
-import { Card, Centered, FormScreen, Loading, Message } from '@/components/ui';
+import { Card, FormScreen, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * One member offer — where an offer notification lands (feature 011, US2/US4).
@@ -21,16 +22,14 @@ import { useTranslations } from '@/i18n';
  * state an event that has gone away shows.
  */
 export default function OfferScreen() {
-  const { t, format, formatDate, formatMoney, problemMessage } = useTranslations();
+  const { t, format, formatDate, formatMoney } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [offer, setOffer] = useState<MemberOffer | null>(null);
-  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    offersApi.detail(id).then(setOffer, setError);
+    offersApi.detail(id).then(setOffer, (e) => console.error('OfferScreen.load', e instanceof ApiError ? e.problem : e));
   }, [id]);
 
-  if (error && !offer) return <Centered><Message text={problemMessage(error)} /></Centered>;
   if (!offer) return <Loading />;
 
   const money = (cents: number | null) => (cents === null ? null : formatMoney(cents, offer.currency));

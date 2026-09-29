@@ -164,6 +164,32 @@ export const denyApplicationRequestSchema = z.object({
 export type Gender = (typeof GENDERS)[number]
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 export type ApplicationState = (typeof APPLICATION_STATES)[number]
+/**
+ * Step 3: correct the email address or mobile number before the number is
+ * verified. Authorised by the pending verification challenge, which only the
+ * device (or browser) that registered holds — never by the address alone. The
+ * answer is a fresh challenge, texted to the (possibly new) number.
+ */
+export const changeContactRequestSchema = z.object({
+  challengeId: z.string().uuid(),
+  email: registerRequestSchema.shape.email.optional(),
+  mobile: registerRequestSchema.shape.mobile.optional(),
+  deviceId: registerRequestSchema.shape.deviceId,
+}).refine((body) => body.email !== undefined || body.mobile !== undefined, {
+  message: 'give a new email address, a new mobile number, or both',
+})
+
+export type ChangeContactRequest = z.infer<typeof changeContactRequestSchema>
+
+/**
+ * Step 4: correct the email address before it is confirmed. The applicant is
+ * signed in by now (the mobile number opened the session), so the session
+ * authorises it; the answer is a fresh code, mailed to the new address.
+ */
+export const changeEmailRequestSchema = z.object({ email: registerRequestSchema.shape.email })
+
+export type ChangeEmailRequest = z.infer<typeof changeEmailRequestSchema>
+
 export type RegisterRequest = z.infer<typeof registerRequestSchema>
 export type RegisterResponse = z.infer<typeof registerResponseSchema>
 export type VerifyMobileRequest = z.infer<typeof verifyMobileRequestSchema>

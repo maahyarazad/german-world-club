@@ -2,18 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 
-import { EMAIL_CODE_LENGTH } from '@gwc/contracts/onboarding'
+import { EMAIL_CODE_LENGTH, registerRequestSchema } from '@gwc/contracts/onboarding'
+import { PROBLEMS } from '@gwc/contracts/errors'
 import type { EmailCodeSent, OnboardingStatus } from '@gwc/contracts/onboarding'
-import type { ProblemResponse } from '@gwc/contracts/errors'
 
-import { get, post, ApiError } from '../lib/api'
+import { get, post, put, ApiError } from '../lib/api'
 import { useCapabilities, homeFor } from '../lib/capabilities'
-import { describeProblem } from '../lib/problems'
 import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
-import { useLocale, useTranslations } from '../i18n/index'
+import { useTranslations } from '../i18n/index'
 
 /**
  * An applicant with a session: steps 4 and 5 of §6.1.
@@ -26,11 +25,9 @@ import { useLocale, useTranslations } from '../i18n/index'
 export function Application() {
   const t = useTranslations()
   const copy = t.onboarding
-  const { locale } = useLocale()
   const navigate = useNavigate()
   const { refresh, clear } = useCapabilities()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [busy, setBusy] = useState(false)
 
   /** Approved: fetch the real capability snapshot and go where it says. */
@@ -40,19 +37,19 @@ export function Application() {
   }, [refresh, navigate])
 
   const load = useCallback(async () => {
-    setProblem(null)
     try {
       const next = (await get('/onboarding/status')) as OnboardingStatus
       setStatus(next)
       if (next.step === 'approved') await enter()
     } catch (error) {
-      if (!(error instanceof ApiError)) throw error
-      if (error.needsSignIn) {
+      // A lost session still sends the applicant to sign in: that is where
+      // they go next, not how the error is shown.
+      if (error instanceof ApiError && error.needsSignIn) {
         clear()
         navigate('/konsole/anmelden', { replace: true })
         return
       }
-      setProblem(error.problem)
+      console.error('Application.load', error instanceof ApiError ? error.problem : error)
     }
   }, [enter, clear, navigate])
 
@@ -74,15 +71,12 @@ export function Application() {
     setBusy(false)
   }
 
-  const described = problem ? describeProblem(problem, locale) : null
   const signOutButton = <Button variant="quiet" onClick={signOut}>{copy.signOut}</Button>
 
   if (!status) {
     return (
       <AuthCard title={copy.waitingTitle}>
-        {described
-          ? <div className="mt-4"><FormMessage title={described.title}>{described.body}</FormMessage></div>
-          : <p className="mt-2 text-[13px] text-text-muted">{t.console.loading}</p>}
+        <p className="mt-2 text-[13px] text-text-muted">{t.console.loading}</p>
       </AuthCard>
     )
   }
@@ -114,7 +108,6 @@ export function Application() {
   return (
     <AuthCard title={copy.waitingTitle}>
       <p className="mt-2 text-[13px] text-text-muted">{copy.waitingBody}</p>
-      {described && <div className="mt-4"><FormMessage title={described.title}>{described.body}</FormMessage></div>}
       {/* No polling: approval is a human decision that takes hours, and the
           applicant is emailed when it happens. */}
       <div className="mt-6 flex flex-col gap-2">
@@ -130,21 +123,21 @@ function VerifyEmail({
   onVerified, signOutButton,
 }: { onVerified: (status: OnboardingStatus) => void; signOutButton: ReactNode }) {
   const copy = useTranslations().onboarding
-  const { locale } = useLocale()
   const [sent, setSent] = useState<EmailCodeSent | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
-  const [problem, setProblem] = useState<ProblemResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const sentOnce = useRef(false)
+  // Step 4's one correction: the address, while it is unconfirmed.
+  const [editing, setEditing] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const send = useCallback(async () => {
-    setProblem(null)
     try {
       setSent((await post('/onboarding/email/send')) as EmailCodeSent)
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('Application.VerifyEmail.send', error instanceof ApiError ? error.problem : error)
     }
   }, [])
 
@@ -166,19 +159,59 @@ function VerifyEmail({
     }
     setBusy(true)
     setCodeError(null)
-    setProblem(null)
     try {
       onVerified((await post('/onboarding/email/verify', { challengeId: sent.challengeId, code })) as OnboardingStatus)
     } catch (error) {
-      if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
+      console.error('Application.VerifyEmail.submit', error instanceof ApiError ? error.problem : error)
       setCode('')
     } finally {
       setBusy(false)
     }
   }
 
-  const described = problem ? describeProblem(problem, locale) : null
+
+  const changeEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const email = newEmail.trim().toLowerCase()
+    if (!registerRequestSchema.shape.email.safeParse(email).success) {
+      setEmailError(copy.errors.email)
+      return
+    }
+    setBusy(true)
+    setEmailError(null)
+    try {
+      // The old code stops working; this answer carries the new challenge.
+      setSent((await put('/onboarding/email', { email })) as EmailCodeSent)
+      setCode('')
+      setNewEmail('')
+      setEditing(false)
+    } catch (error) {
+      console.error('Application.VerifyEmail.changeEmail', error instanceof ApiError ? error.problem : error)
+      if (error instanceof ApiError && error.problem?.type === PROBLEMS.EMAIL_IN_USE.type) setEmailError(copy.emailInUse)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <AuthCard title={copy.emailTitle} subtitle={fill(copy.stepOf, { step: 4 })}>
+        <form onSubmit={changeEmail} className="mt-6 flex flex-col gap-4" noValidate>
+          <Field
+            label={copy.newEmail}
+            type="email"
+            autoComplete="email"
+            value={newEmail}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setNewEmail(event.target.value)}
+            error={emailError}
+            autoFocus
+          />
+          <Button type="submit" disabled={busy}>{copy.changeEmailSave}</Button>
+          <Button variant="quiet" onClick={() => { setEditing(false); setEmailError(null) }}>{copy.changeDetailsCancel}</Button>
+        </form>
+      </AuthCard>
+    )
+  }
 
   return (
     <AuthCard title={copy.emailTitle} subtitle={fill(copy.stepOf, { step: 4 })}>
@@ -198,9 +231,9 @@ function VerifyEmail({
           error={codeError}
           autoFocus
         />
-        {described && <FormMessage title={described.title}>{described.body}</FormMessage>}
         <Button type="submit" disabled={busy || !sent}>{busy ? copy.verifying : copy.verify}</Button>
         <Button variant="quiet" onClick={send}>{copy.resend}</Button>
+        <Button variant="quiet" onClick={() => setEditing(true)}>{copy.changeEmail}</Button>
         {signOutButton}
       </form>
     </AuthCard>

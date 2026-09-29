@@ -110,7 +110,7 @@ export async function signIn(
         const challenge = await issueChallenge(app.pg, {
           accountId: row.id, accountKind: 'member', deviceId: deviceId!, purpose: 'login', signal,
         })
-        await app.sendOtp?.({ mobile: row.mobile, code: challenge.code })
+        await app.sendOtp({ mobile: String(row.mobile), code: challenge.code, route: 'auth.sign-in.resume-application', accountId: row.id })
         return {
           outcome: 'otp_required',
           challengeId: challenge.challengeId,
@@ -147,7 +147,7 @@ export async function signIn(
         const challenge = await issueChallenge(app.pg, {
           accountId: row.id, accountKind: 'member', deviceId, purpose: 'login', signal,
         })
-        await app.sendOtp?.({ mobile: row.mobile, code: challenge.code })
+        await app.sendOtp({ mobile: String(row.mobile), code: challenge.code, route: 'auth.sign-in', accountId: row.id })
         return {
           outcome: 'otp_required',
           challengeId: challenge.challengeId,

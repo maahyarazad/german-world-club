@@ -117,6 +117,8 @@ declare module 'fastify' {
     dbHealthy(): Promise<boolean>
     redisHealthy(): Promise<boolean>
     metrics: unknown
+    /** Feature 012: records an INTERNAL fault; never awaited by the error handler. */
+    recordServerFault: import('../decorators/server-faults.ts').ServerFaultRecorder
 
     // --- domain seams -------------------------------------------------------
     /**
@@ -143,7 +145,14 @@ declare module 'fastify' {
     }
     mediaStorage: unknown
     integrations: Record<string, unknown>
-    sendOtp(...args: unknown[]): Promise<unknown>
+    /** The one way to send an SMS (decorators/send-otp.ts): country policy, then SMSGlobal. */
+    sendOtp(input: import('../decorators/send-otp.ts').SendOtpInput): Promise<unknown>
+    /** Throws `sms-destination-not-allowed` (and logs it, masked) for a number the club does not text. */
+    assertSmsDestination(
+      mobile: string,
+      route: string,
+      accountId?: string | null,
+    ): import('../integrations/sms-country-policy.ts').SmsDecision
     /**
      * Queue a message for the `mail.deliver` job (decorators/mail.ts). Never
      * sends inline: mail is in no route's budget. Pass the caller's transaction
@@ -222,6 +231,16 @@ declare module 'fastify' {
      * Set by the auth routes before the limiter runs; absent elsewhere.
      */
     otpPhoneKey?: string
+  }
+}
+
+declare module '@fastify/request-context' {
+  interface RequestContextData {
+    /** The server-generated ULID (00-request-context.ts). */
+    requestId?: string
+    /** The client's own correlation id, when well-formed (feature 012, R10). */
+    clientRequestId?: string | null
+    principal?: unknown
   }
 }
 

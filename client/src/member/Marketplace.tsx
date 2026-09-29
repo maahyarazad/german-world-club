@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { get, post, ApiError } from '../lib/api'
-import { describeProblem } from '../lib/problems'
 import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace'
 import type {
   CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse,
@@ -31,18 +30,6 @@ import { formatDate } from '../lib/format'
  */
 
 const MODE_TONE = { offer: 'success', request: 'info' } as const
-
-/**
- * The refusal as the member should read it: the localised title, plus which
- * fields were refused when the server names them. Branches on `type` via
- * `describeProblem`; `problems` is structured data, never parsed prose.
- */
-function describeError(err: ApiError, locale: string): string {
-  const title = describeProblem(err.problem, locale as never).title
-  const fields = (err.problem as { problems?: Array<{ field?: string }> })?.problems
-    ?.map((p) => p.field).filter(Boolean)
-  return fields && fields.length > 0 ? `${title}: ${fields.join(', ')}` : title
-}
 
 type UploadedAsset = { id: string; state: string }
 
@@ -125,7 +112,6 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   onPosted: () => void
 }) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [category, setCategory] = useState<string>(categories[0]?.category ?? '')
   const [mode, setMode] = useState<string>('offer')
   const [title, setTitle] = useState('')
@@ -149,7 +135,10 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
     // the button then looked enabled while `submit` returned without a word.
     void get('/marketplace/terms')
       .then((body) => { setTerms(body as TermsResponse); setTermsFailed(false) })
-      .catch(() => setTermsFailed(true))
+      .catch((err) => {
+        console.error('ComposeListing.loadTerms', err instanceof ApiError ? err.problem : err)
+        setTermsFailed(true)
+      })
   }, [])
 
   // The categories arrive after this component mounts, so the initial state
@@ -189,7 +178,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       const updated = await post('/marketplace/terms/accept') as TermsResponse
       setTerms(updated)
     } catch (err) {
-      setError(err instanceof ApiError ? describeError(err, locale) : String(err))
+      console.error('ComposeListing.acceptTerms', err instanceof ApiError ? err.problem : err)
     } finally {
       setBusy(false)
     }
@@ -218,7 +207,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       })) as { id: string }
       listingId = created.id
     } catch (err) {
-      setError(err instanceof ApiError ? describeError(err, locale) : String(err))
+      console.error('ComposeListing.submit', err instanceof ApiError ? err.problem : err)
       setBusy(false)
       return
     }
@@ -258,7 +247,8 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       try {
         await uploadAndAttach(listingId, item, (status) => setStatus(item.key, status))
         setStatus(item.key, 'attached')
-      } catch {
+      } catch (err) {
+        console.error('ComposeListing.attachAll', err instanceof ApiError ? err.problem : err)
         setStatus(item.key, 'failed')
         failed.push({ ...item, status: 'failed' })
       }
@@ -417,7 +407,6 @@ export function Marketplace() {
   const [category, setCategory] = useState<string>('')
   const [mode, setMode] = useState<string>('')
   const [listings, setListings] = useState<Listing[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [categoriesFailed, setCategoriesFailed] = useState(false)
 
   // Whether COMPOSE renders at all — absent, not disabled, without the flag
@@ -432,7 +421,10 @@ export function Marketplace() {
       setCategories(parsed.categories)
       setVehicleFeatures(parsed.vehicleFeatures)
       setCategoriesFailed(false)
-    }).catch(() => setCategoriesFailed(true))
+    }).catch((err) => {
+      console.error('Marketplace.loadCategories', err instanceof ApiError ? err.problem : err)
+      setCategoriesFailed(true)
+    })
   }, [])
 
   const loadListings = useCallback(async (signal?: AbortSignal) => {
@@ -443,11 +435,9 @@ export function Marketplace() {
     try {
       const page = (await get(`/marketplace/listings${qs ? `?${qs}` : ''}`, { signal })) as ListingPage
       setListings([...page.items])
-      setLoadError(null)
     } catch (err) {
-      setLoadError(err instanceof ApiError ? describeProblem(err.problem, locale).title : String(err))
+      console.error('Marketplace.loadListings', err instanceof ApiError ? err.problem : err)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, mode])
 
   useEffect(() => {
@@ -497,7 +487,6 @@ export function Marketplace() {
           </label>
         </div>
 
-        {loadError && <Callout variant="neutral" title={loadError} />}
 
         {listings === null ? null : listings.length === 0 ? (
           <p className="py-6 text-center text-[13px] text-text-muted">{t.memberMarketplace.empty}</p>

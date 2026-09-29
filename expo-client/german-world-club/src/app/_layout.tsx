@@ -15,6 +15,19 @@ import { SessionProvider, useSession } from '@/session/session';
 
 SplashScreen.preventAutoHideAsync();
 
+// An unhandled JS error is written with console.error, then handed to the
+// handler that was there before, so LogBox and the red screen still appear.
+// Chained, never replaced: replacing it would swallow the one error display
+// React Native gives a developer. `ErrorUtils` is a React Native global; the
+// Expo web build has none.
+if (typeof ErrorUtils !== 'undefined') {
+  const previous = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error(isFatal ? 'RootLayout: unhandled (fatal)' : 'RootLayout: unhandled', error);
+    previous(error, isFatal);
+  });
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (

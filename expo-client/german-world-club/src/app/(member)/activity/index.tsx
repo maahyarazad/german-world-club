@@ -7,12 +7,13 @@ import type { ActivityItem } from '@gwc/contracts/threads';
 import { threadsApi } from '@/api/endpoints';
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
-import { Loading, Message } from '@/components/ui';
+import { Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
 import { publishUnread } from '@/hooks/use-unread';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * Activity (010 US5): likes, replies, quotes, reposts, mentions and follows
@@ -22,7 +23,7 @@ import { useTranslations } from '@/i18n';
  */
 export default function Activity() {
   const theme = useTheme();
-  const { t, format, formatDate, problemMessage } = useTranslations();
+  const { t, format, formatDate } = useTranslations();
   const fetchPage = useCallback((cursor: string | null) => threadsApi.activity(cursor), []);
   const list = usePaged<ActivityItem>(fetchPage, []);
 
@@ -34,7 +35,7 @@ export default function Activity() {
   const newest = list.items[0]?.at;
   useFocusEffect(useCallback(() => {
     if (!newest) return;
-    threadsApi.markSeen(newest).then(() => publishUnread(0)).catch(() => {});
+    threadsApi.markSeen(newest).then(() => publishUnread(0)).catch((e) => { console.error('Activity.markSeen', e instanceof ApiError ? e.problem : e); });
   }, [newest]));
 
   if (list.loading) return <Loading />;
@@ -46,7 +47,6 @@ export default function Activity() {
       keyExtractor={(i) => `${i.kind}:${i.post?.id ?? ''}:${i.actor.id}:${i.at}`}
       onEndReached={list.loadMore}
       refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={() => list.reload(true)} />}
-      ListHeaderComponent={list.error ? <View style={{ padding: Spacing.three }}><Message text={problemMessage(list.error)} /></View> : null}
       ListEmptyComponent={<ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>{t.activity.empty}</ThemedText>}
       renderItem={({ item }) => {
         const name = item.actor.displayName ?? `@${item.actor.handle ?? ''}`;

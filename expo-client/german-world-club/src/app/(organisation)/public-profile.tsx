@@ -20,7 +20,7 @@ import { useSession } from '@/session/session';
  * 404 — shown here as "not permitted", not as a missing page.
  */
 export default function OrganisationPublicProfile() {
-  const { t, format, problemMessage } = useTranslations();
+  const { t, format } = useTranslations();
   const { state } = useSession();
   const kind = state.status === 'organisation' ? (state.principal.kind as 'merchant' | 'partner') : null;
   const [profile, setProfile] = useState<OrganisationProfile | null>(null);
@@ -40,8 +40,8 @@ export default function OrganisationPublicProfile() {
   };
 
   useEffect(() => {
-    if (kind) profileApi.organisation(kind).then(adopt, (e) => setError(problemMessage(e)));
-  }, [kind, problemMessage]);
+    if (kind) profileApi.organisation(kind).then(adopt, (e) => { console.error('OrganisationPublicProfile.load', e instanceof ApiError ? e.problem : e); });
+  }, [kind]);
 
   if (!kind) { router.replace('/'); return null; }
   if (!profile && !error) return <Loading />;
@@ -54,7 +54,7 @@ export default function OrganisationPublicProfile() {
       adopt(await fn());
       setNotice(t.profile.saved);
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 404 ? t.profile.notPermitted : problemMessage(e));
+      console.error('OrganisationPublicProfile.run', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }

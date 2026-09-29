@@ -9,11 +9,12 @@ import { profileApi, threadsApi } from '@/api/endpoints';
 import { PostCard } from '@/components/post-card';
 import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Centered, Loading, Message, styles } from '@/components/ui';
+import { Button, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * Another member as members see them — no contact details (§7) — with their
@@ -24,10 +25,9 @@ import { useTranslations } from '@/i18n';
  */
 export default function MemberProfile() {
   const theme = useTheme();
-  const { t, problemMessage } = useTranslations();
+  const { t } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<PublicMemberProfile | null>(null);
-  const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<ProfileTab>('threads');
   const blocked = profile?.isBlocked ?? false;
@@ -37,15 +37,14 @@ export default function MemberProfile() {
   );
   const posts = usePaged<ThreadPost>(fetchPage, [id, tab, blocked]);
 
-  const load = useCallback(() => profileApi.member(id).then(setProfile, setError), [id]);
+  const load = useCallback(() => profileApi.member(id).then(setProfile, (e) => { console.error('MemberProfile.load', e instanceof ApiError ? e.problem : e); }), [id]);
   useEffect(() => { void load(); }, [load]);
 
-  if (error) return <Centered><Message text={problemMessage(error)} /></Centered>;
   if (!profile) return <Loading />;
 
   const act = async (run: () => Promise<unknown>) => {
     setBusy(true);
-    try { await run(); await load(); } catch (e) { Alert.alert(problemMessage(e)); } finally { setBusy(false); }
+    try { await run(); await load(); } catch (e) { console.error('MemberProfile.act', e instanceof ApiError ? e.problem : e); } finally { setBusy(false); }
   };
 
   const block = () => {

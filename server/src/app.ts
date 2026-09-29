@@ -6,7 +6,7 @@ import fastifyStatic from '@fastify/static'
 import cookie from '@fastify/cookie'
 import csrf from '@fastify/csrf-protection'
 import cors from '@fastify/cors'
-import { ulid } from 'ulid'
+import { monotonicFactory } from 'ulid'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +14,7 @@ import { validatorCompiler, serializerCompiler } from 'fastify-type-provider-zod
 
 import { loadEnv } from './config/env.ts'
 import { GwcLogController, loggerOptions } from './plugins/01-logging.ts'
-import { makeGenReqId } from './plugins/00-request-context.ts'
+import { makeGenReqId, makeChildLoggerFactory } from './plugins/00-request-context.ts'
 
 import requestContext from './plugins/00-request-context.ts'
 import securityHeaders from './plugins/02-security-headers.ts'
@@ -36,6 +36,7 @@ import metrics from './ops/metrics.ts'
 import jobs from './ops/jobs.ts'
 import seoPublicRoutes from './modules/seo/public-routes.ts'
 import seoStaffRoutes from './modules/seo/staff-routes.ts'
+import serverFaultRoutes from './modules/server-faults/routes.ts'
 import organisationRoutes from './modules/organisations/routes.ts'
 import authRoutes from './modules/auth/routes.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
@@ -59,6 +60,8 @@ import { registerIntegrations } from './decorators/integrations.ts'
 import { registerSendOtp } from './decorators/send-otp.ts'
 import { registerMail } from './decorators/mail.ts'
 import { registerPush } from './decorators/push.ts'
+import { registerServerFaults } from './decorators/server-faults.ts'
+import type { ServerFaultRow } from './decorators/server-faults.ts'
 import pushWorker from './modules/push/queue.ts'
 import onboardingRoutes from './modules/onboarding/routes.ts'
 import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
@@ -112,6 +115,22 @@ function consoleShell() {
 const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
 
 /**
+ * Stamp this response's CSP nonces onto the shell's script and style tags.
+ *
+ * The CSP (02-security-headers.ts) allows scripts and styles ONLY by per-request
+ * nonce — no 'self' — and the Vite build emits plain tags. Without this the
+ * browser blocks the bundle and the console never leaves its "Konsole wird
+ * geladen …" placeholder. The nonce changes on every request, which is why
+ * this runs per response rather than once on the cached shell.
+ */
+export function withCspNonces(html: string, nonce: { script: string; style: string }) {
+  return html
+    .replace(/<script\b(?![^>]*\bnonce=)/g, `<script nonce="${nonce.script}"`)
+    .replace(/<style\b(?![^>]*\bnonce=)/g, `<style nonce="${nonce.style}"`)
+    .replace(/<link\b(?=[^>]*\brel="stylesheet")(?![^>]*\bnonce=)/g, `<link nonce="${nonce.style}"`)
+}
+
+/**
  * Builds the Fastify instance. Deliberately does NOT call listen() — that is
  * server.js's job. This split is what makes the whole test strategy work:
  * every suite drives a built instance through `fastify.inject()`, in-process,
@@ -150,11 +169,13 @@ export type BuildAppOptions = {
   jobQueue?: unknown
   integrations?: Record<string, unknown>
   pushTransport?: PushTransport
+  /** Test seam for the fault recorder (feature 012): replace its insert or clock. */
+  serverFaults?: { insert?: (row: ServerFaultRow) => Promise<void>; clock?: () => number }
   [key: string]: unknown
 }
 
 export async function buildApp({
-  env = loadEnv(), contentSource, storage, jobQueue, integrations, pushTransport, ...overrides
+  env = loadEnv(), contentSource, storage, jobQueue, integrations, pushTransport, serverFaults, ...overrides
 }: BuildAppOptions = {}) {
   const app = Fastify({
     // requestTimeout defaults to 0 — DISABLED — on Fastify 5.12, so a stalled
@@ -172,7 +193,10 @@ export async function buildApp({
     // Makes the `ip` rate-limit dimension mean the real client. Never `true`:
     // that would let a client forge X-Forwarded-For and bypass every limit.
     trustProxy: env.trustProxy,
-    genReqId: makeGenReqId(ulid),
+    // Always a server-minted ULID; a client's own x-request-id is correlation
+    // only and is bound into the logger below, never adopted (feature 012, R10).
+    genReqId: makeGenReqId(monotonicFactory()),
+    childLoggerFactory: makeChildLoggerFactory(),
     logger: loggerOptions(env),
     // Fastify 5.12 deprecates the top-level disableRequestLogging /
     // requestIdLogLabel options. Note the runtime wants an *instance* here,
@@ -224,6 +248,11 @@ export async function buildApp({
     origin: env.CORS_ORIGINS ?? [env.canonicalOrigin],
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    // Native fetch sees every header; the Expo *web* build is cross-origin,
+    // and a browser hides any header not exposed here. Both are correlation
+    // values the server already sends to every client — the request id is in
+    // every error body too — so exposing them discloses nothing (012, R9).
+    exposedHeaders: ['x-request-id', 'x-client-request-id'],
   })
 
   /**
@@ -251,6 +280,7 @@ export async function buildApp({
   registerSendOtp(app)
   registerMail(app)
   registerPush(app, { pushTransport })
+  registerServerFaults(app, { perMinute: env.SERVER_FAULTS_PER_MINUTE, ...serverFaults })
 
   /**
    * `wildcard: false` is the load-bearing option: @fastify/static then serves
@@ -320,7 +350,7 @@ export async function buildApp({
           // response under /konsole that caches differently from the rest is
           // how an exception becomes a precedent. It is 2KB, once per session.
           .header('cache-control', 'private, no-store')
-          .send(shell)
+          .send(withCspNonces(shell, reply.cspNonce))
 
       scope.get(CONSOLE_PREFIX, sendShell)
       scope.get(`${CONSOLE_PREFIX}/*`, sendShell)
@@ -354,6 +384,7 @@ export async function buildApp({
   await app.register(threadRoutes)
   await app.register(threadStaffRoutes)
   await app.register(seoStaffRoutes)
+  await app.register(serverFaultRoutes)
   await app.register(organisationRoutes)
   await app.register(ragRoutes)
   // Last, because publicRoutes claims institutional slugs at the root.

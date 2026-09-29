@@ -12,6 +12,7 @@ import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
 import { pushSupported, registerThisDevice, requestAndRegister } from '@/notifications/registration';
 import { loadPushDeviceId } from '@/session/storage';
+import { ApiError } from '@/api/client';
 
 /**
  * Profile → Notifications (feature 011, FR-002, FR-006).
@@ -25,14 +26,12 @@ import { loadPushDeviceId } from '@/session/storage';
  *    never sent, rather than sent and hidden.
  */
 export default function NotificationSettings() {
-  const { t, locale, problemMessage } = useTranslations();
+  const { t, locale } = useTranslations();
   const [permission, setPermission] = useState<Notifications.NotificationPermissionsStatus | null>(null);
   const [device, setDevice] = useState<Device | null>(null);
   const [prefs, setPrefs] = useState<Preferences | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setError(null);
     try {
       const [status, preferences] = await Promise.all([
         pushSupported ? Notifications.getPermissionsAsync() : Promise.resolve(null),
@@ -44,21 +43,20 @@ export default function NotificationSettings() {
       const { devices } = await pushApi.devices.list();
       setDevice(devices.find((d) => d.id === id) ?? null);
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('NotificationSettings.load', e instanceof ApiError ? e.problem : e);
     }
-  }, [problemMessage]);
+  }, []);
 
   // On focus: the member may come back from the system settings with a
   // different answer than they left with.
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
-  if (!prefs) return error ? <FormScreen><Message text={error} /></FormScreen> : <Loading />;
+  if (!prefs) return <Loading />;
 
   const granted = permission?.granted === true;
   const blocked = permission !== null && !granted && !permission.canAskAgain;
 
   const setThisPhone = async (on: boolean) => {
-    setError(null);
     try {
       if (on && !granted) {
         if (blocked) {
@@ -77,7 +75,7 @@ export default function NotificationSettings() {
       }
       if (target) setDevice(await pushApi.devices.patch(target.id, { enabled: on }));
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('NotificationSettings.setThisPhone', e instanceof ApiError ? e.problem : e);
     }
   };
 
@@ -88,7 +86,7 @@ export default function NotificationSettings() {
       setPrefs(await pushApi.preferences.put(next));
     } catch (e) {
       setPrefs(prefs);
-      setError(problemMessage(e));
+      console.error('NotificationSettings.setPref', e instanceof ApiError ? e.problem : e);
     }
   };
 
@@ -121,7 +119,6 @@ export default function NotificationSettings() {
         {row(t.notifications.offers, t.notifications.offersHint, prefs.offers, (v) => setPref('offers', v))}
         {row(t.notifications.broadcasts, t.notifications.broadcastsHint, prefs.broadcasts, (v) => setPref('broadcasts', v))}
       </Card>
-      <Message text={error} />
     </FormScreen>
   );
 }

@@ -39,3 +39,14 @@ if (!hasDatabase) {
       '     Set DATABASE_URL in server/.env and re-run to exercise them.\n',
   )
 }
+
+/**
+ * Empty the fault tables between tests (feature 012).
+ *
+ * TRUNCATE on purpose: it fires no row triggers, so it bypasses the 30-day
+ * delete floor that stops anything else — including an ad-hoc DELETE — from
+ * removing a fresh record. This helper is the only place allowed to do that.
+ */
+export async function resetServerFaults(pool: { query(sql: string): Promise<unknown> }) {
+  await pool.query('TRUNCATE server_faults, server_fault_suppressions')
+}

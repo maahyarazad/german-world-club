@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { threadsApi } from '@/api/endpoints';
+import { ApiError } from '@/api/client';
 
 /**
  * The Activity badge (010 US5). Polled while the app is in the foreground and
@@ -18,7 +19,7 @@ export function useUnread() {
   const [unread, setUnread] = useState(0);
   const refresh = useCallback(() => {
     if (AppState.currentState !== 'active') return;
-    threadsApi.unread().then((r) => setUnread(r.unread)).catch(() => {});
+    threadsApi.unread().then((r) => setUnread(r.unread)).catch((e) => { console.error('useUnread.refresh', e instanceof ApiError ? e.problem : e); });
   }, []);
   useEffect(() => {
     refresh();

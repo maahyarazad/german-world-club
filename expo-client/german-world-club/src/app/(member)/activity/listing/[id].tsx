@@ -8,9 +8,10 @@ import type { MediaItem } from '@gwc/contracts/media';
 import { marketplaceApi } from '@/api/endpoints';
 import { MediaCarousel } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
-import { Centered, FormScreen, Loading, Message } from '@/components/ui';
+import { FormScreen, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * A marketplace listing, read-only — where a listing notification lands
@@ -19,16 +20,14 @@ import { useTranslations } from '@/i18n';
  * not the member's to see answers 404, shown as "no longer available".
  */
 export default function ListingScreen() {
-  const { t, format, formatMoney, problemMessage } = useTranslations();
+  const { t, format, formatMoney } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [listing, setListing] = useState<Listing | null>(null);
-  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    marketplaceApi.listing(id).then(setListing, setError);
+    marketplaceApi.listing(id).then(setListing, (e) => console.error('ListingScreen.load', e instanceof ApiError ? e.problem : e));
   }, [id]);
 
-  if (error && !listing) return <Centered><Message text={problemMessage(error)} /></Centered>;
   if (!listing) return <Loading />;
 
   // The server sends each listing photo as a delivered MediaItem (derivatives

@@ -17,7 +17,14 @@ export function registerIntegrations(app: GwcApp, { integrations, env } = {}) {
       apiSecret: env.SMSGLOBAL_API_SECRET,
       origin: env.SMSGLOBAL_ORIGIN,
     }),
-    mail: createMailClient(),
+    mail: createMailClient({
+      host: env.SMTP_HOST || undefined,
+      port: env.SMTP_PORT,
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS,
+      from: env.MAIL_FROM || undefined,
+      origin: env.canonicalOrigin,
+    }),
     geocoding: createGeocodingClient(),
   })
 }

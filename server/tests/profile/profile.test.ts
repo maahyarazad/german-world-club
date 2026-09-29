@@ -15,16 +15,17 @@ describe.skipIf(!hasDatabase)('member profiles', () => {
   beforeAll(async () => { app = await buildAuthApp() })
   afterAll(async () => { await app.close() })
 
-  const memberWithBearer = async () => {
-    const row = await createMember(app.pg, { mobile: '+4917012345678' })
+  // Distinct numbers: members.mobile is unique (migration 031).
+  const memberWithBearer = async (mobile: string) => {
+    const row = await createMember(app.pg, { mobile })
     await app.pg.query(`UPDATE members SET birthday = '1985-06-01', bio = 'Hello', city = 'Dubai' WHERE id = $1`, [row.id])
     return { id: String(row.id), headers: await bearerFor(app, { accountId: String(row.id), accountKind: 'member' }) }
   }
 
   beforeEach(async () => {
     await resetAuthTables(app.pg)
-    me = await memberWithBearer()
-    other = await memberWithBearer()
+    me = await memberWithBearer('+4917012345678')
+    other = await memberWithBearer('+4917012345679')
   })
 
   const patch = (payload: Record<string, unknown>) =>

@@ -4,7 +4,6 @@ import { PROFILE_BIO_MAX, PROFILE_LINKS_MAX } from '@gwc/contracts/profile'
 import type { MemberProfile, ProfileLink } from '@gwc/contracts/profile'
 import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
 import { get, patch, post, put, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { fill, formatDate } from '../../lib/format'
 import PageHeader from '../../components/ui/PageHeader'
 import Button from '../../components/ui/Button'
@@ -47,7 +46,7 @@ export function EditProfile() {
       adopt((await fn()) as MemberProfile)
       setMessage({ tone: 'success', text: t.memberProfile.saved })
     } catch (err) {
-      setMessage({ tone: 'danger', text: err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed })
+      console.error('EditProfile.run', err instanceof ApiError ? err.problem : err)
     } finally {
       setBusy(false)
     }

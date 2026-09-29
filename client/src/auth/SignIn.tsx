@@ -1,13 +1,13 @@
 import type { ChangeEvent, FormEvent } from 'react'
-import type { ProblemResponse } from '@gwc/contracts/errors'
 import type { Snapshot } from '../lib/capabilities'
 import { useState } from 'react'
 import { post, ApiError } from '../lib/api'
 import { useCapabilities } from '../lib/capabilities'
-import { describeProblem } from '../lib/problems'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
 import AuthCard from './AuthCard'
+import type { ProblemResponse } from '@gwc/contracts/errors'
+import { describeProblem } from '../lib/problems'
 import { useLocale, useTranslations } from '../i18n/index'
 
 /**
@@ -96,14 +96,13 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
 
       setOutcome(result?.outcome ?? 'unknown')
     } catch (error) {
+      console.error('SignIn.submit', error instanceof ApiError ? error.problem : error)
+      // Shown as well as logged: a refused sign-in must tell the person why.
       if (error instanceof ApiError) setProblem(error.problem)
-      else throw error
     } finally {
       setBusy(false)
     }
   }
-
-  const described = problem ? describeProblem(problem, locale) : null
 
   return (
     <AuthCard
@@ -143,10 +142,11 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
 
         {/* A refusal: wrong credentials, a locked account, a rate limit. The
             server states the remedy and the console shows it rather than
-            inventing one. */}
-        {described && (
-          <FormMessage title={described.title}>{described.body}</FormMessage>
-        )}
+            inventing one — translated from the problem type, never its detail. */}
+        {problem && (() => {
+          const described = describeProblem(problem, locale)
+          return <FormMessage title={described.title}>{described.body}</FormMessage>
+        })()}
 
         {outcome && <OutcomeMessage outcome={outcome} onResetPassword={onResetPassword} />}
 

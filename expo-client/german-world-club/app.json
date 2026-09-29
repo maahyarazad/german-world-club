@@ -11,6 +11,7 @@
       "icon": "./assets/icon.png",
       "bundleIdentifier": "com.buenapublica.germanworldclub",
       "infoPlist": {
+        "CFBundleDisplayName": "German World Club",
         "ITSAppUsesNonExemptEncryption": false
       },
       "appleTeamId": "YQFY6269ZL"

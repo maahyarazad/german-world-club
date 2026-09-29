@@ -13,6 +13,7 @@ import { pickMedia, uploadReady } from '@/lib/pick-media';
 import { Button, Chip, FormScreen, Loading, Message, TextField, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
+import { ApiError } from '@/api/client';
 
 /**
  * What a member may change themselves: avatar, handle, bio, city, gender and
@@ -22,7 +23,7 @@ import { useTranslations } from '@/i18n';
  * is its own server call with its own refusal.
  */
 export default function EditProfile() {
-  const { t, format, formatDate, problemMessage } = useTranslations();
+  const { t, format, formatDate } = useTranslations();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [links, setLinks] = useState<ProfileLink[]>([]);
@@ -41,8 +42,8 @@ export default function EditProfile() {
       setCity(p.city ?? '');
       setGender(p.gender);
       setLoaded(true);
-    }, (e) => setError(problemMessage(e)));
-  }, [problemMessage]);
+    }, (e) => { console.error('EditProfile.load', e instanceof ApiError ? e.problem : e); });
+  }, []);
 
   if (!loaded && !error) return <Loading />;
 
@@ -56,7 +57,7 @@ export default function EditProfile() {
       setLinks(next.links);
       setNotice(t.profile.saved);
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('EditProfile.run', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }
@@ -84,7 +85,7 @@ export default function EditProfile() {
       });
       router.back();
     } catch (e) {
-      setError(problemMessage(e));
+      console.error('EditProfile.save', e instanceof ApiError ? e.problem : e);
     } finally {
       setBusy(false);
     }

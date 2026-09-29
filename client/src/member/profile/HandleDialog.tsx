@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react'
 import { HANDLE_PATTERN, RESERVED_HANDLES, normaliseHandle } from '@gwc/contracts/profile'
 import type { MemberProfile } from '@gwc/contracts/profile'
 import { get, put, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import Button from '../../components/ui/Button'
 import Field from '../../components/ui/Field'
 import Modal from '../threads/Modal'
-import { useLocale, useTranslations } from '../../i18n/index'
+import { useTranslations } from '../../i18n/index'
 
 /**
  * Choosing or changing the @handle (US1/US3, FR-011).
@@ -23,10 +22,8 @@ export function HandleDialog({ open, current, onClose, onSaved }: {
   onSaved: (profile: MemberProfile) => void
 }) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [value, setValue] = useState(current ?? '')
   const [available, setAvailable] = useState<boolean | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const handle = normaliseHandle(value)
@@ -39,18 +36,20 @@ export function HandleDialog({ open, current, onClose, onSaved }: {
     const timer = setTimeout(() => {
       void get(`/profile/handles/${encodeURIComponent(handle)}/available`)
         .then((body) => setAvailable(Boolean((body as { available: boolean }).available)))
-        .catch(() => setAvailable(null))
+        .catch((err) => {
+          console.error('HandleDialog.checkAvailability', err instanceof ApiError ? err.problem : err)
+          setAvailable(null)
+        })
     }, 350)
     return () => clearTimeout(timer)
   }, [handle, wellFormed, current])
 
   const save = async () => {
     setBusy(true)
-    setError(null)
     try {
       onSaved((await put('/profile/me/handle', { handle })) as MemberProfile)
     } catch (err) {
-      setError(err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed)
+      console.error('HandleDialog.save', err instanceof ApiError ? err.problem : err)
     } finally {
       setBusy(false)
     }
@@ -72,7 +71,6 @@ export function HandleDialog({ open, current, onClose, onSaved }: {
         spellCheck={false}
         onChange={(e) => setValue(e.target.value)}
         hint={hint}
-        error={error ?? undefined}
       />
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>{t.memberThreads.cancel}</Button>

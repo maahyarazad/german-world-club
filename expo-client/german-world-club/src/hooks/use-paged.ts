@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ApiError } from '@/api/client';
 
 type Page<T> = { items: T[]; nextCursor: string | null };
 
@@ -13,7 +14,6 @@ export function usePaged<T>(fetchPage: (cursor: string | null) => Promise<Page<T
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<unknown>(null);
   const loadingMore = useRef(false);
   // Ignore answers to a request superseded by a newer reload.
   const generation = useRef(0);
@@ -21,14 +21,13 @@ export function usePaged<T>(fetchPage: (cursor: string | null) => Promise<Page<T
   const reload = useCallback(async (asRefresh = false) => {
     const mine = ++generation.current;
     asRefresh ? setRefreshing(true) : setLoading(true);
-    setError(null);
     try {
       const page = await fetchPage(null);
       if (mine !== generation.current) return;
       setItems(page.items);
       setCursor(page.nextCursor);
     } catch (e) {
-      if (mine === generation.current) setError(e);
+      console.error('usePaged.reload', e instanceof ApiError ? e.problem : e);
     } finally {
       if (mine === generation.current) {
         setLoading(false);
@@ -50,11 +49,11 @@ export function usePaged<T>(fetchPage: (cursor: string | null) => Promise<Page<T
       setItems((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
     } catch (e) {
-      setError(e);
+      console.error('usePaged.loadMore', e instanceof ApiError ? e.problem : e);
     } finally {
       loadingMore.current = false;
     }
   }, [cursor, fetchPage]);
 
-  return { items, setItems, loading, refreshing, error, reload, loadMore };
+  return { items, setItems, loading, refreshing, reload, loadMore };
 }

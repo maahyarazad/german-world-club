@@ -90,6 +90,14 @@ export const PLATFORM_JOBS = Object.freeze([
     // job, which is why the predicate names both halves rather than one.
     description: 'Expire listings whose expires_at has passed (never listings with no expiry)',
   },
+  {
+    name: 'server-faults.prune',
+    schedule: '30 3 * * *',
+    // Feature 012, FR-007. The tables refuse to delete anything younger than
+    // 30 days by trigger, so this job cannot remove fresh evidence even if the
+    // interval below were mistyped — it would simply fail.
+    description: 'Delete server fault records and suppression counts older than 30 days',
+  },
 ])
 
 /** The work each job does. Separated from the schedule so both stay readable. */
@@ -131,6 +139,30 @@ export function createJobHandlers(app: GwcApp) {
       // in-memory fallback used when REDIS_ENABLED is false.
       const pruned = await app.denylist?.prune?.()
       return { itemsProcessed: pruned ?? 0 }
+    },
+
+    'server-faults.prune': async () => {
+      // Write any pending suppression count first, so a quiet night's count
+      // is not left waiting in memory for the next fault to flush it.
+      await app.recordServerFault?.flushSuppressions()
+      // In batches: after an outage there can be a month of rows to drop, and
+      // one unbounded DELETE would hold its locks for the whole of it.
+      const expired = [
+        ['server_faults', 'occurred_at'],
+        ['server_fault_suppressions', 'minute'],
+      ] as const
+      let itemsProcessed = 0
+      for (const [table, stamp] of expired) {
+        for (;;) {
+          const { rowCount } = await app.pg.query(
+            `DELETE FROM ${table} WHERE ctid IN (
+               SELECT ctid FROM ${table} WHERE ${stamp} < now() - interval '30 days' LIMIT 5000)`,
+          )
+          itemsProcessed += rowCount ?? 0
+          if (!rowCount) break
+        }
+      }
+      return { itemsProcessed }
     },
 
     'sitemap.invalidate': async () => {

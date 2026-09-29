@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OrganisationProfile } from '@gwc/contracts/profile'
 import { get, patch, post, ApiError } from '../lib/api'
-import { describeProblem } from '../lib/problems'
 import { fill } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
 import Callout from '../components/ui/Callout'
-import { useLocale, useTranslations } from '../i18n/index'
+import { useTranslations } from '../i18n/index'
 import { OrganisationCard } from '../member/profile/OrganisationView'
 
 /**
@@ -21,7 +20,6 @@ import { OrganisationCard } from '../member/profile/OrganisationView'
  */
 export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner' }) {
   const t = useTranslations()
-  const { locale } = useLocale()
   const [profile, setProfile] = useState<OrganisationProfile | null>(null)
   const [form, setForm] = useState({ displayName: '', about: '', website: '', city: '' })
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
@@ -46,10 +44,7 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
       adopt((await patch(`/profile/${kind}/public`, changes)) as OrganisationProfile)
       setMessage({ tone: 'success', text: t.organisationProfile.saved })
     } catch (err) {
-      const text = err instanceof ApiError && err.status === 404
-        ? t.organisationProfile.notPermitted
-        : err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed
-      setMessage({ tone: 'danger', text })
+      console.error('OrganisationProfile.save', err instanceof ApiError ? err.problem : err)
     } finally {
       setBusy(false)
     }
@@ -64,7 +59,7 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
       const asset = (await post(`/media/${kind}`, form)) as { id: string }
       await save({ logoAssetId: asset.id })
     } catch (err) {
-      setMessage({ tone: 'danger', text: err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.mediaFailed })
+      console.error('OrganisationProfile.uploadLogo', err instanceof ApiError ? err.problem : err)
     }
   }
 

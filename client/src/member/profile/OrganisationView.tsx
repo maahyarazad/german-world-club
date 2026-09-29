@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import type { OrganisationPublicProfile } from '@gwc/contracts/profile'
-import { get } from '../../lib/api'
+import { get, ApiError } from '../../lib/api'
 import Callout from '../../components/ui/Callout'
 import { fill } from '../../lib/format'
 import { useTranslations } from '../../i18n/index'
@@ -15,7 +15,10 @@ export function OrganisationView() {
   const [missing, setMissing] = useState(false)
   useEffect(() => {
     void get(`/profile/organisations/${encodeURIComponent(slug ?? '')}`)
-      .then((o) => setOrg(o as OrganisationPublicProfile)).catch(() => setMissing(true))
+      .then((o) => setOrg(o as OrganisationPublicProfile)).catch((err) => {
+        console.error('OrganisationView.load', err instanceof ApiError ? err.problem : err)
+        setMissing(true)
+      })
   }, [slug])
   if (missing) return <Callout variant="neutral" title={t.memberProfile.notFound}>{null}</Callout>
   if (!org) return null

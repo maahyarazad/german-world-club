@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { get, post, ApiError } from '../../lib/api'
-import { describeProblem } from '../../lib/problems'
 import { formatDateTime } from '../../lib/format'
 import type { MediaItem } from '@gwc/contracts/media'
 import PageHeader from '../../components/ui/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import Field, { FormMessage } from '../../components/ui/Field'
+import Field from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import { useLocale, useTranslations } from '../../i18n/index'
 import MediaGrid from '../../member/threads/MediaGrid'
@@ -35,16 +34,14 @@ export function ThreadsModeration() {
   const [open, setOpen] = useState<{ report: Report; post: StaffPost } | null>(null)
   const [pending, setPending] = useState<Action | null>(null)
   const [reason, setReason] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const body = (await get('/admin/threads/reports?state=open')) as { items: Report[] }
     setReports(body.items)
   }, [])
-  useEffect(() => { void load().catch(() => setError(t.memberThreads.loadFailed)) }, [load, t])
+  useEffect(() => { void load().catch((err) => console.error('ThreadsModeration.load', err instanceof ApiError ? err.problem : err)) }, [load])
 
   const show = async (report: Report) => {
-    setError(null)
     setOpen({ report, post: (await get(`/admin/threads/posts/${report.postId}`)) as StaffPost })
   }
 
@@ -59,7 +56,7 @@ export function ThreadsModeration() {
       setPending(null); setReason(''); setOpen(null)
       await load()
     } catch (err) {
-      setError(err instanceof ApiError ? describeProblem(err.problem, locale).title : t.memberThreads.loadFailed)
+      console.error('ThreadsModeration.confirm', err instanceof ApiError ? err.problem : err)
     }
   }
 
@@ -72,7 +69,6 @@ export function ThreadsModeration() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t.threadsModeration.title} subtitle={t.threadsModeration.subtitle} />
-      {error && <FormMessage>{error}</FormMessage>}
       <Card title={t.threadsModeration.queue}>
         {reports.length === 0 ? <p className="text-[13px] text-text-muted">{t.threadsModeration.empty}</p> : (
           <ul className="divide-y divide-hairline">
