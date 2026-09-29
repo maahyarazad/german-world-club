@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { EMAIL_CODE_LENGTH, registerRequestSchema } from '@gwc/contracts/onboarding'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import type { EmailCodeSent, OnboardingStatus } from '@gwc/contracts/onboarding'
+import type { ProfilingStatus } from '@gwc/contracts/profiling'
 
 import { get, post, put, ApiError } from '../lib/api'
 import { useCapabilities, homeFor } from '../lib/capabilities'
@@ -12,7 +13,9 @@ import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
-import { useTranslations } from '../i18n/index'
+import Profiling from './Profiling.tsx'
+import { describeProblem } from '../lib/problems'
+import { useLocale, useTranslations } from '../i18n/index'
 
 /**
  * An applicant with a session: steps 4 and 5 of §6.1.
@@ -29,6 +32,9 @@ export function Application() {
   const { refresh, clear } = useCapabilities()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
   const [busy, setBusy] = useState(false)
+  // Onboarding Phase 2 (013): set only once `step === 'approved'`, and only
+  // when profiling is not yet done — approval alone no longer opens the console.
+  const [needsProfiling, setNeedsProfiling] = useState(false)
 
   /** Approved: fetch the real capability snapshot and go where it says. */
   const enter = useCallback(async () => {
@@ -40,7 +46,11 @@ export function Application() {
     try {
       const next = (await get('/onboarding/status')) as OnboardingStatus
       setStatus(next)
-      if (next.step === 'approved') await enter()
+      if (next.step === 'approved') {
+        const profiling = await get('/profiling/status') as ProfilingStatus
+        if (profiling.completed) await enter()
+        else setNeedsProfiling(true)
+      }
     } catch (error) {
       // A lost session still sends the applicant to sign in: that is where
       // they go next, not how the error is shown.
@@ -81,6 +91,10 @@ export function Application() {
     )
   }
 
+  if (needsProfiling) {
+    return <Profiling onComplete={enter} />
+  }
+
   if (status.step === 'verify_email') {
     return <VerifyEmail onVerified={setStatus} signOutButton={signOutButton} />
   }
@@ -118,28 +132,45 @@ export function Application() {
   )
 }
 
-/** Step 4: the six-digit code mailed to the address given at registration. */
+/**
+ * Step 4: the six-digit code mailed to the address given at registration.
+ *
+ * An address another member has is shown on its field. Any other refusal, or a
+ * request that never reached the server, is shown in a message above the
+ * buttons, translated from the problem `type` by `describeProblem`. It is
+ * logged as well.
+ */
 function VerifyEmail({
   onVerified, signOutButton,
 }: { onVerified: (status: OnboardingStatus) => void; signOutButton: ReactNode }) {
   const copy = useTranslations().onboarding
+  const { locale } = useLocale()
   const [sent, setSent] = useState<EmailCodeSent | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [requestError, setRequestError] = useState<string | null>(null)
   const sentOnce = useRef(false)
   // Step 4's one correction: the address, while it is unconfirmed.
   const [editing, setEditing] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
 
+  // A null problem (network failure) describes as the generic internal error.
+  const showRequestError = useCallback((error: unknown) => {
+    const described = describeProblem(error instanceof ApiError ? error.problem : null, locale)
+    setRequestError(described.body ? `${described.title}: ${described.body}` : described.title)
+  }, [locale])
+
   const send = useCallback(async () => {
+    setRequestError(null)
     try {
       setSent((await post('/onboarding/email/send')) as EmailCodeSent)
     } catch (error) {
       console.error('Application.VerifyEmail.send', error instanceof ApiError ? error.problem : error)
+      showRequestError(error)
     }
-  }, [])
+  }, [showRequestError])
 
   // Once on arrival, not on every render (StrictMode mounts effects twice in
   // development). Each send is rate-limited and a fresh set of guesses, so it
@@ -159,10 +190,12 @@ function VerifyEmail({
     }
     setBusy(true)
     setCodeError(null)
+    setRequestError(null)
     try {
       onVerified((await post('/onboarding/email/verify', { challengeId: sent.challengeId, code })) as OnboardingStatus)
     } catch (error) {
       console.error('Application.VerifyEmail.submit', error instanceof ApiError ? error.problem : error)
+      showRequestError(error)
       setCode('')
     } finally {
       setBusy(false)
@@ -179,6 +212,7 @@ function VerifyEmail({
     }
     setBusy(true)
     setEmailError(null)
+    setRequestError(null)
     try {
       // The old code stops working; this answer carries the new challenge.
       setSent((await put('/onboarding/email', { email })) as EmailCodeSent)
@@ -188,6 +222,7 @@ function VerifyEmail({
     } catch (error) {
       console.error('Application.VerifyEmail.changeEmail', error instanceof ApiError ? error.problem : error)
       if (error instanceof ApiError && error.problem?.type === PROBLEMS.EMAIL_IN_USE.type) setEmailError(copy.emailInUse)
+      else showRequestError(error)
     } finally {
       setBusy(false)
     }
@@ -206,8 +241,9 @@ function VerifyEmail({
             error={emailError}
             autoFocus
           />
+          {requestError && <FormMessage>{requestError}</FormMessage>}
           <Button type="submit" disabled={busy}>{copy.changeEmailSave}</Button>
-          <Button variant="quiet" onClick={() => { setEditing(false); setEmailError(null) }}>{copy.changeDetailsCancel}</Button>
+          <Button variant="quiet" onClick={() => { setEditing(false); setEmailError(null); setRequestError(null) }}>{copy.changeDetailsCancel}</Button>
         </form>
       </AuthCard>
     )
@@ -231,9 +267,10 @@ function VerifyEmail({
           error={codeError}
           autoFocus
         />
+        {requestError && <FormMessage>{requestError}</FormMessage>}
         <Button type="submit" disabled={busy || !sent}>{busy ? copy.verifying : copy.verify}</Button>
         <Button variant="quiet" onClick={send}>{copy.resend}</Button>
-        <Button variant="quiet" onClick={() => setEditing(true)}>{copy.changeEmail}</Button>
+        <Button variant="quiet" onClick={() => { setEditing(true); setRequestError(null) }}>{copy.changeEmail}</Button>
         {signOutButton}
       </form>
     </AuthCard>

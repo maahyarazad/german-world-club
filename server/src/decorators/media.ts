@@ -1,4 +1,4 @@
-import { createStorage } from '../modules/media/storage.ts'
+import { createLocalStorage, DEFAULT_FILE_STORAGE_PATH } from '../modules/media/local_storage.ts'
 import { createInlineQueue } from '../modules/media/queue.ts'
 import type { GwcApp } from '../app.ts'
 
@@ -13,7 +13,7 @@ import type { GwcApp } from '../app.ts'
  */
 export function registerMediaDecorators(app: GwcApp, { storage, jobQueue, env } = {}) {
   const queue = jobQueue ?? createInlineQueue()
-  app.decorate('mediaStorage', storage ?? createStorage(env))
+  app.decorate('mediaStorage', storage ?? createLocalStorage({ root: env?.FILE_STORAGE_PATH ?? DEFAULT_FILE_STORAGE_PATH }))
   app.decorate('jobQueue', queue)
   /**
    * The same queue under the name the push outbox uses (feature 011, T018).

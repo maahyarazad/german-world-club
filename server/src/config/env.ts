@@ -67,6 +67,8 @@ const schema = z
 
     MEDIA_STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
     MEDIA_LOCAL_PATH: z.string().default('./var/media'),
+    // Where uploaded media is kept on the server's disk (modules/media/local_storage.ts).
+    FILE_STORAGE_PATH: z.string().default('./file_storage'),
     MEDIA_MAX_BYTES: int(26214400),
     MEDIA_MAX_PIXELS: int(50000000),
     // The per-account stored-byte quota (FR-063). A business quota, so it is

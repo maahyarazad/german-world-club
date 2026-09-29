@@ -22,7 +22,14 @@ const APPLICATION_COLUMNS = `
   m.display_name, m.email, m.mobile, m.gender, m.country_of_residence,
   -- A calendar date, formatted by Postgres: pg would otherwise hand back a
   -- local-midnight Date that serialises a day early east of UTC.
-  to_char(m.birthday, 'YYYY-MM-DD') AS birthday`
+  to_char(m.birthday, 'YYYY-MM-DD') AS birthday,
+  -- Onboarding Phase 2 (013): profiling's own outcome, surfaced here rather
+  -- than through a dedicated staff screen (spec.md Assumptions).
+  p.branch AS profiling_branch, p.completed_at AS profiling_completed_at, p.outcome AS profiling_outcome,
+  g.country AS profiling_matched_country, g.city AS profiling_matched_city`
+const APPLICATION_JOINS = `
+   LEFT JOIN member_profiling p ON p.member_id = a.member_id
+   LEFT JOIN gwc_cities g ON g.id = p.matched_gwc_city_id`
 
 function toApplication(row: Record<string, unknown>): Application {
   return {
@@ -38,6 +45,14 @@ function toApplication(row: Record<string, unknown>): Application {
     submittedAt: iso(row.submitted_at),
     reviewedAt: iso(row.reviewed_at),
     denialReason: (row.denial_reason as string | null) ?? null,
+    profiling: row.profiling_branch ? {
+      completed: row.profiling_completed_at != null,
+      branch: row.profiling_branch as 'germany' | 'elsewhere',
+      outcome: (row.profiling_outcome as 'in_person_meeting' | 'gwc_city_match' | null) ?? null,
+      matchedCity: row.profiling_matched_country
+        ? { country: row.profiling_matched_country as string, city: row.profiling_matched_city as string }
+        : null,
+    } : null,
   }
 }
 
@@ -54,6 +69,7 @@ export async function listApplications(
     `SELECT ${APPLICATION_COLUMNS}
        FROM membership_applications a
        JOIN members m ON m.id = a.member_id
+       ${APPLICATION_JOINS}
       WHERE a.submitted_at IS NOT NULL AND a.state = $1
       ORDER BY a.submitted_at
       LIMIT 200`,
@@ -133,7 +149,7 @@ export async function decide(
 
   const { rows } = await query(
     app.pg,
-    `SELECT ${APPLICATION_COLUMNS} FROM membership_applications a JOIN members m ON m.id = a.member_id WHERE a.member_id = $1`,
+    `SELECT ${APPLICATION_COLUMNS} FROM membership_applications a JOIN members m ON m.id = a.member_id ${APPLICATION_JOINS} WHERE a.member_id = $1`,
     [memberId],
     { signal },
   )

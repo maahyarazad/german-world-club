@@ -70,11 +70,17 @@ export const STATUS = Object.freeze({
  * The server sends them from every member route to an applicant; the console
  * answers all three by showing the application, which reads the precise step
  * from /onboarding/status rather than guessing it from which refusal came.
+ *
+ * PROFILING_INCOMPLETE (013) belongs here too: an approved-but-not-yet-
+ * profiled member is refused the same way, on every ordinary member route,
+ * and the application screen is exactly where the profiling questionnaire is
+ * rendered (Application.tsx checks /profiling/status once it sees `approved`).
  */
 const APPLICANT_PROBLEMS: ReadonlySet<string> = new Set([
   PROBLEMS.APPROVAL_PENDING.type,
   PROBLEMS.PROFILE_INCOMPLETE.type,
   PROBLEMS.APPLICATION_DENIED.type,
+  PROBLEMS.PROFILING_INCOMPLETE.type,
 ])
 
 /** The four states, as a union. "loading" and "anonymous" are not the same. */

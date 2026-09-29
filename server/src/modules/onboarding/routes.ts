@@ -78,7 +78,7 @@ export default fp(
     app.post(
       '/onboarding/email/send',
       {
-        config: { auth: onboarding, budget: 'auth', rateLimit: app.bucket('email-code-send') },
+        config: { auth: onboarding, budget: 'email-send', rateLimit: app.bucket('email-code-send') },
         onRequest: app.guard,
         schema: { response: { 202: emailCodeSentSchema } },
       },
@@ -91,7 +91,7 @@ export default fp(
     app.put(
       '/onboarding/email',
       {
-        config: { auth: onboarding, budget: 'auth', rateLimit: app.bucket('email-code-send') },
+        config: { auth: onboarding, budget: 'email-send', rateLimit: app.bucket('email-code-send') },
         onRequest: app.guard,
         schema: { body: changeEmailRequestSchema, response: { 202: emailCodeSentSchema } },
       },

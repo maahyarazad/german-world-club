@@ -13,7 +13,8 @@ import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
-import { useTranslations } from '../i18n/index'
+import { describeProblem } from '../lib/problems'
+import { useLocale, useTranslations } from '../i18n/index'
 
 /**
  * Onboarding step 3 (§6.1): prove the mobile number.
@@ -25,11 +26,16 @@ import { useTranslations } from '../i18n/index'
  * A mistyped email or number is corrected here, not by starting over:
  * `POST /onboarding/contact` changes the same application and texts a new
  * code. A value another member already has is shown on its field — the one
- * refusal this screen displays, because the applicant must choose another.
+ * refusal that lands on a field, because the applicant must choose another.
+ *
+ * Every other refusal, and a request that never reached the server, is shown
+ * in a message above the buttons, translated from the problem `type` by
+ * `describeProblem` (never the server's English `detail`). It is logged as well.
  */
 const fields = registerRequestSchema.shape
 export function VerifyMobile() {
   const copy = useTranslations().onboarding
+  const { locale } = useLocale()
   const navigate = useNavigate()
   const { refresh } = useCapabilities()
   const location = useLocation()
@@ -41,6 +47,7 @@ export function VerifyMobile() {
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [requestError, setRequestError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [sentTo, setSentTo] = useState(initial?.sentTo ?? '')
   const [editing, setEditing] = useState(false)
@@ -65,6 +72,13 @@ export function VerifyMobile() {
     )
   }
 
+  // A null problem (network failure, non-problem response) describes as the
+  // generic internal error, which is the honest thing to tell the applicant.
+  const showRequestError = (error: unknown) => {
+    const described = describeProblem(error instanceof ApiError ? error.problem : null, locale)
+    setRequestError(described.body ? `${described.title}: ${described.body}` : described.title)
+  }
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!/^\d{4}$/.test(code)) {
@@ -73,6 +87,7 @@ export function VerifyMobile() {
     }
     setBusy(true)
     setCodeError(null)
+    setRequestError(null)
     try {
       await post('/onboarding/verify-mobile', { challengeId, code })
       // The cookie session exists now. The capability layer reports the
@@ -81,6 +96,7 @@ export function VerifyMobile() {
       navigate('/konsole/bewerbung', { replace: true })
     } catch (error) {
       console.error('VerifyMobile.submit', error instanceof ApiError ? error.problem : error)
+      showRequestError(error)
       setCode('')
     } finally {
       setBusy(false)
@@ -89,12 +105,14 @@ export function VerifyMobile() {
 
   const resend = async () => {
     setNotice(null)
+    setRequestError(null)
     try {
       const resent = (await post('/auth/otp/resend', { challengeId })) as ResendOtpResponse
       setChallengeId(resent.challengeId)
       setNotice(copy.resent)
     } catch (error) {
       console.error('VerifyMobile.resend', error instanceof ApiError ? error.problem : error)
+      showRequestError(error)
     }
   }
 
@@ -111,6 +129,7 @@ export function VerifyMobile() {
 
     setBusy(true)
     setNotice(null)
+    setRequestError(null)
     try {
       const sent = (await post('/onboarding/contact', {
         challengeId,
@@ -128,6 +147,7 @@ export function VerifyMobile() {
       const type = error instanceof ApiError ? error.problem?.type : null
       if (type === PROBLEMS.EMAIL_IN_USE.type) setContactErrors({ email: copy.emailInUse })
       if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
+      else if (type !== PROBLEMS.EMAIL_IN_USE.type) showRequestError(error)
     } finally {
       setBusy(false)
     }
@@ -154,8 +174,9 @@ export function VerifyMobile() {
             onChange={(event: ChangeEvent<HTMLInputElement>) => setMobile(event.target.value)}
             error={contactErrors.mobile}
           />
+          {requestError && <FormMessage>{requestError}</FormMessage>}
           <Button type="submit" disabled={busy}>{copy.changeDetailsSave}</Button>
-          <Button variant="quiet" onClick={() => { setEditing(false); setContactErrors({}) }}>{copy.changeDetailsCancel}</Button>
+          <Button variant="quiet" onClick={() => { setEditing(false); setContactErrors({}); setRequestError(null) }}>{copy.changeDetailsCancel}</Button>
         </form>
       </AuthCard>
     )
@@ -177,9 +198,10 @@ export function VerifyMobile() {
           autoFocus
         />
         {notice && <FormMessage tone="info">{notice}</FormMessage>}
+        {requestError && <FormMessage>{requestError}</FormMessage>}
         <Button type="submit" disabled={busy}>{busy ? copy.verifying : copy.verify}</Button>
         <Button variant="quiet" onClick={resend}>{copy.resend}</Button>
-        <Button variant="quiet" onClick={() => setEditing(true)}>{copy.changeDetails}</Button>
+        <Button variant="quiet" onClick={() => { setEditing(true); setRequestError(null) }}>{copy.changeDetails}</Button>
       </form>
     </AuthCard>
   )

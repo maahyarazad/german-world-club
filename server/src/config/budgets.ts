@@ -40,8 +40,10 @@ export const OUTBOUND: Readonly<Record<string, number>> = Object.freeze({
  * Route classes: the handler deadline, and which dependencies a request of that
  * class may call *inline*.
  *
- * `mail` appears in no list on purpose. Invoice and notification mail is
- * enqueued (research R8's declared fallback), never sent inside the request —
+ * `mail` appears in only one list, `email-send`: an onboarding code is waited
+ * for by somebody watching the screen, so it is sent inside the request and
+ * the outbox is only its fallback. Invoice and notification mail is enqueued
+ * (research R8's declared fallback), never sent inside the request —
  * checkout's budget could not otherwise accommodate both payments and mail.
  */
 export const ROUTE_BUDGETS = Object.freeze({
@@ -49,6 +51,8 @@ export const ROUTE_BUDGETS = Object.freeze({
   sitemap: { deadlineMs: 10000, calls: ['redis'] },
   auth: { deadlineMs: 5000, calls: ['redis'] },
   'otp-send': { deadlineMs: 10000, calls: ['sms', 'redis'] },
+  // 10250 (mail 10000 + redis 250) < 15000, the same rule 'otp-send' obeys.
+  'email-send': { deadlineMs: 15000, calls: ['mail', 'redis'] },
   'member-read': { deadlineMs: 2000, calls: ['redis'] },
   'member-write': { deadlineMs: 5000, calls: ['geocoding', 'redis'] },
   'media-upload': { deadlineMs: 8000, calls: ['mediaImage', 'redis'] },

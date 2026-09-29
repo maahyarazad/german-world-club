@@ -110,7 +110,9 @@ export async function sendEmailCode(
     signal,
   })
 
-  await app.enqueueMail({
+  // In the request, not the outbox: the applicant is watching the screen for it.
+  // Falls back to the outbox if the mail server cannot be reached right now.
+  await app.sendMailNow({
     to: member.email,
     template: 'onboarding.email-code',
     subjectKey: challenge.challengeId,

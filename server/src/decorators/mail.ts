@@ -45,6 +45,29 @@ export function registerMail(app: GwcApp) {
     }
   })
 
+  /**
+   * Send now, in the request — for a message somebody is waiting for, such as
+   * an onboarding code. The outbox is the declared fallback: if the mail server
+   * is unconfigured, down, slow or its breaker is open, the message is queued
+   * instead and `mail.deliver` sends it with backoff, so the caller's action
+   * still succeeds. Only the route class 'email-send' budgets for this call.
+   * Returns whether it went out now.
+   */
+  app.decorate('sendMailNow', async (message: MailMessage, { signal }: { signal?: AbortSignal } = {}) => {
+    const mail = app.integrations.mail as MailClient
+    try {
+      await app.breakers.mail!.run((breakerSignal) => mail.send(
+        { ...message, variables: message.variables ?? {} },
+        { signal: signal ? AbortSignal.any([signal, breakerSignal]) : breakerSignal },
+      ))
+      return { sent: true }
+    } catch (err) {
+      app.log.warn({ err: (err as Error)?.message, template: message.template }, 'mail send failed inline; queued for the outbox job')
+      await app.enqueueMail(message, { signal })
+      return { sent: false }
+    }
+  })
+
   app.decorate('sendResetMail', async ({ email, token }: { email: string; token: string }) => {
     await app.enqueueMail({
       to: email,

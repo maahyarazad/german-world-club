@@ -77,9 +77,11 @@ export default fp(
       const { rows } = await query(
         app.pg,
         `SELECT m.id, m.email_confirmed_at, m.status, m.display_name, m.permissions,
-                a.state AS application_state
+                a.state AS application_state,
+                p.completed_at AS profiling_completed_at
            FROM members m
            LEFT JOIN membership_applications a ON a.member_id = m.id
+           LEFT JOIN member_profiling p ON p.member_id = m.id
           WHERE m.id = $1`,
         [memberId],
         { signal },
@@ -219,7 +221,7 @@ export default fp(
     /** FR-010, FR-011, FR-012 — state gates, not permissions. */
     async function applyMemberGates(
       request: FastifyRequest,
-      auth: { audience?: string; requires?: string; onboarding?: boolean },
+      auth: { audience?: string; requires?: string; onboarding?: boolean; profiling?: boolean },
     ) {
       // As above: principal is set by authenticate() before any gate runs.
       const principal = request.principal!
@@ -262,6 +264,25 @@ export default fp(
 
       if (!(await deviceApproved(member.id, principal.deviceId as string | undefined, request.deadlineSignal))) {
         throw forbidden(PROBLEMS.APPROVAL_PENDING, 'This device is waiting for approval.')
+      }
+
+      /**
+       * Onboarding Phase 2 (feature 013): the profiling routes are the one
+       * place an approved-but-not-yet-profiled member may be, for the same
+       * reason the onboarding escape hatch above exists — they exist to
+       * *finish* the check right below. Declared per route as
+       * `profiling: true`, validated member-only by 11-rbac.
+       */
+      if (auth.profiling === true) {
+        request.permissions = { kind: 'member', flags: {}, displayName: member.display_name }
+        return
+      }
+
+      // Only an applicant who came through Phase 1 approval is subject to
+      // this: `application_state` is NULL for invited/legacy members, who are
+      // untouched by profiling entirely (same reasoning as the checks above).
+      if (member.application_state === 'approved' && member.profiling_completed_at === null) {
+        throw forbidden(PROBLEMS.PROFILING_INCOMPLETE, 'Complete your profile to continue.')
       }
 
       // Per-member permission flags (§7). Members have no module matrix; these

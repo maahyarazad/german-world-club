@@ -205,7 +205,7 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       expect(response.json().items.map((a: { memberId: string }) => a.memberId)).toEqual([memberId])
     })
 
-    it('approval opens the member routes, approves that device, and queues the email', async () => {
+    it('approval approves that device and queues the email, but profiling still gates member routes', async () => {
       const { memberId, headers: applicantHeaders, details } = await submitApplication(app, sms)
       const { headers } = await staffHeaders()
 
@@ -213,7 +213,12 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       expect(approved.statusCode).toBe(200)
       expect(approved.json().state).toBe('approved')
 
-      expect((await app.inject({ method: 'GET', url: '/profile/me', headers: applicantHeaders })).statusCode).toBe(200)
+      // Approval alone is not enough any more: Onboarding Phase 2 profiling
+      // (feature 013) still gates ordinary member routes until it's complete.
+      const stillGated = await app.inject({ method: 'GET', url: '/profile/me', headers: applicantHeaders })
+      expect(stillGated.statusCode).toBe(403)
+      expect(stillGated.json().type).toBe(PROBLEMS.PROFILING_INCOMPLETE.type)
+
       const status = await app.inject({ method: 'GET', url: '/onboarding/status', headers: applicantHeaders })
       expect(status.json().step).toBe('approved')
 

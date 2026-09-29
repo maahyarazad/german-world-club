@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { principalSchema } from './auth.ts'
+import { PROFILING_BRANCHES, PROFILING_OUTCOMES, citySlotSchema } from './profiling.ts'
 
 /**
  * Onboarding, Phase 1 (feature 009): register → country → verify mobile →
@@ -153,6 +154,18 @@ export const applicationSchema = z.object({
   submittedAt: z.string().nullable(),
   reviewedAt: z.string().nullable(),
   denialReason: z.string().nullable(),
+  /**
+   * Onboarding Phase 2 (013): null until the member has started profiling —
+   * which never happens before approval, so this is only meaningful once
+   * `state` is 'approved'. Lets staff see the outcome (FR-016/SC-006) without
+   * a dedicated profiling screen.
+   */
+  profiling: z.object({
+    completed: z.boolean(),
+    branch: z.enum(PROFILING_BRANCHES),
+    outcome: z.enum(PROFILING_OUTCOMES).nullable(),
+    matchedCity: citySlotSchema.nullable(),
+  }).nullable(),
 })
 
 export const applicationListSchema = z.object({ items: z.array(applicationSchema) })

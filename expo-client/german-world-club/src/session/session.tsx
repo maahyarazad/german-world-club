@@ -2,9 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import type { Principal, SignInResponse } from '@gwc/contracts/auth';
 import type { OnboardingStatus } from '@gwc/contracts/onboarding';
+import type { ProfilingStatus } from '@gwc/contracts/profiling';
 
 import { ApiError, configureAuth } from '@/api/client';
-import { authApi, onboardingApi, pushApi } from '@/api/endpoints';
+import { authApi, onboardingApi, profilingApi, pushApi } from '@/api/endpoints';
 
 import {
   clearPushDeviceId, clearSession, deviceId, loadPushDeviceId, loadSession, saveSession, type StoredSession,
@@ -22,6 +23,13 @@ export type SessionState =
   | { status: 'loading' }
   | { status: 'signedOut' }
   | { status: 'applicant'; principal: Principal; onboarding: OnboardingStatus }
+  /**
+   * Onboarding Phase 2 (013): approved, but the mandatory profiling
+   * questionnaire is not finished. Its own status, not folded into
+   * `applicant` — the server's own gate uses a different escape hatch
+   * (`profiling: true`, not `onboarding: true`) for exactly this reason.
+   */
+  | { status: 'profiling'; principal: Principal; profiling: ProfilingStatus }
   | { status: 'member'; principal: Principal }
   | { status: 'organisation'; principal: Principal };
 
@@ -43,6 +51,8 @@ type Ctx = {
   adopt: (tokens: TokenPair) => Promise<void>;
   /** Re-read onboarding status from the server, e.g. after email verification. */
   refreshStatus: (known?: OnboardingStatus) => Promise<void>;
+  /** Re-read profiling status, e.g. right after the questionnaire completes. */
+  refreshProfiling: (known?: ProfilingStatus) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -62,7 +72,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /** Decide where a stored session belongs. Members ask the server; nobody guesses. */
-  const route = useCallback(async (session: StoredSession, known?: OnboardingStatus) => {
+  const route = useCallback(async (
+    session: StoredSession, knownOnboarding?: OnboardingStatus, knownProfiling?: ProfilingStatus,
+  ) => {
     const { principal } = session;
     if (principal.kind === 'merchant' || principal.kind === 'partner') {
       setState({ status: 'organisation', principal });
@@ -73,10 +85,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await forget();
       return;
     }
-    const onboarding = known ?? await onboardingApi.status();
-    setState(onboarding.step === 'approved'
+    const onboarding = knownOnboarding ?? await onboardingApi.status();
+    if (onboarding.step !== 'approved') {
+      setState({ status: 'applicant', principal, onboarding });
+      return;
+    }
+    // Onboarding Phase 2 (013): approval alone is not enough any more — the
+    // server refuses every other member route until profiling is complete.
+    const profiling = knownProfiling ?? await profilingApi.status();
+    setState(profiling.completed
       ? { status: 'member', principal }
-      : { status: 'applicant', principal, onboarding });
+      : { status: 'profiling', principal, profiling });
   }, [forget]);
 
   useEffect(() => {
@@ -145,6 +164,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     adopt,
     refreshStatus: async (known) => {
       if (stored.current) await route(stored.current, known);
+    },
+    refreshProfiling: async (known) => {
+      if (stored.current) await route(stored.current, undefined, known);
     },
     signOut: async () => {
       // This phone stops receiving notifications first, while the session that

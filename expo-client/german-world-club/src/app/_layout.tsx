@@ -81,6 +81,9 @@ function RootStack() {
       <Stack.Protected guard={state.status === 'applicant'}>
         <Stack.Screen name="(applicant)" />
       </Stack.Protected>
+      <Stack.Protected guard={state.status === 'profiling'}>
+        <Stack.Screen name="(profiling)" />
+      </Stack.Protected>
       <Stack.Protected guard={state.status === 'member'}>
         <Stack.Screen name="(member)" />
       </Stack.Protected>
