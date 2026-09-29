@@ -35,6 +35,7 @@ coverage/
 server/.env
 server/coverage/
 server/var/
+server/file_storage/
 
 # Speckit implementation worktrees
 .claude/worktrees/
