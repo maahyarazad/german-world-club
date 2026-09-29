@@ -65,6 +65,7 @@ import type { ServerFaultRow } from './decorators/server-faults.ts'
 import pushWorker from './modules/push/queue.ts'
 import onboardingRoutes from './modules/onboarding/routes.ts'
 import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
+import profilingRoutes from './modules/profiling/routes.ts'
 import profileRoutes from './modules/profile/routes.ts'
 import profileStaffRoutes from './modules/profile/staff-routes.ts'
 import eventRoutes from './modules/events/routes.ts'
@@ -377,6 +378,7 @@ export async function buildApp({
   await app.register(messagingRoutes)
   await app.register(onboardingRoutes)
   await app.register(onboardingStaffRoutes)
+  await app.register(profilingRoutes)
   await app.register(profileRoutes)
   await app.register(profileStaffRoutes)
   await app.register(eventRoutes)

@@ -152,6 +152,15 @@ const ROUTE_CLASSES = [
   { name: 'application approve', url: '/admin/onboarding/applications/:memberId/approve', probe: `/admin/onboarding/applications/${randomUUID()}/approve`, method: 'POST', audience: 'staff', module: 'members', flag: 'status' },
   { name: 'application deny', url: '/admin/onboarding/applications/:memberId/deny', probe: `/admin/onboarding/applications/${randomUUID()}/deny`, method: 'POST', audience: 'staff', module: 'members', flag: 'status' },
 
+  // --- Onboarding Phase 2: profiling (013) -----------------------------------
+  // Both carry the `profiling` posture, an approved-but-not-yet-profiled
+  // member's equivalent of `onboarding` above — exercised in
+  // tests/profiling/gate.test.ts, not here (this table only checks the
+  // ordinary member/staff boundary, and this feature's test member has no
+  // application row, so the profiling gate never engages for it either).
+  { name: 'profiling status', url: '/profiling/status', method: 'GET', audience: 'member' },
+  { name: 'profiling submit', url: '/profiling', method: 'PATCH', audience: 'member' },
+
   // --- Profile (009) ---------------------------------------------------------
   { name: 'own profile', url: '/profile/me', method: 'GET', audience: 'member' },
   { name: 'edit own profile', url: '/profile/me', method: 'PATCH', audience: 'member' },

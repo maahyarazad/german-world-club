@@ -73,6 +73,12 @@ export const PROBLEMS = {
    * pending applicant and changes nothing for a denied one.
    */
   APPLICATION_DENIED: { type: `${BASE}/application-denied`, title: 'Application denied', status: 403 },
+  /**
+   * Phase 2 profiling (013): approved but the mandatory questionnaire is not
+   * finished yet. Distinct from APPROVAL_PENDING — the remedy is answering
+   * the profiling routes, not waiting on staff.
+   */
+  PROFILING_INCOMPLETE: { type: `${BASE}/profiling-incomplete`, title: 'Profiling incomplete', status: 403 },
 
   // --- Authorization --------------------------------------------------------
   INSUFFICIENT_PERMISSION: { type: `${BASE}/insufficient-permission`, title: 'Insufficient permission', status: 403 },

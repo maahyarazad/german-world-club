@@ -1,6 +1,7 @@
 import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
   EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
+import type { ProfilingStatus, ProfilingPatchRequest } from '@gwc/contracts/profiling';
 import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
@@ -57,6 +58,11 @@ export const onboardingApi = {
   changeEmail: (email: string) => api<EmailCodeSent>('/onboarding/email', { method: 'PUT', body: { email } }),
   verifyEmail: (body: { challengeId: string; code: string }) =>
     api<OnboardingStatus>('/onboarding/email/verify', { method: 'POST', body }),
+};
+
+export const profilingApi = {
+  status: () => api<ProfilingStatus>('/profiling/status'),
+  submit: (body: ProfilingPatchRequest) => api<ProfilingStatus>('/profiling', { method: 'PATCH', body }),
 };
 
 export const profileApi = {

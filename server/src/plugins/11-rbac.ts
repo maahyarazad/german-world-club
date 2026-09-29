@@ -83,6 +83,12 @@ export function validateAuthConfig(auth) {
     // out — the same rule as `anyStaff`.
     problems.push('onboarding must be true and is only meaningful on a member route')
   }
+  if (auth.profiling !== undefined && (auth.audience !== 'member' || auth.profiling !== true)) {
+    // Same rule as onboarding, above: the profiling posture (feature 013)
+    // lifts the profiling-complete gate for an approved member who is still
+    // answering it, which only means anything for a member route.
+    problems.push('profiling must be true and is only meaningful on a member route')
+  }
   if (auth.audience !== 'staff' && auth.anyStaff !== undefined) {
     // A public route reachable by "any staff" is a contradiction; a member
     // route carrying it would read as staff-gated to anyone skimming.

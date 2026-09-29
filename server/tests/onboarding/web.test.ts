@@ -128,7 +128,7 @@ describe.skipIf(!hasDatabase)('onboarding on the web face', () => {
     expect((await call(jar, 'GET', '/onboarding/status')).statusCode).toBeGreaterThanOrEqual(401)
   })
 
-  it('approval opens the portal and approves no device', async () => {
+  it('approval approves no device, but profiling still gates the portal', async () => {
     const { jar, memberId } = await submitOnWeb()
     const admin = await createAdmin(app.pg, { grants: { members: { read: true, status: true } } })
     const staff = await bearerFor(app, { accountId: String(admin.id), accountKind: 'admin' })
@@ -136,7 +136,12 @@ describe.skipIf(!hasDatabase)('onboarding on the web face', () => {
     const approved = await app.inject({ method: 'POST', url: `/admin/onboarding/applications/${memberId}/approve`, headers: staff })
     expect(approved.json()).toMatchObject({ state: 'approved', deviceId: null })
 
-    expect((await call(jar, 'GET', '/auth/me')).statusCode).toBe(200)
+    // Onboarding Phase 2 profiling (feature 013) still gates ordinary member
+    // routes — approval alone does not open the portal any more.
+    const stillGated = await call(jar, 'GET', '/auth/me')
+    expect(stillGated.statusCode).toBe(403)
+    expect(stillGated.json().type).toBe(PROBLEMS.PROFILING_INCOMPLETE.type)
+
     const { rows } = await app.pg.query('SELECT 1 FROM device_approvals WHERE member_id = $1', [memberId])
     expect(rows).toHaveLength(0)
   })

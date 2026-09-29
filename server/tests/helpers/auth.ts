@@ -48,6 +48,9 @@ export async function resetAuthTables(pool: Pool) {
     TRUNCATE thread_post_media, thread_post_mentions, member_blocks, member_mutes,
              member_activity_cursor, member_links, member_avatars, member_designations, organisation_profiles
              RESTART IDENTITY CASCADE`)
+  // Feature 013's. member_id is ON DELETE RESTRICT, same reason as above —
+  // gwc_cities is reference data, not per-test, so it is left alone.
+  await pool.query('TRUNCATE member_profiling RESTART IDENTITY CASCADE')
   // admin_users guards the last active superadmin (§11). A suite that made one
   // *is* the last one in a clean test database, so tearing it down trips the
   // trigger. Suspend it for the teardown only — the rule stays armed for every

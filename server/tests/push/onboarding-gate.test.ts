@@ -30,6 +30,15 @@ async function memberWithApplication(state: 'pending' | 'approved' | null) {
       [row.id, state],
     )
   }
+  if (state === 'approved') {
+    // This suite is about the onboarding gate, not profiling (feature 013) —
+    // complete it directly so the two gates don't get tested by accident.
+    await app.pg.query(
+      `INSERT INTO member_profiling (member_id, branch, primary_city_country, primary_city_name, outcome, completed_at)
+       VALUES ($1, 'elsewhere', 'XX', 'Nowhere', 'in_person_meeting', now())`,
+      [row.id],
+    )
+  }
   const { authorization } = await bearerFor(app, { accountId: String(row.id), accountKind: 'member' })
   return { authorization }
 }
