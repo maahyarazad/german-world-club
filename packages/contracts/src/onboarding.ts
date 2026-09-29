@@ -181,6 +181,15 @@ export const changeContactRequestSchema = z.object({
 
 export type ChangeContactRequest = z.infer<typeof changeContactRequestSchema>
 
+/**
+ * Step 4: correct the email address before it is confirmed. The applicant is
+ * signed in by now (the mobile number opened the session), so the session
+ * authorises it; the answer is a fresh code, mailed to the new address.
+ */
+export const changeEmailRequestSchema = z.object({ email: registerRequestSchema.shape.email })
+
+export type ChangeEmailRequest = z.infer<typeof changeEmailRequestSchema>
+
 export type RegisterRequest = z.infer<typeof registerRequestSchema>
 export type RegisterResponse = z.infer<typeof registerResponseSchema>
 export type VerifyMobileRequest = z.infer<typeof verifyMobileRequestSchema>

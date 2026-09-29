@@ -383,6 +383,10 @@ builds log too. What survives in state is only what changes behaviour: a local
 form check (a missing alt text, a photo permission), a flag that stops a
 spinner or keeps sign-out reachable when a screen cannot load, a retry flag, and
 the redirects a refusal triggers (`needsSignIn`, `HANDLE_REQUIRED`).
+Exceptions that are shown as well as logged, because the person cannot proceed
+without knowing why: the web sign-in refusal (translated from the problem
+`type` by `describeProblem`), and `email-in-use` / `mobile-in-use` on the
+registration step-3 contact change.
 
 ## Conventions
 

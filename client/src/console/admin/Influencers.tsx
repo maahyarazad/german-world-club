@@ -10,6 +10,7 @@ import StatusPill from '../../components/ui/StatusPill'
 import { useCapabilities } from '../../lib/capabilities'
 import { hasGrant } from '@gwc/contracts/capabilities'
 import { useLocale, useTranslations } from '../../i18n/index'
+import Applications from './Applications'
 
 type Found = { id: string; displayName: string | null; handle: string; status: string }
 
@@ -59,6 +60,8 @@ export function Influencers() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t.influencerAdmin.title} subtitle={t.influencerAdmin.subtitle} />
+      {/* Applications first: an applicant waiting on staff is the time-critical part of this page. */}
+      <Applications />
       <Card>
         <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void find() }}>
           <Field label={t.influencerAdmin.search} value={query} onChange={(e) => setQuery(e.target.value)} />

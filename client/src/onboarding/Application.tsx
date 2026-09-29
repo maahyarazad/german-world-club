@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 
-import { EMAIL_CODE_LENGTH } from '@gwc/contracts/onboarding'
+import { EMAIL_CODE_LENGTH, registerRequestSchema } from '@gwc/contracts/onboarding'
+import { PROBLEMS } from '@gwc/contracts/errors'
 import type { EmailCodeSent, OnboardingStatus } from '@gwc/contracts/onboarding'
 
-import { get, post, ApiError } from '../lib/api'
+import { get, post, put, ApiError } from '../lib/api'
 import { useCapabilities, homeFor } from '../lib/capabilities'
 import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
@@ -127,6 +128,10 @@ function VerifyEmail({
   const [codeError, setCodeError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const sentOnce = useRef(false)
+  // Step 4's one correction: the address, while it is unconfirmed.
+  const [editing, setEditing] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const send = useCallback(async () => {
     try {
@@ -165,6 +170,49 @@ function VerifyEmail({
   }
 
 
+  const changeEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const email = newEmail.trim().toLowerCase()
+    if (!registerRequestSchema.shape.email.safeParse(email).success) {
+      setEmailError(copy.errors.email)
+      return
+    }
+    setBusy(true)
+    setEmailError(null)
+    try {
+      // The old code stops working; this answer carries the new challenge.
+      setSent((await put('/onboarding/email', { email })) as EmailCodeSent)
+      setCode('')
+      setNewEmail('')
+      setEditing(false)
+    } catch (error) {
+      console.error('Application.VerifyEmail.changeEmail', error instanceof ApiError ? error.problem : error)
+      if (error instanceof ApiError && error.problem?.type === PROBLEMS.EMAIL_IN_USE.type) setEmailError(copy.emailInUse)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <AuthCard title={copy.emailTitle} subtitle={fill(copy.stepOf, { step: 4 })}>
+        <form onSubmit={changeEmail} className="mt-6 flex flex-col gap-4" noValidate>
+          <Field
+            label={copy.newEmail}
+            type="email"
+            autoComplete="email"
+            value={newEmail}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setNewEmail(event.target.value)}
+            error={emailError}
+            autoFocus
+          />
+          <Button type="submit" disabled={busy}>{copy.changeEmailSave}</Button>
+          <Button variant="quiet" onClick={() => { setEditing(false); setEmailError(null) }}>{copy.changeDetailsCancel}</Button>
+        </form>
+      </AuthCard>
+    )
+  }
+
   return (
     <AuthCard title={copy.emailTitle} subtitle={fill(copy.stepOf, { step: 4 })}>
       <p className="mt-2 text-[13px] text-text-muted">
@@ -185,6 +233,7 @@ function VerifyEmail({
         />
         <Button type="submit" disabled={busy || !sent}>{busy ? copy.verifying : copy.verify}</Button>
         <Button variant="quiet" onClick={send}>{copy.resend}</Button>
+        <Button variant="quiet" onClick={() => setEditing(true)}>{copy.changeEmail}</Button>
         {signOutButton}
       </form>
     </AuthCard>

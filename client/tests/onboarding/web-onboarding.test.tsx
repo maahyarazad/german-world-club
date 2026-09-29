@@ -192,6 +192,54 @@ describe('an applicant with a session', () => {
     })
   })
 
+  it('corrects a mistyped email at step 4, and verifies against the new code', async () => {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/auth/me': applicantMe,
+        '/onboarding/status': status('verify_email'),
+        '/onboarding/email/send': () => json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 1800, sentTo: 'a•••@exmaple.com' }, 202),
+        '/onboarding/email': () => json({ challengeId: '33333333-3333-4333-8333-333333333333', expiresIn: 1800, sentTo: 'a•••@example.com' }, 202),
+        '/onboarding/email/verify': status('awaiting_approval'),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/bewerbung' })
+    await screen.findByText(/a•••@exmaple.com/)
+
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmail }))
+    fireEvent.change(screen.getByLabelText(t.newEmail), { target: { value: 'Anna@Example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmailSave }))
+
+    expect(await screen.findByText(/a•••@example.com/)).toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/onboarding/email')).toEqual({ email: 'anna@example.com' })
+
+    // The code now belongs to the new challenge, not the one for the typo.
+    fireEvent.change(screen.getByLabelText(t.code), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: t.verify }))
+    expect(await screen.findByRole('heading', { name: t.waitingTitle })).toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/onboarding/email/verify')).toEqual({
+      challengeId: '33333333-3333-4333-8333-333333333333', code: '123456',
+    })
+  })
+
+  it('says so when the corrected email already belongs to someone', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/auth/me': applicantMe,
+        '/onboarding/status': status('verify_email'),
+        '/onboarding/email/send': () => json({ challengeId: '22222222-2222-4222-8222-222222222222', expiresIn: 1800, sentTo: 'a•••@example.com' }, 202),
+        '/onboarding/email': () => refusal(PROBLEMS.EMAIL_IN_USE),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/bewerbung' })
+    fireEvent.click(await screen.findByRole('button', { name: t.changeEmail }))
+    fireEvent.change(screen.getByLabelText(t.newEmail), { target: { value: 'taken@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeEmailSave }))
+
+    expect(await screen.findByText(t.emailInUse)).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('shows the reason staff gave for a denial', async () => {
     mockCapabilityFetch(null, {
       extraRoutes: { '/auth/me': () => refusal(PROBLEMS.APPLICATION_DENIED), '/onboarding/status': status('denied', 'Details could not be verified.') },

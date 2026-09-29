@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { EMAIL_CODE_LENGTH } from '@gwc/contracts/onboarding';
+import { PROBLEMS } from '@gwc/contracts/errors';
+import { EMAIL_CODE_LENGTH, registerRequestSchema } from '@gwc/contracts/onboarding';
 
 import { onboardingApi } from '@/api/endpoints';
-import { Button, CodeField, FormScreen } from '@/components/ui';
+import { Button, CodeField, FormScreen, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
 
-/** Onboarding step 4 (§6.1): prove the email address with the code we mail. */
+/**
+ * Onboarding step 4 (§6.1): prove the email address with the code we mail.
+ *
+ * The address can be corrected here while it is unconfirmed (PUT
+ * /onboarding/email): the old code stops working and a new one is mailed to
+ * the new address. An address another member has is shown on the field.
+ */
 export default function VerifyEmail() {
   const { t, format } = useTranslations();
   const { refreshStatus, signOut } = useSession();
@@ -16,6 +23,9 @@ export default function VerifyEmail() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const sentOnce = useRef(false);
+  const [editing, setEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const send = async () => {
     try {
@@ -48,6 +58,40 @@ export default function VerifyEmail() {
     }
   };
 
+  const changeEmail = async () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!registerRequestSchema.shape.email.safeParse(email).success) {
+      setEmailError(t.validation.email);
+      return;
+    }
+    setBusy(true);
+    setEmailError(null);
+    try {
+      const sent = await onboardingApi.changeEmail(email);
+      // The old code stops working; the next one belongs to this challenge.
+      setChallenge({ id: sent.challengeId, sentTo: sent.sentTo });
+      setCode('');
+      setNewEmail('');
+      setEditing(false);
+    } catch (e) {
+      console.error('VerifyEmail.changeEmail', e instanceof ApiError ? e.problem : e);
+      if (e instanceof ApiError && e.type === PROBLEMS.EMAIL_IN_USE.type) setEmailError(t.register.emailInUse);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <FormScreen title={t.register.emailTitle}>
+        <TextField label={t.register.newEmail} value={newEmail} onChangeText={setNewEmail}
+          keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={emailError} />
+        <Button label={t.register.changeEmailSave} onPress={changeEmail} loading={busy} />
+        <Button label={t.register.changeDetailsCancel} onPress={() => { setEditing(false); setEmailError(null); }} variant="secondary" />
+      </FormScreen>
+    );
+  }
+
   return (
     <FormScreen
       title={t.register.emailTitle}
@@ -55,6 +99,7 @@ export default function VerifyEmail() {
       <CodeField label={t.register.emailTitle} length={EMAIL_CODE_LENGTH} value={code} onChangeText={setCode} />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={!challenge || code.length !== EMAIL_CODE_LENGTH} />
       <Button label={t.common.resendCode} onPress={send} variant="secondary" />
+      <Button label={t.register.changeEmail} onPress={() => setEditing(true)} variant="secondary" />
       <Button label={t.common.signOut} onPress={signOut} variant="secondary" />
     </FormScreen>
   );

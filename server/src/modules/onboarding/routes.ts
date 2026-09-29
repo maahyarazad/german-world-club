@@ -3,7 +3,7 @@ import {
   registerRequestSchema, registerResponseSchema,
   verifyMobileRequestSchema, verifyMobileResponseSchema,
   emailCodeSentSchema, verifyEmailRequestSchema, onboardingStatusSchema,
-  changeContactRequestSchema,
+  changeContactRequestSchema, changeEmailRequestSchema,
 } from '@gwc/contracts/onboarding'
 import { createOnboardingController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
@@ -83,6 +83,19 @@ export default fp(
         schema: { response: { 202: emailCodeSentSchema } },
       },
       controller.sendEmailCode,
+    )
+
+    // Step 4's correction of a mistyped address, before it is confirmed
+    // (application/verify.ts changeEmail). The same per-account bucket as
+    // sending a code: every change mails one.
+    app.put(
+      '/onboarding/email',
+      {
+        config: { auth: onboarding, budget: 'auth', rateLimit: app.bucket('email-code-send') },
+        onRequest: app.guard,
+        schema: { body: changeEmailRequestSchema, response: { 202: emailCodeSentSchema } },
+      },
+      controller.changeEmail,
     )
 
     app.post(

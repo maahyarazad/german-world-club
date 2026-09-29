@@ -144,6 +144,7 @@ const ROUTE_CLASSES = [
   { name: 'onboarding verify mobile', url: '/onboarding/verify-mobile', method: 'POST', audience: 'public' },
   { name: 'onboarding status', url: '/onboarding/status', method: 'GET', audience: 'member' },
   { name: 'onboarding send email code', url: '/onboarding/email/send', method: 'POST', audience: 'member' },
+  { name: 'onboarding change email', url: '/onboarding/email', method: 'PUT', audience: 'member' },
   { name: 'onboarding verify email', url: '/onboarding/email/verify', method: 'POST', audience: 'member' },
   // Deciding who becomes a member is member administration: the existing
   // `members` module, `status` for the decision.

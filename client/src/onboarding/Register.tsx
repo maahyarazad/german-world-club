@@ -7,6 +7,7 @@ import type { Gender, RegisterRequest, RegisterResponse } from '@gwc/contracts/o
 import { COUNTRIES, PINNED } from '@gwc/contracts/countries'
 
 import { post, ApiError } from '../lib/api'
+import { describeProblem } from '../lib/problems'
 import { collatorFor, fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
@@ -37,7 +38,7 @@ type Details = {
   gender: Gender | ''
 }
 
-type Errors = Partial<Record<keyof Details | 'countryOfResidence', string>>
+type Errors = Partial<Record<keyof Details | 'countryOfResidence' | 'registerRequestError', string>>
 
 export function Register() {
   const t = useTranslations()
@@ -79,6 +80,7 @@ export function Register() {
       return
     }
     setBusy(true)
+    setErrors((current) => ({ ...current, registerRequestError: undefined }))
     try {
       const request: RegisterRequest = {
         fullName: details.fullName.trim(),
@@ -98,6 +100,17 @@ export function Register() {
       })
     } catch (error) {
       console.error('Register.submit', error instanceof ApiError ? error.problem : error)
+      // Shown as well as logged: a taken mobile number (the one case this step
+      // can refuse) leaves the applicant stuck with no way to tell why.
+      // Registration itself never says whether an email is taken (§6.1); that
+      // stays true because `describeProblem` translates by type, not by detail.
+      if (error instanceof ApiError) {
+        const described = describeProblem(error.problem, locale)
+        setErrors((current) => ({
+          ...current,
+          registerRequestError: described.body ? `${described.title}: ${described.body}` : described.title,
+        }))
+      }
     } finally {
       setBusy(false)
     }
@@ -198,6 +211,9 @@ export function Register() {
           )}
         </div>
 
+        {errors.registerRequestError && (
+          <p role="alert" className="text-[12px] text-tint-danger-fg">{errors.registerRequestError}</p>
+        )}
 
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setStep(1)}>{copy.back}</Button>

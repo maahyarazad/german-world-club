@@ -1,11 +1,11 @@
 import { register } from './application/register.ts'
 import { changeContact } from './application/contact.ts'
-import { verifyMobile, sendEmailCode, verifyEmail } from './application/verify.ts'
+import { verifyMobile, sendEmailCode, verifyEmail, changeEmail } from './application/verify.ts'
 import { loadStatus } from './application/status.ts'
 import { setAuthCookies } from '../auth/cookies.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
-import type { RegisterRequest, VerifyMobileRequest, VerifyEmailRequest, ChangeContactRequest } from '@gwc/contracts/onboarding'
+import type { RegisterRequest, VerifyMobileRequest, VerifyEmailRequest, ChangeContactRequest, ChangeEmailRequest } from '@gwc/contracts/onboarding'
 
 /**
  * Request and reply shaping for onboarding. Every rule lives in `application/`.
@@ -49,6 +49,19 @@ export function createOnboardingController(app: GwcApp) {
 
     status: async (request: GwcRequest, reply: GwcReply) =>
       reply.send(await loadStatus(app, { memberId: String(request.principal!.id), signal: request.deadlineSignal })),
+
+    changeEmail: async (request: GwcRequest, reply: GwcReply) => {
+      const { email } = request.body as ChangeEmailRequest
+      const result = await changeEmail(app, {
+        memberId: String(request.principal!.id),
+        deviceId: deviceOf(request),
+        email,
+        requestId: request.id,
+        signal: request.deadlineSignal,
+      })
+      // 202: a new code is on its way to the corrected address.
+      return reply.code(202).send(result)
+    },
 
     sendEmailCode: async (request: GwcRequest, reply: GwcReply) => {
       const result = await sendEmailCode(app, {

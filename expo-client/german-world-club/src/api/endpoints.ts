@@ -39,6 +39,8 @@ export const authApi = {
   resendOtp: (challengeId: string) =>
     api<ResendOtpResponse>('/auth/otp/resend', { method: 'POST', body: { challengeId }, anonymous: true }),
   signOut: () => api<void>('/auth/sign-out', { method: 'POST' }),
+  /** Only to revoke a staff session the app just refused; see session.tsx. */
+  staffSignOut: () => api<void>('/auth/staff/sign-out', { method: 'POST' }),
 };
 
 export const onboardingApi = {
@@ -51,6 +53,8 @@ export const onboardingApi = {
     api<VerifyMobileResponse>('/onboarding/verify-mobile', { method: 'POST', body, anonymous: true }),
   status: () => api<OnboardingStatus>('/onboarding/status'),
   sendEmailCode: () => api<EmailCodeSent>('/onboarding/email/send', { method: 'POST' }),
+  /** Step 4: correct the address while unconfirmed; answers with the new code's challenge. */
+  changeEmail: (email: string) => api<EmailCodeSent>('/onboarding/email', { method: 'PUT', body: { email } }),
   verifyEmail: (body: { challengeId: string; code: string }) =>
     api<OnboardingStatus>('/onboarding/email/verify', { method: 'POST', body }),
 };

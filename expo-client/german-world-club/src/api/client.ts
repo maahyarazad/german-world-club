@@ -105,6 +105,8 @@ export async function api<T>(path: string, { method = 'GET', body, anonymous = f
     if (body !== undefined && !multipart) headers['content-type'] = 'application/json';
     const tokens = anonymous ? null : auth?.current();
     if (tokens) headers.authorization = `Bearer ${tokens.accessToken}`;
+    console.log(`API_URL: ${API_URL}`);
+    console.log(`path: ${path}`);
     return fetch(`${API_URL}${path}`, {
       method,
       headers,

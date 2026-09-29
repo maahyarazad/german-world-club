@@ -115,6 +115,22 @@ function consoleShell() {
 const SERVER_GENERATED_PATHS = ['robots.txt', 'sitemap.xml']
 
 /**
+ * Stamp this response's CSP nonces onto the shell's script and style tags.
+ *
+ * The CSP (02-security-headers.ts) allows scripts and styles ONLY by per-request
+ * nonce — no 'self' — and the Vite build emits plain tags. Without this the
+ * browser blocks the bundle and the console never leaves its "Konsole wird
+ * geladen …" placeholder. The nonce changes on every request, which is why
+ * this runs per response rather than once on the cached shell.
+ */
+export function withCspNonces(html: string, nonce: { script: string; style: string }) {
+  return html
+    .replace(/<script\b(?![^>]*\bnonce=)/g, `<script nonce="${nonce.script}"`)
+    .replace(/<style\b(?![^>]*\bnonce=)/g, `<style nonce="${nonce.style}"`)
+    .replace(/<link\b(?=[^>]*\brel="stylesheet")(?![^>]*\bnonce=)/g, `<link nonce="${nonce.style}"`)
+}
+
+/**
  * Builds the Fastify instance. Deliberately does NOT call listen() — that is
  * server.js's job. This split is what makes the whole test strategy work:
  * every suite drives a built instance through `fastify.inject()`, in-process,
@@ -334,7 +350,7 @@ export async function buildApp({
           // response under /konsole that caches differently from the rest is
           // how an exception becomes a precedent. It is 2KB, once per session.
           .header('cache-control', 'private, no-store')
-          .send(shell)
+          .send(withCspNonces(shell, reply.cspNonce))
 
       scope.get(CONSOLE_PREFIX, sendShell)
       scope.get(`${CONSOLE_PREFIX}/*`, sendShell)

@@ -20,6 +20,7 @@ export default function SignIn() {
     try {
       const result = await signIn(email.trim().toLowerCase(), password);
       // `authenticated` needs nothing here: the session moves the app on.
+      console.log(result);
       switch (result.outcome) {
         case 'otp_required':
           router.push({
@@ -35,6 +36,9 @@ export default function SignIn() {
           break;
         case 'password_reset_required':
           setNotice(t.signIn.passwordResetRequired);
+          break;
+        case 'staff_account':
+          setNotice(t.signIn.staffAccount);
           break;
       }
     } catch (e) {

@@ -64,6 +64,7 @@ export default function VerifyMobile() {
   const resend = async () => {
     try {
       const resent = await authApi.resendOtp(challengeId);
+      console.log(resent);
       setChallengeId(resent.challengeId);
       setNotice(format(t.common.codeSentTo, { target: sentTo }));
     } catch (e) {

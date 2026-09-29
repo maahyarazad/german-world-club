@@ -33,6 +33,7 @@ export const de: Catalogue = {
     approvalPending: 'Ihr Mitgliedsantrag wird noch geprüft. Sie erhalten eine E-Mail, sobald entschieden ist.',
     profileIncomplete: 'Ihre Registrierung wurde nicht abgeschlossen. Registrieren Sie sich erneut mit derselben E-Mail-Adresse und demselben Passwort, um fortzufahren.',
     passwordResetRequired: 'Bitte setzen Sie Ihr Passwort auf der Website zurück, bevor Sie sich anmelden.',
+    staffAccount: 'Mitarbeiterkonten können sich nicht in der App anmelden. Bitte verwenden Sie die Konsole auf der Website.',
   },
   register: {
     stepOf: 'Schritt {step} von 4',
@@ -66,6 +67,9 @@ export const de: Catalogue = {
     emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
     emailTitle: 'E-Mail-Adresse bestätigen',
+    changeEmail: 'Falsche E-Mail-Adresse? Jetzt ändern',
+    changeEmailSave: 'Speichern und neuen Code senden',
+    newEmail: 'Neue E-Mail-Adresse',
     emailHint: 'Geben Sie den 6-stelligen Code aus unserer E-Mail ein.',
   },
   waiting: {

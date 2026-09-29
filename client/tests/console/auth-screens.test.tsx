@@ -146,37 +146,41 @@ describe('sign-in handles every outcome the server can return', () => {
   })
 })
 
-describe('sign-in reflects refusals in the console', () => {
-  it('logs invalid credentials under SignIn.submit and shows nothing', async () => {
+describe('sign-in surfaces refusals as refusals', () => {
+  it('shows invalid credentials without saying which field was wrong, and logs them', async () => {
     const error = spyConsoleError()
     const calls = mockSignIn(json(PROBLEMS.INVALID_CREDENTIALS, 401))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
     const before = calls.session
 
     await fillAndSubmit()
-    await waitFor(() => expect(error).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+
+    const alert = screen.getByRole('alert').textContent
+    // Non-enumeration: the server does not distinguish an unknown address from
+    // a wrong password, so the console must not either.
+    expect(alert).not.toMatch(/E-Mail-Adresse.*unbekannt|Konto.*existiert/i)
     expect(error.mock.calls).toContainEqual(loggedProblem('SignIn.submit', PROBLEMS.INVALID_CREDENTIALS.type))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     // Counter-assertion: a refusal is still not a session.
     expect(calls.session).toBe(before)
   })
 
-  it('logs a locked account under SignIn.submit', async () => {
-    const error = spyConsoleError()
+  it('shows the server remedy for a locked account and invents none', async () => {
+    spyConsoleError()
     mockSignIn(json(PROBLEMS.ACCOUNT_LOCKED, 403))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
 
     await fillAndSubmit()
-    await waitFor(() => expect(error.mock.calls).toContainEqual(loggedProblem('SignIn.submit', PROBLEMS.ACCOUNT_LOCKED.type)))
+    await waitFor(() => expect(screen.getByText(/Support/)).toBeInTheDocument())
   })
 
   it('keeps what the user typed when the attempt is refused', async () => {
-    const error = spyConsoleError()
+    spyConsoleError()
     mockSignIn(json(PROBLEMS.INVALID_CREDENTIALS, 401))
     renderConsole(<SignIn />, { route: '/konsole/anmelden' })
 
     await fillAndSubmit({ email: 'jemand@test.invalid' })
-    await waitFor(() => expect(error).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(screen.getByLabelText(de.signIn.email)).toHaveValue('jemand@test.invalid')
   })
 
