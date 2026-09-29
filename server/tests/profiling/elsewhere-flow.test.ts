@@ -4,7 +4,17 @@ import { hasDatabase } from '../helpers/db.ts'
 import type { GwcApp } from '../../src/app.ts'
 
 let app: GwcApp
-beforeAll(async () => { app = await buildAuthApp() })
+// Read from the real table rather than hardcoded, so this suite survives the
+// reference list being edited (it already has been, more than once).
+let SEEDED_MATCH: { country: string; city: string }
+let OTHER_MATCH: { country: string; city: string }
+
+beforeAll(async () => {
+  app = await buildAuthApp()
+  const { rows } = await app.pg.query('SELECT country, city FROM gwc_cities ORDER BY country, city')
+  if (rows.length < 2) throw new Error('gwc_cities needs at least 2 seeded rows for this suite to mean anything')
+  ;[SEEDED_MATCH, OTHER_MATCH] = rows as [{ country: string; city: string }, { country: string; city: string }]
+})
 afterAll(async () => { await app.close() })
 beforeEach(async () => { await resetAuthTables(app.pg) })
 
@@ -36,8 +46,6 @@ async function staffApplications(state = 'approved') {
 
 // Guaranteed not to be in the gwc_cities seed (server/migrations/032_profiling.sql).
 const UNLISTED = { country: 'ZZ', city: 'Nonexistentville' }
-// GB / London is in the seed.
-const SEEDED_MATCH = { country: 'GB', city: 'London' }
 
 describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)', () => {
   it('starts on the elsewhere branch', async () => {
@@ -99,16 +107,18 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('checks the primary city before secondaries when both would match', async () => {
     const { authorization } = await approvedMember('FR')
-    const otherMatch = { country: 'DE', city: 'Berlin' }
     const res = await patch({ authorization }, {
-      primaryCity: SEEDED_MATCH, secondaryCities: [otherMatch],
+      primaryCity: SEEDED_MATCH, secondaryCities: [OTHER_MATCH],
     })
     expect(res.json().matchedCity).toEqual(SEEDED_MATCH)
   })
 
   it('is case-insensitive on city name', async () => {
     const { authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, { primaryCity: { country: 'GB', city: 'LONDON' }, secondaryCities: [] })
+    const res = await patch({ authorization }, {
+      primaryCity: { country: SEEDED_MATCH.country, city: SEEDED_MATCH.city.toUpperCase() },
+      secondaryCities: [],
+    })
     expect(res.json().outcome).toBe('gwc_city_match')
   })
 

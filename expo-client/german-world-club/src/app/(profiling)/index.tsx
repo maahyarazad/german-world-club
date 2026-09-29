@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, LANGUAGES,
+  SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES, LANGUAGES,
 } from '@gwc/contracts/profiling';
 import type { ProfilingStatus, CitySlot } from '@gwc/contracts/profiling';
 
@@ -93,6 +93,10 @@ function GermanyQuestions({
   const { answers } = snapshot;
   const [languageQuery, setLanguageQuery] = useState('');
   const [languages, setLanguages] = useState<string[]>(answers.languages ?? []);
+  const [sectorInput, setSectorInput] = useState('');
+  const [offeringInput, setOfferingInput] = useState('');
+  const [ideaInput, setIdeaInput] = useState('');
+  const [priorities, setPriorities] = useState<string[]>(answers.futureWorkPriorities ?? []);
 
   const choiceScreen = (
     title: string, options: readonly string[], optionLabels: Record<string, string>, field: string,
@@ -147,7 +151,79 @@ function GermanyQuestions({
     return choiceScreen(copy.occupationTitle, OCCUPATIONS, copy.occupationOptions, 'occupation');
   }
 
-  return choiceScreen(copy.desiredWorkTitle, DESIRED_WORK_TYPES, copy.desiredWorkOptions, 'desiredWorkType');
+  if (answers.desiredWorkType === null) {
+    return choiceScreen(copy.desiredWorkTitle, DESIRED_WORK_TYPES, copy.desiredWorkOptions, 'desiredWorkType');
+  }
+
+  // Q5 follow-up (FR-009–FR-011): which question(s) come next depends on the
+  // Q5 answer itself, not on a fixed position in the sequence.
+  const textStep = (title: string, value: string, onChangeText: (v: string) => void, field: string) => (
+    <FormScreen title={title}>
+      <TextField label={title} value={value} onChangeText={onChangeText} autoFocus />
+      <Message text={error} />
+      <Button
+        label={busy ? copy.submitting : copy.continue}
+        disabled={busy || !value.trim()}
+        onPress={() => onSubmit({ [field]: value.trim() })}
+      />
+    </FormScreen>
+  );
+
+  if (answers.desiredWorkType === 'employee') {
+    if (answers.futureWorkSector === null) {
+      return textStep(copy.futureWorkSectorTitle, sectorInput, setSectorInput, 'futureWorkSector');
+    }
+    if (answers.futureWorkReady === null) {
+      return (
+        <FormScreen title={copy.futureWorkReadyTitle}>
+          <View style={styles.chips} accessibilityRole="radiogroup">
+            <Chip label={copy.futureWorkReadyOptions.yes} selected={false} onPress={() => onSubmit({ futureWorkReady: true })} />
+            <Chip label={copy.futureWorkReadyOptions.no} selected={false} onPress={() => onSubmit({ futureWorkReady: false })} />
+          </View>
+          <Message text={error} />
+        </FormScreen>
+      );
+    }
+    return null; // complete — parent transitions away
+  }
+
+  if (answers.desiredWorkType === 'freelance' || answers.desiredWorkType === 'own_business') {
+    if (answers.futureWorkOffering === null) {
+      return textStep(copy.futureWorkOfferingTitle, offeringInput, setOfferingInput, 'futureWorkOffering');
+    }
+    if (answers.futureWorkIdea === null) {
+      return textStep(copy.futureWorkIdeaTitle, ideaInput, setIdeaInput, 'futureWorkIdea');
+    }
+    return null;
+  }
+
+  // 'not_sure'
+  if (answers.futureWorkPriorities === null) {
+    const toggle = (value: string) => setPriorities((current) => (
+      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+    ));
+    return (
+      <FormScreen title={copy.futureWorkPrioritiesTitle}>
+        <View style={styles.chips} accessibilityRole="radiogroup">
+          {FUTURE_WORK_PRIORITIES.map((value) => (
+            <Chip
+              key={value}
+              label={copy.futureWorkPrioritiesOptions[value]}
+              selected={priorities.includes(value)}
+              onPress={() => toggle(value)}
+            />
+          ))}
+        </View>
+        <Message text={error} />
+        <Button
+          label={busy ? copy.submitting : copy.continue}
+          disabled={busy || priorities.length === 0}
+          onPress={() => onSubmit({ futureWorkPriorities: priorities })}
+        />
+      </FormScreen>
+    );
+  }
+  return null;
 }
 
 type WizardStep =
@@ -167,6 +243,23 @@ function NearestCityWizard({
   const [secondary, setSecondary] = useState<CitySlot[]>([]);
   const [draftCountry, setDraftCountry] = useState('');
   const [draftCity, setDraftCity] = useState('');
+
+  // The designated cities (research R4) double as a dropdown once their
+  // country is picked — currently just the UAE emirates, so every other
+  // country still falls through to free text below.
+  const [gwcCities, setGwcCities] = useState<CitySlot[] | null>(null);
+  useEffect(() => {
+    profilingApi.gwcCities()
+      .then(setGwcCities)
+      .catch((e) => {
+        console.error('NearestCityWizard.gwcCities', e instanceof ApiError ? e.problem : e);
+        setGwcCities([]); // falls through to free text everywhere on failure
+      });
+  }, []);
+  const citiesFor = useCallback(
+    (country: string) => (gwcCities ?? []).filter((c) => c.country === country),
+    [gwcCities],
+  );
 
   // A full-flex picker, not `Centered` (which shrinks children to content
   // size and would collapse the list to zero height) — the same wrapper
@@ -188,6 +281,24 @@ function NearestCityWizard({
   }
 
   if (step === 'primary-city') {
+    if (gwcCities === null) return <Loading />;
+    const options = citiesFor(primary.country);
+    if (options.length > 0) {
+      return (
+        <FormScreen title={copy.primaryCityTitle} subtitle={countryName(primary.country, locale)}>
+          <View style={styles.chips} accessibilityRole="radiogroup">
+            {options.map((c) => (
+              <Chip
+                key={c.city}
+                label={c.city}
+                selected={primary.city === c.city}
+                onPress={() => { setPrimary((p) => ({ ...p, city: c.city })); setStep('ask-secondary'); }}
+              />
+            ))}
+          </View>
+        </FormScreen>
+      );
+    }
     return (
       <FormScreen title={copy.primaryCityTitle} subtitle={countryName(primary.country, locale)}>
         <TextField label={copy.cityPlaceholder} value={primary.city} onChangeText={(city) => setPrimary((c) => ({ ...c, city }))} autoFocus />
@@ -223,17 +334,28 @@ function NearestCityWizard({
   }
 
   // step === 'secondary-city'
+  const addSecondary = (city: string) => {
+    setSecondary((current) => [...current, { country: draftCountry, city }]);
+    setStep('ask-secondary');
+  };
+
+  if (gwcCities === null) return <Loading />;
+  const secondaryOptions = citiesFor(draftCountry);
+  if (secondaryOptions.length > 0) {
+    return (
+      <FormScreen title={copy.secondaryCityTitle} subtitle={countryName(draftCountry, locale)}>
+        <View style={styles.chips} accessibilityRole="radiogroup">
+          {secondaryOptions.map((c) => (
+            <Chip key={c.city} label={c.city} selected={draftCity === c.city} onPress={() => addSecondary(c.city)} />
+          ))}
+        </View>
+      </FormScreen>
+    );
+  }
   return (
     <FormScreen title={copy.secondaryCityTitle} subtitle={countryName(draftCountry, locale)}>
       <TextField label={copy.cityPlaceholder} value={draftCity} onChangeText={setDraftCity} autoFocus />
-      <Button
-        label={copy.continue}
-        disabled={!draftCity.trim()}
-        onPress={() => {
-          setSecondary((current) => [...current, { country: draftCountry, city: draftCity }]);
-          setStep('ask-secondary');
-        }}
-      />
+      <Button label={copy.continue} disabled={!draftCity.trim()} onPress={() => addSecondary(draftCity)} />
     </FormScreen>
   );
 }

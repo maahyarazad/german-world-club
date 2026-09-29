@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 
 import {
-  SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, LANGUAGES,
+  SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES, LANGUAGES,
 } from '@gwc/contracts/profiling'
 import type { ProfilingStatus, CitySlot } from '@gwc/contracts/profiling'
 import { COUNTRIES, PINNED } from '@gwc/contracts/countries'
@@ -89,6 +89,10 @@ function GermanyQuestions({
   const [busy, setBusy] = useState(false)
   const [languagePick, setLanguagePick] = useState('')
   const [languages, setLanguages] = useState<string[]>(answers.languages ?? [])
+  const [sectorInput, setSectorInput] = useState('')
+  const [offeringInput, setOfferingInput] = useState('')
+  const [ideaInput, setIdeaInput] = useState('')
+  const [priorities, setPriorities] = useState<string[]>(answers.futureWorkPriorities ?? [])
 
   const act = async (body: object) => {
     setBusy(true)
@@ -170,7 +174,91 @@ function GermanyQuestions({
     return choice(copy.occupationTitle, OCCUPATIONS, copy.occupationOptions, 'occupation')
   }
 
-  return choice(copy.desiredWorkTitle, DESIRED_WORK_TYPES, copy.desiredWorkOptions, 'desiredWorkType')
+  if (answers.desiredWorkType === null) {
+    return choice(copy.desiredWorkTitle, DESIRED_WORK_TYPES, copy.desiredWorkOptions, 'desiredWorkType')
+  }
+
+  // Q5 follow-up (FR-009–FR-011): which question(s) come next depends on
+  // the Q5 answer itself, not on a fixed position in the sequence.
+  const textStep = (title: string, value: string, setValue: (v: string) => void, field: string) => (
+    <AuthCard title={title}>
+      <div className="mt-6 flex flex-col gap-3">
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
+            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+        />
+        {error && <p role="alert" className="text-[12px] text-tint-danger-fg">{error}</p>}
+        <Button disabled={busy || !value.trim()} onClick={() => act({ [field]: value.trim() })}>
+          {copy.next}
+        </Button>
+      </div>
+    </AuthCard>
+  )
+
+  if (answers.desiredWorkType === 'employee') {
+    if (answers.futureWorkSector === null) {
+      return textStep(copy.futureWorkSectorTitle, sectorInput, setSectorInput, 'futureWorkSector')
+    }
+    if (answers.futureWorkReady === null) {
+      return (
+        <AuthCard title={copy.futureWorkReadyTitle}>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button variant="secondary" disabled={busy} onClick={() => act({ futureWorkReady: true })}>
+              {copy.futureWorkReadyOptions.yes}
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => act({ futureWorkReady: false })}>
+              {copy.futureWorkReadyOptions.no}
+            </Button>
+            {error && <p role="alert" className="mt-2 text-[12px] text-tint-danger-fg">{error}</p>}
+          </div>
+        </AuthCard>
+      )
+    }
+    return null // complete — parent transitions away
+  }
+
+  if (answers.desiredWorkType === 'freelance' || answers.desiredWorkType === 'own_business') {
+    if (answers.futureWorkOffering === null) {
+      return textStep(copy.futureWorkOfferingTitle, offeringInput, setOfferingInput, 'futureWorkOffering')
+    }
+    if (answers.futureWorkIdea === null) {
+      return textStep(copy.futureWorkIdeaTitle, ideaInput, setIdeaInput, 'futureWorkIdea')
+    }
+    return null
+  }
+
+  // 'not_sure'
+  if (answers.futureWorkPriorities === null) {
+    const toggle = (value: string) => setPriorities((current) => (
+      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+    ))
+    return (
+      <AuthCard title={copy.futureWorkPrioritiesTitle}>
+        <div className="mt-6 flex flex-col gap-2">
+          {FUTURE_WORK_PRIORITIES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => toggle(value)}
+              className={`rounded-card border px-3 py-2 text-left text-[13px]
+                ${priorities.includes(value) ? 'border-navy bg-navy text-text-on-dark' : 'border-hairline bg-surface text-text'}`}
+            >
+              {copy.futureWorkPrioritiesOptions[value]}
+            </button>
+          ))}
+        </div>
+        {error && <p role="alert" className="mt-2 text-[12px] text-tint-danger-fg">{error}</p>}
+        <div className="mt-4">
+          <Button disabled={busy || priorities.length === 0} onClick={() => act({ futureWorkPriorities: priorities })}>
+            {copy.next}
+          </Button>
+        </div>
+      </AuthCard>
+    )
+  }
+  return null
 }
 
 /** The whole elsewhere-branch submission is one form, per contracts/profiling-api.md. */

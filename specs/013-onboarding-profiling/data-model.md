@@ -1,6 +1,11 @@
 # Data Model: Onboarding Phase 2 — Profiling Workflow
 
-Migration: `server/migrations/032_profiling.sql` (next after `031_members_mobile_unique.sql`).
+Migrations: `server/migrations/032_profiling.sql` (next after `031_members_mobile_unique.sql`), and
+`server/migrations/033_profiling_future_work.sql` (added after the business description grew the
+German Q5 branch into conditional follow-up questions — FR-009–FR-011, FR-022). `032` had already
+been applied to working databases by the time the follow-up requirement landed, so the new columns
+are a second migration rather than an edit to `032`'s `CREATE TABLE`, the same discipline the seed
+data inside `032` was itself corrected to follow after drifting from a live database once already.
 
 ## `gwc_cities`
 
@@ -35,6 +40,11 @@ must be frozen at first-answer time (research R3).
 | `qualification_level` | `text CHECK (qualification_level IN (...8 values...))` | Germany Q3. Values match `QUALIFICATION_LEVELS` in contracts. |
 | `occupation` | `text CHECK (occupation IN (...17 values...))` | Germany Q4. Values match `OCCUPATIONS` in contracts. |
 | `desired_work_type` | `text CHECK (desired_work_type IN (...4 values...))` | Germany Q5. Values match `DESIRED_WORK_TYPES` in contracts. |
+| `future_work_sector` | `text` | Germany, `desired_work_type = 'employee'` only (FR-009): which business sector/industry. |
+| `future_work_ready` | `boolean` | Germany, `desired_work_type = 'employee'` only (FR-009): ready to work in that field. |
+| `future_work_offering` | `text` | Germany, `desired_work_type IN ('freelance', 'own_business')` only (FR-010): what they want to offer. |
+| `future_work_idea` | `text` | Germany, `desired_work_type IN ('freelance', 'own_business')` only (FR-010): the product/service idea. |
+| `future_work_priorities` | `text[]` | Germany, `desired_work_type = 'not_sure'` only (FR-011): one or more of `FUTURE_WORK_PRIORITIES`. Validated at the application layer, like `languages` above. |
 | `primary_city_country` | `char(2) CHECK (primary_city_country ~ '^[A-Z]{2}$')` | Elsewhere branch. |
 | `primary_city_name` | `text` | Elsewhere branch. |
 | `secondary_city_1_country` | `char(2) CHECK (...)` | Elsewhere branch. |
@@ -57,6 +67,20 @@ must be frozen at first-answer time (research R3).
   NULL)`.
 - `member_profiling_match_implies_gwc_outcome`: `CHECK ((matched_gwc_city_id IS NULL) = (outcome IS
   DISTINCT FROM 'gwc_city_match'))`.
+- `member_profiling_future_work_matches_desired_work_type` (added in `033`): a row may only carry the
+  follow-up columns for the `desired_work_type` it actually holds —
+  `desired_work_type = 'employee'` is the only case where `future_work_sector`/`future_work_ready`
+  may be non-null; `desired_work_type IN ('freelance', 'own_business')` the only case for
+  `future_work_offering`/`future_work_idea`; `desired_work_type = 'not_sure'` the only case for
+  `future_work_priorities`. All five are `NULL` when `desired_work_type` is itself `NULL`. This is
+  the same mutual-exclusion pattern as the germany/elsewhere `CHECK`s above, one level deeper.
+
+**FR-022** (switching the Q5 answer before completion discards its old follow-up) is enforced by the
+application layer in `submit.ts`, not a trigger: the constraint above would refuse to persist stale
+follow-up data alongside a new `desired_work_type` value in the same row, so `submitGermany` clears
+whichever of the five follow-up columns don't belong to the incoming `desiredWorkType` whenever that
+field is present in a `PATCH` body — the constraint is the backstop that makes skipping this step in
+application code a write failure rather than a silent data-integrity gap.
 
 **Trigger** `member_profiling_complete_is_final` (`BEFORE UPDATE`), mirroring
 `membership_applications_decision_is_final` (`020_onboarding.sql:59-65`):

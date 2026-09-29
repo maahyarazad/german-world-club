@@ -32,6 +32,8 @@ const ordinary = (headers: Record<string, string>) =>
   app.inject({ method: 'GET', url: '/profile/me', headers })
 const status = (headers: Record<string, string>) =>
   app.inject({ method: 'GET', url: '/profiling/status', headers })
+const gwcCities = (headers: Record<string, string>) =>
+  app.inject({ method: 'GET', url: '/profiling/gwc-cities', headers })
 const patch = (headers: Record<string, string>, payload: object) =>
   app.inject({ method: 'PATCH', url: '/profiling', headers, payload })
 
@@ -47,6 +49,14 @@ describe.skipIf(!hasDatabase)('the profiling gate', () => {
     const { authorization } = await memberWithApplication('approved')
     expect((await status({ authorization })).statusCode).toBe(200)
     expect((await patch({ authorization }, { primaryCity: { country: 'GB', city: 'London' } })).statusCode).toBe(200)
+  })
+
+  it('lets that same member read the GWC city dropdown data', async () => {
+    const { authorization } = await memberWithApplication('approved')
+    const response = await gwcCities({ authorization })
+    expect(response.statusCode).toBe(200)
+    const cities = response.json() as { country: string; city: string }[]
+    expect(cities.every((c) => typeof c.country === 'string' && typeof c.city === 'string')).toBe(true)
   })
 
   it('opens the ordinary route once profiling is complete', async () => {

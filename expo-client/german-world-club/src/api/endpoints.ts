@@ -1,7 +1,7 @@
 import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
   EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
-import type { ProfilingStatus, ProfilingPatchRequest } from '@gwc/contracts/profiling';
+import type { ProfilingStatus, ProfilingPatchRequest, CitySlot } from '@gwc/contracts/profiling';
 import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
@@ -62,6 +62,7 @@ export const onboardingApi = {
 
 export const profilingApi = {
   status: () => api<ProfilingStatus>('/profiling/status'),
+  gwcCities: () => api<CitySlot[]>('/profiling/gwc-cities'),
   submit: (body: ProfilingPatchRequest) => api<ProfilingStatus>('/profiling', { method: 'PATCH', body }),
 };
 

@@ -11,6 +11,11 @@ type Row = {
   qualification_level: string | null
   occupation: string | null
   desired_work_type: string | null
+  future_work_sector: string | null
+  future_work_ready: boolean | null
+  future_work_offering: string | null
+  future_work_idea: string | null
+  future_work_priorities: string[] | null
   primary_city_country: string | null
   primary_city_name: string | null
   secondary_city_1_country: string | null
@@ -43,6 +48,8 @@ export async function loadProfilingStatus(
     `SELECT m.country_of_residence,
             p.branch, p.settling_status, p.languages, p.qualification_level,
             p.occupation, p.desired_work_type,
+            p.future_work_sector, p.future_work_ready, p.future_work_offering,
+            p.future_work_idea, p.future_work_priorities,
             p.primary_city_country, p.primary_city_name,
             p.secondary_city_1_country, p.secondary_city_1_name,
             p.secondary_city_2_country, p.secondary_city_2_name,
@@ -74,6 +81,11 @@ export async function loadProfilingStatus(
       qualificationLevel: (row?.qualification_level as ProfilingStatus['answers']['qualificationLevel']) ?? null,
       occupation: (row?.occupation as ProfilingStatus['answers']['occupation']) ?? null,
       desiredWorkType: (row?.desired_work_type as ProfilingStatus['answers']['desiredWorkType']) ?? null,
+      futureWorkSector: row?.future_work_sector ?? null,
+      futureWorkReady: row?.future_work_ready ?? null,
+      futureWorkOffering: row?.future_work_offering ?? null,
+      futureWorkIdea: row?.future_work_idea ?? null,
+      futureWorkPriorities: (row?.future_work_priorities as ProfilingStatus['answers']['futureWorkPriorities']) ?? null,
       primaryCity: citySlot(row?.primary_city_country ?? null, row?.primary_city_name ?? null),
       secondaryCities,
     },

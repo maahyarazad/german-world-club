@@ -1,5 +1,6 @@
 import { loadProfilingStatus } from './application/status.ts'
 import { submitProfiling } from './application/submit.ts'
+import { listGwcCities } from './application/gwc-cities.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
 import type { ProfilingPatchRequest } from '@gwc/contracts/profiling'
@@ -15,6 +16,9 @@ export function createProfilingController(app: GwcApp) {
         memberId: String(request.principal!.id),
         signal: request.deadlineSignal,
       })),
+
+    gwcCities: async (request: GwcRequest, reply: GwcReply) =>
+      reply.send(await listGwcCities(app, { signal: request.deadlineSignal })),
 
     submit: async (request: GwcRequest, reply: GwcReply) => {
       const body = request.body as ProfilingPatchRequest

@@ -186,3 +186,68 @@ Task: "Add GWC-city-match placeholder i18n strings"
 2. Add User Story 1 → validate → German applicants fully unblocked
 3. Add User Story 2 → validate → non-German applicants fully unblocked (matching stubbed to "never")
 4. Add User Story 3 → validate → GWC-city matching is real; nothing in US1/US2 needs to change
+
+---
+
+## Addendum: city dropdown for designated countries (post-completion)
+
+After the feature above shipped, `gwc_cities` was pared down to just the UAE
+emirates (from a much larger seed), and the Expo app's nearest-city wizard was
+changed so that picking a designated country turns the city field from free
+text into a dropdown of its emirates — free text remains for every other
+country, since there is no comprehensive world-city dataset in this codebase
+(confirmed: no existing per-country city list or geocoding-search
+integration to reuse). Clarified with the user before building.
+
+- [X] New: `gwcCitiesResponseSchema` (`z.array(citySlotSchema)`) in `packages/contracts/src/profiling.ts`
+- [X] New: `GET /profiling/gwc-cities` (`server/src/modules/profiling/{routes,controller}.ts`, `application/gwc-cities.ts`) — same `profiling: true` posture, `member-read` budget
+- [X] Extended `server/tests/authz/matrix.test.ts` and `server/tests/profiling/gate.test.ts` with the new route
+- [X] Made `server/tests/profiling/elsewhere-flow.test.ts` read real seeded rows at runtime (`SEEDED_MATCH`/`OTHER_MATCH` from `gwc_cities`) instead of hardcoding city names, since the reference list changed twice during this feature's development
+- [X] Synced `server/migrations/032_profiling.sql`'s seed block to the live dev database's actual UAE-emirates content (the file had drifted behind manual DB edits)
+- [X] Expo: `profilingApi.gwcCities()`, and `(profiling)/index.tsx`'s primary/secondary city steps now render a `Chip` dropdown when the picked country has designated cities, falling back to the existing `TextField` otherwise
+- [ ] Not done: the equivalent dropdown behavior on the web console (`client/src/onboarding/Profiling.tsx` still uses free text for city) — only the Expo screen was in scope for this request
+
+---
+
+## Phase 7: User Story 1 extension — Q5 conditional follow-up questions
+
+**Source**: `german-world-club-business-description.md`'s Onboarding Phase 2 section was updated to
+add follow-up questions after Q5 (desired future work type), branching on the answer chosen. `spec.md`
+(FR-009–FR-012, FR-022), `data-model.md`, `research.md` (R8) and `contracts/profiling-api.md` have
+already been updated to match; this phase is what implements them. Not yet built.
+
+**Goal**: A German-resident member answering Q5 sees one or two more questions specific to that
+answer — sector/readiness for Employee; offering/idea for Freelance or own business; one-or-more
+life-priority statements for "not sure yet" — and profiling does not complete until those are
+answered too. Switching the Q5 answer before completion discards the stale follow-up.
+
+**Independent Test**: For each of the four `desiredWorkType` values, answer Q1–Q5 then that branch's
+follow-up(s), and confirm `completed` only becomes `true` after the follow-up(s) — not right after
+Q5. Separately, answer Q5 as "Employee" and its follow-up, then re-answer Q5 as "Freelance" before
+completing, and confirm the Employee-branch follow-up data is gone and only the Freelance follow-up
+is required to finish.
+
+- [X] T037 [P] [US1] In `packages/contracts/src/profiling.ts`, add `FUTURE_WORK_PRIORITIES = Object.freeze(['family_time', 'balance_lifestyle', 'wealth_reputation'] as const)`; add `futureWorkSector`, `futureWorkReady`, `futureWorkOffering`, `futureWorkIdea`, `futureWorkPriorities` to `profilingStatusSchema`'s `answers` object (all nullable) and as optional fields on `profilingGermanyPatchSchema` (`futureWorkPriorities` non-empty when present, matching `languages`) — exact shapes in `contracts/profiling-api.md`
+- [X] T038 [P] [US1] Write migration `server/migrations/033_profiling_future_work.sql`: `ALTER TABLE member_profiling ADD COLUMN future_work_sector text, ADD COLUMN future_work_ready boolean, ADD COLUMN future_work_offering text, ADD COLUMN future_work_idea text, ADD COLUMN future_work_priorities text[]`, plus the `member_profiling_future_work_matches_desired_work_type` CHECK constraint from `data-model.md` restricting which columns may be non-null per `desired_work_type` value
+- [X] T039 [US1] Run `npm run -w server migrate` and confirm `033_profiling_future_work.sql` applies cleanly against the local dev database (depends on: T038)
+- [X] T040 [US1] In `server/src/modules/profiling/application/status.ts`, extend the germany-branch read path to shape the five new fields into `ProfilingStatus.answers` (depends on: T037, T039)
+- [X] T041 [US1] In `server/src/modules/profiling/application/submit.ts`'s germany write path: accept the five new optional body fields; when the incoming (or existing) `desiredWorkType` differs from the row's current stored value, clear every follow-up column belonging to the *previous* value before merging (FR-022); extend the completion check so `completed_at` is set only once the base five answers **and** the current `desiredWorkType`'s required follow-up(s) are present (Employee: sector + ready; Freelance/own_business: offering + idea; not_sure: at least one priority) (depends on: T040)
+- [X] T042 [P] [US1] Write `server/tests/profiling/future-work.test.ts`: each of the four `desiredWorkType` branches reaches `completed: true` only after its own follow-up(s); an incomplete follow-up leaves `completed: false`; switching `desiredWorkType` before completion discards the previous branch's follow-up column(s) (assert via a direct `member_profiling` row read); `futureWorkPriorities: []` is rejected (`VALIDATION_FAILED`) (depends on: T041)
+- [X] T043 [US1] Extend `client/src/onboarding/Profiling.tsx`'s germany question sequence: after `desiredWorkType` is answered, render the matching follow-up screen(s) (two single-line/text inputs for Employee and Freelance/own-business, a multi-select bubble list for "not sure yet") before treating the flow as complete (depends on: T041)
+- [X] T044 [P] [US1] Add the new follow-up strings (question prompts, the three priority-statement labels) under `profiling` in `client/src/i18n/de.ts` and `client/src/i18n/en.ts`
+- [X] T045 [US1] Extend the Expo `(profiling)/index.tsx`'s `GermanyQuestions` with the same follow-up screen(s), reusing the existing `Chip`/`TextField` components (depends on: T041)
+- [X] T046 [P] [US1] Add the same new follow-up strings under `profiling` in `expo-client/german-world-club/src/i18n/de.ts` and `en.ts`
+
+**Checkpoint**: The German branch now matches the updated business description end to end; User
+Stories 2 and 3 (non-German branch) are unaffected.
+
+### Parallel Opportunities
+
+- T037 and T038 together (different files, no shared dependency)
+- T044 and T046 alongside T043/T045 (i18n strings don't block screen wiring)
+
+### Dependencies
+
+- Depends on the already-completed Phases 1–6 (the `member_profiling` table and the germany write
+  path must exist first)
+- T038 → T039 → T040 → T041 → {T042, T043, T045} → {T044, T046}

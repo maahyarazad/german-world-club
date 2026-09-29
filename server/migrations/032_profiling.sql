@@ -24,15 +24,17 @@ CREATE TABLE IF NOT EXISTS gwc_cities (
 
 CREATE UNIQUE INDEX IF NOT EXISTS gwc_cities_country_city_unique ON gwc_cities (country, lower(city));
 
--- Starting set: the main cities of Germany and of the rest of the world.
+-- The club's designated cities are the seven United Arab Emirates emirates.
 -- Staff maintain this by hand until a management UI is requested (spec.md
 -- Assumptions); ON CONFLICT makes the seed idempotent.
 INSERT INTO gwc_cities (country, city) VALUES
-  
-  ('AE', 'Dubai'),
   ('AE', 'Abu Dhabi'),
+  ('AE', 'Dubai'),
   ('AE', 'Sharjah'),
-  
+  ('AE', 'Ajman'),
+  ('AE', 'Umm Al Quwain'),
+  ('AE', 'Ras Al Khaimah'),
+  ('AE', 'Fujairah')
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------

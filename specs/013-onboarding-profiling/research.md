@@ -163,3 +163,47 @@ contracts, and its client patterns) plus two decisions confirmed with the user d
   code than reusing the existing single decision point, for the same outcome); relying only on the
   server 403 and showing a generic error screen (rejected — every other post-approval, pre-member
   state in this codebase gets its own screen, and profiling is mandatory so it needs one too).
+
+## R8: Q5 conditional follow-ups (added after the business description grew)
+
+- **Decision**: Model the Q5 (`desiredWorkType`) follow-up as five new nullable `member_profiling`
+  columns (`future_work_sector`, `future_work_ready`, `future_work_offering`, `future_work_idea`,
+  `future_work_priorities`), one `CHECK` constraint restricting which of the five may be non-null
+  per `desired_work_type` value, and an application-layer rule that clears the previous value's
+  follow-up columns whenever `desiredWorkType` changes before completion (FR-022).
+- **Rationale**: Matches the mutual-exclusion pattern already used for germany-vs-elsewhere columns
+  in the same table (research R3) rather than introducing a second table or a JSON blob for "the
+  rest of the answer" — the shape is fully known at build time (four fixed branches), so there is no
+  case here for the flexibility a JSON column would trade correctness for. The clear-on-change rule
+  exists because the `CHECK` constraint alone would otherwise let a client submit a new
+  `desiredWorkType` while old follow-up data for the previous choice is still sitting in the row,
+  which the constraint would then correctly refuse — so the constraint is the backstop and the
+  application code is what makes that refusal never actually fire in normal use.
+- **Alternatives considered**: A single `desired_work_detail_1`/`desired_work_detail_2` pair of
+  generic columns reused across all three non-`not_sure` branches (rejected — Employee's second
+  question is a boolean, "ready to work," while Freelance/own-business's second question is free
+  text; forcing both into one typed column loses the boolean, and the columns' names would no
+  longer describe what they hold); a separate `member_profiling_future_work` child table keyed on
+  `member_id` (rejected — one row per member with a handful of nullable columns is exactly the
+  sidecar shape research R3 already chose for this table, and a child table buys nothing when at
+  most one of the four branches is ever populated per member).
+
+## R9: Nearest-city dropdown for designated countries (post-completion addendum)
+
+- **Decision**: Once `gwc_cities` was reduced from a broad seed to just the UAE emirates, the
+  nearest-city step on the Expo app was changed to show a dropdown of `gwc_cities` rows for whichever
+  country the member picked, falling back to the existing free-text field for every other country. A
+  new read-only route, `GET /profiling/gwc-cities`, exposes the list (`profiling: true` posture,
+  `member-read` budget — same shape as `GET /profiling/status`).
+- **Rationale**: Confirmed directly with the user rather than assumed, because the alternatives
+  differ enormously in scope: this codebase has no comprehensive per-country city dataset and no
+  city-search/geocoding-autocomplete integration to reuse (`server/src/integrations/geocoding.ts` is
+  a *forward* address→coordinates client for outlet pins, not a city list), so a dropdown covering
+  every country a member might live in would mean adding a large new dataset or a brand-new external
+  service with its own budget, breaker and declared fallback (Constitution V) — well beyond what a
+  short, already-maintained reference list justifies.
+- **Alternatives considered**: A comprehensive world-city list or a live places-autocomplete API
+  (rejected by the user as out of scope — no such data source exists in this codebase yet); a
+  dropdown that only ever shows `gwc_cities` regardless of country, leaving it empty for anyone
+  outside the UAE (rejected — makes the field unusable for the large majority of non-German
+  members, whose whole point in this branch is usually *not* to match a GWC city).

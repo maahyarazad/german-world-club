@@ -59,6 +59,12 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
 
     res = await patch({ authorization }, { desiredWorkType: 'employee' })
     expect(res.statusCode).toBe(200)
+    // Not complete yet — Q5's Employee answer has its own follow-up (FR-009),
+    // covered in full by tests/profiling/future-work.test.ts.
+    expect(res.json().completed).toBe(false)
+
+    res = await patch({ authorization }, { futureWorkSector: 'IT', futureWorkReady: true })
+    expect(res.statusCode).toBe(200)
     expect(res.json().completed).toBe(true)
 
     const final = (await status({ authorization })).json()
@@ -79,7 +85,7 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
     const { authorization } = await approvedGermanMember()
     const res = await patch({ authorization }, {
       settlingStatus: 'need_help', languages: ['ar'], qualificationLevel: 'doctorate',
-      occupation: 'consultant', desiredWorkType: 'not_sure',
+      occupation: 'consultant', desiredWorkType: 'not_sure', futureWorkPriorities: ['wealth_reputation'],
     })
     expect(res.json().completed).toBe(true)
   })
@@ -88,7 +94,7 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, {
       settlingStatus: 'know_where', languages: ['en'], qualificationLevel: 'masters_degree',
-      occupation: 'engineer', desiredWorkType: 'employee',
+      occupation: 'engineer', desiredWorkType: 'employee', futureWorkSector: 'Finance', futureWorkReady: true,
     })
     const again = await patch({ authorization }, { settlingStatus: 'need_help' })
     expect(again.statusCode).toBe(409)

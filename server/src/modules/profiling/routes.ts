@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin'
-import { profilingStatusSchema, profilingPatchRequestSchema } from '@gwc/contracts/profiling'
+import { profilingStatusSchema, profilingPatchRequestSchema, gwcCitiesResponseSchema } from '@gwc/contracts/profiling'
 import { createProfilingController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -26,6 +26,19 @@ export default fp(
         schema: { response: { 200: profilingStatusSchema } },
       },
       controller.status,
+    )
+
+    // The dropdown data for the nearest-city step (research R4): a short,
+    // reference-data list, so the client filters by the country it already
+    // picked rather than the server taking a query-string filter.
+    app.get(
+      '/profiling/gwc-cities',
+      {
+        config: { auth: profiling, budget: 'member-read' },
+        onRequest: app.guard,
+        schema: { response: { 200: gwcCitiesResponseSchema } },
+      },
+      controller.gwcCities,
     )
 
     app.patch(

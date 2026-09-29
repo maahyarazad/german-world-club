@@ -34,6 +34,10 @@ export const OCCUPATIONS = Object.freeze([
 export const DESIRED_WORK_TYPES = Object.freeze([
   'employee', 'freelance', 'own_business', 'not_sure',
 ] as const)
+/** Q5 follow-up for `desired_work_type = 'not_sure'` (FR-011). */
+export const FUTURE_WORK_PRIORITIES = Object.freeze([
+  'family_time', 'balance_lifestyle', 'wealth_reputation',
+] as const)
 export const LANGUAGES: readonly { code: string; en: string; de: string }[] = [ /* ISO 639-1 */ ]
 
 export type ProfilingBranch = 'germany' | 'elsewhere'
@@ -52,6 +56,12 @@ export type ProfilingStatus = {
     qualificationLevel: (typeof QUALIFICATION_LEVELS)[number] | null
     occupation: (typeof OCCUPATIONS)[number] | null
     desiredWorkType: (typeof DESIRED_WORK_TYPES)[number] | null
+    // Q5 follow-up, present only for the branch desiredWorkType selects (FR-009–FR-011):
+    futureWorkSector: string | null                              // 'employee' only
+    futureWorkReady: boolean | null                              // 'employee' only
+    futureWorkOffering: string | null                            // 'freelance' | 'own_business' only
+    futureWorkIdea: string | null                                // 'freelance' | 'own_business' only
+    futureWorkPriorities: (typeof FUTURE_WORK_PRIORITIES)[number][] | null  // 'not_sure' only
     primaryCity: CitySlot | null
     secondaryCities: CitySlot[]   // 0, 1, or 2 entries
   }
@@ -94,6 +104,13 @@ the server rejects a body whose fields belong to the *other* branch, `VALIDATION
   qualificationLevel?: (typeof QUALIFICATION_LEVELS)[number]
   occupation?: (typeof OCCUPATIONS)[number]
   desiredWorkType?: (typeof DESIRED_WORK_TYPES)[number]
+  // Q5 follow-up — send only the field(s) matching the CURRENT desiredWorkType
+  // (the one already on the row, or the one given in this same call):
+  futureWorkSector?: string        // desiredWorkType = 'employee'
+  futureWorkReady?: boolean        // desiredWorkType = 'employee'
+  futureWorkOffering?: string      // desiredWorkType = 'freelance' | 'own_business'
+  futureWorkIdea?: string          // desiredWorkType = 'freelance' | 'own_business'
+  futureWorkPriorities?: (typeof FUTURE_WORK_PRIORITIES)[number][]  // desiredWorkType = 'not_sure'; non-empty
 }
 
 // branch = 'elsewhere' — submitted together, since the three cities form one screen
@@ -108,9 +125,13 @@ the server rejects a body whose fields belong to the *other* branch, `VALIDATION
 2. Refuses (`CONFLICT`, `409`) if the row's `completed_at` is already set — matches the immutability
    trigger in data-model.md; the client should not be able to reach this in normal use since
    `GET /profiling/status` already reports `completed: true`.
-3. Merges the given fields into the row.
+3. Merges the given fields into the row. `germany` only: if this call's `desiredWorkType` differs
+   from the row's existing value, every follow-up column belonging to the *previous* value is
+   cleared first (FR-022) — a member who backs up and picks a different Q5 answer never leaves a
+   stale `futureWorkOffering` sitting next to a freshly chosen `employee`.
 4. If, after merging, every field the branch requires is present:
-   - `germany`: all five answers present → sets `completed_at`.
+   - `germany`: all five base answers present, **and** the follow-up(s) FR-009/FR-010/FR-011
+     require for the current `desiredWorkType` are present → sets `completed_at`.
    - `elsewhere`: `primaryCity` present (secondary cities optional individually, but the two
      slots — when given — must be distinct from each other and from the primary) → checks
      `primaryCity` and each given secondary city against `gwc_cities`; sets `outcome` and
@@ -123,8 +144,24 @@ the server rejects a body whose fields belong to the *other* branch, `VALIDATION
 **Errors**:
 | Problem | When |
 |---|---|
-| `VALIDATION_FAILED` (400) | A field outside the caller's branch shape is present, an enum value is unrecognized, `languages` is empty, or the three cities are not pairwise distinct. |
+| `VALIDATION_FAILED` (400) | A field outside the caller's branch shape is present, an enum value is unrecognized, `languages`/`futureWorkPriorities` is empty when present, or the three cities are not pairwise distinct. |
 | `CONFLICT` (409) | Profiling is already complete for this member. |
+
+---
+
+## `GET /profiling/gwc-cities`
+
+`config.budget: 'member-read'`. Added alongside the elsewhere-branch nearest-city UI so a client can
+offer a dropdown instead of free text once the designated-city list has entries for the country the
+member picked (currently the UAE emirates only) — added after the initial release, once
+`gwc_cities` was pared down from a broad world-cities seed to just those emirates.
+
+Returns every `gwc_cities` row as a flat list, `(typeof citySlotSchema)[]` — i.e. `{ country, city
+}[]`, the same shape a client submits, not the internal `id`/`created_at`. The client filters by the
+country it already picked; the list is small enough that a server-side query-string filter would add
+a parameter for no real benefit.
+
+**Response `200`**: `CitySlot[]`.
 
 ---
 

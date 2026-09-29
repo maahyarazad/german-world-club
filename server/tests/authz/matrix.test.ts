@@ -159,6 +159,7 @@ const ROUTE_CLASSES = [
   // ordinary member/staff boundary, and this feature's test member has no
   // application row, so the profiling gate never engages for it either).
   { name: 'profiling status', url: '/profiling/status', method: 'GET', audience: 'member' },
+  { name: 'profiling gwc cities', url: '/profiling/gwc-cities', method: 'GET', audience: 'member' },
   { name: 'profiling submit', url: '/profiling', method: 'PATCH', audience: 'member' },
 
   // --- Profile (009) ---------------------------------------------------------

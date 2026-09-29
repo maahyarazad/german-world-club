@@ -53,6 +53,13 @@ export const DESIRED_WORK_TYPES = Object.freeze([
   'not_sure',
 ] as const)
 
+/** Q5 follow-up for `desiredWorkType = 'not_sure'` (FR-011). */
+export const FUTURE_WORK_PRIORITIES = Object.freeze([
+  'family_time',
+  'balance_lifestyle',
+  'wealth_reputation',
+] as const)
+
 /**
  * A deliberately short, common-language list rather than the full ISO 639
  * set: the dropdown is searchable, not exhaustive, and the club's own
@@ -99,6 +106,15 @@ function sameCity(a: CitySlot, b: CitySlot): boolean {
   return a.country === b.country && a.city.trim().toLowerCase() === b.city.trim().toLowerCase()
 }
 
+/**
+ * The designated cities a client can offer as a dropdown, per country
+ * (`GET /profiling/gwc-cities`). Deliberately just `{ country, city }` pairs —
+ * the same shape a client submits — rather than the `id`/`created_at` the
+ * server keeps internally for matching (research R4): a client picks a city,
+ * never a row.
+ */
+export const gwcCitiesResponseSchema = z.array(citySlotSchema)
+
 export const profilingStatusSchema = z.object({
   branch: z.enum(PROFILING_BRANCHES),
   completed: z.boolean(),
@@ -110,6 +126,12 @@ export const profilingStatusSchema = z.object({
     qualificationLevel: z.enum(QUALIFICATION_LEVELS).nullable(),
     occupation: z.enum(OCCUPATIONS).nullable(),
     desiredWorkType: z.enum(DESIRED_WORK_TYPES).nullable(),
+    // Q5 follow-up (FR-009–FR-011): present only for the branch desiredWorkType selects.
+    futureWorkSector: z.string().nullable(),
+    futureWorkReady: z.boolean().nullable(),
+    futureWorkOffering: z.string().nullable(),
+    futureWorkIdea: z.string().nullable(),
+    futureWorkPriorities: z.array(z.enum(FUTURE_WORK_PRIORITIES)).nullable(),
     primaryCity: citySlotSchema.nullable(),
     secondaryCities: z.array(citySlotSchema),
   }),
@@ -128,6 +150,13 @@ export const profilingGermanyPatchSchema = z.object({
   qualificationLevel: z.enum(QUALIFICATION_LEVELS).optional(),
   occupation: z.enum(OCCUPATIONS).optional(),
   desiredWorkType: z.enum(DESIRED_WORK_TYPES).optional(),
+  // Q5 follow-up — send the field(s) matching the CURRENT desiredWorkType (the
+  // one already on the row, or the one given in this same call).
+  futureWorkSector: z.string().trim().min(1).max(200).optional(),
+  futureWorkReady: z.boolean().optional(),
+  futureWorkOffering: z.string().trim().min(1).max(500).optional(),
+  futureWorkIdea: z.string().trim().min(1).max(1000).optional(),
+  futureWorkPriorities: z.array(z.enum(FUTURE_WORK_PRIORITIES)).min(1).optional(),
 }).strict().refine((body) => Object.keys(body).length > 0, { message: 'give at least one answer' })
 
 /** `branch = 'elsewhere'` — submitted together; 0–2 distinct secondary cities. */
