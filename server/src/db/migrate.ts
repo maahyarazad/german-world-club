@@ -76,12 +76,58 @@ export async function isCurrent(pool: Pool) {
   }
 }
 
+/**
+ * Undo every migration, which removes every row along with the schema: the
+ * demo, dev and perf seeds and anything the benchmarks left behind.
+ *
+ * There are no per-migration down scripts, and writing them would not help:
+ * `members`, `organisations`, `audit_log`, `thread_posts` and others refuse
+ * DELETE by trigger on purpose, so the seeded rows cannot be deleted row by
+ * row. Dropping the schema is the one operation those triggers do not stand in
+ * front of, and `up` rebuilds everything afterwards, including the reference
+ * rows the migrations themselves insert (cities, job definitions).
+ *
+ * Development only, checked by the caller before this runs: it is total, and
+ * on a shared database it would be an outage. Also drops the `pgboss` schema,
+ * whose job rows reference the members being removed.
+ */
+export async function down({ connectionString, log = console.log } = {}) {
+  const client = new pg.Client({ connectionString })
+  await client.connect()
+  try {
+    const { rows: [target] } = await client.query('SELECT current_database() AS db')
+    await client.query('BEGIN')
+    try {
+      await client.query('DROP SCHEMA IF EXISTS pgboss CASCADE')
+      await client.query('DROP SCHEMA public CASCADE')
+      await client.query('CREATE SCHEMA public')
+      await client.query('COMMIT')
+    } catch (err) {
+      await client.query('ROLLBACK')
+      throw new Error(`Migrate down failed: ${err.message}`, { cause: err })
+    }
+    log(`migrations: rolled back everything in database "${target.db}" (all data removed). Run "migrate" to rebuild the schema.`)
+  } finally {
+    await client.end()
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const env = loadEnv()
   const cmd = process.argv[2] ?? 'up'
-  if (cmd !== 'up') {
-    console.error(`Unsupported command "${cmd}". Only "up" is implemented; roll back by restoring a snapshot.`)
+  if (cmd !== 'up' && cmd !== 'down') {
+    console.error(`Unsupported command "${cmd}". Use "up" or "down".`)
     process.exit(1)
   }
-  await up({ connectionString: env.DATABASE_URL })
+  // Before loadEnv(), like the seeders' gate: a refusal must not depend on the
+  // rest of the configuration being valid.
+  if (cmd === 'down' && process.env.NODE_ENV !== 'development') {
+    console.error(
+      `refusing to migrate down: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
+        'migrate:down deletes every table and row and must never touch a shared database.',
+    )
+    process.exit(1)
+  }
+  const env = loadEnv()
+  if (cmd === 'down') await down({ connectionString: env.DATABASE_URL })
+  else await up({ connectionString: env.DATABASE_URL })
 }

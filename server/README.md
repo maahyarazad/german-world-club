@@ -137,7 +137,7 @@ it — registered last, the document comes out empty.
 | Command | Purpose |
 |---|---|
 | `npm run -w server dev` | Watch mode |
-| `npm run -w server migrate` | Apply migrations (`migrate:down` to roll back one) |
+| `npm run -w server migrate` | Apply migrations (`migrate:down` drops the whole schema and all data, development only; run `migrate` after) |
 | `npm run -w server seed:dev` | A published page, an asset with variants |
 | `npm run -w server keys:generate` | A fresh EdDSA keypair |
 | `npm run -w server test` | Vitest. SQL-backed suites skip loudly without a database |
