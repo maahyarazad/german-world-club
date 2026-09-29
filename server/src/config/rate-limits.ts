@@ -28,13 +28,13 @@ export const BUCKETS = Object.freeze({
   // Both directions are required (SC-013). Per-address alone is defeated by a
   // botnet spraying one account; per-account alone lets one address enumerate
   // the member base and is itself an account-lockout weapon.
-  'sign-in-ip': { dimension: 'ip', max: 10, timeWindow: '15 minutes', skipOnError: false, why: 'Credential stuffing from one address' },
+  'sign-in-ip': { dimension: 'ip', max: 100, timeWindow: '15 minutes', skipOnError: false, why: 'Credential stuffing from one address' },
   'sign-in-account': { dimension: 'account', max: 5, timeWindow: '15 minutes', skipOnError: false, why: 'Credential stuffing against one account' },
 
   // Keyed on the phone number, not the address: each send costs real money and
   // an address-keyed limit is trivially bypassed.
-  'otp-send': { dimension: 'phone', max: 3, timeWindow: '1 hour', skipOnError: false, why: 'SMS costs money per send' },
-  'otp-verify': { dimension: 'challenge', max: 5, timeWindow: '10 minutes', skipOnError: false, why: 'A 4-digit code is only 10,000 possibilities' },
+  'otp-send': { dimension: 'phone', max: 10, timeWindow: '1 hour', skipOnError: false, why: 'SMS costs money per send' },
+  'otp-verify': { dimension: 'challenge', max: 10, timeWindow: '10 minutes', skipOnError: false, why: 'A 4-digit code is only 10,000 possibilities' },
   // Open registration (feature 009) costs an SMS per attempt and creates a
   // member row, and it is reachable with no credential at all. Fails closed
   // for the same reason the sign-in buckets do.
