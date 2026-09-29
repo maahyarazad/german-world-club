@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { buildAuthApp, resetAuthTables, createMember, createAdmin, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import type { GwcApp } from '../../src/app.ts'
@@ -34,6 +35,15 @@ const status = (headers: Record<string, string>) =>
   app.inject({ method: 'GET', url: '/profiling/status', headers })
 const patch = (headers: Record<string, string>, payload: object) =>
   app.inject({ method: 'PATCH', url: '/profiling', headers, payload })
+const submit = (headers: Record<string, string>) =>
+  app.inject({ method: 'POST', url: '/profiling/submit', headers })
+
+// Cities and Q6 ("single"), then submit: the elsewhere branch has no Q7.
+async function saveAndSubmit(headers: Record<string, string>, cities: object) {
+  const saved = await patch(headers, { ...cities, relationshipStatus: ['single'] })
+  expect(saved.statusCode).toBe(200)
+  return submit(headers)
+}
 
 async function staffApplications(state = 'approved') {
   const admin = await createAdmin(app.pg, { grants: { members: { read: true } } })
@@ -48,15 +58,27 @@ async function staffApplications(state = 'approved') {
 const UNLISTED = { country: 'ZZ', city: 'Nonexistentville' }
 
 describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)', () => {
+  it('saves the cities without resolving the outcome; submit does that', async () => {
+    const { authorization } = await approvedMember('FR')
+    const saved = await patch({ authorization }, { primaryCity: SEEDED_MATCH, secondaryCities: [] })
+    expect(saved.json()).toMatchObject({ completed: false, outcome: null, matchedCity: null })
+    expect(saved.json().answers.primaryCity).toEqual(SEEDED_MATCH)
+  })
+
   it('starts on the elsewhere branch', async () => {
     const { authorization } = await approvedMember('FR')
     expect((await status({ authorization })).json().branch).toBe('elsewhere')
   })
 
-  it('requires a primary city', async () => {
+  it('requires a primary city with the secondaries, and before submit', async () => {
     const { authorization } = await approvedMember('FR')
     const res = await patch({ authorization }, { secondaryCities: [UNLISTED] })
     expect(res.statusCode).toBe(400)
+
+    await patch({ authorization }, { relationshipStatus: ['single'] })
+    const refused = await submit({ authorization })
+    expect(refused.statusCode).toBe(409)
+    expect(refused.json().type).toBe(PROBLEMS.PROFILING_ANSWERS_MISSING.type)
   })
 
   it('rejects a secondary city identical to the primary', async () => {
@@ -76,7 +98,7 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('resolves to an in-person meeting when nothing matches a GWC city (Story 2)', async () => {
     const { memberId, authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, { primaryCity: UNLISTED, secondaryCities: [] })
+    const res = await saveAndSubmit({ authorization }, { primaryCity: UNLISTED, secondaryCities: [] })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({ completed: true, outcome: 'in_person_meeting', matchedCity: null })
 
@@ -87,7 +109,7 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('resolves to a GWC city match on the primary city (Story 3)', async () => {
     const { memberId, authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, { primaryCity: SEEDED_MATCH, secondaryCities: [] })
+    const res = await saveAndSubmit({ authorization }, { primaryCity: SEEDED_MATCH, secondaryCities: [] })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({
       completed: true, outcome: 'gwc_city_match', matchedCity: SEEDED_MATCH,
@@ -99,7 +121,7 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('resolves to a GWC city match on a secondary city when the primary does not match', async () => {
     const { authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, {
+    const res = await saveAndSubmit({ authorization }, {
       primaryCity: UNLISTED, secondaryCities: [SEEDED_MATCH],
     })
     expect(res.json()).toMatchObject({ outcome: 'gwc_city_match', matchedCity: SEEDED_MATCH })
@@ -107,7 +129,7 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('checks the primary city before secondaries when both would match', async () => {
     const { authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, {
+    const res = await saveAndSubmit({ authorization }, {
       primaryCity: SEEDED_MATCH, secondaryCities: [OTHER_MATCH],
     })
     expect(res.json().matchedCity).toEqual(SEEDED_MATCH)
@@ -115,7 +137,7 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('is case-insensitive on city name', async () => {
     const { authorization } = await approvedMember('FR')
-    const res = await patch({ authorization }, {
+    const res = await saveAndSubmit({ authorization }, {
       primaryCity: { country: SEEDED_MATCH.country, city: SEEDED_MATCH.city.toUpperCase() },
       secondaryCities: [],
     })
@@ -124,8 +146,9 @@ describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)'
 
   it('refuses any further change once complete', async () => {
     const { authorization } = await approvedMember('FR')
-    await patch({ authorization }, { primaryCity: UNLISTED, secondaryCities: [] })
+    await saveAndSubmit({ authorization }, { primaryCity: UNLISTED, secondaryCities: [] })
     const again = await patch({ authorization }, { primaryCity: SEEDED_MATCH, secondaryCities: [] })
     expect(again.statusCode).toBe(409)
+    expect((await submit({ authorization })).statusCode).toBe(409)
   })
 })

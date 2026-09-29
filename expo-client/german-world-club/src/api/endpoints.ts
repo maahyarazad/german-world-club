@@ -63,7 +63,10 @@ export const onboardingApi = {
 export const profilingApi = {
   status: () => api<ProfilingStatus>('/profiling/status'),
   gwcCities: () => api<CitySlot[]>('/profiling/gwc-cities'),
-  submit: (body: ProfilingPatchRequest) => api<ProfilingStatus>('/profiling', { method: 'PATCH', body }),
+  /** Saves answers; never completes profiling (research R10). */
+  save: (body: ProfilingPatchRequest) => api<ProfilingStatus>('/profiling', { method: 'PATCH', body }),
+  /** The only call that completes profiling. */
+  complete: () => api<ProfilingStatus>('/profiling/submit', { method: 'POST' }),
 };
 
 export const profileApi = {

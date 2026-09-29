@@ -124,3 +124,85 @@ immutable (any further UPDATE attempt raises)
 
 There is no path back to "in progress" or "no row" — consistent with `membership_applications`'
 one-way decision and the spec's explicit non-goal of member-editable answers post-completion.
+
+---
+
+# Revision 2 (2026-09-29): `034_profiling_relationship.sql`
+
+Additive; applies after `033`. Constraint names below are new unless marked *replaced*.
+
+## Changes to `member_profiling`
+
+| Column | Type | Notes |
+|---|---|---|
+| `yearly_income_range` | `text CHECK (yearly_income_range IS NULL OR yearly_income_range IN ('up_to_50k','50k_to_100k','over_100k'))` | Germany Q3. Added to `member_profiling_germany_fields_only_in_germany_branch` (*replaced*: drop + recreate with the extra column). |
+| `relationship_tags` | `text[]` | **Both branches** (Q6). Not part of either branch-exclusive CHECK. |
+| `desired_work_type` | CHECK *replaced* to allow `'business_owner'` | Values: `employee`, `freelance`, `business_owner`, `own_business`, `not_sure`. |
+
+**Constraints**
+- `member_profiling_relationship_tags_valid`: `relationship_tags IS NULL OR (cardinality(relationship_tags) >= 1 AND relationship_tags <@ ARRAY['single','partner','family','kids'] AND NOT ('single' = ANY(relationship_tags) AND cardinality(relationship_tags) > 1))`.
+- `member_profiling_future_work_matches_desired_work_type` (*replaced*, from 033):
+  `future_work_sector` only when `desired_work_type IS NOT NULL`; `future_work_ready` only `employee`;
+  `future_work_offering` only `freelance`/`own_business`; `future_work_idea` only
+  `freelance`/`own_business`/`business_owner`; `future_work_priorities` only `not_sure`.
+- `member_profiling_outcome_only_when_complete` and `member_profiling_match_implies_gwc_outcome`
+  unchanged. The elsewhere `outcome`/`matched_gwc_city_id` are now written by `POST /profiling/submit`,
+  not by the city save.
+
+## `member_profiling_kids`
+
+| Column | Type | Notes |
+|---|---|---|
+| `member_id` | `uuid NOT NULL REFERENCES member_profiling (member_id) ON DELETE RESTRICT` | |
+| `position` | `smallint NOT NULL CHECK (position BETWEEN 1 AND 20)` | 1-based; the kid count is the row count. |
+| `age_range` | `text NOT NULL CHECK (age_range IN ('age_0_6','age_6_14','age_14_18','age_18_plus'))` | |
+| | `PRIMARY KEY (member_id, position)` | |
+
+## `member_profiling_partner`
+
+| Column | Type | Notes |
+|---|---|---|
+| `member_id` | `uuid PRIMARY KEY REFERENCES member_profiling (member_id) ON DELETE RESTRICT` | |
+| `settling_status` | same CHECK as the member's own | Partner Q1 |
+| `languages` | `text[]` | Partner Q2 (validated in app, as the member's own) |
+| `yearly_income_range` | same CHECK | Partner Q3 |
+| `qualification_level` | same CHECK as `member_profiling` | Partner Q4 |
+| `occupation` | same CHECK | Partner Q5 |
+| `created_at`, `updated_at` | `timestamptz NOT NULL DEFAULT now()` | |
+
+No name or contact detail is stored for the partner (spec Assumptions).
+
+## Triggers
+
+`member_profiling_children_are_final` (`BEFORE INSERT OR UPDATE OR DELETE` on both new tables):
+`IF EXISTS (SELECT 1 FROM member_profiling WHERE member_id = COALESCE(NEW.member_id, OLD.member_id)
+AND completed_at IS NOT NULL) THEN RAISE EXCEPTION`. Before completion, deletes are allowed (they
+are how the cascade in research R14 removes stale kids/partner rows); after, none. A row for the
+parent must exist first, so the first kids/partner/tags write creates the `member_profiling` row
+(branch frozen, exactly as today).
+
+## State transitions (revised)
+
+```text
+(no row) ── first PATCH ──▶ in progress (answers freely re-written, children added/removed)
+in progress ── POST /profiling/submit (all applicable steps answered) ──▶ complete
+complete ──▶ immutable (parent + kids + partner, all by trigger)
+```
+
+Only `POST /profiling/submit` moves in-progress → complete; a PATCH never does.
+Completed rows from before this revision are unchanged (research R15).
+
+## Entities
+
+```text
+members (1) ──< member_profiling (0..1) ──< member_profiling_kids (0..20)
+                                       └──< member_profiling_partner (0..1)
+```
+
+---
+
+# Revision 3 (2026-09-29): `035_profiling_industry_single_priority.sql`
+
+- `member_profiling_partner.settling_status` is dropped (the partner is not asked where they will settle). Data in it is discarded; it was never shown to staff.
+- `future_work_sector` holds one of 21 industry codes (`INDUSTRIES` in contracts) — `member_profiling_future_work_sector_is_listed`, **`NOT VALID`** so already-complete rows (immutable by trigger) with earlier free text are never re-checked. Unfinished profiles have their sector cleared so the question is asked again.
+- The "not sure" statement is a single choice: the column stays `future_work_priorities text[]` (older complete rows may hold several) and `member_profiling_future_work_priority_single` (`cardinality = 1`, also `NOT VALID`) binds every new write. The API exposes it as `futureWorkPriority` (the first element). Unfinished multi-selections keep their first element.

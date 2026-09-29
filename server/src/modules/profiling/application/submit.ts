@@ -3,7 +3,7 @@ import { forbidden } from '../../../authz/require-permission.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { GERMANY } from '@gwc/contracts/onboarding'
 import {
-  QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES,
+  QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES, ELSEWHERE_ONLY_KEYS,
 } from '@gwc/contracts/profiling'
 import { loadProfilingStatus } from './status.ts'
 import type { GwcApp } from '../../../app.ts'
@@ -13,30 +13,18 @@ import type {
   ProfilingGermanyPatch, ProfilingElsewherePatch, ProfilingPatchRequest,
 } from '@gwc/contracts/profiling'
 
-const isElsewherePatch = (body: ProfilingPatchRequest): body is ProfilingElsewherePatch =>
-  'primaryCity' in body
-
-const GERMANY_FIELDS_COMPLETE = (row: {
-  settling_status: string | null
-  languages: string[] | null
-  qualification_level: string | null
-  occupation: string | null
-  desired_work_type: string | null
-}) =>
-  row.settling_status !== null && row.languages !== null && row.qualification_level !== null
-  && row.occupation !== null && row.desired_work_type !== null
-
 type FutureWorkField =
   'future_work_sector' | 'future_work_ready' | 'future_work_offering' | 'future_work_idea' | 'future_work_priorities'
 const ALL_FUTURE_WORK_FIELDS: readonly FutureWorkField[] = [
   'future_work_sector', 'future_work_ready', 'future_work_offering', 'future_work_idea', 'future_work_priorities',
 ]
-/** Q5 follow-up (FR-009–FR-011): which columns each `desired_work_type` may populate. */
+/** Q7 follow-up: which columns each `desired_work_type` may populate. Industry is asked on every path. */
 const FUTURE_WORK_FIELDS_FOR: Record<string, readonly FutureWorkField[]> = {
   employee: ['future_work_sector', 'future_work_ready'],
-  freelance: ['future_work_offering', 'future_work_idea'],
-  own_business: ['future_work_offering', 'future_work_idea'],
-  not_sure: ['future_work_priorities'],
+  freelance: ['future_work_offering', 'future_work_sector', 'future_work_idea'],
+  own_business: ['future_work_offering', 'future_work_sector', 'future_work_idea'],
+  business_owner: ['future_work_sector', 'future_work_idea'],
+  not_sure: ['future_work_priorities', 'future_work_sector'],
 }
 
 type FutureWork = {
@@ -47,120 +35,112 @@ type FutureWork = {
   future_work_priorities: string[] | null
 }
 
-/** FR-009–FR-011: the required follow-up(s) for the current desired_work_type are all present. */
-function futureWorkComplete(desiredWorkType: string | null, futureWork: FutureWork): boolean {
-  if (desiredWorkType === null) return true // nothing to follow up on yet — FR-012's base-five gate handles this
-  const fields = FUTURE_WORK_FIELDS_FOR[desiredWorkType]
-  if (!fields) return false
-  return fields.every((field) => {
-    const value = futureWork[field]
-    return Array.isArray(value) ? value.length > 0 : value !== null
-  })
+type Row = FutureWork & {
+  branch: ProfilingBranch
+  settling_status: string | null
+  languages: string[] | null
+  yearly_income_range: string | null
+  qualification_level: string | null
+  occupation: string | null
+  desired_work_type: string | null
+  relationship_tags: string[] | null
+  completed_at: string | null
 }
 
+const SHARED_KEYS = ['relationshipStatus', 'kids', 'partner']
+
 /**
- * `PATCH /profiling`. One member_profiling row per member, upserted — the
- * branch is frozen on whichever call creates the row (research R3) and every
- * later call is checked against it, never recomputed from a possibly-changed
+ * `PATCH /profiling`. One member_profiling row per member — the branch is
+ * frozen on whichever call creates it (research R3) and every later call is
+ * checked against it, never recomputed from a possibly-changed
  * `country_of_residence`.
+ *
+ * Saving never completes profiling (research R10): a member can go back and
+ * change any answer until `POST /profiling/submit`, which is the only writer of
+ * `completed_at`. Re-sending an answered field replaces it.
  */
 export async function submitProfiling(
   app: GwcApp,
   { memberId, body, signal }: { memberId: string; body: ProfilingPatchRequest; signal?: AbortSignal },
 ): Promise<ProfilingStatus> {
   await withTransaction(app.pg, async (client: PoolClient) => {
-    const existing = await client.query(
-      `SELECT branch, settling_status, languages, qualification_level, occupation, desired_work_type,
+    const select = () => client.query(
+      `SELECT branch, settling_status, languages, yearly_income_range, qualification_level, occupation,
+              desired_work_type, relationship_tags,
               future_work_sector, future_work_ready, future_work_offering, future_work_idea,
               future_work_priorities, completed_at
          FROM member_profiling WHERE member_id = $1 FOR UPDATE`,
       [memberId],
     )
-    const row = existing.rows[0] as {
-      branch: ProfilingBranch
-      settling_status: string | null
-      languages: string[] | null
-      qualification_level: string | null
-      occupation: string | null
-      desired_work_type: string | null
-      future_work_sector: string | null
-      future_work_ready: boolean | null
-      future_work_offering: string | null
-      future_work_idea: string | null
-      future_work_priorities: string[] | null
-      completed_at: string | null
-    } | undefined
+    let row = (await select()).rows[0] as Row | undefined
 
     if (row?.completed_at) {
       throw forbidden(PROBLEMS.CONFLICT, 'Profiling is already complete and cannot be changed.')
     }
 
-    let branch: ProfilingBranch
-    if (row) {
-      branch = row.branch
-    } else {
+    if (!row) {
       const member = await client.query('SELECT country_of_residence FROM members WHERE id = $1', [memberId])
-      branch = member.rows[0]?.country_of_residence === GERMANY ? 'germany' : 'elsewhere'
+      const branch: ProfilingBranch = member.rows[0]?.country_of_residence === GERMANY ? 'germany' : 'elsewhere'
+      await client.query(
+        'INSERT INTO member_profiling (member_id, branch) VALUES ($1, $2) ON CONFLICT (member_id) DO NOTHING',
+        [memberId, branch],
+      )
+      row = (await select()).rows[0] as Row
     }
+    const branch = row.branch
 
-    const bodyBranch: ProfilingBranch = isElsewherePatch(body) ? 'elsewhere' : 'germany'
-    if (bodyBranch !== branch) {
+    // Q6 belongs to both branches, so only the other branch's own keys are a mismatch.
+    const keys = Object.keys(body)
+    const hasElsewhereKeys = keys.some((k) => (ELSEWHERE_ONLY_KEYS as readonly string[]).includes(k))
+    const hasGermanyKeys = keys.some(
+      (k) => !(ELSEWHERE_ONLY_KEYS as readonly string[]).includes(k) && !SHARED_KEYS.includes(k),
+    )
+    if ((branch === 'germany' && hasElsewhereKeys) || (branch === 'elsewhere' && hasGermanyKeys)) {
       throw forbidden(PROBLEMS.VALIDATION_FAILED, `This member is on the '${branch}' branch.`)
     }
 
     if (branch === 'germany') {
-      await submitGermany(client, memberId, row, body as ProfilingGermanyPatch)
+      await saveGermany(client, memberId, row, body as ProfilingGermanyPatch)
     } else {
-      await submitElsewhere(client, memberId, row !== undefined, body as ProfilingElsewherePatch)
+      await saveElsewhere(client, memberId, body as ProfilingElsewherePatch)
     }
+    await saveRelationship(client, memberId, row, body as ProfilingGermanyPatch & ProfilingElsewherePatch)
   }, { signal })
 
   return loadProfilingStatus(app, { memberId, signal })
 }
 
-type GermanyRow = {
-  settling_status: string | null; languages: string[] | null; qualification_level: string | null
-  occupation: string | null; desired_work_type: string | null
-  future_work_sector: string | null; future_work_ready: boolean | null
-  future_work_offering: string | null; future_work_idea: string | null
-  future_work_priorities: string[] | null
-}
-
-async function submitGermany(
-  client: PoolClient,
-  memberId: string,
-  row: GermanyRow | undefined,
-  body: ProfilingGermanyPatch,
-) {
+async function saveGermany(client: PoolClient, memberId: string, row: Row, body: ProfilingGermanyPatch) {
   const desiredWorkTypeChanged =
-    body.desiredWorkType !== undefined && body.desiredWorkType !== (row?.desired_work_type ?? null)
+    body.desiredWorkType !== undefined && body.desiredWorkType !== row.desired_work_type
 
-  // FR-022: a Q5 answer that differs from what's on the row discards that
+  // FR-022: a Q7 answer that differs from what is on the row discards that
   // row's old follow-up answers — they belonged to the choice being replaced.
-  const priorFutureWork: FutureWork = desiredWorkTypeChanged
+  const prior: FutureWork = desiredWorkTypeChanged
     ? {
         future_work_sector: null, future_work_ready: null, future_work_offering: null,
         future_work_idea: null, future_work_priorities: null,
       }
     : {
-        future_work_sector: row?.future_work_sector ?? null,
-        future_work_ready: row?.future_work_ready ?? null,
-        future_work_offering: row?.future_work_offering ?? null,
-        future_work_idea: row?.future_work_idea ?? null,
-        future_work_priorities: row?.future_work_priorities ?? null,
+        future_work_sector: row.future_work_sector,
+        future_work_ready: row.future_work_ready,
+        future_work_offering: row.future_work_offering,
+        future_work_idea: row.future_work_idea,
+        future_work_priorities: row.future_work_priorities,
       }
 
   const merged = {
-    settling_status: body.settlingStatus ?? row?.settling_status ?? null,
-    languages: body.languages ?? row?.languages ?? null,
-    qualification_level: body.qualificationLevel ?? row?.qualification_level ?? null,
-    occupation: body.occupation ?? row?.occupation ?? null,
-    desired_work_type: body.desiredWorkType ?? row?.desired_work_type ?? null,
-    future_work_sector: body.futureWorkSector ?? priorFutureWork.future_work_sector,
-    future_work_ready: body.futureWorkReady ?? priorFutureWork.future_work_ready,
-    future_work_offering: body.futureWorkOffering ?? priorFutureWork.future_work_offering,
-    future_work_idea: body.futureWorkIdea ?? priorFutureWork.future_work_idea,
-    future_work_priorities: body.futureWorkPriorities ?? priorFutureWork.future_work_priorities,
+    settling_status: body.settlingStatus ?? row.settling_status,
+    languages: body.languages ?? row.languages,
+    yearly_income_range: body.yearlyIncomeRange ?? row.yearly_income_range,
+    qualification_level: body.qualificationLevel ?? row.qualification_level,
+    occupation: body.occupation ?? row.occupation,
+    desired_work_type: body.desiredWorkType ?? row.desired_work_type,
+    future_work_sector: body.futureWorkSector ?? prior.future_work_sector,
+    future_work_ready: body.futureWorkReady ?? prior.future_work_ready,
+    future_work_offering: body.futureWorkOffering ?? prior.future_work_offering,
+    future_work_idea: body.futureWorkIdea ?? prior.future_work_idea,
+    future_work_priorities: body.futureWorkPriority ? [body.futureWorkPriority] : prior.future_work_priorities,
   }
 
   // Defensive: the choice lists are shared with the contracts package, so this
@@ -176,20 +156,17 @@ async function submitGermany(
       throw forbidden(PROBLEMS.VALIDATION_FAILED, `Unknown ${label} "${value}".`)
     }
   }
-  if (merged.future_work_priorities !== null) {
-    for (const value of merged.future_work_priorities) {
-      if (!(FUTURE_WORK_PRIORITIES as readonly string[]).includes(value)) {
-        throw forbidden(PROBLEMS.VALIDATION_FAILED, `Unknown future work priority "${value}".`)
-      }
+  for (const value of merged.future_work_priorities ?? []) {
+    if (!(FUTURE_WORK_PRIORITIES as readonly string[]).includes(value)) {
+      throw forbidden(PROBLEMS.VALIDATION_FAILED, `Unknown future work priority "${value}".`)
     }
   }
 
-  // A follow-up field that does not belong to the FINAL desired_work_type is a
-  // contradiction the body itself introduced (not one FR-022's discard above
-  // already resolved) — e.g. sending desiredWorkType: 'employee' together with
-  // futureWorkOffering in the same call. Refuse it explicitly rather than let
-  // the future-work CHECK constraint (033_profiling_future_work.sql) throw a
-  // raw constraint-violation error.
+  // A follow-up that does not belong to the FINAL desired_work_type is a
+  // contradiction the body itself introduced (FR-022's discard above already
+  // resolved the stale ones) — e.g. desiredWorkType: 'employee' together with
+  // futureWorkOffering. Refuse it explicitly rather than let the future-work
+  // CHECK constraint (034) throw a raw constraint violation.
   const allowedFields = new Set<FutureWorkField>(
     merged.desired_work_type ? FUTURE_WORK_FIELDS_FOR[merged.desired_work_type] ?? [] : [],
   )
@@ -201,93 +178,99 @@ async function submitGermany(
     }
   }
 
-  const completed = GERMANY_FIELDS_COMPLETE(merged) && futureWorkComplete(merged.desired_work_type, merged)
-
   await client.query(
-    `INSERT INTO member_profiling (
-       member_id, branch, settling_status, languages, qualification_level, occupation, desired_work_type,
-       future_work_sector, future_work_ready, future_work_offering, future_work_idea, future_work_priorities,
-       completed_at
-     ) VALUES ($1, 'germany', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $12 THEN now() ELSE NULL END)
-     ON CONFLICT (member_id) DO UPDATE SET
-       settling_status = EXCLUDED.settling_status,
-       languages = EXCLUDED.languages,
-       qualification_level = EXCLUDED.qualification_level,
-       occupation = EXCLUDED.occupation,
-       desired_work_type = EXCLUDED.desired_work_type,
-       future_work_sector = EXCLUDED.future_work_sector,
-       future_work_ready = EXCLUDED.future_work_ready,
-       future_work_offering = EXCLUDED.future_work_offering,
-       future_work_idea = EXCLUDED.future_work_idea,
-       future_work_priorities = EXCLUDED.future_work_priorities,
-       completed_at = EXCLUDED.completed_at`,
+    `UPDATE member_profiling SET
+       settling_status = $2, languages = $3, yearly_income_range = $4, qualification_level = $5,
+       occupation = $6, desired_work_type = $7, future_work_sector = $8, future_work_ready = $9,
+       future_work_offering = $10, future_work_idea = $11, future_work_priorities = $12
+     WHERE member_id = $1`,
     [
-      memberId, merged.settling_status, merged.languages, merged.qualification_level,
-      merged.occupation, merged.desired_work_type,
+      memberId, merged.settling_status, merged.languages, merged.yearly_income_range,
+      merged.qualification_level, merged.occupation, merged.desired_work_type,
       merged.future_work_sector, merged.future_work_ready, merged.future_work_offering,
       merged.future_work_idea, merged.future_work_priorities,
-      completed,
     ],
   )
 }
 
 /**
- * The elsewhere branch is submitted whole (contracts/profiling-api.md): the
- * primary city is required and the up-to-two secondaries travel with it, so
- * unlike the German branch there is no partial-answer state to merge —
- * one call both fills the row and resolves the outcome.
+ * The elsewhere cities are sent as a unit and replace whatever was saved. The
+ * GWC match is not computed here: it is resolved at submit (complete.ts), so
+ * changing the cities after seeing nothing is cheap and never leaves a stale
+ * match behind.
  */
-async function submitElsewhere(
+async function saveElsewhere(client: PoolClient, memberId: string, body: ProfilingElsewherePatch) {
+  if (!body.primaryCity) return
+  const secondary1 = body.secondaryCities?.[0] ?? null
+  const secondary2 = body.secondaryCities?.[1] ?? null
+  await client.query(
+    `UPDATE member_profiling SET
+       primary_city_country = $2, primary_city_name = $3,
+       secondary_city_1_country = $4, secondary_city_1_name = $5,
+       secondary_city_2_country = $6, secondary_city_2_name = $7
+     WHERE member_id = $1`,
+    [
+      memberId, body.primaryCity.country, body.primaryCity.city,
+      secondary1?.country ?? null, secondary1?.city ?? null,
+      secondary2?.country ?? null, secondary2?.city ?? null,
+    ],
+  )
+}
+
+/**
+ * Q6 and its sub-flows, both branches. Answers that no longer apply are
+ * deleted in the same transaction (research R14, FR-033) so nothing stale
+ * reaches submit; the children's triggers only allow that while incomplete.
+ */
+async function saveRelationship(
   client: PoolClient,
   memberId: string,
-  rowExists: boolean,
-  body: ProfilingElsewherePatch,
+  row: Row,
+  body: Pick<ProfilingGermanyPatch, 'relationshipStatus' | 'kids' | 'partner'>,
 ) {
-  const slots = [body.primaryCity, ...body.secondaryCities]
-  // Checked earliest slot first (primary, then secondaries in the order
-  // given), matching contracts/profiling-api.md's "first match found, primary
-  // checked first".
-  const { rows: matches } = await client.query(
-    `SELECT g.id, g.country, g.city, s.ord
-       FROM unnest($1::char(2)[], $2::text[]) WITH ORDINALITY AS s(country, city, ord)
-       JOIN gwc_cities g ON g.country = s.country AND lower(g.city) = lower(s.city)
-      ORDER BY s.ord
-      LIMIT 1`,
-    [slots.map((s) => s.country), slots.map((s) => s.city)],
-  )
-  const match = matches[0] as { id: string } | undefined
-  const outcome = match ? 'gwc_city_match' : 'in_person_meeting'
+  const tags = body.relationshipStatus ?? row.relationship_tags ?? []
+  const wantsKids = tags.includes('kids')
+  const wantsPartner = tags.includes('partner') || tags.includes('family')
 
-  const secondary1 = body.secondaryCities[0] ?? null
-  const secondary2 = body.secondaryCities[1] ?? null
+  if (body.kids !== undefined && !wantsKids) {
+    throw forbidden(PROBLEMS.VALIDATION_FAILED, 'Kids were given but "kids" is not selected.')
+  }
+  if (body.partner !== undefined && !wantsPartner) {
+    throw forbidden(PROBLEMS.VALIDATION_FAILED, 'Partner answers were given but "partner" or "family" is not selected.')
+  }
 
-  const columns = `
-       primary_city_country, primary_city_name,
-       secondary_city_1_country, secondary_city_1_name,
-       secondary_city_2_country, secondary_city_2_name,
-       matched_gwc_city_id, outcome, completed_at`
-  const values = [
-    body.primaryCity.country, body.primaryCity.city,
-    secondary1?.country ?? null, secondary1?.city ?? null,
-    secondary2?.country ?? null, secondary2?.city ?? null,
-    match?.id ?? null, outcome,
-  ]
+  if (body.relationshipStatus !== undefined) {
+    await client.query('UPDATE member_profiling SET relationship_tags = $2 WHERE member_id = $1', [memberId, tags])
+    if (!wantsKids) await client.query('DELETE FROM member_profiling_kids WHERE member_id = $1', [memberId])
+    if (!wantsPartner) await client.query('DELETE FROM member_profiling_partner WHERE member_id = $1', [memberId])
+  }
 
-  if (rowExists) {
+  if (body.kids !== undefined) {
+    await client.query('DELETE FROM member_profiling_kids WHERE member_id = $1', [memberId])
     await client.query(
-      `UPDATE member_profiling SET
-         primary_city_country = $2, primary_city_name = $3,
-         secondary_city_1_country = $4, secondary_city_1_name = $5,
-         secondary_city_2_country = $6, secondary_city_2_name = $7,
-         matched_gwc_city_id = $8, outcome = $9, completed_at = now()
-       WHERE member_id = $1`,
-      [memberId, ...values],
+      `INSERT INTO member_profiling_kids (member_id, position, age_range)
+       SELECT $1, ord, age FROM unnest($2::text[]) WITH ORDINALITY AS k(age, ord)`,
+      [memberId, body.kids],
     )
-  } else {
+  }
+
+  if (body.partner !== undefined) {
+    const p = body.partner
+    // COALESCE keeps what is already saved for any partner field not sent, so
+    // the partner wizard can save one question at a time like the member's own.
     await client.query(
-      `INSERT INTO member_profiling (member_id, branch,${columns})
-       VALUES ($1, 'elsewhere', $2, $3, $4, $5, $6, $7, $8, $9, now())`,
-      [memberId, ...values],
+      `INSERT INTO member_profiling_partner
+         (member_id, languages, yearly_income_range, qualification_level, occupation)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (member_id) DO UPDATE SET
+         languages = COALESCE(EXCLUDED.languages, member_profiling_partner.languages),
+         yearly_income_range = COALESCE(EXCLUDED.yearly_income_range, member_profiling_partner.yearly_income_range),
+         qualification_level = COALESCE(EXCLUDED.qualification_level, member_profiling_partner.qualification_level),
+         occupation = COALESCE(EXCLUDED.occupation, member_profiling_partner.occupation)`,
+      [
+        memberId, p.languages ?? null, p.yearlyIncomeRange ?? null,
+        p.qualificationLevel ?? null, p.occupation ?? null,
+      ],
     )
   }
 }

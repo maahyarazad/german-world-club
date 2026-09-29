@@ -84,3 +84,48 @@ fresh member.
   entering the console when `step === 'approved'` and profiling is incomplete.
 - `tests/seed/no-live-credentials.test.js` — unaffected (no session/token tables touched), rerun
   as a regression check since `member_profiling` sits near onboarding tables.
+
+---
+
+# Revision 2 scenarios (relationship, partner, go-back, submit)
+
+Prerequisite: `npm run -w server migrate` applies `034`. Use an approved member per scenario.
+
+## Scenario 6 — Go back and change (Story 5)
+
+1. German member answers settling=`know_where`, languages=`['en']`, income=`50k_to_100k`.
+2. `PATCH /profiling { languages: ['en','de'] }` (what the Back button does) → `GET /profiling/status`
+   shows both languages, income still set, `completed: false`.
+3. In the web console and Expo app: on the income step press Back → languages step shows the saved
+   bubbles; change one; Continue returns to income with the saved value preselected.
+
+## Scenario 7 — Relationship, kids, partner (Story 4)
+
+1. `PATCH { relationshipStatus: ['single','kids'] }` → 400 `validation-failed`. `['single']` → 200.
+2. `PATCH { relationshipStatus: ['kids','partner'], kids: ['age_0_6','age_14_18'] }` → status shows
+   two kids; `PATCH { partner: { settlingStatus: 'need_help' } }` creates the partner set.
+3. Change tags to `['partner']` → `kids: []` (cascade); to `['kids']` → `partner: null`; to
+   `['single']` → both gone. Confirm no orphan rows in `member_profiling_kids`/`_partner`.
+4. Non-German member: after cities and Q6 the step list ends at `review` — no Q7 steps.
+
+## Scenario 8 — Q7 paths
+
+For each of `employee`, `freelance`, `business_owner`, `own_business`, `not_sure`: answer the path's
+follow-ups (industry on every path), switch to another path and confirm the previous follow-ups are
+gone, then finish. `POST /profiling/submit` is refused (409 `profiling-answers-missing`) until every
+step for the final path is answered.
+
+## Scenario 9 — Submit is the only completion
+
+1. Answer the last question via PATCH → `completed: false`, ordinary routes still `403 profiling-incomplete`.
+2. Change any earlier answer → still editable.
+3. `POST /profiling/submit` → `completed: true`; ordinary routes now succeed.
+4. `PATCH /profiling` or a second submit → 409; direct SQL `UPDATE member_profiling_kids …` for that
+   member raises (trigger).
+5. Elsewhere: `outcome`/`matchedCity` are `null` before submit and set after.
+
+## Additional automated coverage
+
+`server/tests/profiling/{relationship-flow,go-back,submit}.test.ts`,
+`packages/contracts/tests/profiling-steps.test.ts`, extended `client/tests/onboarding/profiling.test.tsx`,
+the access-control matrix (`POST /profiling/submit`), and the seed manifest test (new tables listed).

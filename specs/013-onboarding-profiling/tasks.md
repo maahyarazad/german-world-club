@@ -251,3 +251,140 @@ Stories 2 and 3 (non-German branch) are unaffected.
 - Depends on the already-completed Phases 1–6 (the `member_profiling` table and the germany write
   path must exist first)
 - T038 → T039 → T040 → T041 → {T042, T043, T045} → {T044, T046}
+
+---
+
+# Revision 2 (2026-09-29): updated Profiling Workflow + go-back
+
+**Branch**: `013-profiling-relationship-goback` (cut from `main` after PR #9).
+
+**Input**: `spec.md` Revision 2 (Stories 4 and 5, FR-023–FR-034, amended FR-008–FR-014/016/017/020/022),
+`plan.md` "Revision 2", `research.md` R10–R15, `data-model.md` Revision 2 (`034`),
+`contracts/profiling-api.md` Revision 2, `quickstart.md` Scenarios 6–9.
+
+**Tests**: Included — plan.md's Revision 2 Constitution Check names a test per principle.
+
+**Behaviour change to keep in mind**: after this revision `PATCH /profiling` never completes profiling;
+only `POST /profiling/submit` does (R10). Every earlier test or client that relied on "last answer
+completes" is updated inside the phase that changes it (US5), not left failing.
+
+**Story map**: US1 (amended: income + Q7 paths), US5 (submit + go back, both branches — P1, MVP of this
+revision), US4 (relationship / kids / partner, both branches — P2), US2/US3 (amended: elsewhere
+saves cities, outcome at submit — done inside US5 because it cannot ship separately).
+
+## Phase 8: Revision 2 Setup & Foundational (blocks all Revision 2 stories)
+
+- [X] T047 [P] Add `PROFILING_ANSWERS_MISSING: { type: \`${BASE}/profiling-answers-missing\`, title: 'Profiling answers missing', status: 409 }` to the "Account state" section of `packages/contracts/src/errors.ts`, next to `PROFILING_INCOMPLETE`
+- [X] T048 [P] In `packages/contracts/src/profiling.ts` add `YEARLY_INCOME_RANGES` (`up_to_50k`, `50k_to_100k`, `over_100k`), `RELATIONSHIP_TAGS` (`single`, `partner`, `family`, `kids`), `KID_AGE_RANGES` (`age_0_6`, `age_6_14`, `age_14_18`, `age_18_plus`) as `Object.freeze([...] as const)`, and add `'business_owner'` to `DESIRED_WORK_TYPES` (order: employee, freelance, business_owner, own_business, not_sure)
+- [X] T049 In `packages/contracts/src/profiling.ts` extend `profilingStatusSchema.answers` with `yearlyIncomeRange`, `relationshipStatus` (nullable tag array), `kids` (`KID_AGE_RANGES` array, `[]` when none) and `partner` (nullable `{ settlingStatus, languages, yearlyIncomeRange, qualificationLevel, occupation }`, each nullable); replace both patch schemas per `contracts/profiling-api.md` Revision 2 (both branches "non-empty subset" and `.strict()`; `secondaryCities` only with `primaryCity`; `kids` 1–20; `relationshipStatus` non-empty and `single` exclusive via `.refine`; `partner` a partial of the five partner fields) (depends on: T048)
+- [X] T050 In `packages/contracts/src/profiling.ts` implement and export `profilingSteps(branch, answers)` and `profilingMissing(branch, answers)` plus `ProfilingStepId` and `ProfilingAnswers`, exactly the step order in `contracts/profiling-api.md` (Germany: settling, languages, income, qualification, occupation, relationship, kids?, partner x5?, work-type, path follow-ups, review; elsewhere: cities, relationship, kids?, partner x5?, review; Q7 paths: employee → industry, ready; freelance/own_business → offering, industry, idea; business_owner → industry, idea; not_sure → priorities, industry) (depends on: T049)
+- [X] T051 [P] Write `packages/contracts/tests/profiling-steps.test.ts`: for every Q6 tag combination × every Q7 value × both branches, assert the step list contents/order, that `profilingMissing` lists exactly the unanswered applicable steps, that the elsewhere list never contains a `work-*` step, that `single` yields no kids/partner steps, and a counter-assertion that an answered-then-inapplicable field (e.g. kids after removing the tag) is ignored (depends on: T050)
+- [X] T052 [P] Write migration `server/migrations/034_profiling_relationship.sql` per `data-model.md` Revision 2: `yearly_income_range` and `relationship_tags` columns; replace `member_profiling_desired_work_type` (add `business_owner`), `member_profiling_germany_fields_only_in_germany_branch` (add income) and `member_profiling_future_work_matches_desired_work_type` (industry on any non-null type, ready employee-only, offering freelance/own_business, idea freelance/own_business/business_owner, priorities not_sure) using idempotent `DROP CONSTRAINT IF EXISTS` + `ADD`; `member_profiling_relationship_tags_valid`; tables `member_profiling_kids` and `member_profiling_partner` with their CHECKs; trigger `member_profiling_children_are_final` on both tables
+- [X] T053 Run `npm run -w server migrate` and confirm `034_profiling_relationship.sql` applies cleanly on a database that already has completed and in-progress `member_profiling` rows from `032`/`033` (depends on: T052)
+- [X] T054 [P] In `server/src/seed/tables.ts` list `member_profiling_kids` and `member_profiling_partner` under `HISTORY` next to `member_profiling` (never seeded), and confirm `server/tests/seed/` manifest tests pass
+- [X] T055 [P] Write `server/tests/profiling/relationship-schema.test.ts` (SQL suite): `single` plus another tag rejected by the CHECK; empty tag array rejected; bad `age_range`/income value rejected; a kids or partner INSERT/UPDATE/DELETE after `completed_at` is set raises; the same writes before completion succeed; a completed pre-revision row still cannot be updated (depends on: T053)
+
+**Checkpoint**: Contracts, step engine and schema exist; nothing user-visible has changed yet.
+
+---
+
+## Phase 9: User Story 1 amendments — income and the five Q7 paths (P1)
+
+**Goal**: German flow matches the new Q1–Q5 and Q7: income question inserted, `business_owner` path, industry asked on every path.
+
+**Independent Test**: For each of the five `desiredWorkType` values, PATCH the base answers, income and that path's follow-ups; `profilingMissing` is empty only when the path is fully answered; switching paths clears the previous path's follow-ups.
+
+- [X] T056 [US1] In `server/src/modules/profiling/application/status.ts` select and shape `yearly_income_range` → `yearlyIncomeRange` (explicit columns; no `SELECT *`) (depends on: T053, T049)
+- [X] T057 [US1] In `server/src/modules/profiling/application/submit.ts` `submitGermany`: accept `yearlyIncomeRange`; extend `FUTURE_WORK_FIELDS_FOR` to the new mapping (employee: sector, ready; freelance/own_business: offering, sector, idea; business_owner: sector, idea; not_sure: priorities, sector); keep the FR-022 clear-on-change rule with that mapping; **remove the auto-completion** (`completed_at` is no longer set here — see T064) (depends on: T056)
+- [X] T058 [P] [US1] Update `server/tests/profiling/germany-flow.test.ts` and `server/tests/profiling/future-work.test.ts` for income, `business_owner`, industry-on-every-path, and "PATCH never completes"; add a switch-path case per pair of paths asserting stale follow-ups are gone (depends on: T057)
+- [X] T059 [P] [US1] Add the income question, the `business_owner` option and industry step strings (Q3 prompt and three ranges, "Business Owner", "Build My Own Business", "Freelancer", industry and "product or service" prompts) to `client/src/i18n/de.ts`, `client/src/i18n/en.ts`, `expo-client/german-world-club/src/i18n/de.ts` and `en.ts`
+
+**Checkpoint**: Server accepts the new German answers; clients not yet updated (they are rebuilt in US5).
+
+---
+
+## Phase 10: User Story 5 - Submit is the only completion; go back and change answers (P1) 🎯 MVP of Revision 2
+
+**Goal**: Answers are saved as you go, freely re-answerable; a review step shows them all; `POST /profiling/submit` completes. Includes the elsewhere branch (cities saved, outcome computed at submit). Both clients get Back + review.
+
+**Independent Test**: Quickstart Scenarios 6 and 9. Answer the last question via PATCH → still `completed: false`; change an earlier answer; submit → complete; further PATCH/submit → 409.
+
+- [X] T060 [US5] In `server/src/modules/profiling/application/submit.ts` `submitElsewhere`: save `primaryCity`/`secondaryCities` as a unit without resolving the outcome (no GWC lookup, no `completed_at`), validating distinctness; a partial body (only `primaryCity`) clears secondaries only when `secondaryCities` is given (depends on: T057)
+- [X] T061 [US5] Create `server/src/modules/profiling/application/complete.ts` exporting `completeProfiling(app, { memberId, signal })`: in one `withTransaction`, `SELECT … FOR UPDATE` the row (explicit columns) plus kids/partner, rebuild `ProfilingAnswers`, compute `profilingMissing` from `@gwc/contracts/profiling`; if non-empty throw `PROFILING_ANSWERS_MISSING` (409, missing step ids as an extension member); if already complete throw `CONFLICT`; for `elsewhere` run the existing GWC lookup (primary first) and set `outcome` + `matched_gwc_city_id`; set `completed_at`; return `loadProfilingStatus` (depends on: T060, T050)
+- [X] T062 [US5] In `server/src/modules/profiling/routes.ts` and `controller.ts` add `POST /profiling/submit` with `config: { auth: { audience: 'member', profiling: true }, budget: 'member-write' }`, `onRequest: app.guard`, response `profilingStatusSchema`; extend the `PATCH` body schema import to the new union (depends on: T061)
+- [X] T063 [P] [US5] Write `server/tests/profiling/submit.test.ts`: PATCH of the last answer leaves `completed: false` and ordinary routes 403 `profiling-incomplete`; submit with a missing step → 409 `profiling-answers-missing` naming it (counter-assertion: the row is unchanged); full germany submit → complete and ordinary routes succeed; elsewhere `outcome`/`matchedCity` null before submit and set after (in-person and GWC-match cases, using seeded rows read at runtime as `elsewhere-flow.test.ts` does); PATCH or second submit after completion → 409 (depends on: T062)
+- [X] T064 [P] [US5] Write `server/tests/profiling/go-back.test.ts`: re-sending an answered field replaces it and leaves the others; changing the elsewhere cities after saving them replaces them; changing `desiredWorkType` clears follow-ups; nothing stale is present in the status after each change; state survives a fresh session (depends on: T062)
+- [X] T065 [P] [US5] Update `server/tests/profiling/elsewhere-flow.test.ts`, `gate.test.ts`, `branch-freeze.test.ts` and `server/tests/authz/matrix.test.ts` for the new completion semantics and to include `POST /profiling/submit` across every principal kind (depends on: T062)
+- [X] T066 [US5] Add `profilingApi.submit()` (and the extended `patch` typing) to `client/src/lib/api.ts` and `expo-client/german-world-club/src/api/endpoints.ts` (depends on: T062)
+- [X] T067 [US5] Restructure `client/src/onboarding/Profiling.tsx` into `client/src/onboarding/profiling/` (step components per `ProfilingStepId`, a `useProfilingWizard` hook holding the current step id): the step list comes from `profilingSteps(status.branch, status.answers)` recomputed after every save; Continue PATCHes then advances; **Back** on every step but the first shows the previous step with the saved answer preselected; a **Review** step lists each answer with "Change" (returns to review after save) and a Submit that calls `profilingApi.submit()`; on `PROFILING_ANSWERS_MISSING` jump to the first missing step (no error state, `console.error('Profiling.submit', …)` per the CLAUDE.md client-failure rule); after submit show the existing outcome / hand off to `onComplete` (depends on: T066, T059)
+- [X] T068 [US5] Move the Expo wizard out of the single `expo-client/german-world-club/src/app/(profiling)/index.tsx` into per-step components under `expo-client/german-world-club/src/app/(profiling)/` mirroring T067: header Back plus Android `BackHandler` (back on the first step exits as today), preselected saved answers, Review with Change, Submit, first-missing-step jump; the existing GWC-cities chip dropdown for city steps is kept (depends on: T066, T059)
+- [X] T069 [P] [US5] Add Back, Review, "Change", Submit and completion strings to `client/src/i18n/{de,en}.ts` and `expo-client/german-world-club/src/i18n/{de,en}.ts`; run `npm run -w client test:i18n`
+- [X] T070 [P] [US5] Extend `client/tests/onboarding/profiling.test.tsx`: Back shows the previous step with the saved answer; changing an earlier answer and continuing keeps later answers; "Change" from review returns to review; the last answer alone does not complete (Submit does); a 409 `profiling-answers-missing` moves to the first missing step without an error banner (depends on: T067)
+
+**Checkpoint**: Going back and explicit submit work on both faces and both branches. Story 2 and 3 outcomes still appear (now after Submit).
+
+---
+
+## Phase 11: User Story 4 - Relationship, kids and partner (P2)
+
+**Goal**: Q6 on both branches with Single exclusivity, kids count + per-kid age range, partner Q1–Q5 questionnaire; German continues to Q7, non-German goes to review.
+
+**Independent Test**: Quickstart Scenario 7.
+
+- [X] T071 [US4] In `server/src/modules/profiling/application/status.ts` read `relationship_tags`, the kids rows (ordered by `position`) and the partner row (explicit columns) into `relationshipStatus`, `kids`, `partner` (depends on: T053, T049)
+- [X] T072 [US4] In `server/src/modules/profiling/application/submit.ts` handle `relationshipStatus`, `kids`, `partner` for **both** branches in the same transaction as the write: ensure the parent row exists (branch frozen as today); apply the R14 cascades (no `kids` tag → delete kid rows; neither `partner` nor `family` → delete partner row; `single` → both); reject `kids` without the tag or `partner` without `partner`/`family` (`VALIDATION_FAILED`); replace kid rows wholesale on `kids`; upsert only the given partner fields (depends on: T071, T057, T060)
+- [X] T073 [P] [US4] Write `server/tests/profiling/relationship-flow.test.ts`: `single`+other → 400; kids/partner sub-answers persisted and returned; each cascade in Scenario 7 step 3 leaves no orphan rows (counter-assertion: rows do exist before the change); partner answers use the same enum validation as the member's own; submit is refused while kids ages or any of the five partner answers are missing and accepted when complete; both branches; non-German step list ends at review with no Q7 (depends on: T072, T061)
+- [X] T074 [US4] **Not changed, deliberately.** `server/src/modules/onboarding/application/review.ts` exposes only branch/completed/outcome/matched city to staff and never exposed the German answers; adding income, tags, kids and partner answers would widen what a staff *list* endpoint returns (and `applicationSchema` in contracts) beyond this feature's ask. The answers remain queryable in `member_profiling*` (FR-019). If staff need to see them in the console, that is a separate, explicit change.
+- [X] T075 [P] [US4] Add `client/src/onboarding/profiling/` steps: relationship bubbles (selecting Single deselects the rest and selecting another deselects Single), kids count input with N per-kid age-range pickers (changing N keeps existing ranges by position), and the partner wizard reusing the German question components via a `subject: 'self' | 'partner'` prop so the five partner steps write to `partner` (depends on: T067, T072)
+- [X] T076 [P] [US4] Add the same relationship / kids / partner steps to the Expo `(profiling)` screens, reusing `Chip`/`TextField` (depends on: T068, T072)
+- [X] T077 [P] [US4] Add relationship, tag, kid-count, age-range and partner-section strings (with the partner variants of the five questions) to `client/src/i18n/{de,en}.ts` and `expo-client/german-world-club/src/i18n/{de,en}.ts`; run `npm run -w client test:i18n`
+- [X] T078 [P] [US4] Extend `client/tests/onboarding/profiling.test.tsx`: Single exclusivity both ways, N kids → N pickers, Partner shows five partner steps and no Q6, German continues to Q7 while non-German goes to review (depends on: T075)
+
+**Checkpoint**: Full updated workflow on both faces.
+
+---
+
+## Phase 12: Polish & Cross-Cutting (Revision 2)
+
+- [X] T079 Scenarios 6–9 are covered by automated suites: Scenario 6 → `go-back.test.ts` + `client/tests/onboarding/profiling.test.tsx` (Back, Change from review); Scenario 7 → `relationship-flow.test.ts`, `relationship-schema.test.ts`, `profiling-steps.test.ts`; Scenario 8 → `future-work.test.ts` (every from→to path pair); Scenario 9 → `submit.test.ts`, `gate.test.ts`. **Not done: a manual click-through of the web console and the Expo app** — the Expo screens have no automated tests and were only type-checked (`tsc --noEmit` clean) and linted (no new `expo lint` problems).
+- [X] T080 `tsc --noEmit` clean for `packages/contracts`, `client` and `expo-client/german-world-club`; `server` has many pre-existing errors elsewhere (none in `src/modules/profiling`, `src/seed/tables.ts`). Server suites run against a real database: all `tests/profiling` (63 tests) pass; the failures in `authz`/`ops`/`onboarding` are identical with and without this change (development-mode swagger routes and an SMS-rollback test). `expo lint` and `client` lint report the same pre-existing errors as before (`set-state-in-effect`).
+- [X] T081 [P] Update `CLAUDE.md`'s profiling paragraph with the two rules that would otherwise surprise: **completion is `POST /profiling/submit`, never a PATCH**, and **kids/partner rows are final with the parent (trigger)**; keep it to the existing style (why, not what)
+- [ ] T082 [P] Add the equivalent city dropdown to the web console's city steps (the addendum's open item: `client/src/onboarding/profiling/` city step using `GET /profiling/gwc-cities`) **only if** the user confirms it is wanted now — otherwise leave as documented
+
+### Dependencies & Execution Order (Revision 2)
+
+- Phase 8 first; T047, T048, T052, T054 in parallel; T049 → T050 → T051; T052 → T053 → T055.
+- Phase 9 (US1 amendments) after T053/T049; server tasks before the client work in Phase 10.
+- Phase 10 (US5) after Phase 9: T060 → T061 → T062 → {T063, T064, T065, T066}; T066 → {T067, T068} → T070; T069 alongside.
+- Phase 11 (US4) after Phase 10 (needs the wizard structure and the submit check): T071 → T072 → {T073, T074, T075, T076}; T077 alongside; T078 after T075.
+- Phase 12 last.
+
+### Parallel Examples
+
+```bash
+# Phase 8
+Task: "T047 PROFILING_ANSWERS_MISSING in errors.ts"
+Task: "T048 new lists + business_owner in contracts/profiling.ts"
+Task: "T052 migration 034_profiling_relationship.sql"
+Task: "T054 seed manifest tables"
+# Phase 11, once T072 lands
+Task: "T073 relationship-flow.test.ts"
+Task: "T075 web relationship/kids/partner steps"
+Task: "T076 Expo relationship/kids/partner steps"
+```
+
+### Implementation Strategy
+
+1. Build in order Phase 8 → 9 → 10 → 11, validating after each checkpoint. Phase 10 is the first point where Back/Review/Submit work end to end, so it is the **demo/MVP checkpoint** for this revision.
+2. **Release unit is Phases 8–11 together.** Q6 is required (FR-024) and the shared step engine includes it from T050, so shipping Phase 10 without Phase 11 would leave members with a mandatory step no client renders. Likewise T057 removes PATCH auto-completion and T062 restores completion via submit, so never deploy between them.
+3. Phase 12 closes out.
+
+
+---
+
+# Revision 3 (2026-09-29): partner settling removed, industry dropdown, single-select statement
+
+- [X] T083 [US4] Remove the partner's settling question everywhere: `partner.settlingStatus` and `partner-settling` from `packages/contracts/src/profiling.ts`; migration `server/migrations/035_profiling_industry_single_priority.sql` drops `member_profiling_partner.settling_status`; `status.ts`/`submit.ts` no longer read or write it; web and Expo partner steps start at languages
+- [X] T084 [US1] Industry as a fixed list: `INDUSTRIES` (21 codes) in contracts, `futureWorkSector` validated as one of them, migration clears unfinished free-text values and adds a `NOT VALID` CHECK; dropdown on web (`client/src/onboarding/profiling/steps.tsx`), chip picker on Expo (the app's idiom for a fixed list); new wording and de/en labels in all four i18n catalogues
+- [X] T085 [US1] "I am not sure yet" statement is a single choice: `futureWorkPriority` replaces `futureWorkPriorities` in contracts, server, both clients and tests; migration keeps the first element of unfinished multi-selections and adds a `NOT VALID` single-element CHECK
+- [X] T086 Update tests: `future-work`, `relationship-flow`, `relationship-schema`, `germany-flow`, contracts `profiling-steps`, web `profiling.test.tsx` (industry dropdown lists exactly the 21 values; partner never asked settling; single-select statement)

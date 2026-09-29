@@ -207,3 +207,97 @@ contracts, and its client patterns) plus two decisions confirmed with the user d
   dropdown that only ever shows `gwc_cities` regardless of country, leaving it empty for anyone
   outside the UAE (rejected — makes the field unusable for the large majority of non-German
   members, whose whole point in this branch is usually *not* to match a GWC city).
+
+---
+
+# Revision 2 (2026-09-29): updated business description + go-back
+
+The Profiling Workflow section of `german-world-club-business-description.md` was rewritten (income
+question, relationship/kids/partner on both branches, five Q7 paths each ending in an industry
+selection), and members must be able to go back and fix a mistake. R10–R15 record the decisions;
+R1–R9 stand except where noted.
+
+## R10: Completion becomes an explicit submit (supersedes R5's "last answer completes")
+
+- **Decision**: `PATCH /profiling` only saves; it never sets `completed_at`. A new
+  `POST /profiling/submit` validates that every applicable step is answered, computes the elsewhere
+  outcome/GWC match, and sets `completed_at` in one transaction. Both clients end on a review step
+  ("Change" per answer, one Submit).
+- **Rationale**: Today the last PATCH completes the row and the immutability trigger then locks it,
+  so a wrong answer on the final question is unrecoverable. Going back is only meaningful if nothing
+  is final until the member says so. The trigger, FR-020, and the auth gate are unchanged: they key
+  on `completed_at`, which now just gets set later.
+- **Alternatives considered**: Keep auto-complete and add a short "undo window" (rejected: needs a
+  timer/second state and still locks the answer the member is unsure about); let members edit after
+  completion (rejected: contradicts FR-020 and the trigger, and staff may already have acted on a
+  submitted city outcome).
+
+## R11: One step engine in `@gwc/contracts` (Constitution I)
+
+- **Decision**: `profilingSteps(branch, answers)` in `packages/contracts/src/profiling.ts` returns
+  the ordered step ids that apply to these answers, and `profilingMissing(...)` the applicable steps
+  with no answer. The server's submit check and both clients' Next/Back/review use the same
+  functions.
+- **Rationale**: With Q6 sub-flows and five Q7 paths the applicable steps depend on earlier answers.
+  Two hand-written copies of that (server + web + Expo = three) is exactly the divergence the
+  contracts package exists to prevent, and nothing at runtime would catch a drift.
+- **Alternatives considered**: Server returns `steps`/`missing` in the status (rejected as the only
+  source: clients still need the list locally to pre-render Back without a round trip after each
+  local edit; the shared function gives both, and the server stays authoritative because submit
+  recomputes it).
+
+## R12: Relationship, kids and partner data shape
+
+- **Decision**: `member_profiling.relationship_tags text[]` (both branches) with CHECKs (values in
+  the 4-set, non-empty, `single` exclusive); `member_profiling_kids (member_id, position, age_range)`
+  one row per kid; `member_profiling_partner` one row per member holding the five partner answers
+  (same enums as the member's own).
+- **Rationale**: Kids are a variable-length list with a required value per entry, which an array column
+  cannot constrain per element as cleanly as a child table (`age_range` CHECK, `PRIMARY KEY (member_id,
+  position)`). The partner set is fixed-shape and 1:1, so a sidecar table mirrors the member's own
+  columns; a JSON blob would lose the CHECKs. Both child tables get the same completed-is-final rule
+  by trigger that checks the parent (Constitution IV).
+- **Alternatives considered**: Storing the partner in `members`/inviting them as a member (rejected:
+  the business description asks only for the answers; a partner is not a member, and no contact
+  details exist to invite); kids as `int[]`/`text[]` (rejected: no per-element constraint, and
+  position semantics live only in app code).
+
+## R13: Q7 model change (supersedes R8's four values)
+
+- **Decision**: `desired_work_type` gains `business_owner` (values: `employee`, `freelance`,
+  `business_owner`, `own_business`, `not_sure`; `freelance` = "Freelancer", `own_business` = "Build My
+  Own Business"). The industry is the existing `future_work_sector` column, now used on **every**
+  path; `future_work_idea` also holds the Business Owner's "product or service". The 033 `CHECK` is
+  dropped and replaced by one that allows: sector on any non-null type; ready only for employee;
+  offering only for freelance/own_business; idea for freelance/own_business/business_owner;
+  priorities only for not_sure.
+- **Rationale**: Reuses the columns instead of renaming/adding near-duplicates. The industry stays
+  free text because the business description gives no list (as R8/spec Assumptions); turning it into
+  a picker later is a contracts-only change.
+- **Alternatives considered**: New `future_work_industry` column (rejected: same meaning as
+  `future_work_sector`, a rename would touch every reader for no gain); inventing an industry list
+  (rejected: would be made-up business data).
+
+## R14: Cascade rules when an earlier answer changes (FR-033)
+
+- **Decision**: Application layer in `submit.ts`, inside the same transaction as the write:
+  removing the `kids` tag deletes all kid rows; changing the kid count truncates or requires new
+  ranges (kept ranges stay by position); removing both `partner` and `family` deletes the partner
+  row; a new `desired_work_type` clears follow-ups it does not use (existing FR-022 rule, extended
+  to the new mapping). `single` clears kids and partner.
+- **Rationale**: Extends the R8 discipline: the CHECKs/triggers are the backstop that makes skipping
+  the clear a write failure, not silent stale data. Deleting is allowed on child tables only while the
+  parent is incomplete (trigger).
+
+## R15: Existing data and rollout
+
+- **Decision**: Migration `034_profiling_relationship.sql` is additive. Rows already `completed_at IS
+  NOT NULL` are untouched (immutable; not re-gated). In-progress germany rows simply lack the new
+  answers and are asked them; every elsewhere row is already complete (its old flow finished
+  atomically), so none is mid-flow.
+- **Rationale**: Re-gating completed members would need an UPDATE the trigger forbids, and would lock
+  existing members out of the product. **Needs the user's confirmation** if the business wants
+  everyone re-profiled (that would be a separate, deliberate feature).
+- **Also**: `seed/tables.ts` must list the two new tables (`HISTORY`, never seeded) or the seed
+  manifest test fails; staff review (`onboarding/application/review.ts`) must show the new answers
+  (SC-006).

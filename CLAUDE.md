@@ -340,6 +340,26 @@ minute. Disabling `push.deliver` stops every send path. Five rules:
   production; FCM settings are all or none. A token is never logged, returned
   or copied into history: `tokenPreview` is all anyone sees.
 
+**Profiling is the second onboarding gate (feature 013, `specs/013-onboarding-profiling/`).**
+An approved applicant is refused on every route except those declaring
+`config.auth.profiling: true` until `member_profiling.completed_at` is set. Two
+rules that look optional and are not:
+
+- **Completion is `POST /profiling/submit`, never a `PATCH`.** `PATCH /profiling`
+  only saves, so a member can go back and change any answer until they confirm
+  on the review step. Which questions apply, their order and what is still
+  unanswered come from `profilingSteps` / `profilingMissing` in
+  `@gwc/contracts/profiling`, used by the server's submit check and both clients;
+  a second copy of that order is how a client and the server come to disagree
+  about "done". Changing an earlier answer deletes the answers that no longer
+  apply (kids, partner, the previous Q7 path's follow-ups) in the same
+  transaction.
+- **`member_profiling_kids` and `member_profiling_partner` are final with their
+  parent, by trigger.** Deletes are allowed only while the parent is
+  incomplete — that is how the cascade above works — and after completion even
+  an ad-hoc `DELETE` is refused. The elsewhere branch's GWC match and outcome
+  are computed at submit from the cities as saved, not when they are entered.
+
 **Server faults are recorded, not just logged (feature 012,
 `specs/012-error-persistence/`).** A request the error handler answers with the
 generic `INTERNAL` problem also leaves a row in `server_faults`, keyed on the

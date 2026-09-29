@@ -1,37 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
-import {
-  SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES, LANGUAGES,
-} from '@gwc/contracts/profiling'
-import type { ProfilingStatus, CitySlot } from '@gwc/contracts/profiling'
-import { COUNTRIES, PINNED } from '@gwc/contracts/countries'
+import { profilingSteps, profilingMissing } from '@gwc/contracts/profiling'
+import type { ProfilingStatus, ProfilingStepId } from '@gwc/contracts/profiling'
+import { PROBLEMS } from '@gwc/contracts/errors'
 
-import { get, patch, ApiError } from '../lib/api'
-import { collatorFor, fill } from '../lib/format'
+import { get, patch, post, ApiError } from '../lib/api'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import { useLocale, useTranslations } from '../i18n/index'
+import { StepView } from './profiling/steps'
+import { stepTitle, stepSummary } from './profiling/summary'
+
+type Answerable = Exclude<ProfilingStepId, 'review'>
 
 /**
  * Onboarding Phase 2 (feature 013): the questionnaire an approved member sees
  * before `Application.tsx` lets them into the console. Rendered instead of
  * `enter()` whenever `GET /profiling/status` reports `completed: false`.
  *
- * The branch and every answer already given come from the server on mount —
- * this component never guesses at progress, the same discipline `Application`
- * already applies to the Phase 1 steps.
+ * Which questions apply, in what order, and which are still unanswered all
+ * come from `profilingSteps` / `profilingMissing` in @gwc/contracts — the same
+ * functions the server's submit check uses, so this screen never decides them
+ * itself. Answers are saved as they are given and stay changeable (Back, or
+ * "Change" on the review) until the member submits.
  */
 export function Profiling({ onComplete }: { onComplete: () => void }) {
   const t = useTranslations()
   const copy = t.profiling
   const { locale } = useLocale()
   const [snapshot, setSnapshot] = useState<ProfilingStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [step, setStep] = useState<ProfilingStepId>('review')
+  // True while a "Change" from the review is in progress: saving returns to the review.
+  const [fromReview, setFromReview] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      setSnapshot(await get('/profiling/status') as ProfilingStatus)
+      const loaded = await get('/profiling/status') as ProfilingStatus
+      setSnapshot(loaded)
+      setStep(profilingMissing(loaded.branch, loaded.answers)[0] ?? 'review')
     } catch (err) {
       console.error('Profiling.load', err instanceof ApiError ? err.problem : err)
     }
@@ -39,17 +46,45 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
 
   useEffect(() => { void load() }, [load])
 
-  const submit = useCallback(async (body: object) => {
-    setError(null)
+  const save = useCallback(async (body: object) => {
+    if (!snapshot) return
+    setBusy(true)
     try {
       const next = await patch('/profiling', body) as ProfilingStatus
       setSnapshot(next)
-      if (next.completed && next.branch === 'germany') onComplete()
+      if (fromReview) {
+        // A change can make new questions apply (another Q7 path, say): answer those first.
+        const missing = profilingMissing(next.branch, next.answers)
+        setStep(missing[0] ?? 'review')
+        if (missing.length === 0) setFromReview(false)
+      } else {
+        const steps = profilingSteps(next.branch, next.answers)
+        setStep(steps[steps.indexOf(step) + 1] ?? 'review')
+      }
+    } catch (err) {
+      console.error('Profiling.save', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setBusy(false)
+    }
+  }, [snapshot, fromReview, step])
+
+  const submit = useCallback(async () => {
+    if (!snapshot) return
+    setBusy(true)
+    try {
+      const done = await post('/profiling/submit') as ProfilingStatus
+      setSnapshot(done)
+      if (done.branch === 'germany') onComplete()
     } catch (err) {
       console.error('Profiling.submit', err instanceof ApiError ? err.problem : err)
-      setError(copy.genericError)
+      if (err instanceof ApiError && err.problem?.type === PROBLEMS.PROFILING_ANSWERS_MISSING.type) {
+        // The server disagrees that everything is answered: take the member to what it is missing.
+        await load()
+      }
+    } finally {
+      setBusy(false)
     }
-  }, [onComplete, copy])
+  }, [snapshot, onComplete, load])
 
   if (!snapshot) {
     return (
@@ -68,292 +103,49 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
       <AuthCard title={outcome.title}>
         <p className="mt-2 text-[13px] text-text-muted">{outcome.body}</p>
         <div className="mt-6">
-          <Button onClick={onComplete}>{copy.submit}</Button>
+          <Button onClick={onComplete}>{copy.next}</Button>
         </div>
       </AuthCard>
     )
   }
 
-  return snapshot.branch === 'germany'
-    ? <GermanyQuestions copy={copy} snapshot={snapshot} error={error} onSubmit={submit} />
-    : <NearestCityForm copy={copy} locale={locale} error={error} onSubmit={submit} />
-}
+  const steps = profilingSteps(snapshot.branch, snapshot.answers)
+  const answerable = steps.filter((s): s is Answerable => s !== 'review')
 
-type Copy = ReturnType<typeof useTranslations>['profiling']
-
-/** One question at a time, in order — the first one `answers` does not already hold. */
-function GermanyQuestions({
-  copy, snapshot, error, onSubmit,
-}: { copy: Copy; snapshot: ProfilingStatus; error: string | null; onSubmit: (body: object) => Promise<void> }) {
-  const { answers } = snapshot
-  const [busy, setBusy] = useState(false)
-  const [languagePick, setLanguagePick] = useState('')
-  const [languages, setLanguages] = useState<string[]>(answers.languages ?? [])
-  const [sectorInput, setSectorInput] = useState('')
-  const [offeringInput, setOfferingInput] = useState('')
-  const [ideaInput, setIdeaInput] = useState('')
-  const [priorities, setPriorities] = useState<string[]>(answers.futureWorkPriorities ?? [])
-
-  const act = async (body: object) => {
-    setBusy(true)
-    await onSubmit(body)
-    setBusy(false)
-  }
-
-  const choice = (
-    title: string, options: readonly string[], optionLabels: Record<string, string>, field: string,
-  ) => (
-    <AuthCard title={title}>
-      <div className="mt-6 flex flex-col gap-2">
-        {options.map((value) => (
-          <Button key={value} variant="secondary" disabled={busy} onClick={() => act({ [field]: value })}>
-            {optionLabels[value]}
-          </Button>
-        ))}
-        {error && <p role="alert" className="mt-2 text-[12px] text-tint-danger-fg">{error}</p>}
-      </div>
-    </AuthCard>
-  )
-
-  if (answers.settlingStatus === null) {
-    return choice(copy.settlingTitle, SETTLING_STATUSES, copy.settlingOptions, 'settlingStatus')
-  }
-
-  if (answers.languages === null) {
-    const addLanguage = (event: ChangeEvent<HTMLSelectElement>) => {
-      const code = event.target.value
-      if (code && !languages.includes(code)) setLanguages((current) => [...current, code])
-      setLanguagePick('')
-    }
-    const remove = (code: string) => setLanguages((current) => current.filter((c) => c !== code))
+  if (step === 'review' || !steps.includes(step)) {
+    const missing = profilingMissing(snapshot.branch, snapshot.answers)
     return (
-      <AuthCard title={copy.languagesTitle}>
-        <p className="mt-2 text-[13px] text-text-muted">{copy.languagesSubtitle}</p>
-        <div className="mt-4 flex flex-col gap-3">
-          <select
-            value={languagePick}
-            onChange={addLanguage}
-            className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
-              focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
-          >
-            <option value="">{copy.languagesPlaceholder}</option>
-            {LANGUAGES.filter((l) => !languages.includes(l.code)).map((l) => (
-              <option key={l.code} value={l.code}>{l.en}</option>
-            ))}
-          </select>
-          <div className="flex flex-wrap gap-2">
-            {languages.map((code) => {
-              const language = LANGUAGES.find((l) => l.code === code)
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => remove(code)}
-                  aria-label={fill(copy.languagesRemove, { language: language?.en ?? code })}
-                  className="rounded-full border border-navy bg-navy px-3 py-1 text-[12px] text-text-on-dark"
-                >
-                  {language?.en ?? code} ×
-                </button>
-              )
-            })}
-          </div>
-          {error && <p role="alert" className="text-[12px] text-tint-danger-fg">{error}</p>}
-          <Button disabled={busy || languages.length === 0} onClick={() => act({ languages })}>
-            {copy.next}
-          </Button>
-        </div>
-      </AuthCard>
-    )
-  }
-
-  if (answers.qualificationLevel === null) {
-    return choice(copy.qualificationTitle, QUALIFICATION_LEVELS, copy.qualificationOptions, 'qualificationLevel')
-  }
-
-  if (answers.occupation === null) {
-    return choice(copy.occupationTitle, OCCUPATIONS, copy.occupationOptions, 'occupation')
-  }
-
-  if (answers.desiredWorkType === null) {
-    return choice(copy.desiredWorkTitle, DESIRED_WORK_TYPES, copy.desiredWorkOptions, 'desiredWorkType')
-  }
-
-  // Q5 follow-up (FR-009–FR-011): which question(s) come next depends on
-  // the Q5 answer itself, not on a fixed position in the sequence.
-  const textStep = (title: string, value: string, setValue: (v: string) => void, field: string) => (
-    <AuthCard title={title}>
-      <div className="mt-6 flex flex-col gap-3">
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
-            focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
-        />
-        {error && <p role="alert" className="text-[12px] text-tint-danger-fg">{error}</p>}
-        <Button disabled={busy || !value.trim()} onClick={() => act({ [field]: value.trim() })}>
-          {copy.next}
-        </Button>
-      </div>
-    </AuthCard>
-  )
-
-  if (answers.desiredWorkType === 'employee') {
-    if (answers.futureWorkSector === null) {
-      return textStep(copy.futureWorkSectorTitle, sectorInput, setSectorInput, 'futureWorkSector')
-    }
-    if (answers.futureWorkReady === null) {
-      return (
-        <AuthCard title={copy.futureWorkReadyTitle}>
-          <div className="mt-6 flex flex-col gap-2">
-            <Button variant="secondary" disabled={busy} onClick={() => act({ futureWorkReady: true })}>
-              {copy.futureWorkReadyOptions.yes}
-            </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => act({ futureWorkReady: false })}>
-              {copy.futureWorkReadyOptions.no}
-            </Button>
-            {error && <p role="alert" className="mt-2 text-[12px] text-tint-danger-fg">{error}</p>}
-          </div>
-        </AuthCard>
-      )
-    }
-    return null // complete — parent transitions away
-  }
-
-  if (answers.desiredWorkType === 'freelance' || answers.desiredWorkType === 'own_business') {
-    if (answers.futureWorkOffering === null) {
-      return textStep(copy.futureWorkOfferingTitle, offeringInput, setOfferingInput, 'futureWorkOffering')
-    }
-    if (answers.futureWorkIdea === null) {
-      return textStep(copy.futureWorkIdeaTitle, ideaInput, setIdeaInput, 'futureWorkIdea')
-    }
-    return null
-  }
-
-  // 'not_sure'
-  if (answers.futureWorkPriorities === null) {
-    const toggle = (value: string) => setPriorities((current) => (
-      current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
-    ))
-    return (
-      <AuthCard title={copy.futureWorkPrioritiesTitle}>
-        <div className="mt-6 flex flex-col gap-2">
-          {FUTURE_WORK_PRIORITIES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggle(value)}
-              className={`rounded-card border px-3 py-2 text-left text-[13px]
-                ${priorities.includes(value) ? 'border-navy bg-navy text-text-on-dark' : 'border-hairline bg-surface text-text'}`}
-            >
-              {copy.futureWorkPrioritiesOptions[value]}
-            </button>
+      <AuthCard title={copy.reviewTitle} subtitle={copy.reviewSubtitle}>
+        <dl className="mt-6 flex flex-col gap-3">
+          {answerable.map((s) => (
+            <div key={s} className="flex items-start justify-between gap-3 border-b border-hairline pb-2">
+              <div className="min-w-0">
+                <dt className="text-[11px] text-text-muted">{stepTitle(s, copy, snapshot.answers)}</dt>
+                <dd className="text-[13px] text-text">{stepSummary(s, copy, snapshot.answers)}</dd>
+              </div>
+              <Button variant="quiet" disabled={busy} onClick={() => { setFromReview(true); setStep(s) }}>{copy.change}</Button>
+            </div>
           ))}
-        </div>
-        {error && <p role="alert" className="mt-2 text-[12px] text-tint-danger-fg">{error}</p>}
-        <div className="mt-4">
-          <Button disabled={busy || priorities.length === 0} onClick={() => act({ futureWorkPriorities: priorities })}>
-            {copy.next}
-          </Button>
+        </dl>
+        <div className="mt-6 flex flex-col gap-2">
+          <Button disabled={busy || missing.length > 0} onClick={submit}>{busy ? copy.submitting : copy.submit}</Button>
+          <Button variant="quiet" disabled={busy || answerable.length === 0} onClick={() => setStep(answerable[answerable.length - 1] ?? 'review')}>{copy.back}</Button>
         </div>
       </AuthCard>
     )
   }
-  return null
-}
 
-/** The whole elsewhere-branch submission is one form, per contracts/profiling-api.md. */
-function NearestCityForm({
-  copy, locale, error, onSubmit,
-}: { copy: Copy; locale: 'en' | 'de'; error: string | null; onSubmit: (body: object) => Promise<void> }) {
-  const [primary, setPrimary] = useState<CitySlot>({ country: '', city: '' })
-  const [secondary, setSecondary] = useState<CitySlot[]>([])
-  const [busy, setBusy] = useState(false)
-
-  const countries = useMemo(() => {
-    const collator = collatorFor(locale)
-    const pinned = PINNED.map((code) => COUNTRIES.find((c) => c.code === code)).filter((c) => c !== undefined)
-    const rest = COUNTRIES
-      .filter((c) => !(PINNED as readonly string[]).includes(c.code))
-      .sort((a, b) => collator.compare(a[locale], b[locale]))
-    return [...pinned, ...rest]
-  }, [locale])
-
-  const countrySelect = (value: string, onChange: (v: string) => void) => (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
-        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
-    >
-      <option value="">{copy.country}</option>
-      {countries.map((c) => <option key={c.code} value={c.code}>{c[locale]}</option>)}
-    </select>
-  )
-
-  const addSecondary = () => {
-    if (secondary.length < 2) setSecondary((current) => [...current, { country: '', city: '' }])
-  }
-  const removeSecondary = (index: number) => setSecondary((current) => current.filter((_, i) => i !== index))
-  const setSecondaryField = (index: number, field: keyof CitySlot, value: string) =>
-    setSecondary((current) => current.map((slot, i) => (i === index ? { ...slot, [field]: value } : slot)))
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setBusy(true)
-    await onSubmit({ primaryCity: primary, secondaryCities: secondary.filter((s) => s.country && s.city) })
-    setBusy(false)
-  }
+  const index = steps.indexOf(step)
+  const back = fromReview
+    ? () => { setFromReview(false); setStep('review') }
+    : index > 0 ? () => setStep(steps[index - 1] ?? 'review') : null
 
   return (
-    <AuthCard title={copy.cityTitle}>
-      <p className="mt-2 text-[13px] text-text-muted">{copy.citySubtitle}</p>
-      <form onSubmit={submit} className="mt-6 flex flex-col gap-4" noValidate>
-        <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            {copy.primaryCity}
-          </legend>
-          <div className="flex gap-2">
-            {countrySelect(primary.country, (country) => setPrimary((c) => ({ ...c, country })))}
-            <input
-              value={primary.city}
-              onChange={(event) => setPrimary((c) => ({ ...c, city: event.target.value }))}
-              placeholder={copy.city}
-              className="flex-1 rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
-                focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
-            />
-          </div>
-        </fieldset>
-
-        {secondary.map((slot, index) => (
-          <fieldset key={index} className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-              {fill(copy.secondaryCity, { n: index + 2 })}
-            </legend>
-            <div className="flex gap-2">
-              {countrySelect(slot.country, (country) => setSecondaryField(index, 'country', country))}
-              <input
-                value={slot.city}
-                onChange={(event) => setSecondaryField(index, 'city', event.target.value)}
-                placeholder={copy.city}
-                className="flex-1 rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] text-text
-                  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
-              />
-              <Button type="button" variant="quiet" onClick={() => removeSecondary(index)}>{copy.removeSecondary}</Button>
-            </div>
-          </fieldset>
-        ))}
-
-        {secondary.length < 2 && (
-          <Button type="button" variant="secondary" onClick={addSecondary}>{copy.addSecondary}</Button>
-        )}
-
-        {error && <p role="alert" className="text-[12px] text-tint-danger-fg">{error}</p>}
-
-        <Button type="submit" disabled={busy || !primary.country || !primary.city}>
-          {busy ? copy.submitting : copy.submit}
-        </Button>
-      </form>
-    </AuthCard>
+    <StepView
+      key={step}
+      step={step as Answerable}
+      ctx={{ copy, locale, answers: snapshot.answers, busy, save: (body) => { void save(body) }, back }}
+    />
   )
 }
 

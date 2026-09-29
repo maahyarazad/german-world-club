@@ -161,6 +161,7 @@ const ROUTE_CLASSES = [
   { name: 'profiling status', url: '/profiling/status', method: 'GET', audience: 'member' },
   { name: 'profiling gwc cities', url: '/profiling/gwc-cities', method: 'GET', audience: 'member' },
   { name: 'profiling submit', url: '/profiling', method: 'PATCH', audience: 'member' },
+  { name: 'profiling complete', url: '/profiling/submit', method: 'POST', audience: 'member' },
 
   // --- Profile (009) ---------------------------------------------------------
   { name: 'own profile', url: '/profile/me', method: 'GET', audience: 'member' },

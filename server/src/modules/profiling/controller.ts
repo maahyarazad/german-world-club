@@ -1,5 +1,6 @@
 import { loadProfilingStatus } from './application/status.ts'
 import { submitProfiling } from './application/submit.ts'
+import { completeProfiling } from './application/complete.ts'
 import { listGwcCities } from './application/gwc-cities.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
@@ -29,5 +30,11 @@ export function createProfilingController(app: GwcApp) {
       })
       return reply.send(result)
     },
+
+    complete: async (request: GwcRequest, reply: GwcReply) =>
+      reply.send(await completeProfiling(app, {
+        memberId: String(request.principal!.id),
+        signal: request.deadlineSignal,
+      })),
   }
 }

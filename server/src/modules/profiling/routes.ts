@@ -50,6 +50,18 @@ export default fp(
       },
       controller.submit,
     )
+
+    // The only route that completes profiling (research R10): PATCH saves, so a
+    // member can go back and change an answer until they confirm on the review.
+    app.post(
+      '/profiling/submit',
+      {
+        config: { auth: profiling, budget: 'member-write' },
+        onRequest: app.guard,
+        schema: { response: { 200: profilingStatusSchema } },
+      },
+      controller.complete,
+    )
   },
   { name: 'profiling-routes', dependencies: ['auth', 'rate-limit'] },
 )
