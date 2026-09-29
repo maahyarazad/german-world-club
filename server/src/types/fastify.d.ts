@@ -159,6 +159,8 @@ declare module 'fastify' {
      * client when the mail must exist only if the work it describes commits.
      */
     enqueueMail(message: MailMessage, opts?: { client?: PoolClient; signal?: AbortSignal }): Promise<void>
+    /** Send in the request, falling back to the outbox (decorators/mail.ts). */
+    sendMailNow(message: MailMessage, opts?: { signal?: AbortSignal }): Promise<{ sent: boolean }>
     /** The password-reset notification; queued like every other mail. */
     sendResetMail(input: { email: string; token: string }): Promise<void>
 
