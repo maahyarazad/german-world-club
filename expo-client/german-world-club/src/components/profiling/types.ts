@@ -11,6 +11,8 @@ export type StepCtx = {
   busy: boolean;
   /** Saves and lets the wizard decide where to go next. */
   save: (body: object) => void;
+  /** Moves on without saving anything (an information screen). */
+  next: () => void;
   /** null on the first step. */
   back: (() => void) | null;
 };

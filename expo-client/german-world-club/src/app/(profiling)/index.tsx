@@ -15,6 +15,10 @@ import { profilingApi } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 
 type Answerable = Exclude<ProfilingStepId, 'review'>;
+/** Steps that hold an answer; the information screens do not appear on the review. */
+type Reviewable = Exclude<Answerable, 'settling-info' | 'partner-settling-info'>;
+const isReviewable = (step: ProfilingStepId): step is Reviewable =>
+  step !== 'review' && step !== 'settling-info' && step !== 'partner-settling-info';
 
 /**
  * Onboarding Phase 2 (feature 013), on the app. Mirrors the web console's
@@ -98,7 +102,7 @@ export default function ProfilingScreen() {
     : fromReview
       ? () => { setFromReview(false); setStep('review'); }
       : index > 0 ? () => setStep(steps[index - 1] ?? 'review') : null;
-  const answerable = steps.filter((s): s is Answerable => s !== 'review');
+  const answerable = steps.filter(isReviewable);
   const reviewBack = onReview && answerable.length > 0
     ? () => setStep(answerable[answerable.length - 1] ?? 'review')
     : null;
@@ -141,7 +145,7 @@ export default function ProfilingScreen() {
       <FormScreen title={copy.reviewTitle} subtitle={copy.reviewSubtitle}>
         {answerable.map((s) => (
           <View key={s} style={{ gap: 4 }}>
-            <ThemedText themeColor="textSecondary">{stepTitle(s, copy, snapshot.answers)}</ThemedText>
+            <ThemedText themeColor="textSecondary">{stepTitle(s, copy)}</ThemedText>
             <ThemedText>{stepSummary(s, copy, snapshot.answers)}</ThemedText>
             <Button
               label={copy.change}
@@ -166,7 +170,12 @@ export default function ProfilingScreen() {
     <StepView
       key={step}
       step={step as Answerable}
-      ctx={{ copy, locale, answers: snapshot.answers, busy, save: (body) => { void save(body); }, back }}
+      ctx={{
+        copy, locale, answers: snapshot.answers, busy, back,
+        save: (body) => { void save(body); },
+        // An information screen saves nothing; it just moves on (or back to the review).
+        next: () => setStep(fromReview ? 'review' : steps[index + 1] ?? 'review'),
+      }}
     />
   );
 }

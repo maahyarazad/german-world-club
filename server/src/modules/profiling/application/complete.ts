@@ -12,8 +12,8 @@ import type { ProfilingStatus } from '@gwc/contracts/profiling'
  *
  * Completeness is decided by the same `profilingMissing` the clients use to
  * decide what to show, against the row as stored — never against anything the
- * request says. For the elsewhere branch the GWC match is resolved here, from
- * the cities as saved, so the outcome always describes what was submitted.
+ * request says. For the elsewhere branch the outcome follows the GWC match
+ * stored when the cities were saved.
  */
 export async function completeProfiling(
   app: GwcApp,
@@ -41,22 +41,14 @@ export async function completeProfiling(
     }
 
     if (row.branch === 'elsewhere') {
-      const slots = [status.answers.primaryCity!, ...status.answers.secondaryCities]
-      // Earliest slot first (primary, then secondaries in the order given).
-      const { rows: matches } = await client.query(
-        `SELECT g.id, s.ord
-           FROM unnest($1::char(2)[], $2::text[]) WITH ORDINALITY AS s(country, city, ord)
-           JOIN gwc_cities g ON g.country = s.country AND lower(g.city) = lower(s.city)
-          ORDER BY s.ord
-          LIMIT 1`,
-        [slots.map((s) => s.country), slots.map((s) => s.city)],
-      )
-      const match = matches[0] as { id: string } | undefined
+      // The match was stored when the cities were saved (it decides whether Q6
+      // is asked), so the outcome only reads it — nothing is looked up here.
       await client.query(
         `UPDATE member_profiling
-            SET matched_gwc_city_id = $2, outcome = $3, completed_at = now()
+            SET outcome = CASE WHEN matched_gwc_city_id IS NULL THEN 'in_person_meeting' ELSE 'gwc_city_match' END,
+                completed_at = now()
           WHERE member_id = $1`,
-        [memberId, match?.id ?? null, match ? 'gwc_city_match' : 'in_person_meeting'],
+        [memberId],
       )
     } else {
       await client.query('UPDATE member_profiling SET completed_at = now() WHERE member_id = $1', [memberId])

@@ -1,7 +1,7 @@
 import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
   EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
-import type { ProfilingStatus, ProfilingPatchRequest, CitySlot } from '@gwc/contracts/profiling';
+import type { ProfilingStatus, ProfilingPatchRequest, CitySlot, CitiesResponse } from '@gwc/contracts/profiling';
 import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
@@ -63,6 +63,8 @@ export const onboardingApi = {
 export const profilingApi = {
   status: () => api<ProfilingStatus>('/profiling/status'),
   gwcCities: () => api<CitySlot[]>('/profiling/gwc-cities'),
+  /** The InterNations list plus the club's designated cities; `listed: false` means type the city. */
+  cities: (country: string) => api<CitiesResponse>(`/profiling/cities?country=${country}`),
   /** Saves answers; never completes profiling (research R10). */
   save: (body: ProfilingPatchRequest) => api<ProfilingStatus>('/profiling', { method: 'PATCH', body }),
   /** The only call that completes profiling. */

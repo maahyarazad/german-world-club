@@ -301,3 +301,15 @@ R1–R9 stand except where noted.
 - **Also**: `seed/tables.ts` must list the two new tables (`HISTORY`, never seeded) or the seed
   manifest test fails; staff review (`onboarding/application/review.ts`) must show the new answers
   (SC-006).
+
+
+---
+
+# Revision 4 (2026-09-30)
+
+## R16: Automatic decisions go through the staff decision path
+`applyDecision(client, …)` in `onboarding/application/review.ts` is the single place a decision is written. Staff pass an admin id; the system passes `null`, which sets `decided_automatically`. The `state = 'pending'` guard makes the 24-hour job and a staff member racing it decide exactly once. The non-German denial runs inside the same transaction as `submitted_at`, so an applicant is never "submitted" and undecided. Audit rows for these carry no actor.
+## R17: The GWC match is stored at save time
+It decides which questions are asked, so computing it at submit (Revision 2) is too late. The outcome stays a submit-time fact. Changing the cities to a non-match deletes the answers only a matching member gives, by the same cascade rule as R14.
+## R18: City data
+The workbook names countries in English; `convert-cities.py` maps them through `countries.ts` plus eight aliases and fails on any unmapped name. Only 160 countries are covered, so free text remains for the rest, and the workbook lacks three designated emirates, so the API merges both tables.

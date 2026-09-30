@@ -27,7 +27,7 @@ async function approvedGermanMember() {
 
 // Q1-Q6 answered ("single" asks nothing further); these tests are about Q7.
 const baseFive = {
-  settlingStatus: 'know_where', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
+  settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
   qualificationLevel: 'bachelors_degree', occupation: 'engineer', relationshipStatus: ['single'],
 }
 const submit = (headers: Record<string, string>) =>
@@ -58,21 +58,24 @@ describe.skipIf(!hasDatabase)('Q7 conditional follow-ups', () => {
   it('Freelancer: asks offering, industry and idea', async () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, { ...baseFive, desiredWorkType: 'freelance', futureWorkOffering: 'Graphic design' })
-    await patch({ authorization }, { futureWorkSector: 'technology_it' })
+    await patch({ authorization }, { futureWorkSector: 'marketing_advertising' })
     expect(await missingFor({ authorization })).toBe(409)
     await patch({ authorization }, { futureWorkIdea: 'Branding for small businesses' })
     expect((await submit({ authorization })).json().completed).toBe(true)
   })
 
-  it('Business Owner: asks industry and product or service, and refuses an offering', async () => {
+  it('Business Owner: asks the industry and at least one activity, and refuses an offering or idea', async () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, { ...baseFive, desiredWorkType: 'business_owner' })
-    const offering = await patch({ authorization }, { futureWorkOffering: 'x' })
-    expect(offering.statusCode).toBe(400)
+    expect((await patch({ authorization }, { futureWorkOffering: 'x' })).statusCode).toBe(400)
+    expect((await patch({ authorization }, { futureWorkIdea: 'x' })).statusCode).toBe(400)
+    expect((await patch({ authorization }, { futureWorkBusinessActivities: [] })).statusCode).toBe(400)
+    expect((await patch({ authorization }, { futureWorkBusinessActivities: ['bake'] })).statusCode).toBe(400)
 
-    await patch({ authorization }, { futureWorkSector: 'technology_it' })
+    await patch({ authorization }, { futureWorkSector: 'hospitality_tourism' })
     expect(await missingFor({ authorization })).toBe(409)
-    await patch({ authorization }, { futureWorkIdea: 'A boutique hotel' })
+    const res = await patch({ authorization }, { futureWorkBusinessActivities: ['produce', 'sales'] })
+    expect(res.json().answers.futureWorkBusinessActivities).toEqual(['produce', 'sales'])
     expect((await submit({ authorization })).json().completed).toBe(true)
   })
 
@@ -80,49 +83,53 @@ describe.skipIf(!hasDatabase)('Q7 conditional follow-ups', () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, {
       ...baseFive, desiredWorkType: 'own_business',
-      futureWorkOffering: 'A coffee shop', futureWorkSector: 'technology_it', futureWorkIdea: 'Specialty Arabic coffee',
+      futureWorkOffering: 'A coffee shop', futureWorkSector: 'food_beverage', futureWorkIdea: 'Specialty Arabic coffee',
     })
     expect((await submit({ authorization })).json().completed).toBe(true)
   })
 
-  it('Not sure yet: needs one statement and the industry', async () => {
+  it('Not sure yet: one or more statements and NO industry', async () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, { ...baseFive, desiredWorkType: 'not_sure' })
 
-    // A single statement, not a list.
-    expect((await patch({ authorization }, { futureWorkPriority: ['family_time'] })).statusCode).toBe(400)
-    expect((await patch({ authorization }, { futureWorkPriority: 'nonsense' })).statusCode).toBe(400)
-    expect((await patch({ authorization }, { futureWorkSector: 'Retail shop' })).statusCode).toBe(400) // not in the list
+    expect((await patch({ authorization }, { futureWorkPriorities: [] })).statusCode).toBe(400)
+    expect((await patch({ authorization }, { futureWorkPriorities: ['nonsense'] })).statusCode).toBe(400)
+    // This path asks no industry, so one is refused rather than stored.
+    expect((await patch({ authorization }, { futureWorkSector: 'technology_it' })).statusCode).toBe(400)
+    expect(await missingFor({ authorization })).toBe(409)
 
-    await patch({ authorization }, { futureWorkPriority: 'balance_lifestyle' })
-    expect(await missingFor({ authorization })).toBe(409) // the industry is still missing
-
-    const res = await patch({ authorization }, { futureWorkSector: 'technology_it' })
-    expect(res.json().answers.futureWorkPriority).toBe('balance_lifestyle')
+    const res = await patch({ authorization }, { futureWorkPriorities: ['family_time', 'balance_lifestyle'] })
+    expect(res.json().answers.futureWorkPriorities).toEqual(['family_time', 'balance_lifestyle'])
     expect((await submit({ authorization })).json().completed).toBe(true)
+  })
+
+  it('refuses an industry outside the list on every path that asks one', async () => {
+    const { authorization } = await approvedGermanMember()
+    await patch({ authorization }, { ...baseFive, desiredWorkType: 'employee' })
+    expect((await patch({ authorization }, { futureWorkSector: 'Retail shop' })).statusCode).toBe(400)
   })
 
   it('discards the previous path\'s follow-ups when the Q7 answer changes, whatever the pair', async () => {
     const types = ['employee', 'freelance', 'business_owner', 'own_business', 'not_sure'] as const
+    const seed: Record<string, object> = {
+      employee: { futureWorkSector: 'technology_it', futureWorkReady: true },
+      freelance: { futureWorkOffering: 'B', futureWorkSector: 'technology_it', futureWorkIdea: 'C' },
+      business_owner: { futureWorkSector: 'technology_it', futureWorkBusinessActivities: ['sales'] },
+      own_business: { futureWorkOffering: 'B', futureWorkSector: 'technology_it', futureWorkIdea: 'C' },
+      not_sure: { futureWorkPriorities: ['family_time'] },
+    }
     for (const from of types) {
       for (const to of types) {
         if (from === to) continue
         const { memberId, authorization } = await approvedGermanMember()
-        const seed: Record<string, unknown> = {
-          employee: { futureWorkSector: 'technology_it', futureWorkReady: true },
-          freelance: { futureWorkOffering: 'B', futureWorkSector: 'technology_it', futureWorkIdea: 'C' },
-          business_owner: { futureWorkSector: 'technology_it', futureWorkIdea: 'C' },
-          own_business: { futureWorkOffering: 'B', futureWorkSector: 'technology_it', futureWorkIdea: 'C' },
-          not_sure: { futureWorkPriority: 'family_time', futureWorkSector: 'technology_it' },
-        }
-        await patch({ authorization }, { ...baseFive, desiredWorkType: from, ...(seed[from] as object) })
+        await patch({ authorization }, { ...baseFive, desiredWorkType: from, ...seed[from] })
         const switched = await patch({ authorization }, { desiredWorkType: to })
         expect(switched.statusCode, `${from} -> ${to}`).toBe(200)
         expect(switched.json().completed).toBe(false)
 
         const { rows } = await app.pg.query(
           `SELECT future_work_sector, future_work_ready, future_work_offering, future_work_idea,
-                  future_work_priorities FROM member_profiling WHERE member_id = $1`,
+                  future_work_business_activities, future_work_priorities FROM member_profiling WHERE member_id = $1`,
           [memberId],
         )
         expect(Object.values(rows[0]).every((v) => v === null), `${from} -> ${to}`).toBe(true)
@@ -150,7 +157,7 @@ describe.skipIf(!hasDatabase)('Q7 conditional follow-ups', () => {
     const body = (await status({ authorization })).json()
     expect(body.answers).toMatchObject({
       futureWorkSector: null, futureWorkReady: null, futureWorkOffering: null,
-      futureWorkIdea: null, futureWorkPriority: null,
+      futureWorkIdea: null, futureWorkBusinessActivities: null, futureWorkPriorities: null,
     })
   })
 })

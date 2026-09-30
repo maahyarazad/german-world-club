@@ -61,17 +61,18 @@ describe.skipIf(!hasDatabase)('POST /profiling/submit', () => {
     expect((await ordinary(authorization)).statusCode).toBe(200)
   })
 
-  it('resolves the elsewhere outcome at submit, from the cities as saved', async () => {
+  it('the outcome is set at submit; the match it follows was stored when the cities were saved', async () => {
     const { rows } = await app.pg.query('SELECT country, city FROM gwc_cities ORDER BY city LIMIT 1')
     const gwc = rows[0] as { country: string; city: string }
 
     const a = await approvedMember(app, 'FR')
     await call.patch(a.authorization, { primaryCity: gwc, relationshipStatus: ['single'] })
-    expect((await call.status(a.authorization)).json()).toMatchObject({ outcome: null, matchedCity: null })
+    // The match is known (it decided that Q6 is asked); the outcome is not set yet.
+    expect((await call.status(a.authorization)).json()).toMatchObject({ outcome: null, matchedCity: gwc })
     expect((await call.submit(a.authorization)).json()).toMatchObject({ outcome: 'gwc_city_match', matchedCity: gwc })
 
     const b = await approvedMember(app, 'FR')
-    await call.patch(b.authorization, { primaryCity: { country: 'ZZ', city: 'Nowhere' }, relationshipStatus: ['single'] })
+    await call.patch(b.authorization, { primaryCity: { country: 'ZZ', city: 'Nowhere' } })
     expect((await call.submit(b.authorization)).json()).toMatchObject({ outcome: 'in_person_meeting', matchedCity: null })
   })
 

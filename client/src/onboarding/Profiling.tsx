@@ -12,6 +12,10 @@ import { StepView } from './profiling/steps'
 import { stepTitle, stepSummary } from './profiling/summary'
 
 type Answerable = Exclude<ProfilingStepId, 'review'>
+/** Steps that hold an answer; the information screens do not appear on the review. */
+type Reviewable = Exclude<Answerable, 'settling-info' | 'partner-settling-info'>
+const isReviewable = (step: ProfilingStepId): step is Reviewable =>
+  step !== 'review' && step !== 'settling-info' && step !== 'partner-settling-info'
 
 /**
  * Onboarding Phase 2 (feature 013): the questionnaire an approved member sees
@@ -110,7 +114,7 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
   }
 
   const steps = profilingSteps(snapshot.branch, snapshot.answers)
-  const answerable = steps.filter((s): s is Answerable => s !== 'review')
+  const answerable = steps.filter(isReviewable)
 
   if (step === 'review' || !steps.includes(step)) {
     const missing = profilingMissing(snapshot.branch, snapshot.answers)
@@ -120,7 +124,7 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
           {answerable.map((s) => (
             <div key={s} className="flex items-start justify-between gap-3 border-b border-hairline pb-2">
               <div className="min-w-0">
-                <dt className="text-[11px] text-text-muted">{stepTitle(s, copy, snapshot.answers)}</dt>
+                <dt className="text-[11px] text-text-muted">{stepTitle(s, copy)}</dt>
                 <dd className="text-[13px] text-text">{stepSummary(s, copy, snapshot.answers)}</dd>
               </div>
               <Button variant="quiet" disabled={busy} onClick={() => { setFromReview(true); setStep(s) }}>{copy.change}</Button>
@@ -144,7 +148,12 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
     <StepView
       key={step}
       step={step as Answerable}
-      ctx={{ copy, locale, answers: snapshot.answers, busy, save: (body) => { void save(body) }, back }}
+      ctx={{
+        copy, locale, answers: snapshot.answers, busy, back,
+        save: (body) => { void save(body) },
+        // An information screen saves nothing; it just moves on (or back to the review).
+        next: () => setStep(fromReview ? 'review' : steps[index + 1] ?? 'review'),
+      }}
     />
   )
 }

@@ -206,3 +206,14 @@ members (1) ──< member_profiling (0..1) ──< member_profiling_kids (0..20
 - `member_profiling_partner.settling_status` is dropped (the partner is not asked where they will settle). Data in it is discarded; it was never shown to staff.
 - `future_work_sector` holds one of 21 industry codes (`INDUSTRIES` in contracts) — `member_profiling_future_work_sector_is_listed`, **`NOT VALID`** so already-complete rows (immutable by trigger) with earlier free text are never re-checked. Unfinished profiles have their sector cleared so the question is asked again.
 - The "not sure" statement is a single choice: the column stays `future_work_priorities text[]` (older complete rows may hold several) and `member_profiling_future_work_priority_single` (`cardinality = 1`, also `NOT VALID`) binds every new write. The API exposes it as `futureWorkPriority` (the first element). Unfinished multi-selections keep their first element.
+
+
+---
+
+# Revision 4 (2026-09-30): `036_onboarding_rules.sql`, `037_world_cities.sql`
+
+**members**: `primary_language text` (`german` | `non_german`, nullable — members who never apply have none), `age_confirmed_at timestamptz`.
+**membership_applications**: `decided_automatically boolean NOT NULL DEFAULT false` (`reviewed_by` stays NULL for both automatic decisions).
+**member_profiling**: `settling_country`, `settling_city`, `settling_work_duration` (`under_1|1_3|3_5|5_10|over_10`), `future_work_business_activities text[]`; income CHECK gains `over_500k`, `over_1m`; the future-work CHECK is replaced (industry for employee/freelance/own_business/business_owner and never for `not_sure`; ready employee-only; offering and idea freelance/own_business; activities business_owner-only; priorities not_sure-only; `NOT VALID`); the single-priority CHECK from `035` is dropped and replaced by a multi-value one; `member_profiling_match_implies_gwc_outcome` is replaced by `member_profiling_outcome_agrees_with_match` (a match may exist before an outcome; an outcome must agree with it).
+**member_profiling_partner**: `settling_status`, `settling_country`, `settling_city`, `settling_work_duration` restored; income CHECK widened.
+**world_cities** (`037`): `country char(2)`, `city`, `region`, `is_capital`; unique on `(country, lower(city))` because Tripoli exists in two countries. Loaded idempotently from `server/data/internations-cities.json` (converted from the workbook by `server/src/scripts/convert-cities.py`) by `npm run -w server load:cities`, which `seed:dev` and `seed:demo` also run. It holds 400 cities in 160 countries and omits three of the seven emirates the club designates as GWC cities, so every read merges it with `gwc_cities`.

@@ -30,7 +30,7 @@ const submit = (headers: Record<string, string>) =>
 
 // Q1-Q5 and Q6 ("single" asks nothing further), so a test can focus on Q7.
 const upToQ6 = {
-  settlingStatus: 'know_where', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
+  settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
   qualificationLevel: 'masters_degree', occupation: 'engineer', relationshipStatus: ['single'],
 }
 
@@ -41,7 +41,8 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
     expect(body.branch).toBe('germany')
     expect(body.completed).toBe(false)
     expect(body.answers).toMatchObject({
-      settlingStatus: null, languages: null, yearlyIncomeRange: null, qualificationLevel: null, occupation: null,
+      settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
+      languages: null, yearlyIncomeRange: null, qualificationLevel: null, occupation: null,
       relationshipStatus: null, kids: [], partner: null, desiredWorkType: null,
     })
   })
@@ -55,6 +56,10 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
 
     // A fresh status read — simulating a new session — still shows Q1 answered.
     expect((await status({ authorization })).json().answers.settlingStatus).toBe('know_where')
+
+    // "Yes" is not enough on its own: the place is asked too.
+    res = await patch({ authorization }, { settlingCountry: 'DE', settlingCity: 'Berlin' })
+    expect(res.json().answers).toMatchObject({ settlingCountry: 'DE', settlingCity: 'Berlin' })
 
     res = await patch({ authorization }, { languages: ['en', 'de'] })
     expect(res.json().answers.languages).toEqual(['en', 'de'])
@@ -81,6 +86,8 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
       completed: true,
       answers: {
         settlingStatus: 'know_where',
+        settlingCountry: 'DE',
+        settlingCity: 'Berlin',
         languages: ['en', 'de'],
         yearlyIncomeRange: 'over_100k',
         qualificationLevel: 'bachelors_degree',
@@ -94,7 +101,7 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
   it('accepts more than one answer per call', async () => {
     const { authorization } = await approvedGermanMember()
     const res = await patch({ authorization }, {
-      ...upToQ6, desiredWorkType: 'not_sure', futureWorkPriority: 'wealth_reputation', futureWorkSector: 'technology_it',
+      ...upToQ6, desiredWorkType: 'not_sure', futureWorkPriorities: ['wealth_reputation'],
     })
     expect(res.statusCode).toBe(200)
     expect((await submit({ authorization })).json().completed).toBe(true)

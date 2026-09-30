@@ -290,3 +290,14 @@ Unchanged. `POST /profiling/submit` carries `profiling: true` like the other two
 - `partner` (status and PATCH) has no `settlingStatus`; the step `partner-settling` no longer exists in `ProfilingStepId`.
 - `futureWorkSector` is one of `INDUSTRIES` (21 codes) — a free-text value is `400 VALIDATION_FAILED`.
 - `futureWorkPriorities: string[]` is replaced by `futureWorkPriority: 'family_time' | 'balance_lifestyle' | 'wealth_reputation'` (status and PATCH). The `not_sure` path still asks priority, then industry.
+
+
+---
+
+# Revision 4 (2026-09-30): what changes
+
+- **Answers** gain `settlingCountry`, `settlingCity`, `settlingWorkDuration`, `futureWorkBusinessActivities`, `futureWorkPriorities` (array again; `futureWorkPriority` is gone) and the derived `gwcMatch`. `partner` regains `settlingStatus` and the three settling fields. `yearlyIncomeRange` accepts `over_500k` and `over_1m`. `futureWorkSector` is not accepted for `not_sure`; `futureWorkIdea` is not accepted for `business_owner`.
+- **Step engine** (`profilingSteps`): German `settling` (+ `settling-info` | `settling-place` [+ `settling-work` for Dubai]), `languages`, `qualification`, `occupation`, `income`, `relationship`, `kids`?, partner block (its own settling steps, then `partner-languages`, `-qualification`, `-occupation`, `-income`), `work-type`, then the path (`business_owner` → `work-industry`, `work-activities`; `not_sure` → `work-priorities`). Elsewhere: `cities`, and only when `gwcMatch`, Q6 and its sub-flows; then `review`.
+- **`PATCH /profiling`** refuses place fields unless the settling answer is "yes" (member and partner), the duration unless the place is Dubai, and any Q6 field for a non-German member without a GWC match.
+- **`GET /profiling/cities?country=XX&q=`** (`profiling: true`, `member-read`) returns `{ listed, cities }`: the InterNations list merged with the club's designated cities, capitals first, prefix-filtered, at most 50. `listed: false` means "type the city".
+- **Auth/onboarding**: `POST /onboarding/register` requires `ageConfirmed: true` and `primaryLanguage`; the staff application carries `primaryLanguage` and `decidedBy: 'staff' | 'automatic' | null`.

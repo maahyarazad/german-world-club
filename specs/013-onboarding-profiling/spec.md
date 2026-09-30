@@ -192,3 +192,42 @@ At any point before the final submit, the member can go back to any earlier ques
 - The partner questionnaire is Q2–Q5 (languages, income, qualification, occupation): the settling question was removed for the partner in revision 3; the partner is not asked Q7, and no partner name or contact detail is collected — the business description asks only for the questionnaire answers.
 - Members who **completed** profiling before this revision are not re-gated: completed profiling is final (FR-020) and the trigger enforces it. Only members mid-flow, and members approved from now on, see the new questions.
 - Back navigation covers the whole flow up to submit; the server keeps every answer as it is saved, so leaving and returning loses nothing (FR-018).
+
+
+---
+
+# Revision 4 (2026-09-30): Phase 1 rules and the rewritten Phase 2
+
+Source: the updated `german-world-club-business-description.md`. Where this section conflicts with Revisions 1–3 it wins; the conflicts are the two the user decided explicitly (below).
+
+## User Stories
+
+### User Story 6 - Register captures age confirmation, primary language and residence (P1)
+The applicant confirms their age, chooses **German** or **Non-German** as their primary language, and picks their country of residence from **Germany / Austria / Switzerland / Others**; *Others* opens the full country list and the ISO code is stored as before. **Independent test**: register with `ageConfirmed: true` and `primaryLanguage`; either missing or `ageConfirmed: false` is refused.
+
+### User Story 7 - Phase 1 decisions (P1)
+When the email is confirmed: a **Non-German** applicant is **denied automatically** (never in the staff queue; the denial email carries a reason); a **German** applicant receives the **thank-you email** ("approval may take up to 48 hours") and waits. A scheduled job **approves** any German application still pending **24 hours** after submission, with the same approval email as a manual approval. **Independent test**: quickstart Scenario 10.
+
+### User Story 8 - Settling question (P2)
+Q1 "Do you know where you'll settle?": *Please help* shows an information screen and asks nothing; *Yes* asks country then city; if the place is **Dubai**, "How long are you already working?" (less than 1 year / 1–3 / 3–5 / 5–10 / more than 10 years). The **partner** is asked the same (this reverses Revision 3, which had removed it for the partner).
+
+### User Story 9 - Question order, income, Q7 (P1)
+German order: Q1 settling, Q2 languages, Q3 qualification, Q4 occupation, **Q5 yearly income** (0–50K / 50–100K / 100K+ / 500K+ / 1M+ Euro), Q6 relationship, Q7 work. Q7: Employee (industry, ready); Freelancer and Build My Own Business (offering, industry, idea); **Business Owner (industry, then multi-select Produce / Distribute / Sales / Other)**; **"I am not sure yet" (multi-select statements, no industry)** — this reverses Revision 3's single-select and industry-on-every-path for this option only.
+
+### User Story 10 - Non-German path (P2)
+Nearest city (one primary, two secondary) from country/city dropdowns fed by the InterNations list; a designated GWC city is always selectable. **No GWC city** → straight to the review (Q6 is not asked; Submit gives the in-person-meeting outcome). **A GWC city** → Q6 and its sub-flows, then the review. Q7 is German-only.
+
+## Requirements (FR-036 onward)
+- **FR-036** Register requires `ageConfirmed = true` and `primaryLanguage ∈ {german, non_german}`; both are stored (`age_confirmed_at`, `primary_language`).
+- **FR-037** At email confirmation a `non_german` application is denied by the system (reason "Primary language is not German"), `decided_automatically = true`, never queued for staff; a `german` one gets the `onboarding.thank-you` email. Applications with no stored language trigger neither rule.
+- **FR-038** The `onboarding.auto-approve` job approves `german` applications pending 24 h after `submitted_at`; a staff decision made first wins; the job is stoppable like every platform job.
+- **FR-039** Staff see the applicant's language and whether a decision was automatic.
+- **FR-040** Q1 follows US8; the Dubai duration is one of five bands; the partner is asked Q1 too.
+- **FR-041** Question order and income bands follow US9; the industry is a fixed list of 21 (FR-035) on every Q7 path except "not sure".
+- **FR-042** Business Owner's product/service is a non-empty multi-select of `produce | distribute | sales | other`.
+- **FR-043** "I am not sure yet" needs at least one statement and no industry; an industry sent for that path is refused.
+- **FR-044** The GWC match is stored when the non-German cities are saved (`matched_gwc_city_id`) and decides whether Q6 is asked; when the cities stop matching, the Q6, kids and partner answers are deleted. The outcome (`in_person_meeting` / `gwc_city_match`) is still set at submit.
+- **FR-045** The city dropdowns offer `world_cities` ∪ `gwc_cities` for a country; for a country neither covers (about 90) the city is free text; a city outside the list of a covered country is refused.
+
+## Decisions taken with the user
+Partner asked Q1 again; "not sure" multi-select without industry; "Others" opens the country picker; InterNations data supplied as `400_Cities_160_Countries.xlsx`; Dubai duration in five bands; no legacy data to preserve (the development database is rebuilt with `migrate:down`); a non-German member with no GWC city still goes through review + Submit.

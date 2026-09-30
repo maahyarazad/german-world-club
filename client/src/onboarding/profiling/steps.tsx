@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
 
 import {
   SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES,
   YEARLY_INCOME_RANGES, RELATIONSHIP_TAGS, KID_AGE_RANGES, MAX_KIDS, LANGUAGES, INDUSTRIES,
+  WORKING_DURATIONS, BUSINESS_ACTIVITIES,
 } from '@gwc/contracts/profiling'
-import type { ProfilingAnswers, ProfilingStepId, CitySlot, RelationshipTag, KidAgeRange } from '@gwc/contracts/profiling'
-import { COUNTRIES, PINNED } from '@gwc/contracts/countries'
+import type { ProfilingAnswers, ProfilingStepId, CitySlot, RelationshipTag, KidAgeRange, CitiesResponse } from '@gwc/contracts/profiling'
+import { COUNTRIES } from '@gwc/contracts/countries'
 
+import { get, ApiError } from '../../lib/api'
 import { collatorFor, fill } from '../../lib/format'
 import AuthCard from '../../auth/AuthCard'
 import Button from '../../components/ui/Button'
@@ -23,6 +25,8 @@ export type StepCtx = {
   busy: boolean
   /** Saves and lets the wizard decide where to go next. */
   save: (body: object) => void
+  /** Moves on without saving anything (an information screen). */
+  next: () => void
   /** null on the first step. */
   back: (() => void) | null
 }
@@ -210,67 +214,123 @@ function Kids({ ctx }: { ctx: StepCtx }) {
   )
 }
 
-function Cities({ ctx }: { ctx: StepCtx }) {
+/** Countries, the interface language's names, in that language's order. */
+function useCountryList(locale: Locale) {
+  return useMemo(() => {
+    const collator = collatorFor(locale)
+    return [...COUNTRIES].sort((a, b) => collator.compare(a[locale], b[locale]))
+  }, [locale])
+}
+
+/**
+ * One (country, city) pair. For a country the club's lists cover, the city is
+ * chosen from them (typing filters); for any other country it is free text —
+ * `GET /profiling/cities` says which, with `listed`.
+ */
+function CityField({ ctx, value, onChange, onValid, label }: {
+  ctx: StepCtx; value: CitySlot; onChange: (slot: CitySlot) => void; label: string
+  /** Reports whether the pair is complete and, for a listed country, on the list. */
+  onValid?: (valid: boolean) => void
+}) {
   const { copy, locale } = ctx
+  const countries = useCountryList(locale)
+  const [known, setKnown] = useState<CitiesResponse | null>(null)
+
+  useEffect(() => {
+    if (!value.country) return
+    let current = true
+    get(`/profiling/cities?country=${value.country}`)
+      .then((response) => { if (current) setKnown((response as CitiesResponse | undefined) ?? { listed: false, cities: [] }) })
+      .catch((error) => {
+        console.error('CityField.cities', error instanceof ApiError ? error.problem : error)
+        if (current) setKnown({ listed: false, cities: [] })
+      })
+    return () => { current = false }
+  }, [value.country])
+
+  const listed = value.country !== '' && known?.listed === true
+  const onList = !listed || (known?.cities ?? []).some((c) => c.toLowerCase() === value.city.trim().toLowerCase())
+  const valid = value.country !== '' && value.city.trim() !== '' && known !== null && onList
+  useEffect(() => { onValid?.(valid) }, [valid, onValid])
+
+  const listId = `cities-${label.replace(/\W+/g, '-')}`
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">{label}</legend>
+      <div className="flex gap-2">
+        <select
+          value={value.country} aria-label={`${label}: ${copy.country}`} className={inputClass}
+          onChange={(event) => { setKnown(null); onChange({ country: event.target.value, city: '' }) }}
+        >
+          <option value="">{copy.country}</option>
+          {countries.map((c) => <option key={c.code} value={c.code}>{c[locale]}</option>)}
+        </select>
+        <input
+          value={value.city} placeholder={copy.city} aria-label={`${label}: ${copy.city}`}
+          list={listed ? listId : undefined} className={`flex-1 ${inputClass}`}
+          onChange={(event) => onChange({ ...value, city: event.target.value })}
+        />
+        {listed && <datalist id={listId}>{(known?.cities ?? []).map((c) => <option key={c} value={c} />)}</datalist>}
+      </div>
+      {listed && value.city.trim() !== '' && !onList && (
+        <p className="text-[12px] text-text-muted">{copy.cityNotListed}</p>
+      )}
+    </fieldset>
+  )
+}
+
+function Cities({ ctx }: { ctx: StepCtx }) {
+  const { copy } = ctx
   const [primary, setPrimary] = useState<CitySlot>(ctx.answers.primaryCity ?? { country: '', city: '' })
   const [secondary, setSecondary] = useState<CitySlot[]>(ctx.answers.secondaryCities)
-
-  const countries = useMemo(() => {
-    const collator = collatorFor(locale)
-    const pinned = PINNED.map((code) => COUNTRIES.find((c) => c.code === code)).filter((c) => c !== undefined)
-    const rest = COUNTRIES
-      .filter((c) => !(PINNED as readonly string[]).includes(c.code))
-      .sort((a, b) => collator.compare(a[locale], b[locale]))
-    return [...pinned, ...rest]
-  }, [locale])
-
-  const countrySelect = (value: string, onChange: (v: string) => void) => (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className={inputClass}>
-      <option value="">{copy.country}</option>
-      {countries.map((c) => <option key={c.code} value={c.code}>{c[locale]}</option>)}
-    </select>
-  )
-  const setSecondaryField = (index: number, field: keyof CitySlot, value: string) =>
-    setSecondary((current) => current.map((slot, i) => (i === index ? { ...slot, [field]: value } : slot)))
+  const [valid, setValid] = useState<Record<string, boolean>>({})
+  const mark = (key: string) => (ok: boolean) => setValid((current) => (current[key] === ok ? current : { ...current, [key]: ok }))
+  const allValid = valid.primary === true && secondary.every((_, i) => valid[`s${i}`] === true)
 
   return (
     <Frame ctx={ctx} title={copy.cityTitle} subtitle={copy.citySubtitle}>
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">{copy.primaryCity}</legend>
-        <div className="flex gap-2">
-          {countrySelect(primary.country, (country) => setPrimary((c) => ({ ...c, country })))}
-          <input
-            value={primary.city} placeholder={copy.city} className={`flex-1 ${inputClass}`}
-            onChange={(event) => setPrimary((c) => ({ ...c, city: event.target.value }))}
-          />
-        </div>
-      </fieldset>
+      <CityField ctx={ctx} label={copy.primaryCity} value={primary} onChange={setPrimary} onValid={mark('primary')} />
       {secondary.map((slot, index) => (
-        <fieldset key={index} className="flex flex-col gap-1.5">
-          <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            {fill(copy.secondaryCity, { n: index + 2 })}
-          </legend>
-          <div className="flex gap-2">
-            {countrySelect(slot.country, (country) => setSecondaryField(index, 'country', country))}
-            <input
-              value={slot.city} placeholder={copy.city} className={`flex-1 ${inputClass}`}
-              onChange={(event) => setSecondaryField(index, 'city', event.target.value)}
-            />
-            <Button type="button" variant="quiet" onClick={() => setSecondary((c) => c.filter((_, i) => i !== index))}>
-              {copy.removeSecondary}
-            </Button>
-          </div>
-        </fieldset>
+        <div key={index} className="flex flex-col gap-1">
+          <CityField
+            ctx={ctx} label={fill(copy.secondaryCity, { n: index + 2 })} value={slot}
+            onChange={(next) => setSecondary((c) => c.map((s, i) => (i === index ? next : s)))} onValid={mark(`s${index}`)}
+          />
+          <Button variant="quiet" onClick={() => setSecondary((c) => c.filter((_, i) => i !== index))}>{copy.removeSecondary}</Button>
+        </div>
       ))}
       {secondary.length < 2 && (
         <Button variant="secondary" onClick={() => setSecondary((c) => [...c, { country: '', city: '' }])}>{copy.addSecondary}</Button>
       )}
-      <Button
-        disabled={ctx.busy || !primary.country || !primary.city.trim()}
-        onClick={() => ctx.save({ primaryCity: primary, secondaryCities: secondary.filter((s) => s.country && s.city.trim()) })}
-      >
+      <Button disabled={ctx.busy || !allValid} onClick={() => ctx.save({ primaryCity: primary, secondaryCities: secondary })}>
         {copy.next}
       </Button>
+    </Frame>
+  )
+}
+
+/** Where the member (or the partner) will settle: one (country, city) pair. */
+function Place({ ctx, title, initial, onContinue }: {
+  ctx: StepCtx; title: string; initial: CitySlot; onContinue: (slot: CitySlot) => void
+}) {
+  const [slot, setSlot] = useState<CitySlot>(initial)
+  const [valid, setValid] = useState(false)
+  return (
+    <Frame ctx={ctx} title={title}>
+      <CityField ctx={ctx} label={ctx.copy.settlingPlaceLabel} value={slot} onChange={setSlot} onValid={setValid} />
+      <Button disabled={ctx.busy || !valid} onClick={() => onContinue({ country: slot.country, city: slot.city.trim() })}>
+        {ctx.copy.next}
+      </Button>
+    </Frame>
+  )
+}
+
+/** A screen with text and Continue only. */
+function Info({ ctx, title, body }: { ctx: StepCtx; title: string; body: string }) {
+  return (
+    <Frame ctx={ctx} title={title}>
+      <p className="text-[13px] text-text-muted">{body}</p>
+      <Button disabled={ctx.busy} onClick={ctx.next}>{ctx.copy.next}</Button>
     </Frame>
   )
 }
@@ -292,10 +352,21 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
 
   switch (base) {
     case 'settling':
-      // Only the member is asked this; the partner questionnaire has no settling step.
-      return <Choice ctx={ctx} title={copy.settlingTitle} subtitle={copy.settlingSubtitle}
-        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={answers.settlingStatus}
-        onPick={(v) => ctx.save({ settlingStatus: v })} />
+      return <Choice ctx={ctx} title={title(copy.settlingTitle)} subtitle={copy.settlingSubtitle}
+        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={subject?.settlingStatus ?? null}
+        onPick={(v) => put('settlingStatus', v)} />
+    case 'settling-info':
+      return <Info ctx={ctx} title={title(copy.settlingTitle)} body={copy.settlingInfo} />
+    case 'settling-place':
+      return <Place ctx={ctx} title={title(copy.settlingPlaceTitle)}
+        initial={{ country: subject?.settlingCountry ?? '', city: subject?.settlingCity ?? '' }}
+        onContinue={(slot) => ctx.save(partner
+          ? { partner: { settlingCountry: slot.country, settlingCity: slot.city } }
+          : { settlingCountry: slot.country, settlingCity: slot.city })} />
+    case 'settling-work':
+      return <Choice ctx={ctx} title={title(copy.workingDurationTitle)}
+        options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={subject?.settlingWorkDuration ?? null}
+        onPick={(v) => put('settlingWorkDuration', v)} />
     case 'languages':
       return <Languages ctx={ctx} title={title(copy.languagesTitle)} initial={subject?.languages ?? []}
         onContinue={(languages) => put('languages', languages)} />
@@ -335,9 +406,7 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
       return <Text ctx={ctx} title={copy.futureWorkOfferingTitle} initial={answers.futureWorkOffering ?? ''}
         onContinue={(v) => ctx.save({ futureWorkOffering: v })} />
     case 'work-idea':
-      // Business Owner is asked for a product or service; everyone else for an idea.
-      return <Text ctx={ctx}
-        title={answers.desiredWorkType === 'business_owner' ? copy.productServiceTitle : copy.futureWorkIdeaTitle}
+      return <Text ctx={ctx} title={copy.futureWorkIdeaTitle}
         initial={answers.futureWorkIdea ?? ''} onContinue={(v) => ctx.save({ futureWorkIdea: v })} />
     case 'work-ready':
       return <Choice ctx={ctx} title={copy.futureWorkReadyTitle}
@@ -345,9 +414,13 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
         selected={answers.futureWorkReady === null ? null : answers.futureWorkReady ? 'yes' : 'no'}
         onPick={(v) => ctx.save({ futureWorkReady: v === 'yes' })} />
     case 'work-priorities':
-      return <Choice ctx={ctx} title={copy.futureWorkPrioritiesTitle}
-        options={labelled(FUTURE_WORK_PRIORITIES, copy.futureWorkPrioritiesOptions)} selected={answers.futureWorkPriority}
-        onPick={(v) => ctx.save({ futureWorkPriority: v })} />
+      return <Bubbles ctx={ctx} title={copy.futureWorkPrioritiesTitle}
+        options={labelled(FUTURE_WORK_PRIORITIES, copy.futureWorkPrioritiesOptions)} initial={answers.futureWorkPriorities ?? []}
+        onContinue={(v) => ctx.save({ futureWorkPriorities: v })} />
+    case 'work-activities':
+      return <Bubbles ctx={ctx} title={copy.productServiceTitle}
+        options={labelled(BUSINESS_ACTIVITIES, copy.businessActivityOptions)} initial={answers.futureWorkBusinessActivities ?? []}
+        onContinue={(v) => ctx.save({ futureWorkBusinessActivities: v })} />
     default:
       return null
   }

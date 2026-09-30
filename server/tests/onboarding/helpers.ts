@@ -64,6 +64,8 @@ export function applicant(overrides: Record<string, unknown> = {}) {
     birthday: '1990-04-12',
     gender: 'female',
     countryOfResidence: 'DE',
+    ageConfirmed: true,
+    primaryLanguage: 'german',
     deviceId: DEVICE,
     ...overrides,
   }

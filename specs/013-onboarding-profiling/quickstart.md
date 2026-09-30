@@ -129,3 +129,24 @@ step for the final path is answered.
 `server/tests/profiling/{relationship-flow,go-back,submit}.test.ts`,
 `packages/contracts/tests/profiling-steps.test.ts`, extended `client/tests/onboarding/profiling.test.tsx`,
 the access-control matrix (`POST /profiling/submit`), and the seed manifest test (new tables listed).
+
+
+---
+
+# Revision 4 scenarios
+
+Prerequisite: `NODE_ENV=development npm run -w server migrate:down && npm run -w server migrate && npm run -w server seed:dev` (loads the cities too).
+
+## Scenario 10 — Phase 1 rules
+1. Register with `primaryLanguage: 'non_german'`, verify mobile and email → status `denied`; the denial mail is queued; `GET /admin/onboarding/applications?state=pending` does not list them; the application row has `decided_automatically = true`.
+2. Register with `'german'` → `awaiting_approval`, one `onboarding.thank-you` mail queued, listed for staff with the language.
+3. `UPDATE membership_applications SET submitted_at = now() - interval '25 hours' WHERE member_id = …`, then run the job (it ticks every 15 minutes; `app.runJob('onboarding.auto-approve')`) → approved, approval mail queued, second run does nothing.
+
+## Scenario 11 — Settling
+*Please help* → information screen, then languages. *Yes* → country + city from the dropdown; Dubai → five duration bands; a partner (Q6 Partner/Family) is asked the same.
+
+## Scenario 12 — Order, income, Q7
+Order settling, languages, qualification, occupation, income (five bands), Q6, Q7. Business Owner: industry then Produce/Distribute/Sales/Other. "Not sure": statements only, no industry.
+
+## Scenario 13 — Non-German
+Cities from the dropdown (`GET /profiling/cities?country=DE` → Berlin first). No GWC city → review → Submit → in-person-meeting. A GWC city (e.g. Dubai) → Q6, kids, partner → review → Submit → `gwc_city_match`. Change the cities back to a non-match → the Q6/kids/partner answers are gone.

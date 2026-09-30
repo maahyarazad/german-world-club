@@ -25,11 +25,11 @@ export const profilingCalls = (app: GwcApp) => ({
 
 /** Q1-Q5 for a German member (or a partner, minus Q6). */
 export const germanQ1toQ5 = {
-  settlingStatus: 'know_where', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
+  settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
   qualificationLevel: 'masters_degree', occupation: 'engineer',
 } as const
 
-/** The partner answers Q2-Q5 only: no settling question, no Q6, no Q7. */
+/** The partner answers Q1-Q5 (settling, languages, qualification, occupation, income): no Q6, no Q7. */
 export const partnerAnswers = {
-  languages: ['en'], yearlyIncomeRange: '50k_to_100k', qualificationLevel: 'masters_degree', occupation: 'engineer',
+  settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: '50k_to_100k', qualificationLevel: 'masters_degree', occupation: 'engineer',
 } as const

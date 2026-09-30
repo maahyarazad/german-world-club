@@ -160,6 +160,7 @@ const ROUTE_CLASSES = [
   // application row, so the profiling gate never engages for it either).
   { name: 'profiling status', url: '/profiling/status', method: 'GET', audience: 'member' },
   { name: 'profiling gwc cities', url: '/profiling/gwc-cities', method: 'GET', audience: 'member' },
+  { name: 'profiling cities', url: '/profiling/cities', method: 'GET', audience: 'member' },
   { name: 'profiling submit', url: '/profiling', method: 'PATCH', audience: 'member' },
   { name: 'profiling complete', url: '/profiling/submit', method: 'POST', audience: 'member' },
 

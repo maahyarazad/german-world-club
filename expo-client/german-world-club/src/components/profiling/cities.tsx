@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { CitySlot } from '@gwc/contracts/profiling';
+import type { CitySlot, CitiesResponse } from '@gwc/contracts/profiling';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, Loading, TextField, styles } from '@/components/ui';
@@ -13,7 +13,87 @@ import { profilingApi } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 import type { StepCtx } from './types';
 
-type Sub = 'primary-country' | 'primary-city' | 'ask-secondary' | 'secondary-country' | 'secondary-city';
+/**
+ * One (country, city) pair, in two screens: the country from the full picker,
+ * then the city. For a country the club's lists cover the city is picked from
+ * them (typing filters); for any other country it is free text. The API says
+ * which with `listed`.
+ */
+export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
+  ctx: StepCtx; title: string; initial: CitySlot | null
+  onDone: (slot: CitySlot) => void
+  /** Leaves the picker; null when there is nowhere to go back to. */
+  onBack: (() => void) | null
+}) {
+  const { copy, locale, busy } = ctx;
+  const theme = useTheme();
+  const [country, setCountry] = useState(initial?.country ?? '');
+  const [city, setCity] = useState(initial?.city ?? '');
+  const [stage, setStage] = useState<'country' | 'city'>(initial?.country ? 'city' : 'country');
+  const [known, setKnown] = useState<CitiesResponse | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (stage !== 'city' || !country) return;
+    let current = true;
+    profilingApi.cities(country)
+      .then((response) => { if (current) setKnown(response); })
+      .catch((e) => {
+        console.error('PlacePicker.cities', e instanceof ApiError ? e.problem : e);
+        if (current) setKnown({ listed: false, cities: [] });
+      });
+    return () => { current = false; };
+  }, [stage, country]);
+
+  const back = stage === 'city' ? () => setStage('country') : onBack;
+  const backButton = back ? <Button label={copy.back} variant="secondary" disabled={busy} onPress={back} /> : null;
+
+  if (stage === 'country') {
+    // A full-flex picker, not `Centered` (which shrinks children and would
+    // collapse the list) — the same wrapper (public)/country.tsx uses.
+    return (
+      <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
+          <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{title}</ThemedText>
+          <CountryPicker
+            selected={country}
+            onSelect={(code) => {
+              // A different country makes the city saved under the old one meaningless.
+              if (code !== country) { setCity(''); setKnown(null); }
+              setCountry(code);
+              setStage('city');
+            }}
+          />
+          {backButton}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (known === null) return <Loading />;
+
+  const needle = query.trim().toLowerCase();
+  return (
+    <FormScreen title={title} subtitle={countryName(country, locale)}>
+      {known.listed ? (
+        <>
+          <TextField label={copy.cityPlaceholder} value={query} onChangeText={setQuery} autoCorrect={false} />
+          <View style={styles.chips} accessibilityRole="radiogroup">
+            {known.cities.filter((c) => !needle || c.toLowerCase().includes(needle)).map((c) => (
+              <Chip key={c} label={c} selected={city.toLowerCase() === c.toLowerCase()} onPress={() => { if (!busy) onDone({ country, city: c }); }} />
+            ))}
+          </View>
+        </>
+      ) : (
+        <>
+          <TextField label={copy.cityPlaceholder} value={city} onChangeText={setCity} autoFocus />
+          <Button label={copy.continue} disabled={busy || !city.trim()} onPress={() => onDone({ country, city: city.trim() })} />
+        </>
+      )}
+      {backButton}
+    </FormScreen>
+  );
+}
 
 /**
  * The elsewhere branch's nearest-city step: one primary city, then up to two
@@ -21,138 +101,47 @@ type Sub = 'primary-country' | 'primary-city' | 'ask-secondary' | 'secondary-cou
  * Back walks the sub-steps before it leaves the step.
  */
 export function CitiesStep({ ctx }: { ctx: StepCtx }) {
-  const { copy, locale, busy } = ctx;
-  const theme = useTheme();
+  const { copy, busy } = ctx;
   const saved = ctx.answers.primaryCity;
-  const [sub, setSub] = useState<Sub>(saved ? 'ask-secondary' : 'primary-country');
-  const [primary, setPrimary] = useState<CitySlot>(saved ?? { country: '', city: '' });
+  const [stage, setStage] = useState<'primary' | 'ask-secondary' | 'secondary'>(saved ? 'ask-secondary' : 'primary');
+  const [primary, setPrimary] = useState<CitySlot | null>(saved);
   const [secondary, setSecondary] = useState<CitySlot[]>(ctx.answers.secondaryCities);
-  const [draftCountry, setDraftCountry] = useState('');
-  const [draftCity, setDraftCity] = useState('');
 
-  // The designated cities (research R4) double as a dropdown once their
-  // country is picked — currently the UAE emirates; other countries use free text.
-  const [gwcCities, setGwcCities] = useState<CitySlot[] | null>(null);
-  useEffect(() => {
-    profilingApi.gwcCities()
-      .then(setGwcCities)
-      .catch((e) => {
-        console.error('CitiesStep.gwcCities', e instanceof ApiError ? e.problem : e);
-        setGwcCities([]);
-      });
-  }, []);
-  const citiesFor = useCallback((country: string) => (gwcCities ?? []).filter((c) => c.country === country), [gwcCities]);
-
-  const goBack = () => {
-    const previous: Partial<Record<Sub, Sub>> = {
-      'primary-city': 'primary-country', 'ask-secondary': 'primary-city',
-      'secondary-country': 'ask-secondary', 'secondary-city': 'secondary-country',
-    };
-    const target = previous[sub];
-    if (target) setSub(target);
-    else ctx.back?.();
-  };
-  const backButton = (sub !== 'primary-country' || ctx.back) ? (
-    <Button label={copy.back} variant="secondary" disabled={busy} onPress={goBack} />
-  ) : null;
-
-  // A full-flex picker, not `Centered` (which shrinks children and would
-  // collapse the list) — the same wrapper (public)/country.tsx uses.
-  const pickerScreen = (title: string, selected: string, onSelect: (country: string) => void) => (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
-      <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
-        <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{title}</ThemedText>
-        <CountryPicker selected={selected} onSelect={onSelect} />
-        {backButton}
-      </View>
-    </SafeAreaView>
-  );
-
-  if (sub === 'primary-country') {
-    return pickerScreen(copy.primaryCountryTitle, primary.country, (country) => {
-      // A different country invalidates the city picked under the old one.
-      setPrimary((c) => ({ country, city: c.country === country ? c.city : '' }));
-      setSub('primary-city');
-    });
-  }
-
-  if (sub === 'primary-city') {
-    if (gwcCities === null) return <Loading />;
-    const options = citiesFor(primary.country);
+  if (stage === 'primary') {
     return (
-      <FormScreen title={copy.primaryCityTitle} subtitle={countryName(primary.country, locale)}>
-        {options.length > 0 ? (
-          <View style={styles.chips} accessibilityRole="radiogroup">
-            {options.map((c) => (
-              <Chip
-                key={c.city}
-                label={c.city}
-                selected={primary.city === c.city}
-                onPress={() => { setPrimary((p) => ({ ...p, city: c.city })); setSub('ask-secondary'); }}
-              />
-            ))}
-          </View>
-        ) : (
-          <>
-            <TextField label={copy.cityPlaceholder} value={primary.city} onChangeText={(city) => setPrimary((c) => ({ ...c, city }))} autoFocus />
-            <Button label={copy.continue} disabled={!primary.city.trim()} onPress={() => setSub('ask-secondary')} />
-          </>
-        )}
-        {backButton}
-      </FormScreen>
+      <PlacePicker
+        ctx={ctx} title={copy.primaryCityTitle} initial={primary} onBack={ctx.back}
+        onDone={(slot) => { setPrimary(slot); setStage('ask-secondary'); }}
+      />
     );
   }
 
-  if (sub === 'ask-secondary') {
+  if (stage === 'secondary') {
     return (
-      <FormScreen title={copy.addSecondaryTitle}>
-        {secondary.map((c, i) => (
-          <ThemedText key={i} themeColor="textSecondary">{`${c.city} (${c.country})`}</ThemedText>
-        ))}
-        {secondary.length > 0 && (
-          <Button label={copy.change} variant="secondary" onPress={() => setSecondary([])} />
-        )}
-        {secondary.length < 2 && (
-          <Button label={copy.addSecondaryYes} variant="secondary" onPress={() => { setDraftCountry(''); setDraftCity(''); setSub('secondary-country'); }} />
-        )}
-        <Button
-          label={busy ? copy.submitting : copy.addSecondaryNo}
-          loading={busy}
-          onPress={() => ctx.save({ primaryCity: primary, secondaryCities: secondary })}
-        />
-        {backButton}
-      </FormScreen>
+      <PlacePicker
+        ctx={ctx} title={copy.secondaryCityTitle} initial={null} onBack={() => setStage('ask-secondary')}
+        onDone={(slot) => { setSecondary((current) => [...current, slot]); setStage('ask-secondary'); }}
+      />
     );
   }
 
-  if (sub === 'secondary-country') {
-    return pickerScreen(copy.secondaryCountryTitle, draftCountry, (country) => {
-      setDraftCountry(country);
-      setSub('secondary-city');
-    });
-  }
-
-  const addSecondary = (city: string) => {
-    setSecondary((current) => [...current, { country: draftCountry, city }]);
-    setSub('ask-secondary');
-  };
-  if (gwcCities === null) return <Loading />;
-  const secondaryOptions = citiesFor(draftCountry);
   return (
-    <FormScreen title={copy.secondaryCityTitle} subtitle={countryName(draftCountry, locale)}>
-      {secondaryOptions.length > 0 ? (
-        <View style={styles.chips} accessibilityRole="radiogroup">
-          {secondaryOptions.map((c) => (
-            <Chip key={c.city} label={c.city} selected={draftCity === c.city} onPress={() => addSecondary(c.city)} />
-          ))}
-        </View>
-      ) : (
-        <>
-          <TextField label={copy.cityPlaceholder} value={draftCity} onChangeText={setDraftCity} autoFocus />
-          <Button label={copy.continue} disabled={!draftCity.trim()} onPress={() => addSecondary(draftCity)} />
-        </>
+    <FormScreen title={copy.addSecondaryTitle}>
+      {primary ? <ThemedText>{`${primary.city} (${primary.country})`}</ThemedText> : null}
+      {secondary.map((c, i) => (
+        <ThemedText key={i} themeColor="textSecondary">{`${c.city} (${c.country})`}</ThemedText>
+      ))}
+      {secondary.length > 0 && <Button label={copy.change} variant="secondary" onPress={() => setSecondary([])} />}
+      {secondary.length < 2 && (
+        <Button label={copy.addSecondaryYes} variant="secondary" onPress={() => setStage('secondary')} />
       )}
-      {backButton}
+      <Button
+        label={busy ? copy.submitting : copy.addSecondaryNo}
+        loading={busy}
+        disabled={!primary}
+        onPress={() => primary && ctx.save({ primaryCity: primary, secondaryCities: secondary })}
+      />
+      <Button label={copy.back} variant="secondary" disabled={busy} onPress={() => setStage('primary')} />
     </FormScreen>
   );
 }

@@ -10,7 +10,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 
 /** Search-as-you-type over every country, the pinned ones first. */
-export function CountryPicker({ selected, onSelect }: { selected?: string; onSelect: (code: string) => void }) {
+export function CountryPicker({ selected, onSelect, exclude = [], label }: {
+  selected?: string; onSelect: (code: string) => void; exclude?: readonly string[];
+  /** Overrides the row text (the mobile picker appends the calling code). */
+  label?: (country: Country, locale: 'en' | 'de') => string;
+}) {
   const theme = useTheme();
   const { t, locale } = useTranslations();
   const [query, setQuery] = useState('');
@@ -19,13 +23,14 @@ export function CountryPicker({ selected, onSelect }: { selected?: string; onSel
     const name = (c: Country) => c[locale];
     const sorted = [...COUNTRIES].sort((a, b) => name(a).localeCompare(name(b), locale));
     const pinned = PINNED.map((code) => COUNTRIES.find((c) => c.code === code)!).filter(Boolean);
-    const all = [...pinned, ...sorted.filter((c) => !(PINNED as readonly string[]).includes(c.code))];
+    const all = [...pinned, ...sorted.filter((c) => !(PINNED as readonly string[]).includes(c.code))]
+      .filter((c) => !exclude.includes(c.code));
     const needle = query.trim().toLocaleLowerCase(locale);
     if (!needle) return all;
     // Both names match, so somebody typing "Deutsch" in the English interface
     // still finds Germany.
     return all.filter((c) => c.en.toLocaleLowerCase().includes(needle) || c.de.toLocaleLowerCase().includes(needle));
-  }, [locale, query]);
+  }, [locale, query, exclude]);
 
   return (
     <View style={{ flex: 1, gap: Spacing.two }}>
@@ -48,7 +53,7 @@ export function CountryPicker({ selected, onSelect }: { selected?: string; onSel
               accessibilityState={{ selected: isSelected }}
               onPress={() => onSelect(item.code)}
               style={[styles.row, { borderColor: theme.border, backgroundColor: isSelected ? theme.backgroundSelected : undefined }]}>
-              <ThemedText style={{ flex: 1 }}>{item[locale]}</ThemedText>
+              <ThemedText style={{ flex: 1 }}>{label ? label(item, locale) : item[locale]}</ThemedText>
               {isSelected ? <ThemedText style={{ color: theme.tint }}>✓</ThemedText> : null}
             </Pressable>
           );

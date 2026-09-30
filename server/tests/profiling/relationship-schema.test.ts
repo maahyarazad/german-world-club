@@ -14,9 +14,11 @@ beforeEach(async () => { await resetAuthTables(app.pg) })
 
 async function withKidsAndPartner() {
   const { memberId, authorization } = await approvedMember(app, 'FR')
+  // A GWC city, so Q6 and its sub-flows are asked at all.
+  const gwc = (await app.pg.query('SELECT country, city FROM gwc_cities ORDER BY city LIMIT 1')).rows[0]
   await call.patch(authorization, {
-    primaryCity: { country: 'ZZ', city: 'Nowhere' }, relationshipStatus: ['kids', 'partner'],
-    kids: ['age_0_6'], partner: { languages: ['en'], yearlyIncomeRange: 'up_to_50k', qualificationLevel: 'doctorate', occupation: 'other' },
+    primaryCity: gwc, relationshipStatus: ['kids', 'partner'],
+    kids: ['age_0_6'], partner: { settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: 'up_to_50k', qualificationLevel: 'doctorate', occupation: 'other' },
   })
   return { memberId, authorization }
 }
@@ -27,6 +29,11 @@ describe.skipIf(!hasDatabase)('member_profiling_kids / member_profiling_partner'
     await expect(app.pg.query(`UPDATE member_profiling_kids SET age_range = 'toddler' WHERE member_id = $1`, [memberId])).rejects.toThrow(/age_range/)
     await expect(app.pg.query(`INSERT INTO member_profiling_kids VALUES ($1, 21, 'age_0_6')`, [memberId])).rejects.toThrow(/position/)
     await expect(app.pg.query(`UPDATE member_profiling_partner SET yearly_income_range = 'rich' WHERE member_id = $1`, [memberId])).rejects.toThrow(/yearly_income_range/)
+    // The two new bands are valid; the old top band is still valid too.
+    for (const band of ['over_500k', 'over_1m', 'over_100k']) {
+      await app.pg.query(`UPDATE member_profiling_partner SET yearly_income_range = $2 WHERE member_id = $1`, [memberId, band])
+    }
+    await expect(app.pg.query(`UPDATE member_profiling_partner SET settling_work_duration = 'forever' WHERE member_id = $1`, [memberId])).rejects.toThrow(/settling_work_duration/)
   })
 
   it('allows changes and deletes before completion', async () => {

@@ -60,7 +60,7 @@ export const DESIRED_WORK_TYPES = Object.freeze([
 ] as const)
 
 /** Q3 — yearly revenue / salary range, asked of the member and of a partner. */
-export const YEARLY_INCOME_RANGES = Object.freeze(['up_to_50k', '50k_to_100k', 'over_100k'] as const)
+export const YEARLY_INCOME_RANGES = Object.freeze(['up_to_50k', '50k_to_100k', 'over_100k', 'over_500k', 'over_1m'] as const)
 
 /** Q6 — multi-select on both branches. `single` is exclusive (see `relationshipTagsSchema`). */
 export const RELATIONSHIP_TAGS = Object.freeze(['single', 'partner', 'family', 'kids'] as const)
@@ -69,6 +69,18 @@ export const RELATIONSHIP_TAGS = Object.freeze(['single', 'partner', 'family', '
 export const KID_AGE_RANGES = Object.freeze(['age_0_6', 'age_6_14', 'age_14_18', 'age_18_plus'] as const)
 
 export const MAX_KIDS = 20
+
+/** "How long are you already working?" — asked when the place chosen is Dubai. */
+export const WORKING_DURATIONS = Object.freeze(['under_1', '1_3', '3_5', '5_10', 'over_10'] as const)
+export type WorkingDuration = (typeof WORKING_DURATIONS)[number]
+
+/** "What is your product or service?" for a Business Owner — multi-select. */
+export const BUSINESS_ACTIVITIES = Object.freeze(['produce', 'distribute', 'sales', 'other'] as const)
+export type BusinessActivity = (typeof BUSINESS_ACTIVITIES)[number]
+
+/** The Dubai follow-up applies to exactly this place (business description, Q1). */
+export const isDubai = (country: string | null | undefined, city: string | null | undefined) =>
+  country === 'AE' && (city ?? '').trim().toLowerCase() === 'dubai'
 
 /** The statements offered when `desiredWorkType = 'not_sure'` — the member picks one (FR-011). */
 export const FUTURE_WORK_PRIORITIES = Object.freeze([
@@ -151,10 +163,28 @@ function sameCity(a: CitySlot, b: CitySlot): boolean {
 export const gwcCitiesResponseSchema = z.array(citySlotSchema)
 
 /**
- * The partner answers the German questionnaire without Q1 (settling), Q6 or
- * Q7: languages, income, qualification, occupation — see spec.md Assumptions.
+ * `GET /profiling/cities`: the InterNations list plus the club's designated
+ * cities for one country. `listed: false` means neither covers the country, so
+ * the client shows a free-text field instead of an empty dropdown.
+ */
+export const citiesQuerySchema = z.object({
+  country: z.string().regex(/^[A-Z]{2}$/, 'must be an ISO 3166-1 alpha-2 code'),
+  q: z.string().max(100).optional(),
+})
+export const citiesResponseSchema = z.object({ listed: z.boolean(), cities: z.array(z.string()) })
+export type CitiesResponse = z.infer<typeof citiesResponseSchema>
+
+const isoCountryOptional = z.string().regex(/^[A-Z]{2}$/, 'must be an ISO 3166-1 alpha-2 code')
+
+/**
+ * The partner answers the German questionnaire from Q1 — settling, languages,
+ * qualification, occupation, income — but not Q6 or Q7.
  */
 export const partnerAnswersSchema = z.object({
+  settlingStatus: z.enum(SETTLING_STATUSES).nullable(),
+  settlingCountry: z.string().nullable(),
+  settlingCity: z.string().nullable(),
+  settlingWorkDuration: z.enum(WORKING_DURATIONS).nullable(),
   languages: z.array(z.string()).nullable(),
   yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).nullable(),
   qualificationLevel: z.enum(QUALIFICATION_LEVELS).nullable(),
@@ -169,11 +199,14 @@ export const profilingStatusSchema = z.object({
   matchedCity: citySlotSchema.nullable(),
   answers: z.object({
     settlingStatus: z.enum(SETTLING_STATUSES).nullable(),
+    settlingCountry: z.string().nullable(),
+    settlingCity: z.string().nullable(),
+    settlingWorkDuration: z.enum(WORKING_DURATIONS).nullable(),
     languages: z.array(z.string()).nullable(),
     yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).nullable(),
     qualificationLevel: z.enum(QUALIFICATION_LEVELS).nullable(),
     occupation: z.enum(OCCUPATIONS).nullable(),
-    // Q6 — both branches.
+    // Q6 — both branches (elsewhere: only after a GWC city was submitted).
     relationshipStatus: z.array(z.enum(RELATIONSHIP_TAGS)).nullable(),
     kids: z.array(z.enum(KID_AGE_RANGES)),
     partner: partnerAnswersSchema.nullable(),
@@ -183,9 +216,12 @@ export const profilingStatusSchema = z.object({
     futureWorkReady: z.boolean().nullable(),
     futureWorkOffering: z.string().nullable(),
     futureWorkIdea: z.string().nullable(),
-    futureWorkPriority: z.enum(FUTURE_WORK_PRIORITIES).nullable(),
+    futureWorkBusinessActivities: z.array(z.enum(BUSINESS_ACTIVITIES)).nullable(),
+    futureWorkPriorities: z.array(z.enum(FUTURE_WORK_PRIORITIES)).nullable(),
     primaryCity: citySlotSchema.nullable(),
     secondaryCities: z.array(citySlotSchema),
+    /** Derived by the server when the cities are saved: did any of them match a GWC city? */
+    gwcMatch: z.boolean(),
   }),
 })
 export type ProfilingStatus = z.infer<typeof profilingStatusSchema>
@@ -201,6 +237,10 @@ const sharedPatchFields = {
   // Replaces the whole list: one entry per kid, so the count is the length.
   kids: z.array(z.enum(KID_AGE_RANGES)).min(1).max(MAX_KIDS).optional(),
   partner: z.object({
+    settlingStatus: z.enum(SETTLING_STATUSES).optional(),
+    settlingCountry: isoCountryOptional.optional(),
+    settlingCity: z.string().trim().min(1).max(200).optional(),
+    settlingWorkDuration: z.enum(WORKING_DURATIONS).optional(),
     languages: z.array(z.string()).min(1).optional(),
     yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).optional(),
     qualificationLevel: z.enum(QUALIFICATION_LEVELS).optional(),
@@ -219,6 +259,9 @@ const nonEmpty = (body: object) => Object.keys(body).length > 0
  */
 export const profilingGermanyPatchSchema = z.object({
   settlingStatus: z.enum(SETTLING_STATUSES).optional(),
+  settlingCountry: isoCountryOptional.optional(),
+  settlingCity: z.string().trim().min(1).max(200).optional(),
+  settlingWorkDuration: z.enum(WORKING_DURATIONS).optional(),
   languages: z.array(z.string()).min(1).optional(),
   yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).optional(),
   qualificationLevel: z.enum(QUALIFICATION_LEVELS).optional(),
@@ -230,14 +273,16 @@ export const profilingGermanyPatchSchema = z.object({
   futureWorkReady: z.boolean().optional(),
   futureWorkOffering: z.string().trim().min(1).max(500).optional(),
   futureWorkIdea: z.string().trim().min(1).max(1000).optional(),
-  futureWorkPriority: z.enum(FUTURE_WORK_PRIORITIES).optional(),
+  futureWorkBusinessActivities: z.array(z.enum(BUSINESS_ACTIVITIES)).min(1).optional(),
+  futureWorkPriorities: z.array(z.enum(FUTURE_WORK_PRIORITIES)).min(1).optional(),
   ...sharedPatchFields,
 }).strict().refine(nonEmpty, { message: 'give at least one answer' })
 
 /**
  * `branch = 'elsewhere'` — the cities travel as a unit (a primary and up to
  * two distinct secondaries, replacing what was saved), alongside the shared
- * Q6 fields. The GWC match is not computed here; submit does that.
+ * Q6 fields. Saving the cities also stores whether one is a GWC city, because
+ * that decides whether Q6 is asked at all.
  */
 export const profilingElsewherePatchSchema = z.object({
   primaryCity: citySlotSchema.optional(),
@@ -273,16 +318,20 @@ export const ELSEWHERE_ONLY_KEYS = Object.freeze(['primaryCity', 'secondaryCitie
 export type ProfilingAnswers = ProfilingStatus['answers']
 
 export type ProfilingStepId =
-  | 'settling' | 'languages' | 'income' | 'qualification' | 'occupation'
+  | 'settling' | 'settling-info' | 'settling-place' | 'settling-work'
+  | 'languages' | 'qualification' | 'occupation' | 'income'
   | 'cities'
   | 'relationship' | 'kids'
-  | 'partner-languages' | 'partner-income'
-  | 'partner-qualification' | 'partner-occupation'
-  | 'work-type' | 'work-offering' | 'work-industry' | 'work-idea' | 'work-ready' | 'work-priorities'
+  | 'partner-settling' | 'partner-settling-info' | 'partner-settling-place' | 'partner-settling-work'
+  | 'partner-languages' | 'partner-qualification' | 'partner-occupation' | 'partner-income'
+  | 'work-type' | 'work-offering' | 'work-industry' | 'work-idea' | 'work-ready'
+  | 'work-activities' | 'work-priorities'
   | 'review'
 
 const filled = (value: string | null | undefined) => value != null && value.trim() !== ''
 const nonEmptyList = (value: readonly unknown[] | null | undefined) => value != null && value.length > 0
+
+type Settling = Pick<PartnerAnswers, 'settlingStatus' | 'settlingCountry' | 'settlingCity' | 'settlingWorkDuration'>
 
 /**
  * The one definition of which questions apply, in what order, and whether each
@@ -291,44 +340,83 @@ const nonEmptyList = (value: readonly unknown[] | null | undefined) => value != 
  * longer applies (kids after the tag is removed) simply is not in the list —
  * its stored value is discarded by the server on save, never consulted here.
  */
+const settlingAnswered = (s: Settling | null | undefined) => ({
+  status: s?.settlingStatus != null,
+  info: s?.settlingStatus === 'need_help',
+  place: filled(s?.settlingCountry) && filled(s?.settlingCity),
+  work: s?.settlingWorkDuration != null,
+})
+
 const ANSWERED: Record<Exclude<ProfilingStepId, 'review'>, (a: ProfilingAnswers) => boolean> = {
-  settling: (a) => a.settlingStatus !== null,
+  settling: (a) => settlingAnswered(a).status,
+  'settling-info': (a) => settlingAnswered(a).info,
+  'settling-place': (a) => settlingAnswered(a).place,
+  'settling-work': (a) => settlingAnswered(a).work,
   languages: (a) => nonEmptyList(a.languages),
-  income: (a) => a.yearlyIncomeRange !== null,
   qualification: (a) => a.qualificationLevel !== null,
   occupation: (a) => a.occupation !== null,
+  income: (a) => a.yearlyIncomeRange !== null,
   cities: (a) => a.primaryCity !== null,
   relationship: (a) => nonEmptyList(a.relationshipStatus),
   kids: (a) => a.kids.length > 0,
+  'partner-settling': (a) => settlingAnswered(a.partner).status,
+  'partner-settling-info': (a) => settlingAnswered(a.partner).info,
+  'partner-settling-place': (a) => settlingAnswered(a.partner).place,
+  'partner-settling-work': (a) => settlingAnswered(a.partner).work,
   'partner-languages': (a) => nonEmptyList(a.partner?.languages),
-  'partner-income': (a) => a.partner?.yearlyIncomeRange != null,
   'partner-qualification': (a) => a.partner?.qualificationLevel != null,
   'partner-occupation': (a) => a.partner?.occupation != null,
+  'partner-income': (a) => a.partner?.yearlyIncomeRange != null,
   'work-type': (a) => a.desiredWorkType !== null,
   'work-offering': (a) => filled(a.futureWorkOffering),
   'work-industry': (a) => filled(a.futureWorkSector),
   'work-idea': (a) => filled(a.futureWorkIdea),
   'work-ready': (a) => a.futureWorkReady !== null,
-  'work-priorities': (a) => a.futureWorkPriority !== null,
+  'work-activities': (a) => nonEmptyList(a.futureWorkBusinessActivities),
+  'work-priorities': (a) => nonEmptyList(a.futureWorkPriorities),
 }
 
 const WORK_FOLLOW_UPS: Record<DesiredWorkType, readonly ProfilingStepId[]> = {
   employee: ['work-industry', 'work-ready'],
   freelance: ['work-offering', 'work-industry', 'work-idea'],
-  business_owner: ['work-industry', 'work-idea'],
+  business_owner: ['work-industry', 'work-activities'],
   own_business: ['work-offering', 'work-industry', 'work-idea'],
-  not_sure: ['work-priorities', 'work-industry'],
+  // No industry on this path (business description): just the statements.
+  not_sure: ['work-priorities'],
+}
+
+/** Settling (Q1) for the member (`''`) or the partner (`'partner-'`): info screen, or place, or place + Dubai follow-up. */
+function settlingSteps(prefix: '' | 'partner-', s: Settling | null | undefined): ProfilingStepId[] {
+  const head = `${prefix}settling` as ProfilingStepId
+  if (s?.settlingStatus === 'need_help') return [head, `${head}-info` as ProfilingStepId]
+  if (s?.settlingStatus === 'know_where') {
+    return [
+      head, `${head}-place` as ProfilingStepId,
+      ...(isDubai(s.settlingCountry, s.settlingCity) ? [`${head}-work` as ProfilingStepId] : []),
+    ]
+  }
+  return [head]
 }
 
 export function profilingSteps(branch: ProfilingBranch, answers: ProfilingAnswers): ProfilingStepId[] {
   const tags = answers.relationshipStatus ?? []
-  const steps: ProfilingStepId[] = branch === 'germany'
-    ? ['settling', 'languages', 'income', 'qualification', 'occupation']
-    : ['cities']
-  steps.push('relationship')
-  if (tags.includes('kids')) steps.push('kids')
-  if (tags.includes('partner') || tags.includes('family')) {
-    steps.push('partner-languages', 'partner-income', 'partner-qualification', 'partner-occupation')
+  const steps: ProfilingStepId[] = []
+  if (branch === 'germany') {
+    steps.push(...settlingSteps('', answers), 'languages', 'qualification', 'occupation', 'income')
+  } else {
+    steps.push('cities')
+  }
+  // A non-German member is asked Q6 only after a GWC city was submitted; with
+  // none, the flow ends at the review.
+  if (branch === 'germany' || answers.gwcMatch) {
+    steps.push('relationship')
+    if (tags.includes('kids')) steps.push('kids')
+    if (tags.includes('partner') || tags.includes('family')) {
+      steps.push(
+        ...settlingSteps('partner-', answers.partner),
+        'partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income',
+      )
+    }
   }
   // Q7 is German-only (business description: the non-German path ends at Q6).
   if (branch === 'germany') {

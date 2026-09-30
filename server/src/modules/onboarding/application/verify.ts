@@ -5,6 +5,8 @@ import { forbidden as refuse } from '../../../authz/require-permission.ts'
 import { issueChallenge, verifyChallenge, OTP_OUTCOME, WEB_DEVICE } from '../../auth/otp.ts'
 import { startSession } from '../../auth/sessions.ts'
 import { loadStatus } from './status.ts'
+import { applyDecision, auditAutomaticDecision } from './review.ts'
+import type { Decision } from './review.ts'
 import type { GwcApp } from '../../../app.ts'
 
 /**
@@ -14,6 +16,9 @@ import type { GwcApp } from '../../../app.ts'
  * whatever status the problem carries, 401 and 409 included — sign-in has used
  * it that way from the start.
  */
+
+/** Shown to the applicant in the denial email; the server emits English (see CLAUDE.md). */
+export const NON_GERMAN_DENIAL_REASON = 'Primary language is not German'
 
 /** Map a failed verification to the same refusals /auth/verify-otp gives. */
 function refuseOutcome(outcome: string): never {
@@ -192,17 +197,42 @@ export async function verifyEmail(
   // account, and answers exactly like a wrong one.
   if (String(result.accountId) !== memberId) refuseOutcome(OTP_OUTCOME.INVALID)
 
+  let automaticDenial: Decision | null = null
   await withTransaction(app.pg, async (client) => {
     await client.query(
       'UPDATE members SET email_confirmed_at = now() WHERE id = $1 AND email_confirmed_at IS NULL',
       [memberId],
     )
-    await client.query(
+    const submitted = await client.query(
       `UPDATE membership_applications SET submitted_at = now()
-        WHERE member_id = $1 AND submitted_at IS NULL`,
+        WHERE member_id = $1 AND submitted_at IS NULL
+        RETURNING member_id`,
       [memberId],
     )
+    // Phase 1 rules, applied once, at the moment the application is complete
+    // (business description). Both happen in this transaction: a member told
+    // "denied" or "thank you" must have the decision the mail describes.
+    if (submitted.rows.length > 0) {
+      const { rows } = await client.query(
+        'SELECT primary_language, email, display_name FROM members WHERE id = $1', [memberId],
+      )
+      const member = rows[0]
+      if (member?.primary_language === 'non_german') {
+        // Never reaches the staff queue: decided here, by the system.
+        automaticDenial = { state: 'denied', reason: NON_GERMAN_DENIAL_REASON }
+        await applyDecision(app, client, { memberId, adminId: null, decision: automaticDenial })
+      } else if (member?.primary_language === 'german') {
+        await app.enqueueMail({
+          to: member.email,
+          template: 'onboarding.thank-you',
+          subjectKey: `application-submitted:${memberId}`,
+          variables: { name: member.display_name },
+        }, { client })
+      }
+    }
   }, { signal })
+
+  if (automaticDenial) await auditAutomaticDecision(app, { memberId, decision: automaticDenial })
 
   await app.audit({
     action: 'membership_application_submitted', outcome: 'allowed', requestId,

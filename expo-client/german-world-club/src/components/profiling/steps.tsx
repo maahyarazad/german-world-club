@@ -5,12 +5,13 @@ import { View } from 'react-native';
 import {
   SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES,
   YEARLY_INCOME_RANGES, RELATIONSHIP_TAGS, KID_AGE_RANGES, MAX_KIDS, LANGUAGES, INDUSTRIES,
+  WORKING_DURATIONS, BUSINESS_ACTIVITIES,
 } from '@gwc/contracts/profiling';
 import type { ProfilingStepId, RelationshipTag, KidAgeRange } from '@gwc/contracts/profiling';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, TextField, styles } from '@/components/ui';
-import { CitiesStep } from './cities';
+import { CitiesStep, PlacePicker } from './cities';
 import { fill } from './types';
 import type { StepCtx } from './types';
 
@@ -143,10 +144,26 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
 
   switch (base) {
     case 'settling':
-      // Only the member is asked this; the partner questionnaire has no settling step.
-      return <Choice ctx={ctx} title={copy.settlingTitle} subtitle={copy.settlingSubtitle}
-        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={answers.settlingStatus}
-        onPick={(v) => ctx.save({ settlingStatus: v })} />;
+      return <Choice ctx={ctx} title={title(copy.settlingTitle)} subtitle={copy.settlingSubtitle}
+        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={subject?.settlingStatus ?? null}
+        onPick={(v) => put('settlingStatus', v)} />;
+    case 'settling-info':
+      return (
+        <Frame ctx={ctx} title={title(copy.settlingTitle)}>
+          <ThemedText themeColor="textSecondary">{copy.settlingInfo}</ThemedText>
+          <Button label={copy.continue} disabled={ctx.busy} onPress={ctx.next} />
+        </Frame>
+      );
+    case 'settling-place':
+      return <PlacePicker ctx={ctx} title={title(copy.settlingPlaceTitle)} onBack={ctx.back}
+        initial={subject?.settlingCountry ? { country: subject.settlingCountry, city: subject.settlingCity ?? '' } : null}
+        onDone={(slot) => ctx.save(partner
+          ? { partner: { settlingCountry: slot.country, settlingCity: slot.city } }
+          : { settlingCountry: slot.country, settlingCity: slot.city })} />;
+    case 'settling-work':
+      return <Choice ctx={ctx} title={title(copy.workingDurationTitle)}
+        options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={subject?.settlingWorkDuration ?? null}
+        onPick={(v) => put('settlingWorkDuration', v)} />;
     case 'languages':
       return <Multi ctx={ctx} title={title(copy.languagesTitle)} subtitle={copy.languagesSubtitle} search={copy.languagesSearch}
         options={LANGUAGES.map((l) => ({ value: l.code, label: l.en }))} initial={subject?.languages ?? []}
@@ -188,9 +205,7 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
       return <Text ctx={ctx} title={copy.futureWorkOfferingTitle} initial={answers.futureWorkOffering ?? ''}
         onContinue={(v) => ctx.save({ futureWorkOffering: v })} />;
     case 'work-idea':
-      // Business Owner is asked for a product or service; everyone else for an idea.
-      return <Text ctx={ctx}
-        title={answers.desiredWorkType === 'business_owner' ? copy.productServiceTitle : copy.futureWorkIdeaTitle}
+      return <Text ctx={ctx} title={copy.futureWorkIdeaTitle}
         initial={answers.futureWorkIdea ?? ''} onContinue={(v) => ctx.save({ futureWorkIdea: v })} />;
     case 'work-ready':
       return <Choice ctx={ctx} title={copy.futureWorkReadyTitle}
@@ -198,9 +213,13 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
         selected={answers.futureWorkReady === null ? null : answers.futureWorkReady ? 'yes' : 'no'}
         onPick={(v) => ctx.save({ futureWorkReady: v === 'yes' })} />;
     case 'work-priorities':
-      return <Choice ctx={ctx} title={copy.futureWorkPrioritiesTitle}
-        options={labelled(FUTURE_WORK_PRIORITIES, copy.futureWorkPrioritiesOptions)} selected={answers.futureWorkPriority}
-        onPick={(v) => ctx.save({ futureWorkPriority: v })} />;
+      return <Multi ctx={ctx} title={copy.futureWorkPrioritiesTitle}
+        options={labelled(FUTURE_WORK_PRIORITIES, copy.futureWorkPrioritiesOptions)} initial={answers.futureWorkPriorities ?? []}
+        onContinue={(v) => ctx.save({ futureWorkPriorities: v })} />;
+    case 'work-activities':
+      return <Multi ctx={ctx} title={copy.productServiceTitle}
+        options={labelled(BUSINESS_ACTIVITIES, copy.businessActivityOptions)} initial={answers.futureWorkBusinessActivities ?? []}
+        onContinue={(v) => ctx.save({ futureWorkBusinessActivities: v })} />;
     default:
       return null;
   }

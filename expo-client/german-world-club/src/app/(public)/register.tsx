@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { GENDERS, registerRequestSchema, type Gender } from '@gwc/contracts/onboarding';
+import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
 
+import { MobileField } from '@/components/mobile-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, TextField, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -21,7 +22,7 @@ import { useRegistrationDraft } from '@/session/registration-draft';
  */
 const fields = registerRequestSchema.shape;
 
-type Errors = Partial<Record<'fullName' | 'email' | 'password' | 'mobile' | 'birthday' | 'gender', string>>;
+type Errors = Partial<Record<'fullName' | 'email' | 'password' | 'mobile' | 'birthday' | 'gender' | 'primaryLanguage' | 'ageConfirmed', string>>;
 
 export default function Register() {
   const { t } = useTranslations();
@@ -36,6 +37,8 @@ export default function Register() {
   const [mm, setMm] = useState(month ?? '');
   const [yyyy, setYyyy] = useState(year ?? '');
   const [gender, setGender] = useState<Gender | undefined>(draft.gender);
+  const [primaryLanguage, setPrimaryLanguage] = useState<PrimaryLanguage | undefined>(draft.primaryLanguage);
+  const [ageConfirmed, setAgeConfirmed] = useState(draft.ageConfirmed === true);
   const [errors, setErrors] = useState<Errors>({});
 
   const next = () => {
@@ -49,10 +52,12 @@ export default function Register() {
     if (!fields.mobile.safeParse(normalisedMobile).success) found.mobile = t.validation.mobile;
     if (!fields.birthday.safeParse(birthday).success) found.birthday = t.validation.birthday;
     if (!gender) found.gender = t.validation.gender;
+    if (!primaryLanguage) found.primaryLanguage = t.validation.primaryLanguage;
+    if (!ageConfirmed) found.ageConfirmed = t.validation.ageConfirmed;
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    update({ fullName: fullName.trim(), email: email.trim().toLowerCase(), password, mobile: normalisedMobile, birthday, gender });
+    update({ fullName: fullName.trim(), email: email.trim().toLowerCase(), password, mobile: normalisedMobile, birthday, gender, primaryLanguage, ageConfirmed: true });
     router.push('/country');
   };
 
@@ -64,9 +69,7 @@ export default function Register() {
         keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={errors.email} />
       <TextField label={t.register.password} value={password} onChangeText={setPassword}
         secureTextEntry autoComplete="new-password" textContentType="newPassword" error={errors.password} />
-      <TextField label={t.register.mobile} value={mobile} onChangeText={setMobile}
-        keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
-        placeholder="+49 151 12345678" hint={t.register.mobileHint} error={errors.mobile} />
+      <MobileField value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile} />
 
       <View style={{ gap: Spacing.one }}>
         <ThemedText type="smallBold">{t.register.birthday}</ThemedText>
@@ -92,6 +95,21 @@ export default function Register() {
           ))}
         </View>
         {errors.gender ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.gender}</ThemedText> : null}
+      </View>
+
+      <View style={{ gap: Spacing.two }} accessibilityRole="radiogroup">
+        <ThemedText type="smallBold">{t.register.primaryLanguage}</ThemedText>
+        <View style={styles.chips}>
+          {PRIMARY_LANGUAGES.map((l) => (
+            <Chip key={l} label={t.register.primaryLanguages[l]} selected={primaryLanguage === l} onPress={() => setPrimaryLanguage(l)} />
+          ))}
+        </View>
+        {errors.primaryLanguage ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.primaryLanguage}</ThemedText> : null}
+      </View>
+
+      <View style={{ gap: Spacing.two }}>
+        <Chip label={t.register.ageConfirm} selected={ageConfirmed} onPress={() => setAgeConfirmed((v) => !v)} />
+        {errors.ageConfirmed ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.ageConfirmed}</ThemedText> : null}
       </View>
 
       <Button label={t.common.continue} onPress={next} />

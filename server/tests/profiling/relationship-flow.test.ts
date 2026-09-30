@@ -61,6 +61,7 @@ describe.skipIf(!hasDatabase)('relationship & family status', () => {
     await call.patch(authorization, { partner: { yearlyIncomeRange: 'over_100k' } })
     const res = await call.patch(authorization, { partner: { languages: ['ar', 'en'], occupation: 'student' } })
     expect(res.json().answers.partner).toEqual({
+      settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
       languages: ['ar', 'en'], yearlyIncomeRange: 'over_100k', qualificationLevel: null, occupation: 'student',
     })
   })
@@ -102,24 +103,24 @@ describe.skipIf(!hasDatabase)('relationship & family status', () => {
     expect(res.json().answers.kids).toEqual(['age_14_18'])
   })
 
-  it('German: submit needs kids ages and all five partner answers, then Q7', async () => {
+  it('German: submit needs kids ages and every partner answer, then Q7', async () => {
     const { authorization } = await approvedMember(app, 'DE')
     await call.patch(authorization, { ...germanQ1toQ5, relationshipStatus: ['kids', 'partner'], desiredWorkType: 'business_owner' })
-    await call.patch(authorization, { futureWorkSector: 'technology_it', futureWorkIdea: 'A shop' })
+    await call.patch(authorization, { futureWorkSector: 'technology_it', futureWorkBusinessActivities: ['sales'] })
 
     let res = await call.submit(authorization)
     expect(res.statusCode).toBe(409)
     expect(res.json().type).toBe(PROBLEMS.PROFILING_ANSWERS_MISSING.type)
     expect(res.json().detail).toContain('kids')
-    expect(res.json().detail).toContain('partner-languages')
-    // The partner is never asked where they will settle.
-    expect(res.json().detail).not.toContain('partner-settling')
-    expect((await call.patch(authorization, { partner: { settlingStatus: 'need_help' } })).statusCode).toBe(400)
+    // The partner is asked the whole questionnaire from Q1, settling included.
+    expect(res.json().detail).toContain('partner-settling')
+    expect(res.json().detail).toContain('partner-income')
 
     await call.patch(authorization, { kids: ['age_0_6'] })
-    await call.patch(authorization, { partner: { languages: ['de'] } })
+    await call.patch(authorization, { partner: { settlingStatus: 'need_help', languages: ['de'] } })
     res = await call.submit(authorization)
-    expect(res.statusCode).toBe(409) // partner income, qualification and occupation still missing
+    expect(res.statusCode).toBe(409) // partner qualification, occupation and income still missing
+    expect(res.json().detail).not.toContain('partner-settling')
     expect(res.json().detail).not.toContain('partner-languages')
     expect(res.json().detail).not.toContain('kids')
 
@@ -129,21 +130,25 @@ describe.skipIf(!hasDatabase)('relationship & family status', () => {
     expect(res.json()).toMatchObject({ completed: true })
   })
 
-  it('non-German: ends at review after Q6 and the partner section, with no Q7', async () => {
+  it('non-German with a GWC city: Q6 and the partner section, then review, with no Q7', async () => {
+    const gwc = (await app.pg.query('SELECT country, city FROM gwc_cities ORDER BY city LIMIT 1')).rows[0]
     const { authorization } = await approvedMember(app, 'FR')
-    await call.patch(authorization, {
-      primaryCity: { country: 'ZZ', city: 'Nowhere' }, relationshipStatus: ['family'],
-      partner: { ...partnerAnswers },
-    })
+    await call.patch(authorization, { primaryCity: gwc, relationshipStatus: ['family'], partner: { ...partnerAnswers } })
     const res = await call.submit(authorization)
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toMatchObject({ completed: true, outcome: 'in_person_meeting' })
+    expect(res.json()).toMatchObject({ completed: true, outcome: 'gwc_city_match' })
     expect(res.json().answers.partner.occupation).toBe('engineer')
   })
 
-  it('a non-German member cannot send German-only answers, but Q6 is allowed', async () => {
+  it('non-German without a GWC city: no Q6 at all, straight to review', async () => {
+    const { authorization } = await approvedMember(app, 'FR')
+    await call.patch(authorization, { primaryCity: { country: 'ZZ', city: 'Nowhere' } })
+    expect((await call.patch(authorization, { relationshipStatus: ['family'] })).statusCode).toBe(400)
+    expect((await call.submit(authorization)).json()).toMatchObject({ completed: true, outcome: 'in_person_meeting' })
+  })
+
+  it('a non-German member cannot send German-only answers', async () => {
     const { authorization } = await approvedMember(app, 'FR')
     expect((await call.patch(authorization, { occupation: 'student' })).statusCode).toBe(400)
-    expect((await call.patch(authorization, { relationshipStatus: ['single'] })).statusCode).toBe(200)
   })
 })

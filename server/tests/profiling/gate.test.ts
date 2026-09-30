@@ -53,7 +53,7 @@ describe.skipIf(!hasDatabase)('the profiling gate', () => {
 
   it('keeps the member gated after the last answer is saved, and opens the routes on submit only', async () => {
     const { authorization } = await memberWithApplication('approved')
-    await patch({ authorization }, { primaryCity: { country: 'GB', city: 'London' }, relationshipStatus: ['single'] })
+    await patch({ authorization }, { primaryCity: { country: 'GB', city: 'London' } })
     // Every elsewhere answer is saved, and the gate has not moved.
     expect((await ordinary({ authorization })).statusCode).toBe(403)
 

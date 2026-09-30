@@ -1,5 +1,6 @@
 import { loadEnv } from '../config/env.ts'
 import { createPool } from '../db/pool.ts'
+import { loadCities } from './load-cities.ts'
 import { parseOptions } from '../seed/options.ts'
 import { createFaker, SEED } from '../seed/faker.ts'
 import { hashAll } from '../seed/hashing.ts'
@@ -72,6 +73,9 @@ try {
     )
     process.exit(1)
   }
+
+  // Reference data the profiling questionnaire offers (feature 013).
+  await loadCities(pool)
 
   const faker = createFaker({ random: options.random })
 

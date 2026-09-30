@@ -34,6 +34,17 @@ export const ONBOARDING_STEPS = Object.freeze([
   'denied',
 ] as const)
 
+/**
+ * Register asks for the applicant's primary language. Non-German speakers are
+ * denied automatically once their email is confirmed; German speakers wait for
+ * staff or for the 24-hour automatic approval (business description, Phase 1).
+ */
+export const PRIMARY_LANGUAGES = Object.freeze(['german', 'non_german'] as const)
+export type PrimaryLanguage = (typeof PRIMARY_LANGUAGES)[number]
+
+/** Register offers these three as shortcuts; "Others" opens the full country picker. */
+export const RESIDENCE_SHORTCUTS = Object.freeze(['DE', 'AT', 'CH'] as const)
+
 /** Phase 2 profiling branches on this value (German vs. non-German residence). */
 export const GERMANY = 'DE'
 
@@ -73,6 +84,9 @@ export const registerRequestSchema = z.object({
   birthday: isoDateSchema,
   gender: z.enum(GENDERS),
   countryOfResidence: countryCodeSchema,
+  /** "I confirm I am of age" — required, and stored as a timestamp. */
+  ageConfirmed: z.literal(true),
+  primaryLanguage: z.enum(PRIMARY_LANGUAGES),
   /** Mobile only. Absent marks the web face. */
   deviceId: z.string().min(1).max(128).optional(),
 })
@@ -154,6 +168,10 @@ export const applicationSchema = z.object({
   submittedAt: z.string().nullable(),
   reviewedAt: z.string().nullable(),
   denialReason: z.string().nullable(),
+  /** Null for an application that never reached the queue (nothing chosen at Register). */
+  primaryLanguage: z.enum(PRIMARY_LANGUAGES).nullable(),
+  /** `automatic` for the non-German denial and the 24-hour approval; null while pending. */
+  decidedBy: z.enum(['staff', 'automatic']).nullable(),
   /**
    * Onboarding Phase 2 (013): null until the member has started profiling —
    * which never happens before approval, so this is only meaningful once

@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin'
-import { profilingStatusSchema, profilingPatchRequestSchema, gwcCitiesResponseSchema } from '@gwc/contracts/profiling'
+import { profilingStatusSchema, profilingPatchRequestSchema, gwcCitiesResponseSchema, citiesQuerySchema, citiesResponseSchema } from '@gwc/contracts/profiling'
 import { createProfilingController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -39,6 +39,18 @@ export default fp(
         schema: { response: { 200: gwcCitiesResponseSchema } },
       },
       controller.gwcCities,
+    )
+
+    // The country/city dropdowns (InterNations list + the club's designated
+    // cities). `listed: false` tells the client to fall back to free text.
+    app.get(
+      '/profiling/cities',
+      {
+        config: { auth: profiling, budget: 'member-read' },
+        onRequest: app.guard,
+        schema: { querystring: citiesQuerySchema, response: { 200: citiesResponseSchema } },
+      },
+      controller.cities,
     )
 
     app.patch(

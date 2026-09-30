@@ -38,10 +38,14 @@ const patch = (headers: Record<string, string>, payload: object) =>
 const submit = (headers: Record<string, string>) =>
   app.inject({ method: 'POST', url: '/profiling/submit', headers })
 
-// Cities and Q6 ("single"), then submit: the elsewhere branch has no Q7.
+// Cities, then Q6 ("single") only when a GWC city matched — a member with no
+// match is never asked it — then submit. The elsewhere branch has no Q7.
 async function saveAndSubmit(headers: Record<string, string>, cities: object) {
-  const saved = await patch(headers, { ...cities, relationshipStatus: ['single'] })
+  const saved = await patch(headers, cities)
   expect(saved.statusCode).toBe(200)
+  if (saved.json().answers.gwcMatch) {
+    expect((await patch(headers, { relationshipStatus: ['single'] })).statusCode).toBe(200)
+  }
   return submit(headers)
 }
 
@@ -58,11 +62,31 @@ async function staffApplications(state = 'approved') {
 const UNLISTED = { country: 'ZZ', city: 'Nonexistentville' }
 
 describe.skipIf(!hasDatabase)('the non-German nearest-city flow (Stories 2 & 3)', () => {
-  it('saves the cities without resolving the outcome; submit does that', async () => {
+  it('stores the GWC match when the cities are saved; the outcome waits for submit', async () => {
     const { authorization } = await approvedMember('FR')
     const saved = await patch({ authorization }, { primaryCity: SEEDED_MATCH, secondaryCities: [] })
-    expect(saved.json()).toMatchObject({ completed: false, outcome: null, matchedCity: null })
-    expect(saved.json().answers.primaryCity).toEqual(SEEDED_MATCH)
+    expect(saved.json()).toMatchObject({ completed: false, outcome: null, matchedCity: SEEDED_MATCH })
+    expect(saved.json().answers).toMatchObject({ primaryCity: SEEDED_MATCH, gwcMatch: true })
+  })
+
+  it('a member with no GWC city goes straight to submit and is never asked Q6', async () => {
+    const { authorization } = await approvedMember('FR')
+    const saved = await patch({ authorization }, { primaryCity: UNLISTED })
+    expect(saved.json().answers.gwcMatch).toBe(false)
+    expect((await patch({ authorization }, { relationshipStatus: ['single'] })).statusCode).toBe(400)
+    // Counter-assertion: the same answer is accepted once a GWC city matches.
+    await patch({ authorization }, { primaryCity: SEEDED_MATCH })
+    expect((await patch({ authorization }, { relationshipStatus: ['single'] })).statusCode).toBe(200)
+  })
+
+  it('a match that stops matching deletes the Q6, kids and partner answers', async () => {
+    const { memberId, authorization } = await approvedMember('FR')
+    await patch({ authorization }, { primaryCity: SEEDED_MATCH })
+    await patch({ authorization }, { relationshipStatus: ['kids', 'partner'], kids: ['age_0_6'], partner: { occupation: 'student' } })
+    const changed = await patch({ authorization }, { primaryCity: UNLISTED })
+    expect(changed.json().answers).toMatchObject({ gwcMatch: false, relationshipStatus: null, kids: [], partner: null })
+    const kids = await app.pg.query('SELECT 1 FROM member_profiling_kids WHERE member_id = $1', [memberId])
+    expect(kids.rows).toHaveLength(0)
   })
 
   it('starts on the elsewhere branch', async () => {
