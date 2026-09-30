@@ -34,6 +34,11 @@ export const de: Catalogue = {
     profileIncomplete: 'Ihre Registrierung wurde nicht abgeschlossen. Registrieren Sie sich erneut mit derselben E-Mail-Adresse und demselben Passwort, um fortzufahren.',
     passwordResetRequired: 'Bitte setzen Sie Ihr Passwort auf der Website zurück, bevor Sie sich anmelden.',
     staffAccount: 'Mitarbeiterkonten können sich nicht in der App anmelden. Bitte verwenden Sie die Konsole auf der Website.',
+    invalidCredentials: 'E-Mail-Adresse oder Passwort ist nicht korrekt.',
+    accountLocked: 'Dieses Konto ist gesperrt. Bitte wenden Sie sich an den Club.',
+    tooManyAttempts: 'Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
+    networkError: 'Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
+    genericError: 'Die Anmeldung hat nicht funktioniert. Bitte versuchen Sie es erneut.',
   },
   register: {
     stepOf: 'Schritt {step} von 4',

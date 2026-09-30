@@ -33,6 +33,11 @@ export const en = {
     profileIncomplete: 'Your registration was not finished. Register again with the same email and password to continue where you left off.',
     passwordResetRequired: 'Please reset your password on the website before signing in.',
     staffAccount: 'Staff accounts cannot sign in to the app. Please use the staff console on the website.',
+    invalidCredentials: 'The email or password is not correct.',
+    accountLocked: 'This account is locked. Please contact the club.',
+    tooManyAttempts: 'Too many attempts. Please wait a moment and try again.',
+    networkError: 'Could not reach the server. Check your connection and try again.',
+    genericError: 'Sign-in did not work. Please try again.',
   },
   register: {
     stepOf: 'Step {step} of 4',
