@@ -7,7 +7,6 @@ import {
 } from '../src/profiling.ts'
 
 const blank = (): ProfilingAnswers => ({
-  settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
   languages: null, yearlyIncomeRange: null, qualificationLevel: null, occupation: null,
   relationshipStatus: null, kids: [], partner: null, desiredWorkType: null,
   futureWorkSector: null, futureWorkReady: null, futureWorkOffering: null, futureWorkIdea: null,
@@ -15,7 +14,6 @@ const blank = (): ProfilingAnswers => ({
   primaryCity: null, secondaryCities: [], gwcMatch: false,
 })
 const partner = (over: Partial<NonNullable<ProfilingAnswers['partner']>> = {}) => ({
-  settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
   languages: null, yearlyIncomeRange: null, qualificationLevel: null, occupation: null, ...over,
 })
 
@@ -31,7 +29,7 @@ describe('profilingSteps', () => {
           const steps = profilingSteps(branch, { ...blank(), gwcMatch: true, relationshipStatus: tags, desiredWorkType: work })
           expect(steps.at(-1)).toBe('review')
           expect(steps.includes('kids')).toBe(tags.includes('kids'))
-          expect(steps.includes('partner-settling')).toBe(tags.includes('partner') || tags.includes('family'))
+          expect(steps.includes('partner-languages')).toBe(tags.includes('partner') || tags.includes('family'))
           // Q7 is German-only.
           expect(steps.some((s) => s.startsWith('work-'))).toBe(branch === 'germany')
           if (branch === 'germany') expect(steps.indexOf('relationship')).toBeLessThan(steps.indexOf('work-type'))
@@ -65,7 +63,7 @@ describe('profilingSteps', () => {
     expect(steps.some((s) => s.startsWith('partner-'))).toBe(false)
   })
 
-  describe('settling (Q1), for the member and the partner alike', () => {
+  describe('settling (Q1), the member\'s own — the partner starts at Q2', () => {
     it('"please help" shows an information screen and asks nothing more', () => {
       const steps = profilingSteps('germany', { ...blank(), settlingStatus: 'need_help' })
       expect(steps.slice(0, 3)).toEqual(['settling', 'settling-info', 'languages'])
@@ -82,14 +80,14 @@ describe('profilingSteps', () => {
       expect(isDubai('DE', 'Dubai')).toBe(false)
     })
 
-    it('the partner block starts with the same settling steps, then languages, qualification, occupation, income', () => {
-      const a = { ...blank(), relationshipStatus: ['partner' as const], partner: partner({ settlingStatus: 'know_where', settlingCountry: 'AE', settlingCity: 'Dubai' }) }
+    it('the partner block is languages, qualification, occupation, income — never settling', () => {
+      const a = { ...blank(), settlingStatus: 'know_where' as const, settlingCountry: 'AE', settlingCity: 'Dubai', relationshipStatus: ['partner' as const] }
       const steps = profilingSteps('germany', a)
-      const start = steps.indexOf('partner-settling')
-      expect(steps.slice(start, start + 7)).toEqual([
-        'partner-settling', 'partner-settling-place', 'partner-settling-work',
-        'partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income',
-      ])
+      const start = steps.indexOf('partner-languages')
+      expect(steps.slice(start, start + 4)).toEqual(['partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income'])
+      expect(steps.some((x) => x.startsWith('partner-settling'))).toBe(false)
+      // Counter-assertion: the member's own settling, Dubai follow-up included, is still asked.
+      expect(steps.slice(0, 4)).toEqual(['settling', 'settling-place', 'settling-work', 'languages'])
     })
   })
 
@@ -156,7 +154,7 @@ describe('profilingMissing', () => {
   it('asks the non-German branch for the cities, then Q6 and a partner only after a GWC match', () => {
     expect(profilingMissing('elsewhere', { ...blank(), relationshipStatus: ['partner'] })).toEqual(['cities'])
     expect(profilingMissing('elsewhere', { ...blank(), gwcMatch: true, primaryCity: { country: 'AE', city: 'Dubai' }, relationshipStatus: ['partner'] })).toEqual([
-      'partner-settling', 'partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income',
+      'partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income',
     ])
   })
 })
@@ -195,7 +193,9 @@ describe('patch schemas', () => {
     expect(profilingGermanyPatchSchema.safeParse({ futureWorkPriorities: ['family_time', 'balance_lifestyle'] }).success).toBe(true)
     expect(profilingGermanyPatchSchema.safeParse({ futureWorkPriorities: [] }).success).toBe(false)
     expect(profilingGermanyPatchSchema.safeParse({ yearlyIncomeRange: 'over_1m' }).success).toBe(true)
-    expect(profilingGermanyPatchSchema.safeParse({ partner: { settlingStatus: 'need_help' } }).success).toBe(true)
+    // The partner is not asked where they will settle (revision 6): the key is refused, not ignored.
+    expect(profilingGermanyPatchSchema.safeParse({ partner: { settlingStatus: 'need_help' } }).success).toBe(false)
+    expect(profilingGermanyPatchSchema.safeParse({ partner: { occupation: 'student' } }).success).toBe(true)
   })
 })
 

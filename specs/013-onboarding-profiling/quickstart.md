@@ -150,3 +150,12 @@ Order settling, languages, qualification, occupation, income (five bands), Q6, Q
 
 ## Scenario 13 — Non-German
 Cities from the dropdown (`GET /profiling/cities?country=DE` → Berlin first). No GWC city → review → Submit → in-person-meeting. A GWC city (e.g. Dubai) → Q6, kids, partner → review → Submit → `gwc_city_match`. Change the cities back to a non-match → the Q6/kids/partner answers are gone.
+
+
+## Scenario 14 — Partner questionnaire without settling (Revision 6)
+1. German member: tags Partner + Kids → kids, then partner **languages → qualification → occupation → income**, then Q7. No settling screen for the partner, on web and in the Expo app.
+2. Non-German member with a GWC city (Dubai): Partner → the same four partner steps → review. Submit succeeds.
+3. `PATCH /profiling` with `partner: { settlingStatus: 'need_help' }` → 422; `partner` with only the four answers → 200.
+4. `GET /profiling/status` for a partner-bearing member lists no `partner-settling*` step, and `missing` never names one.
+5. Counter-check: the member's own Q1 is still asked on the German path.
+Tests: `packages/contracts/tests/profiling-steps.test.ts`, `server/tests/profiling/{relationship-flow,settling,submit}.test.ts`, `client/tests/onboarding/profiling.test.tsx`.

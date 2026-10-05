@@ -540,3 +540,54 @@ Task: "T121 web city dropdown"   Task: "T122 Expo city list"   Task: "T120 serve
 1. **MVP of this revision = Phase 13 + US7 (+ US6)**: the Phase 1 rules are self-contained, server-first and change no Phase 2 screen. Validate with Scenario 10.
 2. Then US9 (order/income/Q7), US8 (settling), US10 (GWC branching, city data). The three Phase 2 stories change the shared step engine and must ship together with their client tasks.
 3. Everything that reverses an earlier request (partner settling, not-sure multi-select and no industry) is isolated in T090, T107–T110 and T111–T114; if you change your mind, those are the only tasks to drop.
+
+
+---
+
+# Revision 6 (2026-10-05): the partner is asked Q2–Q5, not Q1
+
+Source: `plan.md` Revision 6, `spec.md` FR-046–FR-049, `research.md` R19–R21, `data-model.md` `039`. The member's own Q1 is **unchanged**; only the partner loses the settling question. Tests are included because the feature already carries a suite and a counter-assertion is required.
+
+## Phase 20: Contracts and database (blocking)
+
+- [X] T127 [US8] In `packages/contracts/src/profiling.ts` remove `settlingStatus`, `settlingCountry`, `settlingCity`, `settlingWorkDuration` from `partnerAnswersSchema` and from the `partner` object of the PATCH body (keep `.strict()` so settling keys are a 422); remove `partner-settling`, `partner-settling-info`, `partner-settling-place`, `partner-settling-work` from `ProfilingStepId`, their entries in the answered-checks map, and the `...settlingSteps('partner-', answers.partner)` call so the partner steps are exactly `partner-languages`, `partner-qualification`, `partner-occupation`, `partner-income`; simplify `settlingSteps` to the member case if the prefix is now unused; update the "from Q1" doc comments to "from Q2"
+- [X] T128 [P] [US8] Write `server/migrations/039_partner_no_settling.sql`: `ALTER TABLE member_profiling_partner DROP COLUMN IF EXISTS` for `settling_status`, `settling_country`, `settling_city`, `settling_work_duration` (their CHECKs go with them); no down script (the repo has none — `migrate:down` rebuilds the development database); follow the style of `035` (depends on: nothing)
+
+## Phase 21: Server
+
+- [X] T129 [US8] In `server/src/modules/profiling/application/submit.ts` remove partner settling from the partner write path (the `SELECT settling_status…FROM member_profiling_partner`, the `mergeSettling` call for the partner, and the four columns in the `INSERT … ON CONFLICT`), keeping explicit column lists with `languages, yearly_income_range, qualification_level, occupation`; `mergeSettling` stays for the member's own Q1 (depends on: T127, T128)
+- [X] T130 [P] [US8] In `server/src/modules/profiling/application/status.ts` stop selecting and returning partner settling columns; confirm `complete.ts` derives the missing list only from `profilingSteps` so no partner-settling id can be reported (depends on: T127, T128)
+- [X] T131 [P] [US8] Search `server/src/modules/onboarding/application/review.ts`, `server/src/seed/` and `server/src/scripts/` for `member_profiling_partner` settling columns and remove any use (`grep -rn "partner.*settling\|settling.*partner" server/src`) (depends on: T128)
+- [X] T132 [US8] Update server tests: in `server/tests/profiling/settling.test.ts` flip the partner case — settling fields on `partner` → `422 VALIDATION_FAILED`, with a counter-assertion that the member's own settling is still accepted; in `relationship-flow.test.ts` and `submit.test.ts` complete the partner with the four answers only and assert submit succeeds, and that `missing` never contains a `partner-settling*` id; add a non-German + GWC-city case (Dubai) with partner → submit → `gwc_city_match`; verify migration `039` applies and that `member_profiling_partner` has no `settling*` column (depends on: T129, T130)
+- [X] T133 [P] [US8] Update `packages/contracts/tests/profiling-steps.test.ts`: the step list for Partner/Family on the German path and on the elsewhere-with-match path contains exactly the four partner steps in order and no `partner-settling*`; counter-assertion that `settling`, `settling-place` for the member are still present (depends on: T127)
+
+## Phase 22: Web console and Expo app (same release as T127)
+
+- [X] T134 [P] [US8] Web: in `client/src/onboarding/profiling/steps.tsx` delete the partner settling step components and the `{ partner: { settlingCountry, settlingCity } }` branch of the shared settling component (line ~364) so it serves the member only; in `client/src/onboarding/Profiling.tsx` and `client/src/onboarding/profiling/summary.ts` remove `partner-settling-info` from the `Exclude<…>` types and any `partner-settling*` cases; the settling i18n keys stay (the member's own Q1 still uses them); run `npm run -w client test:i18n` (depends on: T127)
+- [X] T135 [P] [US8] Expo: same in `expo-client/german-world-club/src/components/profiling/steps.tsx` (line ~161), `src/components/profiling/summary.ts`, `src/app/(profiling)/index.tsx` and `src/components/profiling/cities.tsx` if it carries partner-specific props; (depends on: T127)
+- [X] T136 [US8] Update `client/tests/onboarding/profiling.test.tsx`: the partner flow (around line 294, "The partner starts where the member did: with settling") now starts at partner languages, goes languages → qualification → occupation → income and then Q7 (German) or review (elsewhere); counter-assertion that the member's own settling heading is still shown first on the German path (depends on: T134)
+- [X] T137 [P] [US8] Run `tsc --noEmit` in `packages/contracts`, `client` and `expo-client/german-world-club`; fix every caller the compiler names (this is how a leftover partner-settling reference is found) (depends on: T134, T135)
+
+## Phase 23: Polish
+
+- [X] T138 [P] Update `CLAUDE.md` profiling paragraph (one sentence): the partner answers Q2–Q5 only — settling is the member's own question; the step list in `@gwc/contracts/profiling` is the sole order, so a partner question is added or removed there and nowhere else
+- [X] T139 Run quickstart Scenario 14 and the suites `packages/contracts`, `client`, `server/tests/{profiling,onboarding,authz,seed}` with a database; report failures that also fail on the untouched baseline separately, as in T124 (depends on: T132, T133, T136, T137)
+- [ ] T140 Manual click-through of the partner questionnaire on the web console and the Expo app, German path and a Dubai non-German path, both languages (the Expo screens have no automated tests); record deviations here (depends on: T139)
+
+### Dependencies & Execution Order (Revision 6)
+
+- T127 and T128 first (parallel). T129, T130, T131 follow (T130/T131 parallel with T129). T132 after T129 and T130.
+- T133, T134 and T135 depend only on T127 and run in parallel with the server work. T136 after T134; T137 after T134 and T135.
+- **T127 changes what both clients render and what the server accepts: ship T127–T135 together**, never the contracts change alone.
+- Final: T138 ∥ T139 → T140.
+
+### Parallel Example
+
+```bash
+# After T127 + T128
+Task: "T129 submit.ts"  Task: "T133 contracts test"  Task: "T134 web steps"  Task: "T135 Expo steps"
+```
+
+### Implementation Strategy
+
+Single story (US8 amended), 14 tasks. MVP = T127–T133 (server and contracts correct, verified by tests); the clients (T134–T137) follow immediately in the same release. Rollback is isolated: re-adding the partner settling steps means reverting T127 and the `039` migration only.

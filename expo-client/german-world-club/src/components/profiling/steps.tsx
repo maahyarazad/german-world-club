@@ -145,8 +145,8 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
   switch (base) {
     case 'settling':
       return <Choice ctx={ctx} title={title(copy.settlingTitle)} subtitle={copy.settlingSubtitle}
-        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={subject?.settlingStatus ?? null}
-        onPick={(v) => put('settlingStatus', v)} />;
+        options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={answers.settlingStatus ?? null}
+        onPick={(v) => ctx.save({ settlingStatus: v })} />;
     case 'settling-info':
       return (
         <Frame ctx={ctx} title={title(copy.settlingTitle)}>
@@ -156,14 +156,12 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
       );
     case 'settling-place':
       return <PlacePicker ctx={ctx} title={title(copy.settlingPlaceTitle)} onBack={ctx.back}
-        initial={subject?.settlingCountry ? { country: subject.settlingCountry, city: subject.settlingCity ?? '' } : null}
-        onDone={(slot) => ctx.save(partner
-          ? { partner: { settlingCountry: slot.country, settlingCity: slot.city } }
-          : { settlingCountry: slot.country, settlingCity: slot.city })} />;
+        initial={answers.settlingCountry ? { country: answers.settlingCountry, city: answers.settlingCity ?? '' } : null}
+        onDone={(slot) => ctx.save({ settlingCountry: slot.country, settlingCity: slot.city })} />;
     case 'settling-work':
       return <Choice ctx={ctx} title={title(copy.workingDurationTitle)}
-        options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={subject?.settlingWorkDuration ?? null}
-        onPick={(v) => put('settlingWorkDuration', v)} />;
+        options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={answers.settlingWorkDuration ?? null}
+        onPick={(v) => ctx.save({ settlingWorkDuration: v })} />;
     case 'languages':
       return <Multi ctx={ctx} title={title(copy.languagesTitle)} subtitle={copy.languagesSubtitle} search={copy.languagesSearch}
         options={LANGUAGES.map((l) => ({ value: l.code, label: l.en }))} initial={subject?.languages ?? []}

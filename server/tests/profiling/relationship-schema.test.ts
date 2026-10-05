@@ -18,7 +18,7 @@ async function withKidsAndPartner() {
   const gwc = (await app.pg.query('SELECT country, city FROM gwc_cities ORDER BY city LIMIT 1')).rows[0]
   await call.patch(authorization, {
     primaryCity: gwc, relationshipStatus: ['kids', 'partner'],
-    kids: ['age_0_6'], partner: { settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: 'up_to_50k', qualificationLevel: 'doctorate', occupation: 'other' },
+    kids: ['age_0_6'], partner: { languages: ['en'], yearlyIncomeRange: 'up_to_50k', qualificationLevel: 'doctorate', occupation: 'other' },
   })
   return { memberId, authorization }
 }
@@ -33,7 +33,9 @@ describe.skipIf(!hasDatabase)('member_profiling_kids / member_profiling_partner'
     for (const band of ['over_500k', 'over_1m', 'over_100k']) {
       await app.pg.query(`UPDATE member_profiling_partner SET yearly_income_range = $2 WHERE member_id = $1`, [memberId, band])
     }
-    await expect(app.pg.query(`UPDATE member_profiling_partner SET settling_work_duration = 'forever' WHERE member_id = $1`, [memberId])).rejects.toThrow(/settling_work_duration/)
+    // Migration 039: the partner has no settling columns at all.
+    const { rows: cols } = await app.pg.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'member_profiling_partner' AND column_name LIKE 'settling%'`)
+    expect(cols).toEqual([])
   })
 
   it('allows changes and deletes before completion', async () => {

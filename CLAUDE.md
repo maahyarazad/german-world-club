@@ -362,6 +362,11 @@ rules that look optional and are not:
   about "done". Changing an earlier answer deletes the answers that no longer
   apply (kids, partner, the previous Q7 path's follow-ups) in the same
   transaction.
+- **The partner answers Q2–Q5 only** (languages, qualification, occupation,
+  income). Settling is the member's own question: `partner` on the PATCH body is
+  strict, so a settling key is a 400, and `profilingSteps` has no
+  `partner-settling*` step. A partner question is added or removed there and
+  nowhere else.
 - **A non-German member's GWC match is stored when the cities are saved, not at
   submit**, because it decides whether Q6 is asked at all (no match: review
   straight after the cities). The city lists are `world_cities` (the InterNations
