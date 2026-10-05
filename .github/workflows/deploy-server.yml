@@ -31,7 +31,7 @@ jobs:
           sshpass -e rsync -avz --delete \
             -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
             server/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/german-world-club/server/
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/staging.german-world-club.com/server/
 
       - name: Verify deployment
         env:
@@ -39,4 +39,4 @@ jobs:
         run: |
           sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "ls -la ~/german-world-club/server/"
+            "ls -la ~/staging.german-world-club.com/server/"
