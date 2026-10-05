@@ -26,7 +26,9 @@ import type { GwcApp } from '../../app.ts'
  */
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const CLIENT_DIR = path.resolve(HERE, '..', '..', '..', 'client')
+// src/modules/public → repo root: four levels, the same root app.ts reaches
+// from src/. Three lands on server/client, which never exists.
+const CLIENT_DIR = path.resolve(HERE, '..', '..', '..', '..', 'client')
 
 /**
  * HTML routes still declare an explicit response schema (Constitution
