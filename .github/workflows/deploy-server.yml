@@ -1,6 +1,8 @@
 name: Deploy GWC Server
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -12,15 +14,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Install sshpass
         run: sudo apt-get update && sudo apt-get install -y sshpass
 
@@ -28,10 +21,56 @@ jobs:
         env:
           SSHPASS: ${{ secrets.SSH_PASSWORD }}
         run: |
+          # Host-owned paths are excluded so --delete cannot remove them: the
+          # packages installed on the host, its .env, and runtime data.
           sshpass -e rsync -avz --delete \
+            --exclude='/node_modules/' --exclude='/.env' \
+            --exclude='/logs/' --exclude='/var/' --exclude='/file_storage/' \
             -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
             server/ \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/staging.german-world-club.com/server/
+
+      # server depends on @gwc/contracts, which is a folder in this repo
+      # (packages/contracts), not an npm package. For npm on the host to link
+      # it, the host needs the root package.json and that folder next to
+      # server/ (plus the lockfile, if the repo has one).
+      - name: Upload workspace files (package.json, lockfile, packages/contracts)
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          SSH="ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no"
+          REMOTE=${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          DEST="$REMOTE:~/staging.german-world-club.com"
+
+          if [ -f package-lock.json ]; then
+            sshpass -e rsync -avz -e "$SSH" package.json package-lock.json "$DEST/"
+          else
+            echo "No package-lock.json in repo; uploading package.json only"
+            sshpass -e rsync -avz -e "$SSH" package.json "$DEST/"
+            # Remove any stale lockfile on the host so it can't conflict
+            sshpass -e $SSH "$REMOTE" 'rm -f ~/staging.german-world-club.com/package-lock.json'
+          fi
+
+          sshpass -e rsync -avz --delete --exclude='/node_modules/' -e "$SSH" \
+            packages/contracts/ "$DEST/packages/contracts/"
+
+      - name: Install dependencies on server
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            'set -e
+             # Load nvm if Node was installed with it (non-interactive SSH skips .bashrc)
+             export NVM_DIR="$HOME/.nvm"
+             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+             cd ~/staging.german-world-club.com
+             FLAGS="--omit=dev --workspace=server --workspace=packages/contracts --include-workspace-root"
+             if [ -f package-lock.json ]; then
+               npm ci $FLAGS
+             else
+               npm install $FLAGS
+             fi'
 
       - name: Verify deployment
         env:
@@ -39,4 +78,4 @@ jobs:
         run: |
           sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "ls -la ~/staging.german-world-club.com/server/"
+            "ls -la ~/staging.german-world-club.com/ ~/staging.german-world-club.com/packages/contracts/ ~/staging.german-world-club.com/server/"
