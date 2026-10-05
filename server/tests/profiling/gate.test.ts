@@ -51,6 +51,17 @@ describe.skipIf(!hasDatabase)('the profiling gate', () => {
     expect((await patch({ authorization }, { primaryCity: { country: 'GB', city: 'London' } })).statusCode).toBe(200)
   })
 
+  it('keeps the member gated after the last answer is saved, and opens the routes on submit only', async () => {
+    const { authorization } = await memberWithApplication('approved')
+    await patch({ authorization }, { primaryCity: { country: 'GB', city: 'London' } })
+    // Every elsewhere answer is saved, and the gate has not moved.
+    expect((await ordinary({ authorization })).statusCode).toBe(403)
+
+    const done = await app.inject({ method: 'POST', url: '/profiling/submit', headers: { authorization } })
+    expect(done.statusCode).toBe(200)
+    expect((await ordinary({ authorization })).statusCode).toBe(200)
+  })
+
   it('lets that same member read the GWC city dropdown data', async () => {
     const { authorization } = await memberWithApplication('approved')
     const response = await gwcCities({ authorization })

@@ -105,11 +105,14 @@ export function Applications() {
                 <dt className="text-text-muted">{copy.gender}</dt><dd>{gender(a.gender)}</dd>
                 <dt className="text-text-muted">{copy.country}</dt><dd>{country(a.countryOfResidence)}</dd>
                 <dt className="text-text-muted">{copy.face}</dt><dd>{a.deviceId ? copy.faceApp : copy.faceWeb}</dd>
+                <dt className="text-text-muted">{copy.primaryLanguage}</dt>
+                <dd>{a.primaryLanguage ? copy.primaryLanguages[a.primaryLanguage] : '—'}</dd>
                 {a.denialReason && <><dt className="text-text-muted">{copy.denialReason}</dt><dd>{a.denialReason}</dd></>}
               </dl>
               <p className="mt-2 text-[12px] text-text-muted">
                 {a.submittedAt && fill(copy.submittedOn, { date: formatDateTime(a.submittedAt, locale) })}
                 {a.reviewedAt && <> · {fill(copy.reviewedOn, { date: formatDateTime(a.reviewedAt, locale) })}</>}
+                {a.decidedBy === 'automatic' && <> · <span className="font-semibold">{copy.decidedAutomatically}</span></>}
               </p>
 
               {canDecide && a.state === 'pending' && (

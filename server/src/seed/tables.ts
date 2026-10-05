@@ -89,10 +89,16 @@ export const SEEDED = Object.freeze([
   // gwc_cities is reference data, populated by the migration itself, not by
   // seed:demo — same status as job_definitions.
   'gwc_cities',
+  // The InterNations list, loaded by `load:cities` (also run by seed:dev / seed:demo).
+  'world_cities',
   // Not seeded: no seeded fact implies a demo applicant answered the
   // questionnaire, and profiling is domain state, not a credential — the
   // same reasoning as member_blocks/member_push_preferences above.
   'member_profiling',
+  // Children of member_profiling (relationship revision): same reasoning, and
+  // they may not even be written once their parent is complete.
+  'member_profiling_kids',
+  'member_profiling_partner',
 ])
 
 /**

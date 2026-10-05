@@ -238,6 +238,14 @@ web application (`device_id IS NULL`) approves no device. Sign-in gives an
 unapproved applicant a session only on the face they applied from — their
 phone by SMS, or a browser by password — so they can resume.
 
+Two Phase 1 rules decide applications without staff. At email confirmation a
+`non_german` applicant (`members.primary_language`, asked at Register) is denied
+by the system and never reaches the queue; a `german` one gets the 48-hour
+thank-you mail, and the `onboarding.auto-approve` job approves them after 24 h.
+Both go through `applyDecision` like a staff decision (`reviewed_by` NULL,
+`decided_automatically` true), and only rows with an explicit language are ever
+touched — a missing one triggers neither rule.
+
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
 `device_approval`, `/onboarding/*` redeems `mobile_verification` and
@@ -339,6 +347,31 @@ minute. Disabling `push.deliver` stops every send path. Five rules:
   never in the repo, the app or `server/`. `EXPO_ACCESS_TOKEN` is required in
   production; FCM settings are all or none. A token is never logged, returned
   or copied into history: `tokenPreview` is all anyone sees.
+
+**Profiling is the second onboarding gate (feature 013, `specs/013-onboarding-profiling/`).**
+An approved applicant is refused on every route except those declaring
+`config.auth.profiling: true` until `member_profiling.completed_at` is set. Two
+rules that look optional and are not:
+
+- **Completion is `POST /profiling/submit`, never a `PATCH`.** `PATCH /profiling`
+  only saves, so a member can go back and change any answer until they confirm
+  on the review step. Which questions apply, their order and what is still
+  unanswered come from `profilingSteps` / `profilingMissing` in
+  `@gwc/contracts/profiling`, used by the server's submit check and both clients;
+  a second copy of that order is how a client and the server come to disagree
+  about "done". Changing an earlier answer deletes the answers that no longer
+  apply (kids, partner, the previous Q7 path's follow-ups) in the same
+  transaction.
+- **A non-German member's GWC match is stored when the cities are saved, not at
+  submit**, because it decides whether Q6 is asked at all (no match: review
+  straight after the cities). The city lists are `world_cities` (the InterNations
+  workbook, 160 countries) **and** `gwc_cities` read together — the workbook
+  omits three designated emirates — and a country neither covers takes free text.
+- **`member_profiling_kids` and `member_profiling_partner` are final with their
+  parent, by trigger.** Deletes are allowed only while the parent is
+  incomplete — that is how the cascade above works — and after completion even
+  an ad-hoc `DELETE` is refused. The elsewhere branch's GWC match and outcome
+  are computed at submit from the cities as saved, not when they are entered.
 
 **Server faults are recorded, not just logged (feature 012,
 `specs/012-error-persistence/`).** A request the error handler answers with the

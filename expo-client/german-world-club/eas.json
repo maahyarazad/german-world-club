@@ -16,6 +16,7 @@
             },
             "env": {
                 "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_API_URL": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",
@@ -33,7 +34,8 @@
             },
             "env": {
                 "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
-                "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000/",
+                "EXPO_PUBLIC_API_URL": "http://192.168.1.200:3000", 
+                "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",
                 // "EXPO_PUBLIC_RECAPTCHA_V3_SITE_KEY": "",
@@ -50,6 +52,7 @@
             },
             "env": {
                 "EXPO_PUBLIC_BASE_URL": "http://192.168.1.200:3000",
+                "EXPO_PUBLIC_API_URL": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVER_HOST": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_BASE_URL": "http://192.168.1.200:3000",
                 "EXPO_PUBLIC_SERVICES_HOST": "http://192.168.1.200:3000",

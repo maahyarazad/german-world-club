@@ -1,0 +1,2402 @@
+[
+  {
+    "country": "AE",
+    "city": "Abu Dhabi",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "AE",
+    "city": "Al Ain",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "AE",
+    "city": "Dubai",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "AE",
+    "city": "Ras Al Khaimah",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "AE",
+    "city": "Sharjah",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "AF",
+    "city": "Kabul",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "AF",
+    "city": "Herat",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "AF",
+    "city": "Kandahar",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "AL",
+    "city": "Tirana",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "AM",
+    "city": "Yerevan",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "AO",
+    "city": "Luanda",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "AR",
+    "city": "Buenos Aires",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "AR",
+    "city": "Córdoba",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "AR",
+    "city": "Mendoza",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "AR",
+    "city": "Rosario",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "AT",
+    "city": "Vienna",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "AT",
+    "city": "Graz",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "AT",
+    "city": "Salzburg",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Canberra",
+    "region": "Oceania",
+    "capital": true
+  },
+  {
+    "country": "AU",
+    "city": "Adelaide",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Brisbane",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Gold Coast",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Hobart",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Melbourne",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Perth",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AU",
+    "city": "Sydney",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "AZ",
+    "city": "Baku",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "BA",
+    "city": "Sarajevo",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "BD",
+    "city": "Dhaka",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "BD",
+    "city": "Chittagong",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "BD",
+    "city": "Khulna",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "BD",
+    "city": "Sylhet",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "BE",
+    "city": "Brussels",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "BE",
+    "city": "Antwerp",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "BE",
+    "city": "Ghent",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "BF",
+    "city": "Ouagadougou",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "BG",
+    "city": "Sofia",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "BG",
+    "city": "Plovdiv",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "BH",
+    "city": "Manama",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "BI",
+    "city": "Gitega",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "BJ",
+    "city": "Porto-Novo",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "BJ",
+    "city": "Cotonou",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "BN",
+    "city": "Bandar Seri Begawan",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "BO",
+    "city": "Sucre",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "BO",
+    "city": "La Paz",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BO",
+    "city": "Santa Cruz de la Sierra",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "Brasília",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "BR",
+    "city": "Belo Horizonte",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "Fortaleza",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "Manaus",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "Rio de Janeiro",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "Salvador",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BR",
+    "city": "São Paulo",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "BT",
+    "city": "Thimphu",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "BW",
+    "city": "Gaborone",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "BY",
+    "city": "Minsk",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "CA",
+    "city": "Ottawa",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "CA",
+    "city": "Calgary",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CA",
+    "city": "Edmonton",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CA",
+    "city": "Montreal",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CA",
+    "city": "Toronto",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CA",
+    "city": "Vancouver",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CD",
+    "city": "Kinshasa",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "CD",
+    "city": "Lubumbashi",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "CG",
+    "city": "Brazzaville",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "CH",
+    "city": "Bern",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "CH",
+    "city": "Basel",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "CH",
+    "city": "Geneva",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "CH",
+    "city": "Zurich",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "CI",
+    "city": "Yamoussoukro",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "CI",
+    "city": "Abidjan",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "CL",
+    "city": "Santiago",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "CL",
+    "city": "Valparaíso",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "CM",
+    "city": "Yaoundé",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "CM",
+    "city": "Douala",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Beijing",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "CN",
+    "city": "Chengdu",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Chongqing",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Guangzhou",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Hangzhou",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Nanjing",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Shanghai",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Shenzhen",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Wuhan",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CN",
+    "city": "Xi'an",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "CO",
+    "city": "Bogotá",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "CO",
+    "city": "Barranquilla",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "CO",
+    "city": "Cali",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "CO",
+    "city": "Cartagena",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "CO",
+    "city": "Medellín",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "CR",
+    "city": "San José",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "CU",
+    "city": "Havana",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "CU",
+    "city": "Santiago de Cuba",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "CY",
+    "city": "Nicosia",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "CY",
+    "city": "Limassol",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "CZ",
+    "city": "Prague",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "CZ",
+    "city": "Brno",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DE",
+    "city": "Berlin",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "DE",
+    "city": "Cologne",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DE",
+    "city": "Frankfurt",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DE",
+    "city": "Hamburg",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DE",
+    "city": "Munich",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DE",
+    "city": "Stuttgart",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DJ",
+    "city": "Djibouti City",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "DK",
+    "city": "Copenhagen",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "DK",
+    "city": "Aarhus",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "DO",
+    "city": "Santo Domingo",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "DO",
+    "city": "Santiago de los Caballeros",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "DZ",
+    "city": "Algiers",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "DZ",
+    "city": "Oran",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "EC",
+    "city": "Quito",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "EC",
+    "city": "Guayaquil",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "EE",
+    "city": "Tallinn",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "EG",
+    "city": "Cairo",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "EG",
+    "city": "Alexandria",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "EG",
+    "city": "Giza",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "EG",
+    "city": "Luxor",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "ER",
+    "city": "Asmara",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "ES",
+    "city": "Madrid",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "ES",
+    "city": "Barcelona",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ES",
+    "city": "Bilbao",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ES",
+    "city": "Málaga",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ES",
+    "city": "Seville",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ES",
+    "city": "Valencia",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ET",
+    "city": "Addis Ababa",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "ET",
+    "city": "Dire Dawa",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "FI",
+    "city": "Helsinki",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "FI",
+    "city": "Tampere",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "FJ",
+    "city": "Suva",
+    "region": "Oceania",
+    "capital": true
+  },
+  {
+    "country": "FR",
+    "city": "Paris",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "FR",
+    "city": "Bordeaux",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "FR",
+    "city": "Lyon",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "FR",
+    "city": "Marseille",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "FR",
+    "city": "Nice",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "FR",
+    "city": "Toulouse",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GA",
+    "city": "Libreville",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "GB",
+    "city": "London",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "GB",
+    "city": "Birmingham",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GB",
+    "city": "Edinburgh",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GB",
+    "city": "Glasgow",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GB",
+    "city": "Leeds",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GB",
+    "city": "Liverpool",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GB",
+    "city": "Manchester",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GE",
+    "city": "Tbilisi",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "GE",
+    "city": "Batumi",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "GH",
+    "city": "Accra",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "GH",
+    "city": "Kumasi",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "GN",
+    "city": "Conakry",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "GR",
+    "city": "Athens",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "GR",
+    "city": "Thessaloniki",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "GT",
+    "city": "Guatemala City",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "GY",
+    "city": "Georgetown",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "HN",
+    "city": "Tegucigalpa",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "HR",
+    "city": "Zagreb",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "HR",
+    "city": "Split",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "HT",
+    "city": "Port-au-Prince",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "HU",
+    "city": "Budapest",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "HU",
+    "city": "Debrecen",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "ID",
+    "city": "Jakarta",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "ID",
+    "city": "Bandung",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "ID",
+    "city": "Makassar",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "ID",
+    "city": "Medan",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "ID",
+    "city": "Semarang",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "ID",
+    "city": "Surabaya",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IE",
+    "city": "Dublin",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "IE",
+    "city": "Cork",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "IL",
+    "city": "Jerusalem",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "IL",
+    "city": "Haifa",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IL",
+    "city": "Tel Aviv",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "New Delhi",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "IN",
+    "city": "Ahmedabad",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Bengaluru",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Chennai",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Hyderabad",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Jaipur",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Kolkata",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Lucknow",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Mumbai",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IN",
+    "city": "Pune",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "IQ",
+    "city": "Baghdad",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "IQ",
+    "city": "Basra",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IQ",
+    "city": "Erbil",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IQ",
+    "city": "Mosul",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IR",
+    "city": "Tehran",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "IR",
+    "city": "Isfahan",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IR",
+    "city": "Mashhad",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IR",
+    "city": "Shiraz",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IR",
+    "city": "Tabriz",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "IS",
+    "city": "Reykjavík",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "IT",
+    "city": "Rome",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "IT",
+    "city": "Florence",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "IT",
+    "city": "Milan",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "IT",
+    "city": "Naples",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "IT",
+    "city": "Turin",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "IT",
+    "city": "Venice",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "JM",
+    "city": "Kingston",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "JO",
+    "city": "Amman",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "JO",
+    "city": "Aqaba",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Tokyo",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "JP",
+    "city": "Fukuoka",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Kyoto",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Nagoya",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Osaka",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Sapporo",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "JP",
+    "city": "Yokohama",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KE",
+    "city": "Nairobi",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "KE",
+    "city": "Mombasa",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "KG",
+    "city": "Bishkek",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "KG",
+    "city": "Osh",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KH",
+    "city": "Phnom Penh",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "KH",
+    "city": "Siem Reap",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KP",
+    "city": "Pyongyang",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "KR",
+    "city": "Seoul",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "KR",
+    "city": "Busan",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KR",
+    "city": "Daegu",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KR",
+    "city": "Daejeon",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KR",
+    "city": "Gwangju",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KR",
+    "city": "Incheon",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KW",
+    "city": "Kuwait City",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "KZ",
+    "city": "Astana",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "KZ",
+    "city": "Almaty",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "KZ",
+    "city": "Shymkent",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "LA",
+    "city": "Vientiane",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "LA",
+    "city": "Luang Prabang",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "LB",
+    "city": "Beirut",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "LB",
+    "city": "Tripoli",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "LK",
+    "city": "Colombo",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "LK",
+    "city": "Kandy",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "LR",
+    "city": "Monrovia",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "LT",
+    "city": "Vilnius",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "LU",
+    "city": "Luxembourg City",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "LV",
+    "city": "Riga",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "LY",
+    "city": "Tripoli",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "LY",
+    "city": "Benghazi",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "MA",
+    "city": "Rabat",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MA",
+    "city": "Casablanca",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "MA",
+    "city": "Fez",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "MA",
+    "city": "Marrakesh",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "MA",
+    "city": "Tangier",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "MD",
+    "city": "Chișinău",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "ME",
+    "city": "Podgorica",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "MG",
+    "city": "Antananarivo",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MK",
+    "city": "Skopje",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "ML",
+    "city": "Bamako",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MM",
+    "city": "Naypyidaw",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "MM",
+    "city": "Mandalay",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "MM",
+    "city": "Yangon",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "MN",
+    "city": "Ulaanbaatar",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "MR",
+    "city": "Nouakchott",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MT",
+    "city": "Valletta",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "MU",
+    "city": "Port Louis",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MV",
+    "city": "Malé",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "MW",
+    "city": "Lilongwe",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "MX",
+    "city": "Mexico City",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "MX",
+    "city": "Cancún",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "MX",
+    "city": "Guadalajara",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "MX",
+    "city": "Monterrey",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "MX",
+    "city": "Puebla",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "MX",
+    "city": "Tijuana",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "MY",
+    "city": "Kuala Lumpur",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "MY",
+    "city": "George Town",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "MY",
+    "city": "Johor Bahru",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "MY",
+    "city": "Kota Kinabalu",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "MZ",
+    "city": "Maputo",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "NA",
+    "city": "Windhoek",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "NE",
+    "city": "Niamey",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "NG",
+    "city": "Abuja",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "NG",
+    "city": "Ibadan",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "NG",
+    "city": "Kano",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "NG",
+    "city": "Lagos",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "NG",
+    "city": "Port Harcourt",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "NI",
+    "city": "Managua",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "NL",
+    "city": "Amsterdam",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "NL",
+    "city": "Rotterdam",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "NL",
+    "city": "The Hague",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "NL",
+    "city": "Utrecht",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "NO",
+    "city": "Oslo",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "NO",
+    "city": "Bergen",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "NP",
+    "city": "Kathmandu",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "NP",
+    "city": "Pokhara",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "NZ",
+    "city": "Wellington",
+    "region": "Oceania",
+    "capital": true
+  },
+  {
+    "country": "NZ",
+    "city": "Auckland",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "NZ",
+    "city": "Christchurch",
+    "region": "Oceania",
+    "capital": false
+  },
+  {
+    "country": "OM",
+    "city": "Muscat",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "OM",
+    "city": "Salalah",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "PA",
+    "city": "Panama City",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "PE",
+    "city": "Lima",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "PE",
+    "city": "Arequipa",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "PE",
+    "city": "Cusco",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "PG",
+    "city": "Port Moresby",
+    "region": "Oceania",
+    "capital": true
+  },
+  {
+    "country": "PH",
+    "city": "Manila",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "PH",
+    "city": "Cebu City",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PH",
+    "city": "Davao City",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PH",
+    "city": "Quezon City",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PK",
+    "city": "Islamabad",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "PK",
+    "city": "Faisalabad",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PK",
+    "city": "Karachi",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PK",
+    "city": "Lahore",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PK",
+    "city": "Peshawar",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PK",
+    "city": "Rawalpindi",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "PL",
+    "city": "Warsaw",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "PL",
+    "city": "Gdańsk",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "PL",
+    "city": "Kraków",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "PL",
+    "city": "Wrocław",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "PL",
+    "city": "Łódź",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "PT",
+    "city": "Lisbon",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "PT",
+    "city": "Porto",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "PY",
+    "city": "Asunción",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "QA",
+    "city": "Doha",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "RO",
+    "city": "Bucharest",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "RO",
+    "city": "Cluj-Napoca",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RS",
+    "city": "Belgrade",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "RS",
+    "city": "Novi Sad",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RU",
+    "city": "Moscow",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "RU",
+    "city": "Kazan",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RU",
+    "city": "Novosibirsk",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RU",
+    "city": "Saint Petersburg",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RU",
+    "city": "Yekaterinburg",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "RW",
+    "city": "Kigali",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SA",
+    "city": "Riyadh",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "SA",
+    "city": "Dammam",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "SA",
+    "city": "Jeddah",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "SA",
+    "city": "Mecca",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "SA",
+    "city": "Medina",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "SD",
+    "city": "Khartoum",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SE",
+    "city": "Stockholm",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "SE",
+    "city": "Gothenburg",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "SE",
+    "city": "Malmö",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "SG",
+    "city": "Singapore",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "SI",
+    "city": "Ljubljana",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "SK",
+    "city": "Bratislava",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "SL",
+    "city": "Freetown",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SN",
+    "city": "Dakar",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SO",
+    "city": "Mogadishu",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SR",
+    "city": "Paramaribo",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "SS",
+    "city": "Juba",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "SV",
+    "city": "San Salvador",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "SY",
+    "city": "Damascus",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "SY",
+    "city": "Aleppo",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "TD",
+    "city": "N'Djamena",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "TG",
+    "city": "Lomé",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "TH",
+    "city": "Bangkok",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "TH",
+    "city": "Chiang Mai",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TH",
+    "city": "Nakhon Ratchasima",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TH",
+    "city": "Pattaya",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TH",
+    "city": "Phuket",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TJ",
+    "city": "Dushanbe",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "TM",
+    "city": "Ashgabat",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "TN",
+    "city": "Tunis",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "TR",
+    "city": "Ankara",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "TR",
+    "city": "Antalya",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "TR",
+    "city": "Bursa",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "TR",
+    "city": "Istanbul",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "TR",
+    "city": "Izmir",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "TT",
+    "city": "Port of Spain",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "TW",
+    "city": "Taipei",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "TW",
+    "city": "Kaohsiung",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TW",
+    "city": "Taichung",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "TZ",
+    "city": "Dodoma",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "TZ",
+    "city": "Dar es Salaam",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "TZ",
+    "city": "Zanzibar City",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "UA",
+    "city": "Kyiv",
+    "region": "Europe",
+    "capital": true
+  },
+  {
+    "country": "UA",
+    "city": "Kharkiv",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "UA",
+    "city": "Lviv",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "UA",
+    "city": "Odesa",
+    "region": "Europe",
+    "capital": false
+  },
+  {
+    "country": "UG",
+    "city": "Kampala",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "US",
+    "city": "Washington, D.C.",
+    "region": "North America",
+    "capital": true
+  },
+  {
+    "country": "US",
+    "city": "Boston",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Chicago",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Dallas",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Houston",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Los Angeles",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Miami",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "New York City",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Philadelphia",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Phoenix",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "San Antonio",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "San Diego",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "San Francisco",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "US",
+    "city": "Seattle",
+    "region": "North America",
+    "capital": false
+  },
+  {
+    "country": "UY",
+    "city": "Montevideo",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "UZ",
+    "city": "Tashkent",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "UZ",
+    "city": "Bukhara",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "UZ",
+    "city": "Samarkand",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "VE",
+    "city": "Caracas",
+    "region": "South America",
+    "capital": true
+  },
+  {
+    "country": "VE",
+    "city": "Maracaibo",
+    "region": "South America",
+    "capital": false
+  },
+  {
+    "country": "VN",
+    "city": "Hanoi",
+    "region": "Asia",
+    "capital": true
+  },
+  {
+    "country": "VN",
+    "city": "Can Tho",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "VN",
+    "city": "Da Nang",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "VN",
+    "city": "Haiphong",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "VN",
+    "city": "Ho Chi Minh City",
+    "region": "Asia",
+    "capital": false
+  },
+  {
+    "country": "YE",
+    "city": "Sana'a",
+    "region": "Middle East",
+    "capital": true
+  },
+  {
+    "country": "YE",
+    "city": "Aden",
+    "region": "Middle East",
+    "capital": false
+  },
+  {
+    "country": "ZA",
+    "city": "Pretoria",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "ZA",
+    "city": "Cape Town",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "ZA",
+    "city": "Durban",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "ZA",
+    "city": "Johannesburg",
+    "region": "Africa",
+    "capital": false
+  },
+  {
+    "country": "ZM",
+    "city": "Lusaka",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "ZW",
+    "city": "Harare",
+    "region": "Africa",
+    "capital": true
+  },
+  {
+    "country": "ZW",
+    "city": "Bulawayo",
+    "region": "Africa",
+    "capital": false
+  }
+]

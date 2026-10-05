@@ -43,6 +43,8 @@ async function fillDetails(copy: typeof t = t) {
   fireEvent.change(screen.getByLabelText(copy.mobile), { target: { value: '+49 151 1234 5678' } })
   fireEvent.change(screen.getByLabelText(copy.birthday), { target: { value: '1990-04-12' } })
   fireEvent.click(screen.getByLabelText(copy.genders.female))
+  fireEvent.click(screen.getByLabelText(copy.primaryLanguages.german))
+  fireEvent.click(screen.getByLabelText(copy.ageConfirm))
 }
 
 describe('the way in', () => {
@@ -61,7 +63,7 @@ describe('steps 1 and 2: details, then country', () => {
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
     fireEvent.click(await screen.findByRole('button', { name: t.continue }))
 
-    for (const message of [t.errors.fullName, t.errors.email, t.errors.password, t.errors.mobile, t.errors.birthday, t.errors.gender]) {
+    for (const message of [t.errors.fullName, t.errors.email, t.errors.password, t.errors.mobile, t.errors.birthday, t.errors.gender, t.errors.ageConfirmed, t.errors.primaryLanguage]) {
       expect(screen.getByText(message)).toBeInTheDocument()
     }
     // Still on step 1: nothing was sent.
@@ -78,7 +80,7 @@ describe('steps 1 and 2: details, then country', () => {
     await fillDetails()
     fireEvent.click(screen.getByRole('button', { name: t.continue }))
 
-    fireEvent.change(await screen.findByLabelText(t.country), { target: { value: 'DE' } })
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
     fireEvent.click(screen.getByRole('button', { name: t.submit }))
 
     expect(await screen.findByRole('heading', { name: t.mobileTitle })).toBeInTheDocument()
@@ -88,21 +90,84 @@ describe('steps 1 and 2: details, then country', () => {
     expect(sent).toMatchObject({
       fullName: 'Anna Applicant', email: 'anna@example.com', mobile: '+4915112345678',
       birthday: '1990-04-12', gender: 'female', countryOfResidence: 'DE',
+      ageConfirmed: true, primaryLanguage: 'german',
     })
     // The web face: a deviceId would bind approval to a device a browser does not have.
     expect(sent).not.toHaveProperty('deviceId')
   })
 
-  it('shows Germany first and names countries in the interface language', async () => {
+  it('builds the number from the picked calling code, and lets a typed + win', async () => {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    // Germany (+49) is the default; the picker offers every country that has a calling code.
+    const picker = screen.getByLabelText(t.mobileCountry) as HTMLSelectElement
+    expect(picker.value).toBe('DE')
+    expect(Array.from(picker.options).map((o) => o.value)).toEqual(expect.arrayContaining(['AT', 'CH', 'AE', 'US']))
+    expect(Array.from(picker.options).map((o) => o.value)).not.toContain('AQ')
+
+    fireEvent.change(picker, { target: { value: 'AT' } })
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '0664 1234567' } })
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    await screen.findByRole('heading', { name: t.mobileTitle })
+    expect(bodyOf(fetchMock, '/onboarding/register')).toMatchObject({ mobile: '+436641234567' })
+  })
+
+  it('offers Germany, Austria, Switzerland and Others; Others opens every other country', async () => {
     mockCapabilityFetch(null)
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren', locale: 'en' })
     // English labels throughout: the form follows the locale, not just the list.
     await fillDetails(en.onboarding)
     fireEvent.click(screen.getByRole('button', { name: en.onboarding.continue }))
 
-    const select = await screen.findByLabelText(en.onboarding.country)
-    const pinned = within(select).getByRole('group', { name: en.onboarding.countryPinned })
-    expect(within(pinned).getAllByRole('option')[0]?.textContent).toBe('Germany')
+    for (const name of ['Germany', 'Austria', 'Switzerland', en.onboarding.countryOthers]) {
+      expect(await screen.findByLabelText(name)).toBeInTheDocument()
+    }
+    expect(screen.queryByLabelText(en.onboarding.countryOther)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText(en.onboarding.countryOthers))
+    const other = await screen.findByLabelText(en.onboarding.countryOther)
+    const codes = within(other).getAllByRole('option').map((o) => (o as HTMLOptionElement).value)
+    // The three shortcuts are not repeated in the list.
+    for (const shortcut of ['DE', 'AT', 'CH']) expect(codes).not.toContain(shortcut)
+    expect(codes).toContain('AE')
+  })
+
+  it('sends the chosen country for Others, the language and the age confirmation', async () => {
+    const fetchMock = mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByLabelText(t.primaryLanguages.non_german))
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+
+    fireEvent.click(await screen.findByLabelText(t.countryOthers))
+    fireEvent.change(await screen.findByLabelText(t.countryOther), { target: { value: 'AE' } })
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    await screen.findByRole('heading', { name: t.mobileTitle })
+    expect(bodyOf(fetchMock, '/onboarding/register')).toMatchObject({
+      countryOfResidence: 'AE', primaryLanguage: 'non_german', ageConfirmed: true,
+    })
+  })
+
+  it('does not submit Others without a country', async () => {
+    const fetchMock = mockCapabilityFetch(null)
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText(t.countryOthers))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    expect(await screen.findByText(t.errors.country)).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/onboarding/register'))).toBe(false)
   })
 })
 
@@ -118,7 +183,7 @@ describe('step 3: the SMS code', () => {
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
     await fillDetails()
     fireEvent.click(screen.getByRole('button', { name: t.continue }))
-    fireEvent.change(await screen.findByLabelText(t.country), { target: { value: 'DE' } })
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
     fireEvent.click(screen.getByRole('button', { name: t.submit }))
     await screen.findByRole('heading', { name: t.mobileTitle })
     fireEvent.click(screen.getByRole('button', { name: t.changeDetails }))

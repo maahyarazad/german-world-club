@@ -20,6 +20,9 @@ export default defineConfig({
    * See dev-server.js for why each is needed and what Vite does without them.
    */
   server: {
+    // Listen on every interface so the console is reachable at the machine's LAN
+    // address (192.168.1.200), not only on localhost.
+    host: true,
     proxy: apiProxy(),
   },
 

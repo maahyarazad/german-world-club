@@ -13,6 +13,7 @@ import { fill } from '../lib/format'
 import AuthCard from '../auth/AuthCard'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
+import MobileField from '../components/ui/MobileField'
 import { describeProblem } from '../lib/problems'
 import { useLocale, useTranslations } from '../i18n/index'
 
@@ -165,15 +166,7 @@ export function VerifyMobile() {
             onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
             error={contactErrors.email}
           />
-          <Field
-            label={copy.mobile}
-            type="tel"
-            autoComplete="tel"
-            hint={copy.mobileHint}
-            value={mobile}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => setMobile(event.target.value)}
-            error={contactErrors.mobile}
-          />
+          <MobileField value={mobile} onChange={setMobile} hint={copy.mobileHint} error={contactErrors.mobile} />
           {requestError && <FormMessage>{requestError}</FormMessage>}
           <Button type="submit" disabled={busy}>{copy.changeDetailsSave}</Button>
           <Button variant="quiet" onClick={() => { setEditing(false); setContactErrors({}); setRequestError(null) }}>{copy.changeDetailsCancel}</Button>

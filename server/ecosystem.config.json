@@ -1,0 +1,24 @@
+{
+  "apps": [
+    {
+      "name": "gwc-server",
+      "script": "src/server.ts",
+      "cwd": ".",
+      "interpreter": "node",
+      "interpreter_args": "--env-file-if-exists=.env",
+      "instances": 1,
+      "exec_mode": "fork",
+      "watch": ["src", ".env"],
+      "ignore_watch": ["node_modules", "logs", "tests", "migrations"],
+      "watch_delay": 1000,
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "kill_timeout": 10000,
+      "time": true,
+      "out_file": "logs/out.log",
+      "error_file": "logs/error.log",
+      "merge_logs": true
+    }
+  ]
+}

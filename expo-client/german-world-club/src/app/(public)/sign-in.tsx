@@ -5,6 +5,7 @@ import { Button, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
+import { PROBLEMS } from '@gwc/contracts/errors';
 
 export default function SignIn() {
   const { t } = useTranslations();
@@ -13,10 +14,14 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // A refusal the person can act on (wrong password, no connection…), shown
+  // in place of the outcome notices above; both are cleared on the next attempt.
+  const [failure, setFailure] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
     setNotice(null);
+    setFailure(null);
     try {
       const result = await signIn(email.trim().toLowerCase(), password);
       // `authenticated` needs nothing here: the session moves the app on.
@@ -43,6 +48,13 @@ export default function SignIn() {
       }
     } catch (e) {
       console.error('SignIn.submit', e instanceof ApiError ? e.problem : e);
+      // The screen branches on the problem `type`, never on `detail`. Anything
+      // that is not an ApiError never reached the server (fetch itself threw).
+      if (!(e instanceof ApiError)) setFailure(t.signIn.networkError);
+      else if (e.type === PROBLEMS.INVALID_CREDENTIALS.type || e.status === 401) setFailure(t.signIn.invalidCredentials);
+      else if (e.type === PROBLEMS.ACCOUNT_LOCKED.type) setFailure(t.signIn.accountLocked);
+      else if (e.type === PROBLEMS.RATE_LIMITED.type) setFailure(t.signIn.tooManyAttempts);
+      else setFailure(t.signIn.genericError);
     } finally {
       setBusy(false);
     }
@@ -68,6 +80,7 @@ export default function SignIn() {
         textContentType="password"
         onSubmitEditing={submit}
       />
+      <Message text={failure} />
       <Message text={notice} tone="info" />
       <Button label={t.signIn.submit} onPress={submit} loading={busy} disabled={!email || password.length < 8} />
     </FormScreen>

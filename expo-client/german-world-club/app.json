@@ -23,7 +23,7 @@
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.germanworldclub.app"
+      "package": "com.buenapublica.germanworldclub"
     },
     "web": {
       "output": "static",

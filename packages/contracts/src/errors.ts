@@ -79,6 +79,13 @@ export const PROBLEMS = {
    * the profiling routes, not waiting on staff.
    */
   PROFILING_INCOMPLETE: { type: `${BASE}/profiling-incomplete`, title: 'Profiling incomplete', status: 403 },
+  /**
+   * `POST /profiling/submit` with an applicable question still unanswered.
+   * A 409 rather than a validation failure: nothing about the request is
+   * wrong, the stored answers are not ready. The client moves the member to
+   * the first missing step instead of showing the refusal.
+   */
+  PROFILING_ANSWERS_MISSING: { type: `${BASE}/profiling-answers-missing`, title: 'Profiling answers missing', status: 409 },
 
   // --- Authorization --------------------------------------------------------
   INSUFFICIENT_PERMISSION: { type: `${BASE}/insufficient-permission`, title: 'Insufficient permission', status: 403 },

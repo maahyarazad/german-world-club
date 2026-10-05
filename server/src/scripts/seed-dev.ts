@@ -3,6 +3,7 @@ import { loadEnv } from '../config/env.ts'
 import { createPool } from '../db/pool.ts'
 import { hashPassword } from '../modules/auth/passwords.ts'
 import { FLAGS } from '@gwc/contracts/permissions'
+import { loadCities } from './load-cities.ts'
 
 /**
  * Development seed data for local validation.
@@ -36,6 +37,9 @@ const pool = createPool(env)
 const SEED_PASSWORD = 'konsole-entwicklung'
 
 try {
+  // Reference data the profiling questionnaire offers (feature 013).
+  await loadCities(pool)
+
   const asset = await pool.query(
     `INSERT INTO assets (kind, mime, checksum, bytes, width, height, alt, state, storage_key)
      VALUES ('image', 'image/jpeg', $1, 2048000, 4000, 3000,

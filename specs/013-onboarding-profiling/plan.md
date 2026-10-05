@@ -1,6 +1,6 @@
 # Implementation Plan: Onboarding Phase 2 — Profiling Workflow
 
-**Branch**: `013-onboarding-profiling` | **Date**: 2026-09-29 | **Spec**: [spec.md](./spec.md)
+**Branch**: `013-onboarding-profiling` | **Date**: 2026-09-29 | **Revision 2**: 2026-09-29 (see bottom) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/013-onboarding-profiling/spec.md`
 
@@ -147,3 +147,65 @@ new navigation pattern.
 ## Complexity Tracking
 
 *No entries — the Constitution Check above recorded no violations.*
+
+---
+
+# Revision 2 — updated Profiling Workflow + go-back (2026-09-29)
+
+Feature 013 shipped once (migrations `032`, `033`; `PATCH /profiling` completing on the last
+answer). The business description then changed and members must be able to correct mistakes. This
+section is the delta plan; everything above still describes what is built. Decisions are in
+`research.md` R10–R15, shapes in `data-model.md` and `contracts/profiling-api.md`.
+
+## What changes
+
+| Layer | Change |
+|---|---|
+| **Database** | `034_profiling_relationship.sql`: `member_profiling` + `yearly_income_range`, `relationship_tags`; `desired_work_type` gains `business_owner`; future-work CHECK replaced (industry on every path); new tables `member_profiling_kids`, `member_profiling_partner`; trigger making both final once the parent is complete. Additive; completed rows untouched. |
+| **Contracts** | `profiling.ts`: new lists (`YEARLY_INCOME_RANGES`, `RELATIONSHIP_TAGS`, `KID_AGE_RANGES`), `business_owner`, extended status/patch schemas (partner, kids, tags; elsewhere fields become a subset), **`profilingSteps` / `profilingMissing`** step engine. `errors.ts`: `PROFILING_ANSWERS_MISSING` (409). |
+| **Server** | `submit.ts`: PATCH saves only (no completion), partner/kids/tags upsert with cascade clears (R14), elsewhere cities saved without resolving. New `application/complete.ts` + `POST /profiling/submit` (missing-check via the shared engine, GWC match + outcome, `completed_at`). `status.ts` reads kids/partner/tags/income. `review.ts` (staff) shows the new answers (SC-006). `seed/tables.ts` lists the two new tables. |
+| **Web console** | `client/src/onboarding/Profiling.tsx` driven by `profilingSteps`: Back on every step but the first, saved answers preselected, income and relationship (bubbles, Single exclusive), kids count + per-kid age, partner wizard reusing the German question components with a `subject` prop, five Q7 paths, **Review** step (Change per answer, Submit), completion/outcome screen. i18n `de`/`en` keys for all of it. |
+| **Expo app** | `(profiling)/index.tsx` and its wizard get the same treatment (split into per-step components under `(profiling)/`), header + Android hardware Back (`BackHandler`), review + submit, `api/endpoints.ts` gains `submitProfiling`. Same shared step engine, same endpoints. |
+| **Unchanged** | The auth gate, `profiling: true` flag, `GET /profiling/gwc-cities`, branch freezing, FR-020 immutability, the `INTERNAL`/logging conventions (clients `console.error` failures; no error state — a refusal like `PROFILING_ANSWERS_MISSING` only moves the member to the first missing step). |
+
+## Technical Context additions
+
+- **Storage**: one more migration (`034`); 2 new tables, 3 new `member_profiling` columns, 2 replaced CHECKs.
+- **Testing**: server suites extended — `germany-flow` (income, Q7 five paths, business owner), new `relationship-flow` (tags, Single exclusivity, kids, partner, both branches, elsewhere ends at review), new `go-back.test.ts` (re-answer replaces; cascades from R14; nothing stale reaches submit), new `submit.test.ts` (missing → 409 `PROFILING_ANSWERS_MISSING`; elsewhere outcome computed at submit; PATCH never completes), immutability trigger tests for the new tables, contracts unit tests for `profilingSteps`/`profilingMissing` (every Q6 × Q7 combination). Client `profiling.test.tsx`: Back preselects, Change from review returns to review, Single exclusivity. `test:i18n` for new keys. Access-control matrix gains `POST /profiling/submit`. No-PII scan (`no-pii-in-social`) unaffected (no social route reads these tables).
+- **Performance**: `POST /profiling/submit` is one transaction of a few single-row queries; `member-write` budget unchanged, no new outbound call.
+
+## Constitution Check (revision 2)
+
+| Principle | Status | Note |
+|---|---|---|
+| I. One rule set | ✅ | Step order and "missing" defined once in contracts and used by server + web + Expo (R11); `tsc --noEmit` names every caller of a changed shape. |
+| II. Declare every posture | ✅ | `POST /profiling/submit` declares `{ audience: 'member', profiling: true }`; boot gate and access-control matrix cover it. |
+| III. Published state | ✅ N/A | No public surface. |
+| IV. Integrity in the database | ✅ | Tag/age/income/Q7 CHECKs; Single exclusivity as a CHECK; kids/partner final-by-trigger; PATCH-vs-submit split means completion is a single guarded UPDATE. |
+| V. Failure bounded | ✅ | No new outbound dependency; `assertBudgets` unchanged. |
+| VI. Server shapes output | ✅ | Explicit columns in `status.ts` and the new queries; partner rows hold answers only, no identity. |
+
+**Gate result**: PASS, no Complexity Tracking entries. One behaviour change to call out: PATCH no longer
+completes (R10) — any caller relying on that (the two clients, existing tests) is updated in this work.
+
+## Source additions
+
+```text
+packages/contracts/src/profiling.ts      # + lists, schemas, profilingSteps/profilingMissing
+packages/contracts/src/errors.ts         # + PROFILING_ANSWERS_MISSING
+server/migrations/034_profiling_relationship.sql
+server/src/modules/profiling/application/complete.ts   # NEW
+server/src/modules/profiling/{routes,controller}.ts    # + POST /profiling/submit
+server/src/modules/onboarding/application/review.ts    # + new answers for staff
+server/src/seed/tables.ts                              # + kids, partner (HISTORY, never seeded)
+server/tests/profiling/{relationship-flow,go-back,submit}.test.ts   # NEW
+packages/contracts/tests/profiling-steps.test.ts       # NEW
+client/src/onboarding/profiling/*                      # step components split out of Profiling.tsx
+expo-client/german-world-club/src/app/(profiling)/*    # per-step screens/components
+```
+
+## Open point for the user
+
+Members who already **completed** profiling under the old questions are not re-profiled (R15). If
+the business wants them asked the new questions, that is a deliberate follow-up — it needs a way to
+reopen a completed row, which today's trigger forbids by design.

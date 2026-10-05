@@ -4,6 +4,7 @@ import { query } from '../db/query.ts'
 import { deliverDueMail } from '../decorators/mail.ts'
 import { dispatchDue } from '../modules/push/application/dispatch.ts'
 import { checkReceipts } from '../modules/push/application/receipts.ts'
+import { autoApproveDue } from '../modules/onboarding/application/auto-approve.ts'
 import type { GwcApp } from '../app.ts'
 
 /**
@@ -69,6 +70,13 @@ export const PLATFORM_JOBS = Object.freeze([
     description: 'Send queued mail from the outbox, retrying with backoff',
   },
   {
+    name: 'onboarding.auto-approve',
+    schedule: '*/15 * * * *',
+    // The thank-you email promises a decision within 48 hours; this is the
+    // backstop for a German-speaker application staff have not decided in 24.
+    description: 'Approve German-speaker applications still pending 24 hours after submission',
+  },
+  {
     name: 'push.deliver',
     schedule: '* * * * *',
     // The push outbox's sweep (feature 011, research R1). An accepted staff
@@ -106,6 +114,7 @@ export function createJobHandlers(app: GwcApp) {
     'mail.deliver': async () => deliverDueMail(app),
     // The transport is read from the decorator on every run rather than
     // captured here, so a suite that replaces it is heard (decorators/push.ts).
+    'onboarding.auto-approve': async () => ({ itemsProcessed: await autoApproveDue(app) }),
     'push.deliver': async () => dispatchDue(app, { transport: app.pushTransport }),
     'push.receipts': async () => checkReceipts(app, { transport: app.pushTransport }),
     'sessions.expire': async () => {

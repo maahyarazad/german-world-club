@@ -25,6 +25,39 @@ const status = (headers: Record<string, string>) =>
   app.inject({ method: 'GET', url: '/profiling/status', headers })
 const patch = (headers: Record<string, string>, payload: object) =>
   app.inject({ method: 'PATCH', url: '/profiling', headers, payload })
+const submit = (headers: Record<string, string>) =>
+  app.inject({ method: 'POST', url: '/profiling/submit', headers })
+
+// Q1-Q5 and Q6 ("single" asks nothing further), so a test can focus on Q7.
+const upToQ6 = {
+  settlingStatus: 'need_help', languages: ['en'], yearlyIncomeRange: '50k_to_100k',
+  qualificationLevel: 'masters_degree', occupation: 'engineer', relationshipStatus: ['single'],
+}
+
+describe.skipIf(!hasDatabase)('the German pathway covers Germany, Austria and Switzerland', () => {
+  async function approvedFrom(country: string) {
+    const row = await createMember(app.pg, { passwordHash: null })
+    await app.pg.query('UPDATE members SET country_of_residence = $2 WHERE id = $1', [row.id, country])
+    await app.pg.query(
+      `INSERT INTO membership_applications (member_id, device_id, state, submitted_at, reviewed_at)
+       VALUES ($1, 'device-x', 'approved', now(), now())`, [row.id])
+    const { authorization } = await bearerFor(app, { accountId: String(row.id), accountKind: 'member' })
+    return { memberId: row.id, authorization }
+  }
+
+  it.each(['DE', 'AT', 'CH'])('%s starts on the German pathway and is asked settling first', async (country) => {
+    const { authorization } = await approvedFrom(country)
+    expect((await status({ authorization })).json().branch).toBe('germany')
+    // Q7 and the settling answers belong to this pathway only: they are accepted here.
+    expect((await patch({ authorization }, { settlingStatus: 'need_help', desiredWorkType: 'employee' })).statusCode).toBe(200)
+  })
+
+  it.each(['FR', 'AE', 'US'])('%s follows the non-German pathway', async (country) => {
+    const { authorization } = await approvedFrom(country)
+    expect((await status({ authorization })).json().branch).toBe('elsewhere')
+    expect((await patch({ authorization }, { settlingStatus: 'need_help' })).statusCode).toBe(400)
+  })
+})
 
 describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
   it('starts on the germany branch with nothing answered', async () => {
@@ -33,11 +66,13 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
     expect(body.branch).toBe('germany')
     expect(body.completed).toBe(false)
     expect(body.answers).toMatchObject({
-      settlingStatus: null, languages: null, qualificationLevel: null, occupation: null, desiredWorkType: null,
+      settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
+      languages: null, yearlyIncomeRange: null, qualificationLevel: null, occupation: null,
+      relationshipStatus: null, kids: [], partner: null, desiredWorkType: null,
     })
   })
 
-  it('answers one question at a time, resuming correctly, and completes on the fifth', async () => {
+  it('answers one question at a time, resuming correctly, and completes only on submit', async () => {
     const { authorization } = await approvedGermanMember()
 
     let res = await patch({ authorization }, { settlingStatus: 'know_where' })
@@ -47,23 +82,26 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
     // A fresh status read — simulating a new session — still shows Q1 answered.
     expect((await status({ authorization })).json().answers.settlingStatus).toBe('know_where')
 
+    // "Yes" is not enough on its own: the place is asked too.
+    res = await patch({ authorization }, { settlingCountry: 'DE', settlingCity: 'Berlin' })
+    expect(res.json().answers).toMatchObject({ settlingCountry: 'DE', settlingCity: 'Berlin' })
+
     res = await patch({ authorization }, { languages: ['en', 'de'] })
     expect(res.json().answers.languages).toEqual(['en', 'de'])
-    expect(res.json().completed).toBe(false)
 
-    res = await patch({ authorization }, { qualificationLevel: 'bachelors_degree' })
-    expect(res.json().completed).toBe(false)
+    res = await patch({ authorization }, { yearlyIncomeRange: 'over_100k' })
+    expect(res.json().answers.yearlyIncomeRange).toBe('over_100k')
 
-    res = await patch({ authorization }, { occupation: 'it_software_professional' })
-    expect(res.json().completed).toBe(false)
-
-    res = await patch({ authorization }, { desiredWorkType: 'employee' })
+    await patch({ authorization }, { qualificationLevel: 'bachelors_degree' })
+    await patch({ authorization }, { occupation: 'it_software_professional' })
+    await patch({ authorization }, { relationshipStatus: ['single'] })
+    await patch({ authorization }, { desiredWorkType: 'employee' })
+    res = await patch({ authorization }, { futureWorkSector: 'technology_it', futureWorkReady: true })
     expect(res.statusCode).toBe(200)
-    // Not complete yet — Q5's Employee answer has its own follow-up (FR-009),
-    // covered in full by tests/profiling/future-work.test.ts.
+    // Every answer is in, and it is still not complete: only submit completes.
     expect(res.json().completed).toBe(false)
 
-    res = await patch({ authorization }, { futureWorkSector: 'IT', futureWorkReady: true })
+    res = await submit({ authorization })
     expect(res.statusCode).toBe(200)
     expect(res.json().completed).toBe(true)
 
@@ -73,9 +111,13 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
       completed: true,
       answers: {
         settlingStatus: 'know_where',
+        settlingCountry: 'DE',
+        settlingCity: 'Berlin',
         languages: ['en', 'de'],
+        yearlyIncomeRange: 'over_100k',
         qualificationLevel: 'bachelors_degree',
         occupation: 'it_software_professional',
+        relationshipStatus: ['single'],
         desiredWorkType: 'employee',
       },
     })
@@ -84,18 +126,18 @@ describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
   it('accepts more than one answer per call', async () => {
     const { authorization } = await approvedGermanMember()
     const res = await patch({ authorization }, {
-      settlingStatus: 'need_help', languages: ['ar'], qualificationLevel: 'doctorate',
-      occupation: 'consultant', desiredWorkType: 'not_sure', futureWorkPriorities: ['wealth_reputation'],
+      ...upToQ6, desiredWorkType: 'not_sure', futureWorkPriorities: ['wealth_reputation'],
     })
-    expect(res.json().completed).toBe(true)
+    expect(res.statusCode).toBe(200)
+    expect((await submit({ authorization })).json().completed).toBe(true)
   })
 
   it('refuses any further change once complete', async () => {
     const { authorization } = await approvedGermanMember()
     await patch({ authorization }, {
-      settlingStatus: 'know_where', languages: ['en'], qualificationLevel: 'masters_degree',
-      occupation: 'engineer', desiredWorkType: 'employee', futureWorkSector: 'Finance', futureWorkReady: true,
+      ...upToQ6, desiredWorkType: 'employee', futureWorkSector: 'technology_it', futureWorkReady: true,
     })
+    await submit({ authorization })
     const again = await patch({ authorization }, { settlingStatus: 'need_help' })
     expect(again.statusCode).toBe(409)
     expect(again.json().type).toBe(PROBLEMS.CONFLICT.type)

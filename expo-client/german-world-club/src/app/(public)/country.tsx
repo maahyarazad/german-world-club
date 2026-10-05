@@ -6,9 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RegisterRequest } from '@gwc/contracts/onboarding';
 
 import { onboardingApi } from '@/api/endpoints';
-import { CountryPicker } from '@/components/country-picker';
+import { CountryPicker, countryName } from '@/components/country-picker';
+import { RESIDENCE_SHORTCUTS } from '@gwc/contracts/onboarding';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui';
+import { Button, Chip, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
@@ -23,8 +24,11 @@ import { ApiError } from '@/api/client';
  */
 export default function Country() {
   const theme = useTheme();
-  const { t } = useTranslations();
+  const { t, locale } = useTranslations();
   const { draft, update } = useRegistrationDraft();
+  // Germany, Austria and Switzerland are one tap; "Others" opens the full list.
+  const shortcut = (RESIDENCE_SHORTCUTS as readonly string[]).includes(draft.countryOfResidence ?? '');
+  const [others, setOthers] = useState(Boolean(draft.countryOfResidence) && !shortcut);
   const { deviceId } = useSession();
   const [busy, setBusy] = useState(false);
 
@@ -47,7 +51,28 @@ export default function Country() {
       <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
         <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{t.register.countryTitle}</ThemedText>
         <ThemedText themeColor="textSecondary">{t.register.countryHint}</ThemedText>
-        <CountryPicker selected={draft.countryOfResidence} onSelect={(code) => update({ countryOfResidence: code })} />
+        <View style={styles.chips} accessibilityRole="radiogroup">
+          {RESIDENCE_SHORTCUTS.map((code) => (
+            <Chip
+              key={code}
+              label={countryName(code, locale)}
+              selected={!others && draft.countryOfResidence === code}
+              onPress={() => { setOthers(false); update({ countryOfResidence: code }); }}
+            />
+          ))}
+          <Chip
+            label={t.register.countryOthers}
+            selected={others}
+            onPress={() => { setOthers(true); if (shortcut) update({ countryOfResidence: undefined }); }}
+          />
+        </View>
+        {others ? (
+          <CountryPicker
+            selected={draft.countryOfResidence}
+            exclude={RESIDENCE_SHORTCUTS}
+            onSelect={(code) => update({ countryOfResidence: code })}
+          />
+        ) : null}
         <Button label={t.register.submit} onPress={submit} loading={busy} disabled={!draft.countryOfResidence} />
       </View>
     </SafeAreaView>

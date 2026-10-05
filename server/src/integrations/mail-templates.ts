@@ -66,6 +66,15 @@ export function renderMail(template: string, variables: Variables, { origin }: {
         ),
       }
 
+    case 'onboarding.thank-you':
+      return {
+        subject: 'Vielen Dank für Ihren Antrag / Thank you for your application',
+        text: both(
+          `${greeting(variables.name, true)}\n\nvielen Dank für Ihren Mitgliedsantrag beim German World Club. Die Prüfung kann bis zu 48 Stunden dauern. Sobald eine Entscheidung vorliegt, informieren wir Sie per E-Mail.\n\nGerman World Club`,
+          `${greeting(variables.name, false)}\n\nThank you for applying to the German World Club. The approval process may take up to 48 hours. We will email you as soon as a decision has been made.\n\nGerman World Club`,
+        ),
+      }
+
     case 'onboarding.denied': {
       const reason = str(variables.reason)
       return {

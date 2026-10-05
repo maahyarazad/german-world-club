@@ -5,6 +5,7 @@ import { PROBLEMS } from '@gwc/contracts/errors';
 import { registerRequestSchema } from '@gwc/contracts/onboarding';
 
 import { authApi, onboardingApi } from '@/api/endpoints';
+import { MobileField } from '@/components/mobile-field';
 import { Button, CodeField, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
@@ -111,9 +112,7 @@ export default function VerifyMobile() {
       <FormScreen title={t.register.mobileTitle}>
         <TextField label={t.register.email} value={email} onChangeText={setEmail}
           keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={errors.email} />
-        <TextField label={t.register.mobile} value={mobile} onChangeText={setMobile}
-          keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
-          placeholder="+49 151 12345678" hint={t.register.mobileHint} error={errors.mobile} />
+        <MobileField value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile} />
         <Button label={t.register.changeDetailsSave} onPress={changeContact} loading={busy} />
         <Button label={t.register.changeDetailsCancel} onPress={() => { setEditing(false); setErrors({}); }} variant="secondary" />
       </FormScreen>

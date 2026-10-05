@@ -22,7 +22,8 @@
     "./countries": "./src/countries.ts",
     "./offers": "./src/offers.ts",
     "./server-faults": "./src/server-faults.ts",
-    "./request-id": "./src/request-id.ts"
+    "./request-id": "./src/request-id.ts",
+    "./dial-codes": "./src/dial-codes.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"

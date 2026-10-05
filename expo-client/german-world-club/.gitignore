@@ -52,3 +52,4 @@ german-world-club-b103ddfadefe.json
 # google-services.json (the *client* config) is NOT matched and is committed.
 *-firebase-adminsdk*.json
 german-world-club-*.json
+google-services.json

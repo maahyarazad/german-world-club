@@ -182,3 +182,122 @@ if (member.application_state === 'approved' && member.profiling_completed_at ===
 
 A member with no `membership_applications` row (`application_state IS NULL` — invited or legacy) is
 never subject to this check, exactly like the existing pending/denied checks.
+
+
+---
+
+# Revision 2 (2026-09-29): what changes
+
+Everything above stands except the following. Both routes and the new one keep
+`config.auth = { audience: 'member', profiling: true }` and `onRequest: app.guard`.
+
+## Shared types (additions to `@gwc/contracts/profiling`)
+
+```ts
+export const YEARLY_INCOME_RANGES = Object.freeze(['up_to_50k', '50k_to_100k', 'over_100k'] as const)
+export const RELATIONSHIP_TAGS = Object.freeze(['single', 'partner', 'family', 'kids'] as const)
+export const KID_AGE_RANGES = Object.freeze(['age_0_6', 'age_6_14', 'age_14_18', 'age_18_plus'] as const)
+// DESIRED_WORK_TYPES: 'employee' | 'freelance' | 'business_owner' | 'own_business' | 'not_sure'
+
+export type PartnerAnswers = {
+  settlingStatus: SettlingStatus | null; languages: string[] | null
+  yearlyIncomeRange: YearlyIncomeRange | null
+  qualificationLevel: QualificationLevel | null; occupation: Occupation | null
+}
+// ProfilingStatus.answers gains:
+//   yearlyIncomeRange: YearlyIncomeRange | null
+//   relationshipStatus: RelationshipTag[] | null
+//   kids: KidAgeRange[]                    // one entry per kid; [] when none
+//   partner: PartnerAnswers | null         // null until any partner answer exists
+
+export type ProfilingStepId =
+  | 'settling' | 'languages' | 'income' | 'qualification' | 'occupation' // German Q1-Q5
+  | 'cities'                                                             // elsewhere
+  | 'relationship' | 'kids'                                              // Q6 (+ kids sub-flow)
+  | 'partner-settling' | 'partner-languages' | 'partner-income'
+  | 'partner-qualification' | 'partner-occupation'
+  | 'work-type' | 'work-offering' | 'work-industry' | 'work-idea'        // Q7 and follow-ups
+  | 'work-ready' | 'work-priorities'
+  | 'review'
+
+/** Ordered steps that apply to these answers (Germany: Q1-Q5, Q6, [kids], [partner x5], Q7 + path, review). */
+export function profilingSteps(branch: ProfilingBranch, answers: ProfilingAnswers): ProfilingStepId[]
+/** The subset of `profilingSteps` (excluding 'review') that has no valid answer yet. */
+export function profilingMissing(branch: ProfilingBranch, answers: ProfilingAnswers): ProfilingStepId[]
+```
+
+Step order after Q7 per path: `employee` → industry, ready; `freelance`/`own_business` → offering,
+industry, idea; `business_owner` → industry, idea (labelled "product or service" in the UI);
+`not_sure` → priorities, industry. Elsewhere: `cities`, `relationship`, `kids`?, partner x5?, `review`.
+
+## `GET /profiling/status`
+
+Same route; the response carries the new `answers` fields. `completed` becomes true only after
+`POST /profiling/submit`. Clients derive the step list, resume point and review from
+`profilingSteps`/`profilingMissing` — no separate server field.
+
+## `PATCH /profiling` (amended)
+
+Never sets `completed_at`. Both branch shapes become "any non-empty subset", `.strict()`:
+
+```ts
+// germany (adds to the existing fields)
+{ yearlyIncomeRange?, relationshipStatus?: RelationshipTag[],   // non-empty; 'single' alone
+  kids?: KidAgeRange[],                                         // 1-20 entries, replaces the whole list
+  partner?: Partial<PartnerAnswers> }                           // merges given partner fields
+
+// elsewhere (was: all-or-nothing cities)
+{ primaryCity?: CitySlot, secondaryCities?: CitySlot[],         // secondaryCities only with primaryCity; distinct
+  relationshipStatus?, kids?, partner? }                        // same as above
+```
+
+Behaviour additions, in the same transaction as the write (research R14):
+1. `relationshipStatus` with `single` plus any other tag -> 400 `VALIDATION_FAILED` (also a DB CHECK).
+2. Saving tags without `kids` deletes kid rows; without both `partner` and `family` deletes the
+   partner row; `single` deletes both.
+3. `kids` with a non-empty list while the effective tags lack `kids` -> 400 `VALIDATION_FAILED`;
+   same for `partner` without `partner`/`family`.
+4. A changed `desiredWorkType` clears follow-ups it does not use (FR-022, new mapping).
+5. Re-sending an already-answered field replaces it — this is the go-back path (FR-031).
+6. Still 409 `CONFLICT` once complete.
+
+## `POST /profiling/submit` (new)
+
+`config.budget: 'member-write'`. No body.
+
+Recomputes `profilingMissing` from the stored row. If anything is missing -> **409
+`PROFILING_ANSWERS_MISSING`** (new problem type in `errors.ts`, next to `PROFILING_INCOMPLETE`;
+the English `detail` names the missing step ids for people reading logs — clients branch on `type` and
+recompute the missing steps themselves with `profilingMissing`, never by parsing `detail`). Otherwise in one transaction: elsewhere branch — checks the stored cities against `gwc_cities`
+(primary first) and sets `outcome` + `matched_gwc_city_id`; then sets `completed_at`. Returns
+`ProfilingStatus` (`completed: true`, `outcome`, `matchedCity`). A second call after completion ->
+409 `CONFLICT`.
+
+| Problem | When |
+|---|---|
+| `PROFILING_ANSWERS_MISSING` (409) | An applicable step has no answer. |
+| `CONFLICT` (409) | Already complete. |
+
+## Gate interaction
+
+Unchanged. `POST /profiling/submit` carries `profiling: true` like the other two; it is refused once
+`completed_at` is set only by the conflict above, not by the gate.
+
+---
+
+# Revision 3 (2026-09-29): what changes
+
+- `partner` (status and PATCH) has no `settlingStatus`; the step `partner-settling` no longer exists in `ProfilingStepId`.
+- `futureWorkSector` is one of `INDUSTRIES` (21 codes) — a free-text value is `400 VALIDATION_FAILED`.
+- `futureWorkPriorities: string[]` is replaced by `futureWorkPriority: 'family_time' | 'balance_lifestyle' | 'wealth_reputation'` (status and PATCH). The `not_sure` path still asks priority, then industry.
+
+
+---
+
+# Revision 4 (2026-09-30): what changes
+
+- **Answers** gain `settlingCountry`, `settlingCity`, `settlingWorkDuration`, `futureWorkBusinessActivities`, `futureWorkPriorities` (array again; `futureWorkPriority` is gone) and the derived `gwcMatch`. `partner` regains `settlingStatus` and the three settling fields. `yearlyIncomeRange` accepts `over_500k` and `over_1m`. `futureWorkSector` is not accepted for `not_sure`; `futureWorkIdea` is not accepted for `business_owner`.
+- **Step engine** (`profilingSteps`): German `settling` (+ `settling-info` | `settling-place` [+ `settling-work` for Dubai]), `languages`, `qualification`, `occupation`, `income`, `relationship`, `kids`?, partner block (its own settling steps, then `partner-languages`, `-qualification`, `-occupation`, `-income`), `work-type`, then the path (`business_owner` → `work-industry`, `work-activities`; `not_sure` → `work-priorities`). Elsewhere: `cities`, and only when `gwcMatch`, Q6 and its sub-flows; then `review`.
+- **`PATCH /profiling`** refuses place fields unless the settling answer is "yes" (member and partner), the duration unless the place is Dubai, and any Q6 field for a non-German member without a GWC match.
+- **`GET /profiling/cities?country=XX&q=`** (`profiling: true`, `member-read`) returns `{ listed, cities }`: the InterNations list merged with the club's designated cities, capitals first, prefix-filtered, at most 50. `listed: false` means "type the city".
+- **Auth/onboarding**: `POST /onboarding/register` requires `ageConfirmed: true` and `primaryLanguage`; the staff application carries `primaryLanguage` and `decidedBy: 'staff' | 'automatic' | null`.

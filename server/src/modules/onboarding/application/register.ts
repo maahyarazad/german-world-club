@@ -125,9 +125,13 @@ async function writeDetails(client: PoolClient, memberId: string, input: Registe
   // It is written here once; changing it later is §3.2's justified request.
   await client.query(
     `UPDATE members
-        SET display_name = $2, mobile = $3, birthday = $4, gender = $5, country_of_residence = $6
+        SET display_name = $2, mobile = $3, birthday = $4, gender = $5, country_of_residence = $6,
+            primary_language = $7, age_confirmed_at = COALESCE(age_confirmed_at, now())
       WHERE id = $1`,
-    [memberId, input.fullName, input.mobile, input.birthday, input.gender, input.countryOfResidence],
+    [
+      memberId, input.fullName, input.mobile, input.birthday, input.gender, input.countryOfResidence,
+      input.primaryLanguage,
+    ],
   )
 }
 
