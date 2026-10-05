@@ -133,7 +133,7 @@ type Settling = {
 }
 
 /**
- * Q1, for the member and for the partner alike. "Please help" asks nothing
+ * Q1, the member's own — the partner starts at Q2. "Please help" asks nothing
  * more; "yes" asks for the place; and only Dubai adds "how long are you
  * already working". Whatever no longer applies is cleared here so a stale
  * place or duration is never kept (FR-033), and a field sent for a question
@@ -348,40 +348,27 @@ async function saveRelationship(
   if (body.partner !== undefined) {
     const p = body.partner
     const { rows } = await client.query(
-      `SELECT settling_status, settling_country, settling_city, settling_work_duration,
-              languages, yearly_income_range, qualification_level, occupation
+      `SELECT languages, yearly_income_range, qualification_level, occupation
          FROM member_profiling_partner WHERE member_id = $1`,
       [memberId],
     )
     const existing = rows[0] as {
-      settling_status: string | null; settling_country: string | null; settling_city: string | null
-      settling_work_duration: string | null; languages: string[] | null; yearly_income_range: string | null
+      languages: string[] | null; yearly_income_range: string | null
       qualification_level: string | null; occupation: string | null
     } | undefined
 
-    // Read-modify-write, not COALESCE: the settling answers can be cleared by
-    // the rules above, which a COALESCE could never express. The partner wizard
-    // still saves one question at a time — fields not sent keep their value.
-    const settling = await mergeSettling(
-      client,
-      {
-        status: existing?.settling_status ?? null, country: existing?.settling_country ?? null,
-        city: existing?.settling_city ?? null, duration: existing?.settling_work_duration ?? null,
-      },
-      { status: p.settlingStatus, country: p.settlingCountry, city: p.settlingCity, duration: p.settlingWorkDuration },
-    )
+    // Read-modify-write: the partner wizard saves one question at a time, so
+    // fields not sent keep their value. No settling here — the partner starts
+    // at Q2 (revision 6); the member's own Q1 is saved in saveGermany.
     await client.query(
       `INSERT INTO member_profiling_partner
-         (member_id, settling_status, settling_country, settling_city, settling_work_duration,
-          languages, yearly_income_range, qualification_level, occupation)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (member_id, languages, yearly_income_range, qualification_level, occupation)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (member_id) DO UPDATE SET
-         settling_status = EXCLUDED.settling_status, settling_country = EXCLUDED.settling_country,
-         settling_city = EXCLUDED.settling_city, settling_work_duration = EXCLUDED.settling_work_duration,
          languages = EXCLUDED.languages, yearly_income_range = EXCLUDED.yearly_income_range,
          qualification_level = EXCLUDED.qualification_level, occupation = EXCLUDED.occupation`,
       [
-        memberId, settling.status, settling.country, settling.city, settling.duration,
+        memberId,
         p.languages ?? existing?.languages ?? null,
         p.yearlyIncomeRange ?? existing?.yearly_income_range ?? null,
         p.qualificationLevel ?? existing?.qualification_level ?? null,

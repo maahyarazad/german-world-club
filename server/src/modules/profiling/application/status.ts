@@ -4,10 +4,6 @@ import type { GwcApp } from '../../../app.ts'
 import type { ProfilingStatus, ProfilingBranch, CitySlot, PartnerAnswers as ProfilingAnswersPartner } from '@gwc/contracts/profiling'
 
 type PartnerRow = {
-  settling_status: string | null
-  settling_country: string | null
-  settling_city: string | null
-  settling_work_duration: string | null
   languages: string[] | null
   yearly_income_range: string | null
   qualification_level: string | null
@@ -93,8 +89,7 @@ export async function loadProfilingStatus(
     ),
     query<PartnerRow>(
       app.pg,
-      `SELECT settling_status, settling_country, settling_city, settling_work_duration,
-              languages, yearly_income_range, qualification_level, occupation
+      `SELECT languages, yearly_income_range, qualification_level, occupation
          FROM member_profiling_partner WHERE member_id = $1`,
       [memberId],
       { signal },
@@ -123,10 +118,6 @@ export async function loadProfilingStatus(
       kids: kids.rows.map((k) => k.age_range) as ProfilingStatus['answers']['kids'],
       partner: partner.rows[0]
         ? {
-            settlingStatus: partner.rows[0].settling_status as ProfilingAnswersPartner['settlingStatus'],
-            settlingCountry: partner.rows[0].settling_country,
-            settlingCity: partner.rows[0].settling_city,
-            settlingWorkDuration: partner.rows[0].settling_work_duration as ProfilingAnswersPartner['settlingWorkDuration'],
             languages: partner.rows[0].languages,
             yearlyIncomeRange: partner.rows[0].yearly_income_range as ProfilingAnswersPartner['yearlyIncomeRange'],
             qualificationLevel: partner.rows[0].qualification_level as ProfilingAnswersPartner['qualificationLevel'],

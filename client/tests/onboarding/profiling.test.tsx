@@ -287,12 +287,13 @@ describe('Onboarding Phase 2: profiling', () => {
     expect(screen.getByRole('button', { name: t.next })).toBeEnabled()
   })
 
-  it('asks the partner the German questionnaire from Q1, without the relationship question', async () => {
+  it('asks the partner the German questionnaire from Q2, without settling and the relationship question', async () => {
     incomplete(() => status('germany', { ...upToQ5, relationshipStatus: ['partner'] }))
     open()
     const partnerQ = (question: string) => t.partnerTitle.replace('{question}', question)
-    // The partner starts where the member did: with settling.
-    expect(await screen.findByRole('heading', { name: partnerQ(t.settlingTitle) })).toBeInTheDocument()
+    // The partner starts at languages (Q2); settling is the member's own question.
+    expect(await screen.findByRole('heading', { name: partnerQ(t.languagesTitle) })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: partnerQ(t.settlingTitle) })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: t.relationshipTitle })).not.toBeInTheDocument()
   })
 

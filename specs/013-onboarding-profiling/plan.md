@@ -209,3 +209,26 @@ expo-client/german-world-club/src/app/(profiling)/*    # per-step screens/compon
 Members who already **completed** profiling under the old questions are not re-profiled (R15). If
 the business wants them asked the new questions, that is a deliberate follow-up — it needs a way to
 reopen a completed row, which today's trigger forbids by design.
+
+
+---
+
+# Revision 6 (2026-10-05): partner questionnaire is Q2–Q5
+
+**Trigger**: `german-world-club-business-description.md` — partner questionnaire is "German Q2–Q5" (German path) and "same German questionnaire from Q2" (non-German path), without Q1 or Q6. Reverses Revision 4's partner-Q1 (spec R6 / FR-046–FR-049; research R19–R21; data-model `039`).
+
+**Approach**: delete, don't hide — the step list in `@gwc/contracts/profiling` is the single order both clients and the submit check use.
+
+| Layer | Change |
+|---|---|
+| `packages/contracts/src/profiling.ts` | drop settling fields from `partnerAnswersSchema` and the PATCH `partner` object; drop the four `partner-settling*` step ids, `settlingSteps('partner-', …)` call and their answered-checks; update doc comments |
+| `server/migrations/039_partner_no_settling.sql` | drop four columns from `member_profiling_partner` (+ down) |
+| `server/src/modules/profiling/application/{submit,status}.ts` | remove partner `mergeSettling` / settling reads, writes and selects; explicit column lists stay |
+| `server/src/modules/onboarding/application/review.ts` | staff review stops showing partner settling (if present) |
+| `client/` (web) | remove partner settling steps from `onboarding/profiling/steps.tsx`, `Profiling.tsx`, `summary.ts`; i18n keys removed from **both** catalogues (`test:i18n` is two-way) |
+| `expo-client/…` | same in `(profiling)/index.tsx`, `components/profiling/{steps,summary}`; read Expo SDK 57 docs per `AGENTS.md` only if touching Expo APIs — this is a deletion |
+| tests | contracts step-order, `settling.test.ts` (partner part flips to refusal), `relationship-flow`, `submit`, client `profiling.test.tsx` with a counter-assertion that the member's own Q1 remains |
+
+**Constitution check**: unchanged — no new route, dependency or outbound call; response shape shrinks (explicit columns), schema integrity stays in DB. PASS, no complexity entries.
+
+**Risks**: a client older than the server sending partner settling fields now gets a 422 (intended, strict schema); both clients ship from this repo. Completed profiles keep any partner settling data only until `039` drops the columns — it was never shown to staff or members, and the development database is rebuilt per Revision 4.
