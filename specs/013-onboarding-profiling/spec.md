@@ -231,3 +231,10 @@ Nearest city (one primary, two secondary) from country/city dropdowns fed by the
 
 ## Decisions taken with the user
 Partner asked Q1 again; "not sure" multi-select without industry; "Others" opens the country picker; InterNations data supplied as `400_Cities_160_Countries.xlsx`; Dubai duration in five bands; no legacy data to preserve (the development database is rebuilt with `migrate:down`); a non-German member with no GWC city still goes through review + Submit.
+
+
+---
+
+# Revision 5 (2026-10-01): one German pathway for Germany, Austria and Switzerland
+
+The business description now routes residents of **Germany, Austria and Switzerland** through the one German pathway (settling, languages, qualification, occupation, income, relationship, Q7); **Others** follow the non-German pathway. This amends FR-003 and the Edge Case on a missing country: the German pathway needs `country_of_residence` in `{DE, AT, CH}`; any other, or a missing, value is non-German. The set is `GERMAN_PATHWAY_COUNTRIES` / `isGermanPathway` in `@gwc/contracts/onboarding` and is the only place the server decides it; neither client branches on the country (they render what `GET /profiling/status` says). Migration `038` removes the unfinished non-German rows of Austrian and Swiss members so they restart on the right pathway.

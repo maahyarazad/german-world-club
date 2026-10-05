@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -22,8 +22,17 @@ export default function Welcome() {
         </ThemedText>
       </View>
       <View style={styles.hero}>
-        <ThemedText type="title" style={{ color: theme.onTint, fontSize: 40, lineHeight: 46 }}>{t.welcome.title}</ThemedText>
-        <View style={[styles.rule, { backgroundColor: theme.accent }]} />
+        {/* The logo already carries the club's name, so no title text beside it.
+            It is an opaque white image, hence the white card on the tinted screen. */}
+        <View style={styles.logoCard}>
+          <Image
+            source={require('../../../assets/splash-icon.png')}
+            accessibilityLabel={t.welcome.title}
+            resizeMode="contain"
+            style={styles.logo}
+          />
+        </View>
+        <View style={[styles.rule, { backgroundColor: theme.background }]} />
         <ThemedText style={{ color: theme.onTint, fontSize: 18, lineHeight: 26 }}>{t.welcome.tagline}</ThemedText>
       </View>
       <View style={styles.actions}>
@@ -38,6 +47,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, padding: Spacing.four, justifyContent: 'space-between' },
   language: { alignItems: 'flex-end' },
   hero: { gap: Spacing.three, maxWidth: MaxContentWidth },
+  logoCard: { backgroundColor: 'transparent', borderRadius: 16, padding: Spacing.three, alignItems: 'center' },
+  // The image is 844x578; the aspect ratio keeps it undistorted at any width.
+  logo: { height: 220, aspectRatio: 844 / 578 },
   rule: { width: 56, height: 4, borderRadius: 2 },
   actions: { gap: Spacing.three, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
 });

@@ -34,6 +34,31 @@ const upToQ6 = {
   qualificationLevel: 'masters_degree', occupation: 'engineer', relationshipStatus: ['single'],
 }
 
+describe.skipIf(!hasDatabase)('the German pathway covers Germany, Austria and Switzerland', () => {
+  async function approvedFrom(country: string) {
+    const row = await createMember(app.pg, { passwordHash: null })
+    await app.pg.query('UPDATE members SET country_of_residence = $2 WHERE id = $1', [row.id, country])
+    await app.pg.query(
+      `INSERT INTO membership_applications (member_id, device_id, state, submitted_at, reviewed_at)
+       VALUES ($1, 'device-x', 'approved', now(), now())`, [row.id])
+    const { authorization } = await bearerFor(app, { accountId: String(row.id), accountKind: 'member' })
+    return { memberId: row.id, authorization }
+  }
+
+  it.each(['DE', 'AT', 'CH'])('%s starts on the German pathway and is asked settling first', async (country) => {
+    const { authorization } = await approvedFrom(country)
+    expect((await status({ authorization })).json().branch).toBe('germany')
+    // Q7 and the settling answers belong to this pathway only: they are accepted here.
+    expect((await patch({ authorization }, { settlingStatus: 'need_help', desiredWorkType: 'employee' })).statusCode).toBe(200)
+  })
+
+  it.each(['FR', 'AE', 'US'])('%s follows the non-German pathway', async (country) => {
+    const { authorization } = await approvedFrom(country)
+    expect((await status({ authorization })).json().branch).toBe('elsewhere')
+    expect((await patch({ authorization }, { settlingStatus: 'need_help' })).statusCode).toBe(400)
+  })
+})
+
 describe.skipIf(!hasDatabase)('the German profiling flow (Story 1)', () => {
   it('starts on the germany branch with nothing answered', async () => {
     const { authorization } = await approvedGermanMember()

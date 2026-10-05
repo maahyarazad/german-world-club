@@ -1,5 +1,5 @@
 import { query } from '../../../db/query.ts'
-import { GERMANY } from '@gwc/contracts/onboarding'
+import { isGermanPathway } from '@gwc/contracts/onboarding'
 import type { GwcApp } from '../../../app.ts'
 import type { ProfilingStatus, ProfilingBranch, CitySlot, PartnerAnswers as ProfilingAnswersPartner } from '@gwc/contracts/profiling'
 
@@ -100,7 +100,7 @@ export async function loadProfilingStatus(
       { signal },
     ),
   ])
-  const branch: ProfilingBranch = row?.branch ?? (row?.country_of_residence === GERMANY ? 'germany' : 'elsewhere')
+  const branch: ProfilingBranch = row?.branch ?? (isGermanPathway(row?.country_of_residence) ? 'germany' : 'elsewhere')
 
   const secondaryCities: CitySlot[] = [
     citySlot(row?.secondary_city_1_country ?? null, row?.secondary_city_1_name ?? null),

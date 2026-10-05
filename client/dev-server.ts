@@ -120,7 +120,7 @@ export function consoleFallback(): Plugin {
  * cross-origin, and a cookie that never comes back is a console that can never
  * stay signed in.
  */
-export function apiProxy(target = process.env.VITE_API_ORIGIN ?? 'http://localhost:3000') {
+export function apiProxy(target = process.env.VITE_API_ORIGIN ?? 'http://192.168.1.200:3000') {
   return Object.fromEntries(
     API_PREFIXES.map((prefix) => [
       prefix,

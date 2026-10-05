@@ -45,7 +45,17 @@ export type PrimaryLanguage = (typeof PRIMARY_LANGUAGES)[number]
 /** Register offers these three as shortcuts; "Others" opens the full country picker. */
 export const RESIDENCE_SHORTCUTS = Object.freeze(['DE', 'AT', 'CH'] as const)
 
-/** Phase 2 profiling branches on this value (German vs. non-German residence). */
+/**
+ * Residents of Germany, Austria and Switzerland follow the one German
+ * profiling pathway; every other country follows the non-German one
+ * (business description, Phase 2). A missing or unrecognised value is
+ * non-German, since the German pathway needs a confirmed one of these.
+ */
+export const GERMAN_PATHWAY_COUNTRIES = RESIDENCE_SHORTCUTS
+export const isGermanPathway = (country: string | null | undefined) =>
+  (GERMAN_PATHWAY_COUNTRIES as readonly string[]).includes(country ?? '')
+
+/** Germany's own code; the German pathway itself is `isGermanPathway` (DE, AT, CH). */
 export const GERMANY = 'DE'
 
 /**

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { isGermanPathway } from '../src/onboarding.ts'
 import {
   profilingSteps, profilingMissing, DESIRED_WORK_TYPES, RELATIONSHIP_TAGS, isDubai,
   profilingElsewherePatchSchema, profilingGermanyPatchSchema,
@@ -195,5 +196,12 @@ describe('patch schemas', () => {
     expect(profilingGermanyPatchSchema.safeParse({ futureWorkPriorities: [] }).success).toBe(false)
     expect(profilingGermanyPatchSchema.safeParse({ yearlyIncomeRange: 'over_1m' }).success).toBe(true)
     expect(profilingGermanyPatchSchema.safeParse({ partner: { settlingStatus: 'need_help' } }).success).toBe(true)
+  })
+})
+
+describe('the German pathway countries', () => {
+  it('are Germany, Austria and Switzerland; everything else, and no value, is non-German', () => {
+    for (const code of ['DE', 'AT', 'CH']) expect(isGermanPathway(code)).toBe(true)
+    for (const code of ['FR', 'AE', 'US', 'LI', 'de', '', null, undefined]) expect(isGermanPathway(code)).toBe(false)
   })
 })

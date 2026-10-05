@@ -1,7 +1,7 @@
 import { withTransaction } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
-import { GERMANY } from '@gwc/contracts/onboarding'
+import { isGermanPathway } from '@gwc/contracts/onboarding'
 import {
   QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES, ELSEWHERE_ONLY_KEYS, isDubai,
 } from '@gwc/contracts/profiling'
@@ -94,7 +94,7 @@ export async function submitProfiling(
 
     if (!row) {
       const member = await client.query('SELECT country_of_residence FROM members WHERE id = $1', [memberId])
-      const branch: ProfilingBranch = member.rows[0]?.country_of_residence === GERMANY ? 'germany' : 'elsewhere'
+      const branch: ProfilingBranch = isGermanPathway(member.rows[0]?.country_of_residence) ? 'germany' : 'elsewhere'
       await client.query(
         'INSERT INTO member_profiling (member_id, branch) VALUES ($1, $2) ON CONFLICT (member_id) DO NOTHING',
         [memberId, branch],
