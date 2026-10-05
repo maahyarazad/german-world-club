@@ -50,3 +50,6 @@ server/german-world-club-b103ddfadefe.json
 # Firebase service-account keys (feature 011, research R8): never in the repo.
 *-firebase-adminsdk*.json
 german-world-club-*.json
+
+# Production template: names only, safe to commit.
+!.env.production.example
