@@ -1,5 +1,7 @@
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { messageId } from '../integrations/mail.ts'
 import { query } from '../db/query.ts'
+import { forbidden } from '../authz/require-permission.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../app.ts'
 
@@ -7,9 +9,12 @@ import type { GwcApp } from '../app.ts'
  * Outbound mail, through the outbox (migrations/021_mail_outbox.sql).
  *
  * `enqueueMail` writes a row; the `mail.deliver` job (ops/jobs.ts) sends it.
- * Nothing sends inline, because mail is in no route's budget — a member must
- * not watch a spinner while a mail server negotiates TLS, and a busy mail
- * server must not fail the registration that wanted to send the mail.
+ * Mail is in no route's budget — a member must not watch a spinner while a
+ * mail server negotiates TLS, and a busy mail server must not fail the
+ * registration that wanted to send the mail.
+ *
+ * The one exception is the email verification code, sent by
+ * `sendMailInstantly` below and never queued: see its comment for why.
  *
  * Templates are keys, not text. The server emits no localised prose (see
  * CLAUDE.md); the mail service renders the template in the recipient's
@@ -46,25 +51,42 @@ export function registerMail(app: GwcApp) {
   })
 
   /**
-   * Send now, in the request — for a message somebody is waiting for, such as
-   * an onboarding code. The outbox is the declared fallback: if the mail server
-   * is unconfigured, down, slow or its breaker is open, the message is queued
-   * instead and `mail.deliver` sends it with backoff, so the caller's action
-   * still succeeds. Only the route class 'email-send' budgets for this call.
-   * Returns whether it went out now.
+   * Send now, in the request, or not at all — for a one-time code somebody is
+   * holding the screen open for.
+   *
+   * Deliberately NOT backed by the outbox. A code that arrives minutes later
+   * through `mail.deliver` is worse than none: the applicant has given up or
+   * resent, the queued mail then carries a superseded code, and until it is
+   * delivered the code sits readable in `mail_outbox`. So a failure — mail
+   * unconfigured, down, slow, or its breaker open — is a 503
+   * `service-unavailable` the client answers with "resend", and nothing is
+   * written anywhere. Only the route class 'email-send' budgets for this call.
    */
-  app.decorate('sendMailNow', async (message: MailMessage, { signal }: { signal?: AbortSignal } = {}) => {
-    const mail = app.integrations.mail as MailClient
+  app.decorate('sendMailInstantly', async (message: MailMessage, { signal }: { signal?: AbortSignal } = {}) => {
+    const mail = app.integrations.mail as MailClient & { configured?: boolean }
+
+    // Development only, and on purpose — the bargain enqueueMail makes, kept
+    // here because this path never reaches it: with no SMTP on a laptop the
+    // code is logged instead of sent, so onboarding can still be finished.
+    if (app.env.NODE_ENV === 'development') {
+      app.log.info({ to: message.to, template: message.template, variables: message.variables }, 'mail sent instantly (development: contents logged)')
+      if (mail.configured === false) return
+    }
+
     try {
-      await app.breakers.mail!.run((breakerSignal) => mail.send(
-        { ...message, variables: message.variables ?? {} },
-        { signal: signal ? AbortSignal.any([signal, breakerSignal]) : breakerSignal },
-      ))
-      return { sent: true }
+      // The request's deadline goes in through run(), which hands it to the
+      // thunk. Composing it inside the thunk with AbortSignal.any was the old
+      // sendMailNow's bug: the breaker passes `undefined` when run() gets no
+      // signal, AbortSignal.any throws on it, and every "instant" code failed
+      // before reaching SMTP and was quietly queued for mail.deliver instead.
+      await app.breakers.mail!.run(
+        (requestSignal) => mail.send({ ...message, variables: message.variables ?? {} }, { signal: requestSignal }),
+        { signal },
+      )
     } catch (err) {
-      app.log.warn({ err: (err as Error)?.message, template: message.template }, 'mail send failed inline; queued for the outbox job')
-      await app.enqueueMail(message, { signal })
-      return { sent: false }
+      // The message, never the variables: they hold the code.
+      app.log.warn({ err: (err as Error)?.message, template: message.template }, 'instant mail failed; not queued')
+      throw forbidden(PROBLEMS.SERVICE_UNAVAILABLE, 'The email could not be sent right now. Please request a new code.')
     }
   })
 

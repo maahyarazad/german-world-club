@@ -177,14 +177,10 @@ export type CitiesResponse = z.infer<typeof citiesResponseSchema>
 const isoCountryOptional = z.string().regex(/^[A-Z]{2}$/, 'must be an ISO 3166-1 alpha-2 code')
 
 /**
- * The partner answers the German questionnaire from Q1 — settling, languages,
+ * The partner answers the German questionnaire from Q2 — languages,
  * qualification, occupation, income — but not Q6 or Q7.
  */
 export const partnerAnswersSchema = z.object({
-  settlingStatus: z.enum(SETTLING_STATUSES).nullable(),
-  settlingCountry: z.string().nullable(),
-  settlingCity: z.string().nullable(),
-  settlingWorkDuration: z.enum(WORKING_DURATIONS).nullable(),
   languages: z.array(z.string()).nullable(),
   yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).nullable(),
   qualificationLevel: z.enum(QUALIFICATION_LEVELS).nullable(),
@@ -237,10 +233,6 @@ const sharedPatchFields = {
   // Replaces the whole list: one entry per kid, so the count is the length.
   kids: z.array(z.enum(KID_AGE_RANGES)).min(1).max(MAX_KIDS).optional(),
   partner: z.object({
-    settlingStatus: z.enum(SETTLING_STATUSES).optional(),
-    settlingCountry: isoCountryOptional.optional(),
-    settlingCity: z.string().trim().min(1).max(200).optional(),
-    settlingWorkDuration: z.enum(WORKING_DURATIONS).optional(),
     languages: z.array(z.string()).min(1).optional(),
     yearlyIncomeRange: z.enum(YEARLY_INCOME_RANGES).optional(),
     qualificationLevel: z.enum(QUALIFICATION_LEVELS).optional(),
@@ -322,7 +314,6 @@ export type ProfilingStepId =
   | 'languages' | 'qualification' | 'occupation' | 'income'
   | 'cities'
   | 'relationship' | 'kids'
-  | 'partner-settling' | 'partner-settling-info' | 'partner-settling-place' | 'partner-settling-work'
   | 'partner-languages' | 'partner-qualification' | 'partner-occupation' | 'partner-income'
   | 'work-type' | 'work-offering' | 'work-industry' | 'work-idea' | 'work-ready'
   | 'work-activities' | 'work-priorities'
@@ -331,7 +322,7 @@ export type ProfilingStepId =
 const filled = (value: string | null | undefined) => value != null && value.trim() !== ''
 const nonEmptyList = (value: readonly unknown[] | null | undefined) => value != null && value.length > 0
 
-type Settling = Pick<PartnerAnswers, 'settlingStatus' | 'settlingCountry' | 'settlingCity' | 'settlingWorkDuration'>
+type Settling = Pick<ProfilingAnswers, 'settlingStatus' | 'settlingCountry' | 'settlingCity' | 'settlingWorkDuration'>
 
 /**
  * The one definition of which questions apply, in what order, and whether each
@@ -359,10 +350,6 @@ const ANSWERED: Record<Exclude<ProfilingStepId, 'review'>, (a: ProfilingAnswers)
   cities: (a) => a.primaryCity !== null,
   relationship: (a) => nonEmptyList(a.relationshipStatus),
   kids: (a) => a.kids.length > 0,
-  'partner-settling': (a) => settlingAnswered(a.partner).status,
-  'partner-settling-info': (a) => settlingAnswered(a.partner).info,
-  'partner-settling-place': (a) => settlingAnswered(a.partner).place,
-  'partner-settling-work': (a) => settlingAnswered(a.partner).work,
   'partner-languages': (a) => nonEmptyList(a.partner?.languages),
   'partner-qualification': (a) => a.partner?.qualificationLevel != null,
   'partner-occupation': (a) => a.partner?.occupation != null,
@@ -385,24 +372,20 @@ const WORK_FOLLOW_UPS: Record<DesiredWorkType, readonly ProfilingStepId[]> = {
   not_sure: ['work-priorities'],
 }
 
-/** Settling (Q1) for the member (`''`) or the partner (`'partner-'`): info screen, or place, or place + Dubai follow-up. */
-function settlingSteps(prefix: '' | 'partner-', s: Settling | null | undefined): ProfilingStepId[] {
-  const head = `${prefix}settling` as ProfilingStepId
-  if (s?.settlingStatus === 'need_help') return [head, `${head}-info` as ProfilingStepId]
+/** Settling (Q1), the member's own only — the partner starts at Q2: info screen, or place, or place + Dubai follow-up. */
+function settlingSteps(s: Settling | null | undefined): ProfilingStepId[] {
+  if (s?.settlingStatus === 'need_help') return ['settling', 'settling-info']
   if (s?.settlingStatus === 'know_where') {
-    return [
-      head, `${head}-place` as ProfilingStepId,
-      ...(isDubai(s.settlingCountry, s.settlingCity) ? [`${head}-work` as ProfilingStepId] : []),
-    ]
+    return ['settling', 'settling-place', ...(isDubai(s.settlingCountry, s.settlingCity) ? ['settling-work' as const] : [])]
   }
-  return [head]
+  return ['settling']
 }
 
 export function profilingSteps(branch: ProfilingBranch, answers: ProfilingAnswers): ProfilingStepId[] {
   const tags = answers.relationshipStatus ?? []
   const steps: ProfilingStepId[] = []
   if (branch === 'germany') {
-    steps.push(...settlingSteps('', answers), 'languages', 'qualification', 'occupation', 'income')
+    steps.push(...settlingSteps(answers), 'languages', 'qualification', 'occupation', 'income')
   } else {
     steps.push('cities')
   }
@@ -413,7 +396,6 @@ export function profilingSteps(branch: ProfilingBranch, answers: ProfilingAnswer
     if (tags.includes('kids')) steps.push('kids')
     if (tags.includes('partner') || tags.includes('family')) {
       steps.push(
-        ...settlingSteps('partner-', answers.partner),
         'partner-languages', 'partner-qualification', 'partner-occupation', 'partner-income',
       )
     }

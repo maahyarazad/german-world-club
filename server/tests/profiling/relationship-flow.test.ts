@@ -61,7 +61,6 @@ describe.skipIf(!hasDatabase)('relationship & family status', () => {
     await call.patch(authorization, { partner: { yearlyIncomeRange: 'over_100k' } })
     const res = await call.patch(authorization, { partner: { languages: ['ar', 'en'], occupation: 'student' } })
     expect(res.json().answers.partner).toEqual({
-      settlingStatus: null, settlingCountry: null, settlingCity: null, settlingWorkDuration: null,
       languages: ['ar', 'en'], yearlyIncomeRange: 'over_100k', qualificationLevel: null, occupation: 'student',
     })
   })
@@ -112,15 +111,15 @@ describe.skipIf(!hasDatabase)('relationship & family status', () => {
     expect(res.statusCode).toBe(409)
     expect(res.json().type).toBe(PROBLEMS.PROFILING_ANSWERS_MISSING.type)
     expect(res.json().detail).toContain('kids')
-    // The partner is asked the whole questionnaire from Q1, settling included.
-    expect(res.json().detail).toContain('partner-settling')
+    // The partner is asked Q2-Q5 only: settling is never among the missing answers.
+    expect(res.json().detail).toContain('partner-languages')
+    expect(res.json().detail).not.toContain('partner-settling')
     expect(res.json().detail).toContain('partner-income')
 
     await call.patch(authorization, { kids: ['age_0_6'] })
-    await call.patch(authorization, { partner: { settlingStatus: 'need_help', languages: ['de'] } })
+    await call.patch(authorization, { partner: { languages: ['de'] } })
     res = await call.submit(authorization)
     expect(res.statusCode).toBe(409) // partner qualification, occupation and income still missing
-    expect(res.json().detail).not.toContain('partner-settling')
     expect(res.json().detail).not.toContain('partner-languages')
     expect(res.json().detail).not.toContain('kids')
 

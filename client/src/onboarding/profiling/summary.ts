@@ -5,7 +5,7 @@ import { fill } from '../../lib/format'
 import type { Copy } from './steps'
 
 /** The title a step is listed under on the review screen. */
-export function stepTitle(step: Exclude<ProfilingStepId, 'review' | 'settling-info' | 'partner-settling-info'>, copy: Copy): string {
+export function stepTitle(step: Exclude<ProfilingStepId, 'review' | 'settling-info'>, copy: Copy): string {
   const partner = step.startsWith('partner-')
   const base = partner ? step.slice('partner-'.length) : step
   const own: Record<string, string | undefined> = {
@@ -21,7 +21,7 @@ export function stepTitle(step: Exclude<ProfilingStepId, 'review' | 'settling-in
 }
 
 /** The saved answer for a step, as text for the review screen. */
-export function stepSummary(step: Exclude<ProfilingStepId, 'review' | 'settling-info' | 'partner-settling-info'>, copy: Copy, answers: ProfilingAnswers): string {
+export function stepSummary(step: Exclude<ProfilingStepId, 'review' | 'settling-info'>, copy: Copy, answers: ProfilingAnswers): string {
   const partner = step.startsWith('partner-')
   const base = partner ? step.slice('partner-'.length) : step
   const s = partner ? answers.partner : answers
@@ -30,9 +30,9 @@ export function stepSummary(step: Exclude<ProfilingStepId, 'review' | 'settling-
   const one = (value: string | null | undefined, labels: Record<string, string>) => (value ? labels[value] ?? value : '')
 
   const text: Record<string, string> = {
-    settling: one(s?.settlingStatus, copy.settlingOptions),
-    'settling-place': [s?.settlingCity, s?.settlingCountry ? `(${s.settlingCountry})` : ''].filter(Boolean).join(' '),
-    'settling-work': one(s?.settlingWorkDuration, copy.workingDurationOptions),
+    settling: one(answers.settlingStatus, copy.settlingOptions),
+    'settling-place': [answers.settlingCity, answers.settlingCountry ? `(${answers.settlingCountry})` : ''].filter(Boolean).join(' '),
+    'settling-work': one(answers.settlingWorkDuration, copy.workingDurationOptions),
     languages: (s?.languages ?? []).map((code) => LANGUAGES.find((l) => l.code === code)?.en ?? code).join(', '),
     income: one(s?.yearlyIncomeRange, copy.incomeOptions),
     qualification: one(s?.qualificationLevel, copy.qualificationOptions),

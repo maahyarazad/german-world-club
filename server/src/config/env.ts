@@ -97,6 +97,8 @@ const schema = z
     // --- Mail (SMTP, through nodemailer) --------------------------------
     // All optional: without SMTP_HOST the mail.deliver job cannot send, and
     // queued mail waits in mail_outbox, retrying with backoff, until it can.
+    // The email verification code is never queued, so without SMTP it cannot
+    // be sent at all (503) — except in development, where it is logged.
     // Port 465 means TLS from the first byte; any other port upgrades with
     // STARTTLS. MAIL_FROM defaults to SMTP_USER.
     SMTP_HOST: z.string().optional(),

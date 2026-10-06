@@ -313,3 +313,15 @@ R1–R9 stand except where noted.
 It decides which questions are asked, so computing it at submit (Revision 2) is too late. The outcome stays a submit-time fact. Changing the cities to a non-match deletes the answers only a matching member gives, by the same cascade rule as R14.
 ## R18: City data
 The workbook names countries in English; `convert-cities.py` maps them through `countries.ts` plus eight aliases and fails on any unmapped name. Only 160 countries are covered, so free text remains for the rest, and the workbook lacks three designated emirates, so the API merges both tables.
+
+
+---
+
+# Revision 6 (2026-10-05)
+
+## R19: Remove partner settling by deleting the step, not hiding it
+`profilingSteps` is the single source of the order (R-contracts), so removing `partner-settling`, `-info`, `-place` and `-work` from it and from `partnerAnswersSchema` / the PATCH `partner` object removes the question on server, web and Expo at once. Hiding it in each client would leave the server still *requiring* it at submit, and the two would disagree about "done". The PATCH `partner` object is `.strict()`, so a stale client sending settling fields gets a 422 instead of silently storing it.
+## R20: Columns
+Drop the four `member_profiling_partner.settling_*` columns in a new migration (`039`), the same move Revision 3 made for `settling_status`. Alternative: leave them unwritten — rejected, an always-NULL column invites someone to read it, and no legacy data needs keeping (development database is rebuilt). Dropping a column is not a row write, so the immutability trigger on completed partner rows does not fire and the migration disables nothing; completed profiles lose the (never-displayed) settling values too.
+## R21: Mobile and web are one change
+Both clients import the steps from `@gwc/contracts/profiling`; each deletes its partner-settling screens/components (`client/src/onboarding/profiling/steps.tsx`, `Profiling.tsx`, `summary.ts`; Expo `(profiling)/index.tsx`, `components/profiling/{steps,summary}`) and the now-unused `Reviewable` exclusions for `partner-settling-info`.

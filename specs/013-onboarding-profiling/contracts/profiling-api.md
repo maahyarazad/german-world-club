@@ -301,3 +301,13 @@ Unchanged. `POST /profiling/submit` carries `profiling: true` like the other two
 - **`PATCH /profiling`** refuses place fields unless the settling answer is "yes" (member and partner), the duration unless the place is Dubai, and any Q6 field for a non-German member without a GWC match.
 - **`GET /profiling/cities?country=XX&q=`** (`profiling: true`, `member-read`) returns `{ listed, cities }`: the InterNations list merged with the club's designated cities, capitals first, prefix-filtered, at most 50. `listed: false` means "type the city".
 - **Auth/onboarding**: `POST /onboarding/register` requires `ageConfirmed: true` and `primaryLanguage`; the staff application carries `primaryLanguage` and `decidedBy: 'staff' | 'automatic' | null`.
+
+
+---
+
+# Revision 6 (2026-10-05)
+
+- `PartnerAnswers` (status response) loses `settlingStatus`, `settlingCountry`, `settlingCity`, `settlingWorkDuration`: `{ languages, yearlyIncomeRange, qualificationLevel, occupation }`.
+- `PATCH /profiling` `partner` accepts only those four keys (`.strict()`); any settling key → `422` validation problem.
+- `ProfilingStepId` loses `partner-settling`, `partner-settling-info`, `partner-settling-place`, `partner-settling-work`. Partner steps, in order: `partner-languages`, `partner-qualification`, `partner-occupation`, `partner-income`. Applies to Germany/Austria/Switzerland and to a non-German member with a GWC city.
+- `POST /profiling/submit` requires the four partner answers; missing ones appear in `PROFILING_ANSWERS_MISSING` by those ids only.

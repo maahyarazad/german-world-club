@@ -6,11 +6,15 @@ import { renderMail } from './mail-templates.ts'
 /**
  * Mail over SMTP, through **nodemailer** (resilience.md §2).
  *
- * Declared fallback: **enqueue for later**. Nothing sends inside a request —
- * `app.enqueueMail` writes `mail_outbox` and the `mail.deliver` job calls
- * `send()` here — so a slow or down mail server delays a mail, never the
- * registration or reset that asked for it. A failed send stays in the outbox
- * with its error and retries with backoff (decorators/mail.ts).
+ * Declared fallback: **enqueue for later**. `app.enqueueMail` writes
+ * `mail_outbox` and the `mail.deliver` job calls `send()` here — so a slow or
+ * down mail server delays a mail, never the registration or reset that asked
+ * for it. A failed send stays in the outbox with its error and retries with
+ * backoff (decorators/mail.ts).
+ *
+ * The exception is the email verification code: `app.sendMailInstantly` calls
+ * `send()` inside the request and refuses with 503 on failure, with no
+ * fallback, because a late code is a stale code.
  *
  * One transporter for the whole process, created on first use from
  * SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS: it keeps its connection

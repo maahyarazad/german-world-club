@@ -238,3 +238,17 @@ Partner asked Q1 again; "not sure" multi-select without industry; "Others" opens
 # Revision 5 (2026-10-01): one German pathway for Germany, Austria and Switzerland
 
 The business description now routes residents of **Germany, Austria and Switzerland** through the one German pathway (settling, languages, qualification, occupation, income, relationship, Q7); **Others** follow the non-German pathway. This amends FR-003 and the Edge Case on a missing country: the German pathway needs `country_of_residence` in `{DE, AT, CH}`; any other, or a missing, value is non-German. The set is `GERMAN_PATHWAY_COUNTRIES` / `isGermanPathway` in `@gwc/contracts/onboarding` and is the only place the server decides it; neither client branches on the country (they render what `GET /profiling/status` says). Migration `038` removes the unfinished non-German rows of Austrian and Swiss members so they restart on the right pathway.
+
+
+---
+
+# Revision 6 (2026-10-05): the partner is not asked the settling question
+
+The business description's partner questionnaire is now **German Q2–Q5** (languages, qualification, occupation, income), and for the non-German path **the same German questionnaire from Q2** — in both, without the relationship and family-status question (Q6) and without Q1. This **reverses Revision 4's "partner asked Q1 again"** (US8, FR-040) and restores Revision 3's rule for the partner only; the member's own Q1 is unchanged.
+
+- **FR-046** The partner questionnaire is languages, qualification, occupation, yearly income — all required — on **both** pathways. The partner is never asked Q1 (settling place, Dubai duration), Q6 or Q7.
+- **FR-047** The API refuses partner settling fields (`settlingStatus`, `settlingCountry`, `settlingCity`, `settlingWorkDuration`) on `partner`, and `profilingSteps` / `profilingMissing` no longer emit any `partner-settling*` step, so a client cannot show it and the server cannot require it.
+- **FR-048** Partner settling answers already saved are discarded with their columns (migration `039`); they were never shown to staff or members. Completed profiles are otherwise untouched (R15: no re-profiling).
+- **FR-049** Web console and Expo app show the same four partner steps, in the order above, then continue to Q7 (German) or the review (non-German). Both render the steps list the contracts return; neither carries its own copy of the order.
+
+Amends US4 ("Q1–Q5" → "Q2–Q5"), US8 and FR-027/FR-040.

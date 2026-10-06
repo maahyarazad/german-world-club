@@ -16,9 +16,9 @@ import { ApiError } from '@/api/client';
 
 type Answerable = Exclude<ProfilingStepId, 'review'>;
 /** Steps that hold an answer; the information screens do not appear on the review. */
-type Reviewable = Exclude<Answerable, 'settling-info' | 'partner-settling-info'>;
+type Reviewable = Exclude<Answerable, 'settling-info'>;
 const isReviewable = (step: ProfilingStepId): step is Reviewable =>
-  step !== 'review' && step !== 'settling-info' && step !== 'partner-settling-info';
+  step !== 'review' && step !== 'settling-info';
 
 /**
  * Onboarding Phase 2 (feature 013), on the app. Mirrors the web console's

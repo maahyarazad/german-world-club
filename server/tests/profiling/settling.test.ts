@@ -4,7 +4,7 @@ import { hasDatabase } from '../helpers/db.ts'
 import { approvedMember, profilingCalls, germanQ1toQ5 } from './support.ts'
 import type { GwcApp } from '../../src/app.ts'
 
-/** Q1: "Do you already know where you'll settle?" — for the member and for the partner. */
+/** Q1: "Do you already know where you'll settle?" — for the member only; the partner starts at Q2. */
 
 let app: GwcApp
 let call: ReturnType<typeof profilingCalls>
@@ -82,21 +82,20 @@ describe.skipIf(!hasDatabase)('settling (Q1)', () => {
     expect(res.json().answers.settlingCity).toBe('Vaduz')
   })
 
-  it('asks the partner the same questions, and clears them by the same rules', async () => {
+  it('does not ask the partner where they will settle, and refuses the fields', async () => {
     const { authorization } = await approvedMember(app, 'DE')
     await call.patch(authorization, { ...rest, settlingStatus: 'need_help', relationshipStatus: ['partner'] })
     await call.patch(authorization, { partner: { languages: ['de'], qualificationLevel: 'doctorate', occupation: 'other', yearlyIncomeRange: 'over_1m' } })
-    const refused = await call.submit(authorization)
-    expect(refused.statusCode).toBe(409)
-    expect(refused.json().detail).toContain('partner-settling')
-
-    await call.patch(authorization, { partner: { settlingStatus: 'know_where', settlingCountry: 'AE', settlingCity: 'Dubai' } })
-    expect((await call.submit(authorization)).json().detail).toContain('partner-settling-work')
-
-    await call.patch(authorization, { partner: { settlingWorkDuration: 'under_1' } })
-    expect((await call.patch(authorization, { partner: { settlingCity: 'Sharjah' } })).json().answers.partner)
-      .toMatchObject({ settlingCity: 'Sharjah', settlingWorkDuration: null })
-    await call.patch(authorization, { partner: { settlingStatus: 'need_help' } })
+    // The four partner answers are enough: nothing about settling is missing.
     expect((await call.submit(authorization)).statusCode).toBe(200)
+  })
+
+  it('refuses settling fields on the partner, while the member\'s own are still accepted', async () => {
+    const { authorization } = await approvedMember(app, 'DE')
+    await call.patch(authorization, { relationshipStatus: ['partner'] })
+    for (const field of [{ settlingStatus: 'know_where' }, { settlingCountry: 'AE' }, { settlingCity: 'Dubai' }, { settlingWorkDuration: 'under_1' }]) {
+      expect((await call.patch(authorization, { partner: field })).statusCode).toBe(400)
+    }
+    expect((await call.patch(authorization, { settlingStatus: 'need_help' })).statusCode).toBe(200)
   })
 })
