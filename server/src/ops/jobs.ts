@@ -65,8 +65,9 @@ export const PLATFORM_JOBS = Object.freeze([
   {
     name: 'mail.deliver',
     schedule: '* * * * *',
-    // Every minute: an onboarding email code is waited for by somebody holding
-    // the app open, and the outbox is the only way mail leaves this server.
+    // Every minute. It never carries the email verification code — that is
+    // sent in the request by sendMailInstantly and never queued — only mail
+    // nobody is holding a screen open for (thank-you, decisions, resets).
     description: 'Send queued mail from the outbox, retrying with backoff',
   },
   {

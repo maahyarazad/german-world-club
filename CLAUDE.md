@@ -266,12 +266,17 @@ codes, and verification is deliberately **not** gated, so a code sent before
 the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
 from another project's build; do not hand-edit it.
 
-**Mail goes through the outbox, never inline.** `app.enqueueMail()` writes
-`mail_outbox`; the `mail.deliver` job sends with backoff and clears the row's
-variables once delivered (they hold codes and reset tokens). Pass `{ client }`
-when the mail must exist only if the surrounding transaction commits. In
-development queued mail is logged, contents included, so onboarding can be
-finished on a laptop — the same bargain `seed:demo` makes.
+**Mail goes through the outbox, except the email code.** `app.enqueueMail()`
+writes `mail_outbox`; the `mail.deliver` job sends with backoff and clears the
+row's variables once delivered (they hold reset tokens). Pass `{ client }`
+when the mail must exist only if the surrounding transaction commits. The
+onboarding email verification code is the one exception: `app.sendMailInstantly()`
+sends it inside the `email-send` request and, on any failure, answers 503
+`service-unavailable` with **no** outbox fallback — a code delivered late by the
+job is already stale, and a queued one sits readable in the table
+(`tests/onboarding/email-code-instant.test.ts`). In development mail is logged,
+contents included, so onboarding can be finished on a laptop — the same
+bargain `seed:demo` makes.
 
 **Member events are `/member/events`, not `/events`.** `/events` is the
 public, indexed page surface; member JSON with prices and seat counts must not

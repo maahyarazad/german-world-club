@@ -115,9 +115,10 @@ export async function sendEmailCode(
     signal,
   })
 
-  // In the request, not the outbox: the applicant is watching the screen for it.
-  // Falls back to the outbox if the mail server cannot be reached right now.
-  await app.sendMailNow({
+  // In the request and never the outbox: the applicant is watching the screen
+  // for it, and a code delivered late by mail.deliver would already be stale.
+  // A failed send is a 503 the app answers with "resend".
+  await app.sendMailInstantly({
     to: member.email,
     template: 'onboarding.email-code',
     subjectKey: challenge.challengeId,

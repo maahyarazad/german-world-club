@@ -2,25 +2,42 @@ import { randomInt, randomUUID } from 'node:crypto'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { createPaymentsClient } from '../../src/integrations/payments.ts'
-import { createMailClient } from '../../src/integrations/mail.ts'
 import { createGeocodingClient } from '../../src/integrations/geocoding.ts'
 import type { BuildAppOptions, GwcApp } from '../../src/app.ts'
 
+type SentMail = { to: string; template: string; variables: Record<string, unknown> }
+
+/** What each app's mail recorder has sent, for `emailCodeFor`. */
+const mailSent = new WeakMap<GwcApp, SentMail[]>()
+
 /**
- * An app whose SMS provider is a recorder.
+ * An app whose SMS and mail providers are recorders.
  *
  * Onboarding cannot be driven without reading the code that was sent, and the
- * only honest place to read it is where it was sent to. Everything else is the
+ * only honest place to read it is where it was sent to — for the email code
+ * that is the mail provider itself, since it is sent instantly and never
+ * queued. Set `mail.failing` to make every send throw. Everything else is the
  * real integration set, so the suite exercises the same wiring that boots.
  */
 export async function buildOnboardingApp(options: BuildAppOptions = {}) {
   const sms: { mobile: string; code: string }[] = []
+  const sent: SentMail[] = []
+  const mail = {
+    failing: false,
+    sent,
+    configured: true,
+    send: async (message: SentMail) => {
+      if (mail.failing) throw Object.assign(new Error('mail provider down'), { statusCode: 503 })
+      sent.push(message)
+      return { delivered: true }
+    },
+  }
   const app = await buildApp({
     ...options,
     contentSource: createFixtureContentSource([]),
     integrations: {
       payments: createPaymentsClient(),
-      mail: createMailClient(),
+      mail,
       geocoding: createGeocodingClient(),
       sms: {
         configured: true,
@@ -32,7 +49,8 @@ export async function buildOnboardingApp(options: BuildAppOptions = {}) {
     },
   })
   await app.ready()
-  return { app, sms }
+  mailSent.set(app, sent)
+  return { app, sms, mail }
 }
 
 export const DEVICE = 'device-applicant'
@@ -71,15 +89,12 @@ export function applicant(overrides: Record<string, unknown> = {}) {
   }
 }
 
-/** The email code, read from the outbox where the mail job would find it. */
+/** The latest email code sent to an address, read from the mail recorder. */
 export async function emailCodeFor(app: GwcApp, email: string) {
-  const { rows } = await app.pg.query(
-    `SELECT variables->>'code' AS code FROM mail_outbox
-      WHERE to_address = $1 AND template = 'onboarding.email-code'
-      ORDER BY id DESC LIMIT 1`,
-    [email],
-  )
-  return rows[0]?.code as string | undefined
+  const latest = (mailSent.get(app) ?? [])
+    .filter((m) => m.to === email && m.template === 'onboarding.email-code')
+    .at(-1)
+  return latest?.variables.code as string | undefined
 }
 
 /**
