@@ -2,6 +2,7 @@ import { buildPageMeta } from '../../seo/build-page-meta.ts'
 import { documentsFor } from '../../seo/structured-data.ts'
 import { renderPage } from '../templates/layout.ts'
 import { legalBody } from '../templates/legal.ts'
+import { withCspNonces } from '../../../plugins/02-security-headers.ts'
 
 /**
  * Root-level institutional pages (§10.1 "committee / about / legal"). Adding
@@ -16,7 +17,9 @@ export const INSTITUTIONAL_SLUGS = Object.freeze([
 // --- 1. Landing (feature 001) -------------------------------------------
 // The coming-soon shell is already pre-rendered: its boot markup paints a
 // branded first screen from HTML alone, which is exactly what FR-016 asks
-// for, so it is served as-is rather than re-rendered through a template.
+// for, so it is served rather than re-rendered through a template — but not
+// byte for byte: its whole stylesheet is one inline <style>, which the CSP
+// refuses without this response's nonce.
 export const LANDING_RECORD = Object.freeze({
   recordType: 'page', recordId: 'landing', slug: 'home',
   title: 'German World Club — Ein globales Vertrauensnetz',
@@ -64,8 +67,8 @@ export const LANDING_ALTERNATES = Object.freeze([
  * the same content through the normal path — so even this fallback satisfies
  * FR-016 instead of shipping an empty shell.
  */
-export function renderLanding({ shell, record, origin, nonce }) {
-  if (shell) return shell
+export function renderLanding({ shell, record, origin, cspNonce }) {
+  if (shell) return withCspNonces(shell, cspNonce)
 
   const pageMeta = buildPageMeta(record, {
     origin,
@@ -73,5 +76,5 @@ export function renderLanding({ shell, record, origin, nonce }) {
     alternates: LANDING_ALTERNATES,
   })
   pageMeta.jsonLd = documentsFor(origin, record, new Date())
-  return renderPage({ pageMeta, body: legalBody(record), nonce })
+  return renderPage({ pageMeta, body: legalBody(record), nonce: cspNonce.style })
 }

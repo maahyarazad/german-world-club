@@ -35,7 +35,7 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
       .header('cache-control', PUBLIC_CACHE)
       .header('vary', VARY)
 
-    const html = renderLanding({ shell, record, origin, nonce: reply.cspNonce?.style })
+    const html = renderLanding({ shell, record, origin, cspNonce: reply.cspNonce })
     return reply.send(html)
   }
 

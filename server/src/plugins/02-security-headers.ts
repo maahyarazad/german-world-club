@@ -5,6 +5,23 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../app.ts'
 
 /**
+ * Stamp this response's CSP nonces onto the shell's script and style tags.
+ *
+ * The CSP below allows scripts and styles ONLY by per-request nonce — no
+ * 'self' — and the Vite build emits plain tags. Without this the browser blocks
+ * the bundle and the console never leaves its "Konsole wird geladen …"
+ * placeholder, and the pre-rendered landing pages (`/`, `/en`) lose their whole
+ * inline stylesheet. The nonce changes on every request, which is why this runs
+ * per response rather than once on the cached shell.
+ */
+export function withCspNonces(html: string, nonce: { script: string; style: string }) {
+  return html
+    .replace(/<script\b(?![^>]*\bnonce=)/g, `<script nonce="${nonce.script}"`)
+    .replace(/<style\b(?![^>]*\bnonce=)/g, `<style nonce="${nonce.style}"`)
+    .replace(/<link\b(?=[^>]*\brel="stylesheet")(?![^>]*\bnonce=)/g, `<link nonce="${nonce.style}"`)
+}
+
+/**
  * Security headers, and the crawl-directive half of FR-025.
  *
  * §10.1 requires gated surfaces to be excluded from indexing by a crawl
