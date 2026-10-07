@@ -352,17 +352,17 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
 
   switch (base) {
     case 'settling':
-      return <Choice ctx={ctx} title={title(copy.settlingTitle)} subtitle={copy.settlingSubtitle}
+      return <Choice ctx={ctx} title={copy.settlingTitle} subtitle={copy.settlingSubtitle}
         options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={answers.settlingStatus ?? null}
         onPick={(v) => ctx.save({ settlingStatus: v })} />
     case 'settling-info':
-      return <Info ctx={ctx} title={title(copy.settlingTitle)} body={copy.settlingInfo} />
+      return <Info ctx={ctx} title={copy.settlingTitle} body={copy.settlingInfo} />
     case 'settling-place':
-      return <Place ctx={ctx} title={title(copy.settlingPlaceTitle)}
+      return <Place ctx={ctx} title={copy.settlingPlaceTitle}
         initial={{ country: answers.settlingCountry ?? '', city: answers.settlingCity ?? '' }}
         onContinue={(slot) => ctx.save({ settlingCountry: slot.country, settlingCity: slot.city })} />
     case 'settling-work':
-      return <Choice ctx={ctx} title={title(copy.workingDurationTitle)}
+      return <Choice ctx={ctx} title={copy.workingDurationTitle}
         options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={answers.settlingWorkDuration ?? null}
         onPick={(v) => ctx.save({ settlingWorkDuration: v })} />
     case 'languages':

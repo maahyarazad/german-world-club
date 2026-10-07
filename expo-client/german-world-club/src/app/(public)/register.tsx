@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { TextInput, View } from 'react-native';
 
 import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
 
@@ -40,6 +40,15 @@ export default function Register() {
   const [primaryLanguage, setPrimaryLanguage] = useState<PrimaryLanguage | undefined>(draft.primaryLanguage);
   const [ageConfirmed, setAgeConfirmed] = useState(draft.ageConfirmed === true);
   const [errors, setErrors] = useState<Errors>({});
+  // Return on each text input focuses the next one, in the order they appear.
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const mobileRef = useRef<TextInput>(null);
+  const dayRef = useRef<TextInput>(null);
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
+  // `submitBehavior="submit"` below keeps the keyboard up, so it does not close
+  // and reopen at every field.
 
   const next = () => {
     // People type spaces and dashes in phone numbers; E.164 has neither.
@@ -64,24 +73,37 @@ export default function Register() {
   return (
     <FormScreen title={t.register.detailsTitle}>
       <TextField label={t.register.fullName} value={fullName} onChangeText={setFullName}
-        autoComplete="name" textContentType="name" error={errors.fullName} />
-      <TextField label={t.register.email} value={email} onChangeText={setEmail}
-        keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={errors.email} />
-      <TextField label={t.register.password} value={password} onChangeText={setPassword}
-        secureTextEntry autoComplete="new-password" textContentType="newPassword" error={errors.password} />
-      <MobileField value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile} />
+        autoComplete="name" textContentType="name" error={errors.fullName}
+        returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => emailRef.current?.focus()} />
+      <TextField ref={emailRef} label={t.register.email} value={email} onChangeText={setEmail}
+        keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={errors.email}
+        returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => passwordRef.current?.focus()} />
+      <TextField ref={passwordRef} label={t.register.password} value={password} onChangeText={setPassword}
+        secureTextEntry autoComplete="new-password" textContentType="newPassword" error={errors.password}
+        returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => mobileRef.current?.focus()} />
+      <MobileField ref={mobileRef} value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile}
+        returnKeyType="next" onSubmitEditing={() => dayRef.current?.focus()} />
 
       <View style={{ gap: Spacing.one }}>
         <ThemedText type="smallBold">{t.register.birthday}</ThemedText>
         <View style={[styles.row, { alignItems: 'flex-start' }]}>
           <View style={{ flex: 1 }}>
-            <TextField label={t.register.day} value={dd} onChangeText={(v) => setDd(v.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={2} />
+            {/* The iOS number pad has no return key, so a full day or month moves on by itself.
+                Only a typed change does: a value restored from the draft never moves focus. */}
+            <TextField ref={dayRef} label={t.register.day} value={dd} keyboardType="number-pad" maxLength={2}
+              onChangeText={(v) => { const digits = v.replace(/\D/g, ''); setDd(digits); if (digits.length === 2) monthRef.current?.focus(); }}
+              returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => monthRef.current?.focus()} />
           </View>
           <View style={{ flex: 1 }}>
-            <TextField label={t.register.month} value={mm} onChangeText={(v) => setMm(v.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={2} />
+            <TextField ref={monthRef} label={t.register.month} value={mm} keyboardType="number-pad" maxLength={2}
+              onChangeText={(v) => { const digits = v.replace(/\D/g, ''); setMm(digits); if (digits.length === 2) yearRef.current?.focus(); }}
+              returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => yearRef.current?.focus()} />
           </View>
           <View style={{ flex: 2 }}>
-            <TextField label={t.register.year} value={yyyy} onChangeText={(v) => setYyyy(v.replace(/\D/g, ''))} keyboardType="number-pad" maxLength={4} />
+            {/* The last text input only closes the keyboard: gender, language and the age
+                confirmation below are still unanswered, so submitting here would just flash errors. */}
+            <TextField ref={yearRef} label={t.register.year} value={yyyy} onChangeText={(v) => setYyyy(v.replace(/\D/g, ''))}
+              keyboardType="number-pad" maxLength={4} returnKeyType="done" submitBehavior="blurAndSubmit" />
           </View>
         </View>
         {errors.birthday ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.birthday}</ThemedText> : null}

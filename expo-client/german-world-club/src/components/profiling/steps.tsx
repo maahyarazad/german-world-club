@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Text as RNText, View } from 'react-native';
 
 import {
   SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES,
@@ -11,11 +11,12 @@ import type { ProfilingStepId, RelationshipTag, KidAgeRange } from '@gwc/contrac
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, TextField, styles } from '@/components/ui';
+import { useTheme } from '@/hooks/use-theme';
 import { CitiesStep, PlacePicker } from './cities';
-import { fill } from './types';
+import { fill, splitTemplate } from './types';
 import type { StepCtx } from './types';
 
-function Frame({ ctx, title, subtitle, children }: { ctx: StepCtx; title: string; subtitle?: string; children: ReactNode }) {
+function Frame({ ctx, title, subtitle, children }: { ctx: StepCtx; title: ReactNode; subtitle?: string; children: ReactNode }) {
   return (
     <FormScreen title={title} subtitle={subtitle}>
       {children}
@@ -26,7 +27,7 @@ function Frame({ ctx, title, subtitle, children }: { ctx: StepCtx; title: string
 
 /** A single choice: picking an option saves it and moves on; the saved one is selected. */
 function Choice({ ctx, title, subtitle, options, selected, onPick }: {
-  ctx: StepCtx; title: string; subtitle?: string; options: { value: string; label: string }[]
+  ctx: StepCtx; title: ReactNode; subtitle?: string; options: { value: string; label: string }[]
   selected: string | null; onPick: (value: string) => void;
 }) {
   return (
@@ -41,7 +42,7 @@ function Choice({ ctx, title, subtitle, options, selected, onPick }: {
 }
 
 function Multi({ ctx, title, subtitle, options, initial, onToggle, onContinue, search }: {
-  ctx: StepCtx; title: string; subtitle?: string; options: { value: string; label: string }[]; initial: string[]
+  ctx: StepCtx; title: ReactNode; subtitle?: string; options: { value: string; label: string }[]; initial: string[]
   onToggle?: (current: string[], value: string) => string[]; onContinue: (values: string[]) => void
   search?: string;
 }) {
@@ -131,35 +132,44 @@ const labelled = (values: readonly string[], labels: Record<string, string>) =>
   values.map((value) => ({ value, label: labels[value] ?? value }));
 
 /**
- * One screen per step id. Partner steps are the German Q1-Q5 again, writing
- * under `partner` — the same components, so the two cannot drift apart.
+ * One screen per step id. Partner steps are the German Q2–Q5 (never Q1, settling,
+ * nor Q6), as `profilingSteps` lists them, writing under `partner` — the same
+ * components, so the two cannot drift apart.
  */
 export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review'>; ctx: StepCtx }) {
   const { copy, answers } = ctx;
+  const theme = useTheme();
   const partner = step.startsWith('partner-');
   const base = partner ? step.slice('partner-'.length) : step;
   const subject = partner ? answers.partner : answers;
-  const title = (own: string) => (partner ? fill(copy.partnerTitle, { question: own }) : own);
+  // Only the partnerTitle text is gold, so the four partner questions are not
+  // mistaken for the member's own Q2–Q5. Nested RN Text inherits the title's
+  // size and stays one accessible heading; ThemedText would reset the size.
+  const [before, after] = splitTemplate(copy.partnerTitle, 'question');
+  const gold = { color: theme.accentText };
+  const title = (own: string): ReactNode => (partner
+    ? <>{before ? <RNText style={gold}>{before}</RNText> : null}{own}{after ? <RNText style={gold}>{after}</RNText> : null}</>
+    : own);
   const put = (field: string, value: unknown) => ctx.save(partner ? { partner: { [field]: value } } : { [field]: value });
 
   switch (base) {
     case 'settling':
-      return <Choice ctx={ctx} title={title(copy.settlingTitle)} subtitle={copy.settlingSubtitle}
+      return <Choice ctx={ctx} title={copy.settlingTitle} subtitle={copy.settlingSubtitle}
         options={labelled(SETTLING_STATUSES, copy.settlingOptions)} selected={answers.settlingStatus ?? null}
         onPick={(v) => ctx.save({ settlingStatus: v })} />;
     case 'settling-info':
       return (
-        <Frame ctx={ctx} title={title(copy.settlingTitle)}>
+        <Frame ctx={ctx} title={copy.settlingTitle}>
           <ThemedText themeColor="textSecondary">{copy.settlingInfo}</ThemedText>
           <Button label={copy.continue} disabled={ctx.busy} onPress={ctx.next} />
         </Frame>
       );
     case 'settling-place':
-      return <PlacePicker ctx={ctx} title={title(copy.settlingPlaceTitle)} onBack={ctx.back}
+      return <PlacePicker ctx={ctx} title={copy.settlingPlaceTitle} onBack={ctx.back}
         initial={answers.settlingCountry ? { country: answers.settlingCountry, city: answers.settlingCity ?? '' } : null}
         onDone={(slot) => ctx.save({ settlingCountry: slot.country, settlingCity: slot.city })} />;
     case 'settling-work':
-      return <Choice ctx={ctx} title={title(copy.workingDurationTitle)}
+      return <Choice ctx={ctx} title={copy.workingDurationTitle}
         options={labelled(WORKING_DURATIONS, copy.workingDurationOptions)} selected={answers.settlingWorkDuration ?? null}
         onPick={(v) => ctx.save({ settlingWorkDuration: v })} />;
     case 'languages':

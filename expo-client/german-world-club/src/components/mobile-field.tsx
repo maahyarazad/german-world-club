@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { useMemo, useState, type Ref } from 'react';
+import { Modal, Pressable, View, type ReturnKeyTypeOptions, type TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COUNTRIES } from '@gwc/contracts/countries';
@@ -18,12 +18,16 @@ import { useTranslations } from '@/i18n';
  * the E.164 number the server validates — empty until a number is typed. A
  * number typed with its own `+` is international and wins over the country.
  */
-export function MobileField({ value, onChange, error, hint }: {
+export function MobileField({ value, onChange, error, hint, ref, returnKeyType, onSubmitEditing }: {
   /** E.164 (or empty); read once, to start the picker and the field. */
   value: string;
   onChange: (e164: string) => void;
   error?: string;
   hint?: string;
+  /** The number input itself, so a form can focus it in its chain. */
+  ref?: Ref<TextInput>;
+  returnKeyType?: ReturnKeyTypeOptions;
+  onSubmitEditing?: () => void;
 }) {
   const theme = useTheme();
   const { t } = useTranslations();
@@ -58,6 +62,9 @@ export function MobileField({ value, onChange, error, hint }: {
             keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber"
             placeholder={country === 'DE' ? '151 12345678' : undefined}
             hint={hint} error={error}
+            ref={ref} returnKeyType={returnKeyType} onSubmitEditing={onSubmitEditing}
+            // Keep the keyboard up when the submit only moves focus on.
+            submitBehavior={onSubmitEditing ? 'submit' : undefined}
           />
         </View>
       </View>
