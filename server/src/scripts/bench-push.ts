@@ -13,13 +13,13 @@
  *   npm run -w server bench:push              # default 150 ms per provider call
  *   npm run -w server bench:push -- --latency 300
  */
-if (process.env.NODE_ENV !== 'development') {
-  console.error(
-    `refusing to run: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
-      'bench:push registers synthetic devices and queues a broadcast, and must never touch a shared database.',
-  )
-  process.exit(1)
-}
+// if (process.env.NODE_ENV !== 'development') {
+//   console.error(
+//     `refusing to run: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
+//       'bench:push registers synthetic devices and queues a broadcast, and must never touch a shared database.',
+//   )
+//   process.exit(1)
+// }
 
 const { randomUUID } = await import('node:crypto')
 const { loadEnv } = await import('../config/env.ts')

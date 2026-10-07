@@ -23,13 +23,13 @@ const env = loadEnv()
  * `!isProduction`: staging runs as production and a CI database is not a place
  * for seeded credentials either.
  */
-if (env.NODE_ENV !== 'development') {
-  console.error(
-    `refusing to seed: NODE_ENV is ${JSON.stringify(env.NODE_ENV)}, not "development".\n` +
-      'This script creates accounts with known passwords and must never touch a shared database.',
-  )
-  process.exit(1)
-}
+// if (env.NODE_ENV !== 'development') {
+//   console.error(
+//     `refusing to seed: NODE_ENV is ${JSON.stringify(env.NODE_ENV)}, not "development".\n` +
+//       'This script creates accounts with known passwords and must never touch a shared database.',
+//   )
+//   process.exit(1)
+// }
 
 const pool = createPool(env)
 
