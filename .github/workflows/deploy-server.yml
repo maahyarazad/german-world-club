@@ -80,5 +80,4 @@ jobs:
         run: |
           sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'kill $(pgrep -f "gwc-server.ts")'
-             
+            "kill $(pgrep -f "gwc-server.ts")"
