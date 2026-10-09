@@ -73,3 +73,12 @@ jobs:
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             "cd ~/$DEST_DIR && ls -la . server packages/contracts && ls -la node_modules/@gwc/ \
              && echo \"host node: \$(command -v node && node -v || echo 'not on PATH for non-interactive ssh')\""
+
+      - name: Restart server
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            'kill $(pgrep -f "server.ts")'
+             
