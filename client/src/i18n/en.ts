@@ -484,6 +484,8 @@ export const en = {
     title: 'Marketplace',
     subtitle: 'Listings from members, for members — no payment, just the contact.',
     composeTitle: 'New listing',
+    newListing: 'New listing',
+    close: 'Close',
     browseTitle: 'Browse listings',
     category: 'Category',
     mode: 'Mode',

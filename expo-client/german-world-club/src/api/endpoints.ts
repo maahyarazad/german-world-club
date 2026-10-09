@@ -1,4 +1,4 @@
-import type { SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
+import type { MeResponse, SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
   EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
 import type { ProfilingStatus, ProfilingPatchRequest, CitySlot, CitiesResponse } from '@gwc/contracts/profiling';
@@ -16,7 +16,9 @@ import type {
 } from '@gwc/contracts/threads';
 import type { Device, DeviceList, DevicePatch, DeviceRegistration, Preferences } from '@gwc/contracts/push';
 import type { MemberOffer } from '@gwc/contracts/offers';
-import type { Listing } from '@gwc/contracts/marketplace';
+import type {
+  CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, TermsResponse,
+} from '@gwc/contracts/marketplace';
 
 import { api } from './client';
 
@@ -42,6 +44,12 @@ export const authApi = {
   signOut: () => api<void>('/auth/sign-out', { method: 'POST' }),
   /** Only to revoke a staff session the app just refused; see session.tsx. */
   staffSignOut: () => api<void>('/auth/staff/sign-out', { method: 'POST' }),
+  /**
+   * Capabilities, computed by the server per request. Used to decide what to
+   * *display* (the Marketplace "New listing" button) — never what is allowed:
+   * the server re-checks every operation.
+   */
+  me: () => api<MeResponse>('/auth/me'),
 };
 
 export const onboardingApi = {
@@ -167,4 +175,15 @@ export const offersApi = {
 
 export const marketplaceApi = {
   listing: (id: string) => api<Listing>(`/marketplace/listings/${id}`),
+  /** The compose form's fields come from here, never from a list in the app (008, Principle I). */
+  categories: () => api<CategoriesResponse>('/marketplace/categories'),
+  list: ({ category, mode, cursor }: Pick<ListingQuery, 'category' | 'mode'> & { cursor?: string | null }) =>
+    api<ListingPage>(`/marketplace/listings${q({ category, mode, cursor })}`),
+  terms: () => api<TermsResponse>('/marketplace/terms'),
+  acceptTerms: () => api<TermsResponse>('/marketplace/terms/accept', { method: 'POST' }),
+  /** Refused by the server without `marketplace_post`, whatever the app showed. */
+  create: (body: CreateListingRequest) => api<{ id: string }>('/marketplace/listings', { method: 'POST', body }),
+  /** After the listing exists: marketplace media attach to a listing, unlike a thread post's (feature 010). */
+  attachMedia: (listingId: string, assetId: string) =>
+    api<unknown>(`/marketplace/listings/${listingId}/media`, { method: 'POST', body: { assetId } }),
 };

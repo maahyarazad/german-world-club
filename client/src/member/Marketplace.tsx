@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { get, post, ApiError } from '../lib/api'
 import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace'
 import type {
@@ -12,12 +12,17 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Field from '../components/ui/Field'
 import Callout from '../components/ui/Callout'
+import Drawer from '../components/ui/Drawer'
 import StatusPill from '../components/ui/StatusPill'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
 
 /**
  * The marketplace tab in the member web app (008 US6).
+ *
+ * Browsing comes first (feature 017): the compose form is not on the page but
+ * in a drawer that slides in from the right, opened by the New listing button
+ * in the header. Both are absent — not disabled — without `marketplace_post`.
  *
  * §7's classifieds, on the shared member-audience API — the same one the
  * mobile face calls (FR-031). Nothing here is a second source of truth: the
@@ -109,7 +114,12 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   categories: readonly CategoryDef[]
   vehicleFeatures: readonly VehicleFeature[]
   loadFailed: boolean
-  onPosted: () => void
+  /**
+   * `complete` is false when the listing exists but some media did not
+   * attach: the page keeps the drawer open then, because the retry lives in
+   * this form.
+   */
+  onPosted: (result: { complete: boolean }) => void
 }) {
   const t = useTranslations()
   const [category, setCategory] = useState<string>(categories[0]?.category ?? '')
@@ -123,7 +133,6 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   const [terms, setTerms] = useState<TermsResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [posted, setPosted] = useState(false)
   const [media, setMedia] = useState<PendingMedia[]>([])
   // The listing whose media are still being (or failed being) attached, so a
   // retry attaches to it rather than creating a second listing.
@@ -194,7 +203,6 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
     }
     setBusy(true)
     setError(null)
-    setPosted(false)
     let listingId: string | null = null
     try {
       const created = (await post('/marketplace/listings', {
@@ -219,8 +227,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
     setBody('')
     setDetails({})
     setFeatures(new Set())
-    setPosted(true)
-    onPosted()
+    onPosted({ complete: failed.length === 0 })
     if (failed.length > 0) {
       // Keep only what failed, so the member sees which files and can retry
       // them against the listing that now exists.
@@ -267,7 +274,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
     } else {
       setMedia([])
       setAttachingTo(null)
-      onPosted()
+      onPosted({ complete: true })
     }
     setBusy(false)
   }
@@ -278,122 +285,120 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   const ready = categories.length > 0 && terms !== null && category !== ''
 
   return (
-    <Card title={t.memberMarketplace.composeTitle}>
-      <div className="flex flex-col gap-4">
-        {(loadFailed || termsFailed) && <Callout variant="neutral" title={t.memberMarketplace.loadFailed} />}
-        {posted && <Callout variant="info" title={t.memberMarketplace.posted} />}
-        {error && <Callout variant="neutral" title={error} />}
+    // No Card: the drawer carries the heading (composeTitle) and the frame.
+    <div className="flex flex-col gap-4">
+      {(loadFailed || termsFailed) && <Callout variant="neutral" title={t.memberMarketplace.loadFailed} />}
+      {error && <Callout variant="neutral" title={error} />}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            {t.memberMarketplace.category}
-            <select
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setDetails({}); setFeatures(new Set()) }}
-              className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
-            >
-              {categories.map((c) => (
-                <option key={c.category} value={c.category}>{t.memberMarketplace.categories[c.category] ?? c.category}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            {t.memberMarketplace.mode}
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
-            >
-              {MARKETPLACE_MODES.map((m) => (
-                <option key={m} value={m}>{t.memberMarketplace.modes[m]}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <Field label={t.memberMarketplace.titleField} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-          {t.memberMarketplace.body}
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={4}
+          {t.memberMarketplace.category}
+          <select
+            value={category}
+            onChange={(e) => { setCategory(e.target.value); setDetails({}); setFeatures(new Set()) }}
             className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
-          />
+          >
+            {categories.map((c) => (
+              <option key={c.category} value={c.category}>{t.memberMarketplace.categories[c.category] ?? c.category}</option>
+            ))}
+          </select>
         </label>
 
-        {activeDef && activeDef.fields.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {activeDef.fields.map((def) => (
-              <DetailField key={def.key} def={def} value={details[def.key]} onChange={(v) => setDetail(def.key, v)} />
+        <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+          {t.memberMarketplace.mode}
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value)}
+            className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
+          >
+            {MARKETPLACE_MODES.map((m) => (
+              <option key={m} value={m}>{t.memberMarketplace.modes[m]}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <Field label={t.memberMarketplace.titleField} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+        {t.memberMarketplace.body}
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={4}
+          className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
+        />
+      </label>
+
+      {activeDef && activeDef.fields.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {activeDef.fields.map((def) => (
+            <DetailField key={def.key} def={def} value={details[def.key]} onChange={(v) => setDetail(def.key, v)} />
+          ))}
+        </div>
+      )}
+
+      {category === 'vehicle' && vehicleFeatures.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+            {t.memberMarketplace.features}
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {vehicleFeatures.map((f) => (
+              <label key={f.key} className="flex items-center gap-2 text-[13px] text-text">
+                <input type="checkbox" checked={features.has(f.key)} onChange={() => toggleFeature(f.key)} />
+                {f.key}
+              </label>
             ))}
           </div>
-        )}
-
-        {category === 'vehicle' && vehicleFeatures.length > 0 && (
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-              {t.memberMarketplace.features}
-            </p>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {vehicleFeatures.map((f) => (
-                <label key={f.key} className="flex items-center gap-2 text-[13px] text-text">
-                  <input type="checkbox" checked={features.has(f.key)} onChange={() => toggleFeature(f.key)} />
-                  {f.key}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <MediaPicker items={media} onChange={setMedia} onError={setError} disabled={busy} />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            {t.memberMarketplace.contactMethod}
-            <select
-              value={contactMethod}
-              onChange={(e) => setContactMethod(e.target.value)}
-              className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
-            >
-              {CONTACT_METHODS.map((m) => <option key={m} value={m}>{t.memberMarketplace.contactMethods[m]}</option>)}
-            </select>
-          </label>
-
-          <Field
-            label={t.memberMarketplace.expiresAt}
-            type="date"
-            hint={t.memberMarketplace.expiresAtHint}
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-          />
         </div>
+      )}
 
-        {!termsAccepted && terms && (
-          <Callout variant="gold" title={t.memberMarketplace.termsRequired}>
-            <Button variant="secondary" className="mt-2" disabled={busy} onClick={acceptTerms}>
-              {t.memberMarketplace.acceptTerms}
-            </Button>
-          </Callout>
-        )}
+      <MediaPicker items={media} onChange={setMedia} onError={setError} disabled={busy} />
 
-        <div>
-          <Button
-            variant="accent"
-            disabled={busy || !ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
-            onClick={submit}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+          {t.memberMarketplace.contactMethod}
+          <select
+            value={contactMethod}
+            onChange={(e) => setContactMethod(e.target.value)}
+            className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
           >
-            {busy ? t.memberMarketplace.publishing : t.memberMarketplace.submit}
-          </Button>
-          {attachingTo && media.some((m) => m.status === 'failed') && !busy && (
-            <Button variant="secondary" className="ml-2" onClick={retryMedia}>
-              {t.memberMarketplace.mediaRetry}
-            </Button>
-          )}
-        </div>
+            {CONTACT_METHODS.map((m) => <option key={m} value={m}>{t.memberMarketplace.contactMethods[m]}</option>)}
+          </select>
+        </label>
+
+        <Field
+          label={t.memberMarketplace.expiresAt}
+          type="date"
+          hint={t.memberMarketplace.expiresAtHint}
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+        />
       </div>
-    </Card>
+
+      {!termsAccepted && terms && (
+        <Callout variant="gold" title={t.memberMarketplace.termsRequired}>
+          <Button variant="secondary" className="mt-2" disabled={busy} onClick={acceptTerms}>
+            {t.memberMarketplace.acceptTerms}
+          </Button>
+        </Callout>
+      )}
+
+      <div>
+        <Button
+          variant="accent"
+          disabled={busy || !ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
+          onClick={submit}
+        >
+          {busy ? t.memberMarketplace.publishing : t.memberMarketplace.submit}
+        </Button>
+        {attachingTo && media.some((m) => m.status === 'failed') && !busy && (
+          <Button variant="secondary" className="ml-2" onClick={retryMedia}>
+            {t.memberMarketplace.mediaRetry}
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -408,10 +413,16 @@ export function Marketplace() {
   const [mode, setMode] = useState<string>('')
   const [listings, setListings] = useState<Listing[] | null>(null)
   const [categoriesFailed, setCategoriesFailed] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
+  // On the page, not in the form: a complete publish closes the drawer, and a
+  // confirmation inside a closed drawer is one nobody sees.
+  const [posted, setPosted] = useState(false)
+  const newListingButton = useRef<HTMLButtonElement>(null)
 
-  // Whether COMPOSE renders at all — absent, not disabled, without the flag
-  // (the same rule RequireGrant.tsx states for staff modules; members hold
-  // this one as a per-member permission, resolved the same way everywhere).
+  // Whether the New listing button and its drawer render at all — absent,
+  // not disabled, without the flag (the same rule RequireGrant.tsx states for
+  // staff modules; members hold this one as a per-member permission, resolved
+  // the same way everywhere).
   const permissions = (snapshot?.permissions as string[] | undefined) ?? []
   const canPost = permissions.includes('marketplace_post')
 
@@ -448,15 +459,46 @@ export function Marketplace() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={t.memberMarketplace.title} subtitle={t.memberMarketplace.subtitle} />
+      <PageHeader
+        title={t.memberMarketplace.title}
+        subtitle={t.memberMarketplace.subtitle}
+        actions={canPost ? (
+          <Button
+            ref={newListingButton}
+            variant="accent"
+            aria-haspopup="dialog"
+            aria-expanded={composeOpen}
+            onClick={() => { setPosted(false); setComposeOpen(true) }}
+          >
+            {t.memberMarketplace.newListing}
+          </Button>
+        ) : undefined}
+      />
+
+      {posted && <Callout variant="info" title={t.memberMarketplace.posted} />}
 
       {canPost && (
-        <ComposeListing
-          categories={categories}
-          vehicleFeatures={vehicleFeatures}
-          loadFailed={categoriesFailed}
-          onPosted={() => void loadListings()}
-        />
+        <Drawer
+          open={composeOpen}
+          onClose={() => setComposeOpen(false)}
+          title={t.memberMarketplace.composeTitle}
+          closeLabel={t.memberMarketplace.close}
+          returnFocusTo={newListingButton}
+        >
+          <ComposeListing
+            categories={categories}
+            vehicleFeatures={vehicleFeatures}
+            loadFailed={categoriesFailed}
+            onPosted={({ complete }) => {
+              // The listing exists either way, so the list reloads either way.
+              void loadListings()
+              if (complete) {
+                setComposeOpen(false)
+                setPosted(true)
+              }
+            }}
+          />
+        </Drawer>
       )}
 
       <Card title={t.memberMarketplace.browseTitle}>

@@ -11,7 +11,7 @@
  * invites the click it is warning about.
  */
 import { memo } from 'react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 
 const VARIANTS = {
   primary: 'bg-navy text-text-on-dark hover:bg-navy-2',
@@ -26,6 +26,8 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> 
   variant?: ButtonVariant
   type?: 'button' | 'submit' | 'reset'
   children?: ReactNode
+  /** React 19 passes `ref` as a prop; it reaches the <button> through `rest`. */
+  ref?: Ref<HTMLButtonElement>
 }
 
 export const Button = memo(({

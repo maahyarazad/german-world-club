@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { ConsoleRoutes } from '../../src/console/routes'
 import { t } from '../../src/i18n/de'
 import { renderConsole, mockCapabilityFetch, memberSnapshot } from '../helpers/console'
@@ -35,6 +35,11 @@ const terms = () => ({
   headers: { 'content-type': 'application/json' },
 })
 
+// Built through a helper rather than as an inline literal: mockCapabilityFetch
+// types its snapshot loosely, and an inline `permissions` key is an excess
+// property to tsc.
+const member = (permissions: string[]) => ({ ...memberSnapshot(), permissions })
+
 const routes = {
   [CATEGORIES_ROUTE]: emptyCategories,
   [LISTINGS_ROUTE]: emptyListings,
@@ -43,7 +48,7 @@ const routes = {
 
 describe('the member marketplace tab', () => {
   it('renders the browse page for any member', async () => {
-    mockCapabilityFetch({ ...memberSnapshot(), permissions: [] }, { extraRoutes: routes })
+    mockCapabilityFetch(member([]), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
     // The page title and the sidebar tab label are both "Marktplatz" in
@@ -54,26 +59,46 @@ describe('the member marketplace tab', () => {
   })
 
   it('has NO compose control without marketplace_post', async () => {
-    mockCapabilityFetch({ ...memberSnapshot(), permissions: [] }, { extraRoutes: routes })
+    mockCapabilityFetch(member([]), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
     await waitFor(() => {
       expect(screen.getByText(t.memberMarketplace.browseTitle)).toBeInTheDocument()
     })
+    // Absent, not disabled: no button, and no drawer holding a form either.
+    expect(screen.queryByRole('button', { name: t.memberMarketplace.newListing })).not.toBeInTheDocument()
+    expect(document.querySelector('dialog')).toBeNull()
     expect(screen.queryByText(t.memberMarketplace.composeTitle)).not.toBeInTheDocument()
   })
 
-  it('HAS the compose control with marketplace_post — the counter-assertion', async () => {
-    mockCapabilityFetch({ ...memberSnapshot(), permissions: ['marketplace_post'] }, { extraRoutes: routes })
+  it('HAS the New listing button with marketplace_post, top right, and no form until asked — the counter-assertion', async () => {
+    mockCapabilityFetch(member(['marketplace_post']), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
-    await waitFor(() => {
-      expect(screen.getByText(t.memberMarketplace.composeTitle)).toBeInTheDocument()
-    })
+    const button = await screen.findByRole('button', { name: t.memberMarketplace.newListing })
+    // In the page header's action slot, which is the top-right corner.
+    expect(button.closest('header')).not.toBeNull()
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    // The drawer is mounted (so a draft survives a close) but not open.
+    expect(document.querySelector('dialog')).not.toBeNull()
+    expect(document.querySelector('dialog')!.hasAttribute('open')).toBe(false)
+  })
+
+  it('opens the compose panel from the header button', async () => {
+    mockCapabilityFetch(member(['marketplace_post']), { extraRoutes: routes })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+
+    const button = await screen.findByRole('button', { name: t.memberMarketplace.newListing })
+    fireEvent.click(button)
+
+    const dialog = document.querySelector('dialog')!
+    expect(dialog.hasAttribute('open')).toBe(true)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(within(dialog).getByRole('heading', { name: t.memberMarketplace.composeTitle })).toBeInTheDocument()
   })
 
   it('keeps the sidebar, so the session reads as intact', async () => {
-    mockCapabilityFetch({ ...memberSnapshot(), permissions: [] }, { extraRoutes: routes })
+    mockCapabilityFetch(member([]), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
     await waitFor(() => {
