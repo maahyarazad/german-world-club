@@ -28,16 +28,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Dependencies are installed HERE, not on the host: the host cannot be
-      # relied on to have npm/nvm on a non-interactive SSH PATH. Installing
-      # from the root lockfile is also what makes @gwc/contracts work at all —
-      # npm links node_modules/@gwc/contracts -> ../../packages/contracts, and
-      # that relative symlink survives rsync as long as the host keeps the
-      # same layout (node_modules/, packages/contracts/, server/ side by side).
-      # It must stay a symlink: Node refuses to strip types from .ts files
-      # whose real path is under node_modules, so a copied package would fail.
-      # sharp, argon2 and ffmpeg-static ship linux-x64 binaries, which is what
-      # the host runs.
       - name: Install production dependencies (server + contracts only)
         run: npm ci --omit=dev --workspace=server --workspace=packages/contracts --include-workspace-root --no-audit --no-fund
 
@@ -48,10 +38,6 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update && sudo apt-get install -y sshpass
 
-      # Order matters. pm2 (server/ecosystem.config.json) watches server/src
-      # and restarts on change, which is the only restart this host gives us.
-      # So everything the server imports is uploaded first, and server/ last,
-      # so the restart it triggers loads the new dependencies and contracts.
       - name: Upload dependencies and contracts
         env:
           SSHPASS: ${{ secrets.SSH_PASSWORD }}
@@ -87,3 +73,12 @@ jobs:
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             "cd ~/$DEST_DIR && ls -la . server packages/contracts && ls -la node_modules/@gwc/ \
              && echo \"host node: \$(command -v node && node -v || echo 'not on PATH for non-interactive ssh')\""
+
+      - name: Restart server
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            'kill $(pgrep -f "gwc-server.ts")'
+             

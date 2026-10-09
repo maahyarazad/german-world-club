@@ -15,6 +15,10 @@ export const Colors = {
     tint: '#0B2545',
     onTint: '#ffffff',
     accent: '#C9A227',
+    // Gold that may carry text. `accent` is 2.42:1 on white, below even the 3:1
+    // large-text floor; this is the smallest darkening of the same hue that
+    // reaches 5.10:1 on `background` (4.60:1 on `backgroundElement`).
+    accentText: '#856B1A',
     border: '#D9DCE0',
     danger: '#C62828',
     success: '#2E7D32',
@@ -28,6 +32,8 @@ export const Colors = {
     tint: '#8FB3E8',
     onTint: '#0B0D10',
     accent: '#E0BD4A',
+    // Already 10.7:1 on `background`, so the dark scheme reuses `accent`.
+    accentText: '#E0BD4A',
     border: '#30343A',
     danger: '#EF7B7B',
     success: '#7BC47F',

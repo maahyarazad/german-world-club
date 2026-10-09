@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { buildApp, withCspNonces } from '../../src/app.ts'
+import { buildApp } from '../../src/app.ts'
+import { withCspNonces } from '../../src/plugins/02-security-headers.ts'
 import type { GwcApp } from '../../src/app.ts'
 
 /**
@@ -47,5 +48,29 @@ describe.skipIf(!built)('the served console shell', () => {
 
     const second = await app.inject({ method: 'GET', url: '/konsole/passwort?token=abc' })
     expect(second.body).not.toContain(`nonce="${scriptNonce}"`)
+  })
+})
+
+/**
+ * The landing pages are pre-rendered shells too, and their entire stylesheet
+ * is one inline <style>. Served byte for byte, the CSP refuses it and `/`
+ * renders unstyled. No build is needed: without `client/dist` the source
+ * `client/index.html` is served, with the same inline block.
+ */
+describe('the served landing shells', () => {
+  let app: GwcApp
+  beforeAll(async () => { app = await buildApp(); await app.ready() })
+  afterAll(async () => { await app.close() })
+
+  it.each(['/', '/en'])('%s styles carry the nonce its CSP header allows', async (url) => {
+    const response = await app.inject({ method: 'GET', url, headers: { accept: 'text/html' } })
+    expect(response.statusCode).toBe(200)
+    const csp = String(response.headers['content-security-policy'])
+    const styleNonce = /style-src 'nonce-([^']+)'/.exec(csp)?.[1]
+    expect(styleNonce).toBeTruthy()
+    expect(response.body).toContain(`<style nonce="${styleNonce}">`)
+    // Counter-assertion: one stamped block would pass the line above while a
+    // second, unstamped one is still refused.
+    expect(response.body).not.toMatch(/<style(?![^>]*\bnonce=)/)
   })
 })

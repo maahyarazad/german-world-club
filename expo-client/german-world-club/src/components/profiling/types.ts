@@ -19,3 +19,13 @@ export type StepCtx = {
 
 export const fill = (template: string, values: Record<string, string | number>) =>
   template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
+
+/**
+ * A template's literal text either side of `{key}`, so that text can be styled
+ * apart from the value in any word order. No placeholder: all of it is "before".
+ */
+export const splitTemplate = (template: string, key: string): [before: string, after: string] => {
+  const marker = `{${key}}`;
+  const at = template.indexOf(marker);
+  return at === -1 ? [template, ''] : [template.slice(0, at), template.slice(at + marker.length)];
+};

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
     ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
     type TextInputProps, type ViewStyle, type StyleProp
@@ -17,7 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
  */
 
 /** A scrollable, keyboard-aware form screen with a title. */
-export function FormScreen({ title, subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) {
+export function FormScreen({ title, subtitle, children }: { title?: ReactNode; subtitle?: string; children: ReactNode }) {
     const theme = useTheme();
     return (
         <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
@@ -85,6 +85,8 @@ type TextFieldProps = TextInputProps & {
     label: string;
     error?: string | null;
     hint?: string;
+    /** React 19 passes `ref` through `memo` as a plain prop; it lands on the input so a form can move focus. */
+    ref?: Ref<TextInput>;
 };
 
 export const TextField = memo(function TextField({
@@ -92,6 +94,7 @@ export const TextField = memo(function TextField({
     error,
     hint,
     style,
+    ref,
     ...input
 }: TextFieldProps) {
     const theme = useTheme();
@@ -123,6 +126,7 @@ export const TextField = memo(function TextField({
         <View style={styles.field}>
             <ThemedText type="smallBold">{label}</ThemedText>
             <TextInput
+                ref={ref}
                 placeholderTextColor={theme.textSecondary}
                 accessibilityLabel={label}
                 style={inputStyle}

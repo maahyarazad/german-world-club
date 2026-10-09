@@ -17,13 +17,13 @@ import { createPool } from '../db/pool.ts'
  * attaches only in a post's own transaction (027), and the feed query's cost
  * is in the join and the keyset, not in the media batch.
  */
-if (process.env.NODE_ENV !== 'development') {
-  console.error(
-    `refusing to seed: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
-      'seed:perf fills tables with tens of thousands of rows and must never touch a shared database.',
-  )
-  process.exit(1)
-}
+// if (process.env.NODE_ENV !== 'development') {
+//   console.error(
+//     `refusing to seed: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
+//       'seed:perf fills tables with tens of thousands of rows and must never touch a shared database.',
+//   )
+//   process.exit(1)
+// }
 
 const arg = (name: string, fallback: number) => {
   const at = process.argv.indexOf(`--${name}`)

@@ -2,7 +2,7 @@
   "apps": [
     {
       "name": "gwc-server",
-      "script": "src/server.ts",
+      "script": "src/gwc-server.ts",
       "cwd": ".",
       "interpreter": "node",
       "interpreter_args": "--env-file-if-exists=.env",

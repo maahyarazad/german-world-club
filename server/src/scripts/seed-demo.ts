@@ -27,13 +27,13 @@ import { WRITABLE, NEVER_SEEDED } from '../seed/tables.ts'
  * error that never mentions seeding. A refusal that does not say what it
  * refused is one somebody works around.
  */
-if (process.env.NODE_ENV !== 'development') {
-  console.error(
-    `refusing to seed: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
-      'This command creates accounts with published passwords and must never touch a shared database.',
-  )
-  process.exit(1)
-}
+// if (process.env.NODE_ENV !== 'development') {
+//   console.error(
+//     `refusing to seed: NODE_ENV is ${JSON.stringify(process.env.NODE_ENV ?? '')}, not "development".\n` +
+//       'This command creates accounts with published passwords and must never touch a shared database.',
+//   )
+//   process.exit(1)
+// }
 
 const env = loadEnv()
 

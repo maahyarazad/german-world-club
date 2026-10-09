@@ -1,0 +1,81 @@
+export default {
+  expo: {
+    name: "German World Club",
+    slug: "german-world-club",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    scheme: "germanworldclub",
+    userInterfaceStyle: "automatic",
+    ios: {
+      icon: "./assets/icon.png",
+      bundleIdentifier: "com.buenapublica.germanworldclub",
+      infoPlist: {
+        CFBundleDisplayName: "German World Club",
+        ITSAppUsesNonExemptEncryption: false,
+      },
+      appleTeamId: "YQFY6269ZL",
+    },
+    android: {
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#000000",
+      },
+      predictiveBackGestureEnabled: false,
+      package: "com.buenapublica.germanworldclub",
+    },
+    web: {
+      output: "static",
+      favicon: "./assets/favicon.png",
+    },
+    plugins: [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/splash-icon.png",
+          resizeMode: "contain",
+          backgroundColor: "#000000",
+          imageWidth: 200,
+        },
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          photosPermission:
+            "German World Club uses your photo library so you can attach photos and videos to your posts and choose a profile picture.",
+          cameraPermission: false,
+          microphonePermission: false,
+        },
+      ],
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/notification-icon.png",
+          color: "#000000",
+          defaultChannel: "default",
+        },
+      ],
+    ],
+    experiments: {
+      typedRoutes: true,
+      reactCompiler: true,
+    },
+    extra: {
+      router: {},
+      eas: {
+        projectId: "c2fa644f-85a8-47fe-9294-1c45d2eef904",
+      },
+    },
+    owner: "buenapublica",
+    runtimeVersion: {
+      policy: "appVersion",
+    },
+    updates: {
+      url: "https://u.expo.dev/c2fa644f-85a8-47fe-9294-1c45d2eef904",
+    },
+  },
+};
