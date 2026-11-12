@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { GENDERS, PRIMARY_LANGUAGES, RESIDENCE_SHORTCUTS, registerRequestSchema } from '@gwc/contracts/onboarding'
 import type { Gender, PrimaryLanguage, RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
 import { COUNTRIES } from '@gwc/contracts/countries'
+import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals'
 
 import { post, ApiError } from '../lib/api'
 import { describeProblem } from '../lib/problems'
@@ -60,6 +61,13 @@ export function Register() {
   const country = choice === 'others' ? otherCountry : choice
   const [errors, setErrors] = useState<Errors>({})
   const [busy, setBusy] = useState(false)
+  // Someone's referral code (feature 018), carried in by the landing page's
+  // `?ref=`. Shown formatted, editable and clearable. Nothing here checks it:
+  // the server ignores a code that credits nobody without saying so (FR-006),
+  // so neither may this form — a "not a valid code" message would be the
+  // oracle the server refuses to be.
+  const [searchParams] = useSearchParams()
+  const [referralCode, setReferralCode] = useState(() => formatReferralCode(searchParams.get('ref') ?? ''))
 
   const set = (key: 'fullName' | 'email' | 'password' | 'birthday') => (event: ChangeEvent<HTMLInputElement>) =>
     setDetails((current) => ({ ...current, [key]: event.target.value }))
@@ -101,6 +109,8 @@ export function Register() {
         countryOfResidence: country,
         ageConfirmed: true,
         primaryLanguage: details.primaryLanguage as PrimaryLanguage,
+        // Normalised for tidiness; anything typed is sent and the server decides.
+        ...(referralCode.trim() ? { referralCode: normaliseReferralCode(referralCode) ?? referralCode.trim() } : {}),
       }
       const sent = (await post('/onboarding/register', request)) as RegisterResponse
       // Router state, not the URL: a challenge id has no business in browser
@@ -158,6 +168,10 @@ export function Register() {
           />
           <Field label={copy.birthday} type="date" name="bday" autoComplete="bday"
             value={details.birthday} onChange={set('birthday')} error={errors.birthday} />
+          <Field label={t.referrals.codeField} name="referral-code" autoComplete="off" autoCapitalize="characters"
+            spellCheck={false} hint={t.referrals.codeFieldHint}
+            value={referralCode}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setReferralCode(formatReferralCode(event.target.value))} />
 
           <fieldset className="flex flex-col gap-1.5" aria-describedby={errors.gender ? 'gender-error' : undefined}>
             <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">

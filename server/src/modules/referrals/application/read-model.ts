@@ -76,8 +76,14 @@ export async function stageCounts(db: Queryable, owner: Owner): Promise<StageCou
   return counts
 }
 
+/**
+ * The shareable link. Lower case on purpose: /r is a public surface, and
+ * plugins/03-canonical-origin.ts 301s every public path to its lower-case form
+ * — one URL per page. Codes are case-insensitive, so the lower-case link is the
+ * same link, minus a redirect on every tap.
+ */
 export function linkUrl(canonicalOrigin: string, code: string) {
-  return `${canonicalOrigin.replace(/\/+$/, '')}/r/${code}`
+  return `${canonicalOrigin.replace(/\/+$/, '')}/r/${code.toLowerCase()}`
 }
 
 export async function summaryFor(

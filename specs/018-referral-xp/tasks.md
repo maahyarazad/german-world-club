@@ -265,18 +265,18 @@ code credits nobody.
 
 ### Tests for User Story 2 ⚠️ (write first, see them fail)
 
-- [ ] T030 [P] [US2] `server/tests/referrals/attribution.test.ts`: register with a code, then
+- [X] T030 [P] [US2] `server/tests/referrals/attribution.test.ts`: register with a code, then
   verify-mobile, gives one `referrals` row and one `award` at the current rate, plus audits
   `referral_recorded` and `xp_awarded`. The web flow (no `deviceId`) and the app flow (with one)
   both work. Counter-assertion: the same flow without a code gives zero rows.
-- [ ] T031 [P] [US2] `server/tests/referrals/unverified.test.ts`: register with a code and never
+- [X] T031 [P] [US2] `server/tests/referrals/unverified.test.ts`: register with a code and never
   verify gives no referral and no award. The resume path (register twice with the same password
   and a different code) credits only the second code's owner after verify. Counter-assertion:
   after verify a referral exists.
-- [ ] T032 [P] [US2] `server/tests/referrals/exactly-once.test.ts`: 10 concurrent valid
+- [X] T032 [P] [US2] `server/tests/referrals/exactly-once.test.ts`: 10 concurrent valid
   verify-mobile calls for one applicant give exactly 1 referral and exactly 1 award (assert `=
   1`, not `>= 1`). A raw `INSERT` of a second award for the same referral is refused.
-- [ ] T033 [P] [US2] `server/tests/referrals/invalid-codes.test.ts`:
+- [X] T033 [P] [US2] `server/tests/referrals/invalid-codes.test.ts`:
   - `GET /r/` with an unknown code, a retired code, a disabled code (set by SQL) and a
     locked-owner code gives byte-identical bodies, status `404` and identical headers apart from
     the request id;
@@ -284,12 +284,12 @@ code credits nobody.
   - none of the four credits anybody after verify.
 
   Counter-assertion: an active code gives `200` containing the owner's display name.
-- [ ] T034 [P] [US2] `server/tests/referrals/self-referral.test.ts`: an applicant registering
+- [X] T034 [P] [US2] `server/tests/referrals/self-referral.test.ts`: an applicant registering
   with a staff owner's email, or an organisation user owner's email, gets no referral, and an
   audit `referral_refused` row with `reason: 'self-referral'` is written. The applicant's
   responses are identical to an ordinary registration. Counter-assertion: a different email is
   credited.
-- [ ] T035 [P] [US2] `server/tests/seo/referral-landing.test.ts`:
+- [X] T035 [P] [US2] `server/tests/seo/referral-landing.test.ts`:
   - `/r/:code` carries `X-Robots-Tag: noindex`, `cache-control: private, no-store` and
     `referrer-policy: no-referrer`;
   - it renders meaningful content with no `<script>`;
@@ -298,16 +298,16 @@ code credits nobody.
   - it is absent from `/sitemap.xml` and not disallowed in `/robots.txt`.
 
   Counter-assertion: `/konsole` is still disallowed.
-- [ ] T036 [P] [US2] `server/tests/seo/app-links.test.ts`: `apple-app-site-association` is JSON
+- [X] T036 [P] [US2] `server/tests/seo/app-links.test.ts`: `apple-app-site-association` is JSON
   with `APPLE_APP_ID` and only `/r/*` paths. `assetlinks.json` is `404` without
   `ANDROID_APP_CERT_SHA256` and JSON with the package and fingerprints when it is set.
-- [ ] T037 [P] [US2] `server/tests/onboarding/flow.test.ts` and `web.test.ts`: run them
+- [X] T037 [P] [US2] `server/tests/onboarding/flow.test.ts` and `web.test.ts`: run them
   **unchanged** and confirm they pass after T040. They are the regression guard for making
   verify-mobile transactional.
 
 ### Implementation for User Story 2
 
-- [ ] T038 [US2] Create `server/src/modules/referrals/application/attribution.ts`:
+- [X] T038 [US2] Create `server/src/modules/referrals/application/attribution.ts`:
   `recordReferral(app, client, memberId)`, called inside verify-mobile's transaction. It:
   1. reads `pending_referral_link_id`;
   2. re-checks the link and owner via `resolveActiveLink`-by-id (R2);
@@ -319,44 +319,44 @@ code credits nobody.
   It returns what happened so the caller audits after commit (`referral_recorded` +
   `xp_awarded`, or `referral_refused` with reason `self-referral` / `link-inactive`).
   Comment: why here and not at register (R1).
-- [ ] T039 [US2] In `server/src/modules/onboarding/application/register.ts`, resolve
+- [X] T039 [US2] In `server/src/modules/onboarding/application/register.ts`, resolve
   `input.referralCode` with `resolveActiveLink`. Write `pending_referral_link_id` (or NULL) in
   both the new-account insert and the resume `UPDATE`. Comment: the last code before
   verification wins, and an invalid code changes nothing visible (FR-006). The response must not
   change.
-- [ ] T040 [US2] In `server/src/modules/onboarding/application/verify.ts` `verifyMobile`, wrap
+- [X] T040 [US2] In `server/src/modules/onboarding/application/verify.ts` `verifyMobile`, wrap
   the `mobile_verified_at` update and `recordReferral` in one `withTransaction`. Only call
   `recordReferral` when the update actually set the column (`RETURNING`), so a second verify is
   a no-op. Write the audits after commit. Session issuing stays where it is.
-- [ ] T041 [P] [US2] Create `server/src/modules/public/templates/referral.ts`:
+- [X] T041 [P] [US2] Create `server/src/modules/public/templates/referral.ts`:
   - `renderReferralLanding({ name, code, lang })`, in German/English by `lang`, with links to
     `/konsole/registrieren?ref=CODE` and `germanworldclub://r/CODE`, store links and OG tags;
   - `renderReferralNotFound({ lang })`, one page for all invalid cases, with a registration link
     and no code.
 
   Use `escape` and the layout from `templates/layout.ts`. No script.
-- [ ] T042 [US2] Add the public routes in `server/src/modules/public/routes.ts` and
+- [X] T042 [US2] Add the public routes in `server/src/modules/public/routes.ts` and
   `controller.ts`:
   - `GET /r/:code`: `publicConfig`; `resolveActiveLink` + `ownerDisplayName`; `200` landing or
     `404` not-found page; the three headers from T035.
   - `GET /.well-known/apple-app-site-association` and `GET /.well-known/assetlinks.json`: built
     from env (T007), `cache-control: public, max-age=3600`.
-- [ ] T043 [US2] Web registration in `client/src/onboarding/Register.tsx`: read `ref` from
+- [X] T043 [US2] Web registration in `client/src/onboarding/Register.tsx`: read `ref` from
   `useSearchParams`, add an optional **Empfehlungscode / Referral code** field (prefilled,
   editable, displayed through `formatReferralCode`) and send `referralCode` with the request.
   No lookup and no message for an invalid code. Add the i18n keys `referralCode` and
   `referralCodeHint` to both web catalogues.
-- [ ] T044 [P] [US2] `client/tests/onboarding/web-onboarding.test.tsx`: `?ref=abcd-efgh`
+- [X] T044 [P] [US2] `client/tests/onboarding/web-onboarding.test.tsx`: `?ref=abcd-efgh`
   prefills `ABCD-EFGH` and the submitted body carries the code. Counter-assertion: with no `?ref`
   the body has no `referralCode`.
-- [ ] T045 [US2] App registration in `expo-client/german-world-club/src/app/(public)/register.tsx`:
+- [X] T045 [US2] App registration in `expo-client/german-world-club/src/app/(public)/register.tsx`:
   an optional referral code `TextField` bound to `draft.referralCode`, formatted for display and
   placed after the mobile field. Make sure the country step's submit passes the draft's
   `referralCode` through. Add i18n keys to both app catalogues.
-- [ ] T046 [US2] Create `expo-client/german-world-club/src/app/r/[code].tsx`. Signed out:
+- [X] T046 [US2] Create `expo-client/german-world-club/src/app/r/[code].tsx`. Signed out:
   `update({ referralCode: code })`, then `router.replace('/(public)/register')`. Any session:
   `router.replace('/')`. Comment that the server decides validity (R10).
-- [ ] T047 [US2] App config in `expo-client/german-world-club/app.config.js`:
+- [X] T047 [US2] App config in `expo-client/german-world-club/app.config.js`:
   - `ios.associatedDomains: [`applinks:${process.env.EXPO_PUBLIC_LINK_HOST}`]`;
   - an Android `intentFilters` entry (`autoVerify: true`, `https`, host from
     `EXPO_PUBLIC_LINK_HOST`, `pathPrefix: '/r/'`);

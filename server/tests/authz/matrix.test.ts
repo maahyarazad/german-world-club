@@ -290,6 +290,13 @@ const ROUTE_CLASSES = [
   // and fourth exemption rather than a module.
   { name: 'referrals summary (own, staff)', url: '/admin/referrals/me', method: 'GET', audience: 'staff', anyStaff: true },
   { name: 'referrals replace link (own, staff)', url: '/admin/referrals/me/link/replace', method: 'POST', audience: 'staff', anyStaff: true },
+  // Public, never indexed (surfaces `referral-landing`, `app-links`): anyone
+  // holding a link must be able to open it, and an OS must be able to read the
+  // two app-link files without credentials (research R8, R9).
+  { name: 'referral landing', url: '/r/:code', probe: '/r/zzzz9999', method: 'GET', audience: 'public' },
+  { name: 'referral landing (English)', url: '/r/:code/en', probe: '/r/zzzz9999/en', method: 'GET', audience: 'public' },
+  { name: 'iOS app-link file', url: '/.well-known/apple-app-site-association', method: 'GET', audience: 'public' },
+  { name: 'Android app-link file', url: '/.well-known/assetlinks.json', method: 'GET', audience: 'public' },
   { name: 'server fault by request id', url: '/admin/server-faults/by-request/:requestId', probe: '/admin/server-faults/by-request/01J8Z3K2QX0000000000000000', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
   // The console's SPA shell. Public because it IS public: an empty application
   // shell with no member content, no capability data and no principal in it.

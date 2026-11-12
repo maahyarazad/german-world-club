@@ -90,6 +90,10 @@ function RootStack() {
       <Stack.Protected guard={state.status === 'organisation'}>
         <Stack.Screen name="(organisation)" />
       </Stack.Protected>
+      {/* A tapped referral link (feature 018). Outside every guard, because a
+          link can arrive in any session state; the screen itself decides where
+          to go — Register when signed out, home otherwise. */}
+      <Stack.Screen name="r/[code]" />
     </Stack>
   );
 }

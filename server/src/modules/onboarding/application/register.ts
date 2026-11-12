@@ -8,6 +8,7 @@ import { forbidden as refuse } from '../../../authz/require-permission.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 import type { RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
+import { resolveActiveLink } from '../../referrals/application/codes.ts'
 
 /**
  * Registration, for both faces: steps 1 and 2 of §6.1 (details, then country
@@ -51,6 +52,15 @@ export async function register(
   )
   const existing = rows[0]
 
+  // Someone's referral code (feature 018). Resolved here and kept on the
+  // application as PENDING; the referral itself is only recorded once the
+  // mobile number is proven (verify.ts, research R1). An invalid, replaced or
+  // disabled code resolves to null and changes nothing the applicant sees
+  // (FR-006). On a resumed application it overwrites the earlier one: the
+  // last code entered before verification is the one that counts.
+  const referral = await resolveActiveLink(app.pg, input.referralCode)
+  const pendingLinkId = referral?.linkId ?? null
+
   // One number, one member (migration 031). Resuming one's own application
   // with the same number is not a conflict.
   const { rows: holders } = await query(app.pg, 'SELECT id FROM members WHERE mobile = $1', [mobile], { signal })
@@ -74,8 +84,8 @@ export async function register(
         // Resuming on another face moves the application there: approval
         // follows the device the applicant actually finished on.
         await client.query(
-          'UPDATE membership_applications SET device_id = $2 WHERE member_id = $1',
-          [existing.id, deviceId ?? null],
+          'UPDATE membership_applications SET device_id = $2, pending_referral_link_id = $3 WHERE member_id = $1',
+          [existing.id, deviceId ?? null, pendingLinkId],
         )
         return challengeAndSend(app, client, { memberId: existing.id, mobile, deviceId })
       }, { signal })
@@ -94,9 +104,9 @@ export async function register(
       const memberId = String(created[0].id)
       await writeDetails(client, memberId, input)
       await client.query(
-        'INSERT INTO membership_applications (member_id, device_id) VALUES ($1, $2)',
-        // NULL: applied on the web, where nothing is device-bound.
-        [memberId, deviceId ?? null],
+        'INSERT INTO membership_applications (member_id, device_id, pending_referral_link_id) VALUES ($1, $2, $3)',
+        // NULL device: applied on the web, where nothing is device-bound.
+        [memberId, deviceId ?? null, pendingLinkId],
       )
       const sent = await challengeAndSend(app, client, { memberId, mobile, deviceId })
       return { memberId, sent }

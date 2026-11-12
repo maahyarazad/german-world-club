@@ -21,7 +21,7 @@ describe.skipIf(!hasDatabase)('referral links', () => {
     const second = await linkOf(app, owner)
 
     expect(first.link.code).toMatch(REFERRAL_CODE)
-    expect(first.link.url).toMatch(new RegExp(`/r/${first.link.code}$`))
+    expect(first.link.url).toMatch(new RegExp(`/r/${first.link.code.toLowerCase()}$`))
     expect(second.link.code).toBe(first.link.code)
     expect(first.xpBalance).toBe(0)
     expect(first.counts).toEqual({ registered: 0, approved: 0, joined: 0, did_not_join: 0 })
