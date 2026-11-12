@@ -45,7 +45,7 @@ testable on its own: US1 sends, US2 emails, US3 reads and replies.
 
 **Purpose**: the shared message shapes every story imports (research R8)
 
-- [ ] T001 In `packages/contracts/src/messaging.ts`:
+- [X] T001 In `packages/contracts/src/messaging.ts`:
   - extend `ConversationSubject` with `title: string | null`;
   - add `Counterpart = { memberId: string; displayName: string | null; handle: string | null }`
     and `LastMessage = { senderId: string; excerpt: string; createdAt: string }`;
@@ -65,7 +65,7 @@ testable on its own: US1 sends, US2 emails, US3 reads and replies.
 **Purpose**: the server answers in the contract shape, and refuses requests across a block. US1's
 "open conversation" link and US3's screens depend on both.
 
-- [ ] T002 Create `server/tests/messaging/inbox-shape.test.ts`, using `inquire`, `reply`, `inbox`
+- [X] T002 Create `server/tests/messaging/inbox-shape.test.ts`, using `inquire`, `reply`, `inbox`
   and `readConversation` from `tests/messaging/helpers.ts`:
   - after A inquires about B's listing, B's `GET /messages/conversations` item has
     `subject.type 'marketplace_listing'`, `subject.title` = the listing title,
@@ -74,7 +74,7 @@ testable on its own: US1 sends, US2 emails, US3 reads and replies.
   - no response contains either member's email or mobile.
 
   Counter-assertion: A's own inbox shows B as the counterpart.
-- [ ] T003 In `server/src/modules/messaging/application/converse.ts`:
+- [X] T003 In `server/src/modules/messaging/application/converse.ts`:
   - extend `listConversations`'s SQL with named columns: the listing title (`LEFT JOIN
     marketplace_listings l ON c.subject_type = 'marketplace_listing' AND l.id = c.subject_id`),
     the counterpart (the other `conversation_participants` row joined to `members`:
@@ -85,11 +85,11 @@ testable on its own: US1 sends, US2 emails, US3 reads and replies.
   - make `readConversation` return the same mapped `conversation`.
 
   Never select `email` or `mobile`.
-- [ ] T004 In `server/src/modules/messaging/routes.ts` and `controller.ts`, replace the inline
+- [X] T004 In `server/src/modules/messaging/routes.ts` and `controller.ts`, replace the inline
   `conversationSchema` / `messageSchema` with the contract schemas from T001. Make the inbox and
   read handlers send the T003 shape. Keep postures, buckets and the `pageQuery` as they are. Run
   `tests/messaging/*` plus T002: all must pass.
-- [ ] T005 [P] In `server/src/modules/messaging/application/inquire.ts`, after the owner-status
+- [X] T005 [P] In `server/src/modules/messaging/application/inquire.ts`, after the owner-status
   check, refuse when a `member_blocks` row exists in either direction between inquirer and owner
   by throwing `ListingNotInquirableError('unavailable')`. That's the same answer as a lapsed
   owner, so a block isn't revealed (research R7). Add a case to

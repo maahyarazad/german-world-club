@@ -99,6 +99,21 @@ export async function inquire(
   )
   if (owners[0]?.status !== 'active') throw new ListingNotInquirableError('unavailable')
 
+  // A block either way ends it too (feature 020, research R7) — and answers
+  // exactly like a lapsed owner, so a request cannot be used to find out who
+  // has blocked whom. Threads' blocks are the platform's one notion of "I do
+  // not want to hear from this person".
+  const { rows: blocks } = await query(
+    app.pg,
+    `SELECT 1 FROM member_blocks
+      WHERE (blocker_id = $1::uuid AND blocked_id = $2::uuid)
+         OR (blocker_id = $2::uuid AND blocked_id = $1::uuid)
+      LIMIT 1`,
+    [inquirerId, ownerId],
+    { signal },
+  )
+  if (blocks.length > 0) throw new ListingNotInquirableError('unavailable')
+
   const { rows: existing } = await query(
     app.pg,
     `SELECT c.id

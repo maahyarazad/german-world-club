@@ -202,6 +202,33 @@ describe.skipIf(!hasDatabase)('what an inquiry refuses', () => {
     expect((await inquire(app, buyer.headers, listing)).statusCode).toBe(410)
   })
 
+  // Feature 020 (research R7): a block either way refuses a new request, with
+  // exactly the answer a lapsed owner gets — so a request cannot be used to
+  // learn who has blocked whom.
+  it.each([['the buyer blocked the seller', 'buyer'], ['the seller blocked the buyer', 'seller']])(
+    'refuses a new inquiry when %s, answering like a lapsed owner',
+    async (_case, who) => {
+      const listing = await seedListing(app.pg, { ownerId: seller.id })
+      const [blocker, blocked] = who === 'buyer' ? [buyer.id, seller.id] : [seller.id, buyer.id]
+      await app.pg.query('INSERT INTO member_blocks (blocker_id, blocked_id) VALUES ($1, $2)', [blocker, blocked])
+      const blockedAnswer = await inquire(app, buyer.headers, listing)
+
+      await app.pg.query('DELETE FROM member_blocks')
+      await app.pg.query(`UPDATE members SET status = 'locked' WHERE id = $1`, [seller.id])
+      const lapsedAnswer = await inquire(app, buyer.headers, listing)
+
+      expect(blockedAnswer.statusCode).toBe(410)
+      expect(blockedAnswer.json().type).toBe(lapsedAnswer.json().type)
+      expect(blockedAnswer.json().detail).toBe(lapsedAnswer.json().detail)
+    },
+  )
+
+  it('accepts the same inquiry when nobody has blocked anybody', async () => {
+    // Counter-assertion for the block refusal.
+    const listing = await seedListing(app.pg, { ownerId: seller.id })
+    expect((await inquire(app, buyer.headers, listing)).statusCode).toBe(201)
+  })
+
   it('refuses an inquiry about a listing that does not exist', async () => {
     const response = await inquire(app, buyer.headers, '00000000-0000-0000-0000-000000000000')
     expect(response.statusCode).toBe(404)
