@@ -72,6 +72,12 @@ describe('which requests belong to the console', () => {
           for (const [, prefix] of source.matchAll(/\b(?:get|post|patch|put|del)\(\s*['"`](\/[a-z-]+)/g)) {
             called.add(prefix!)
           }
+          // A page handed its API path as a prop (Refer & earn's `basePath`,
+          // feature 018) calls `get(basePath)` — invisible to the pattern
+          // above, which is how /referrals 404'd in development.
+          for (const [, prefix] of source.matchAll(/\bbasePath=\{?\s*['"`](\/[a-z-]+)/g)) {
+            called.add(prefix!)
+          }
         }
       }
     }
@@ -83,6 +89,7 @@ describe('which requests belong to the console', () => {
     // pass against any proxy list.
     expect(called.has('/auth')).toBe(true)
     expect(called.has('/marketplace')).toBe(true)
+    expect(called.has('/referrals')).toBe(true)
     for (const prefix of called) {
       expect(isApiPath(prefix), `${prefix} is called by the client but not proxied`).toBe(true)
     }

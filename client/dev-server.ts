@@ -41,7 +41,10 @@ export const CONSOLE_ENTRY = '/konsole.html'
  * everywhere else. `tests/dev-server.test.ts` now scans the client's own
  * fetch calls and fails when one names a prefix this list does not.
  */
-export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding', '/threads', '/profile', '/profiling']
+// `/referrals` (feature 018) is called through a `basePath` prop rather than a
+// literal, so the source scan in tests/dev-server.test.ts cannot see it — it was
+// missed here exactly as /marketplace once was, and 404'd only in development.
+export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding', '/threads', '/profile', '/profiling', '/referrals']
 
 /**
  * Static pages Vite serves from a file whose name is not the URL.
