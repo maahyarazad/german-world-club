@@ -436,7 +436,7 @@ both entries show, the audit log names the actor and reason, and a second revers
 
 ### Tests for User Story 4 ⚠️ (write first, see them fail)
 
-- [ ] T056 [P] [US4] `server/tests/referrals/staff.test.ts`:
+- [X] T056 [P] [US4] `server/tests/referrals/staff.test.ts`:
   - reverse → `200` and a matching negative entry; reverse again → `409 conflict`; reverse a
     reversal → `409`;
   - reverse or disable one's **own** record → `403`;
@@ -446,12 +446,12 @@ both entries show, the audit log names the actor and reason, and a second revers
 
   Each write writes an audit row with `reason`. Counter-assertion: a superadmin on someone
   else's entry succeeds.
-- [ ] T057 [P] [US4] Add every new `/admin/referrals/*` and owner route × each principal kind to
+- [X] T057 [P] [US4] Add every new `/admin/referrals/*` and owner route × each principal kind to
   `server/tests/authz/matrix.test.ts`.
 
 ### Implementation for User Story 4
 
-- [ ] T058 [US4] Create `server/src/modules/referrals/application/ledger.ts` (staff actions):
+- [X] T058 [US4] Create `server/src/modules/referrals/application/ledger.ts` (staff actions):
   - `reverseAward(app, { entryId, adminId, reason })`: load the entry `FOR UPDATE`; it must be an
     award (else 409) and not the actor's own (`owner_kind='admin' AND owner_id=adminId` → 403);
     insert the reversal and map the `reverses_entry_id` unique violation to 409.
@@ -460,20 +460,20 @@ both entries show, the audit log names the actor and reason, and a second revers
   - `setRate(app, { xp, adminId, reason })`.
 
   Audit `xp_reversed` / `referral_link_disabled` / `xp_rate_changed` with `reason` (+ `xp`).
-- [ ] T059 [US4] Create `server/src/modules/referrals/application/staff-queries.ts`:
+- [X] T059 [US4] Create `server/src/modules/referrals/application/staff-queries.ts`:
   - `listOwners(db, { kind, q, cursor })`: owners with a link or entries, name via the per-kind
     columns, balance, stage counts, ordered by referral count;
   - `ownerDetail(db, kind, id)` → `404` when unknown;
   - `rateWithHistory(db)`.
 
   Named columns only, and the same referee restrictions as owners (FR-018).
-- [ ] T060 [US4] Create `server/src/modules/referrals/staff-routes.ts` and `staff-controller.ts`
+- [X] T060 [US4] Create `server/src/modules/referrals/staff-routes.ts` and `staff-controller.ts`
   with the six routes in `specs/018-referral-xp/contracts/http-api.md` §3, each
   `{ audience: 'staff', module: 'referrals', flag }`, budget `admin-read`, bucket `admin-api`,
   bodies from `@gwc/contracts/referrals`. Register them next to the owner routes (T022).
-- [ ] T061 [P] [US4] Web: add an `adminReferrals` i18n namespace to `client/src/i18n/{de,en}.ts`
+- [X] T061 [P] [US4] Web: add an `adminReferrals` i18n namespace to `client/src/i18n/{de,en}.ts`
   (owners, owner detail, disable, reverse, rate, reason prompt, "applies to new referrals only").
-- [ ] T062 [US4] Create `client/src/console/admin/Referrals.tsx`:
+- [X] T062 [US4] Create `client/src/console/admin/Referrals.tsx`:
   - an owners table with search and kind filter;
   - owner detail, reusing the list components from T054;
   - **Disable link** and **Reverse** dialogs with a required reason, shown only with `status` and
@@ -482,7 +482,7 @@ both entries show, the audit log names the actor and reason, and a second revers
 
   Route `empfehlungen` under `/konsole/admin` in `client/src/console/routes.tsx`, behind
   `RequireGrant module="referrals" flag="read"`, and add a nav item in `AdminLayout.tsx`.
-- [ ] T063 [P] [US4] `client/tests/console/admin-referrals.test.tsx`: reason required before
+- [X] T063 [P] [US4] `client/tests/console/admin-referrals.test.tsx`: reason required before
   submit; dialogs hidden without `status`; Reverse hidden on one's own row. Counter-assertion:
   with `status` on another's row the button is present.
 

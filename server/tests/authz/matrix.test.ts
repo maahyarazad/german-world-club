@@ -298,6 +298,16 @@ const ROUTE_CLASSES = [
   { name: 'referrals xp history (partner)', url: '/referrals/partner/xp', method: 'GET', audience: 'partner' },
   { name: 'referrals list (own, staff)', url: '/admin/referrals/me/referrals', method: 'GET', audience: 'staff', anyStaff: true },
   { name: 'referrals xp history (own, staff)', url: '/admin/referrals/me/xp', method: 'GET', audience: 'staff', anyStaff: true },
+  // Overseeing everybody's referrals is the `referrals` module (research R12):
+  // read to look, status to disable or reverse, edit to change the rate.
+  { name: 'referral owners (staff)', url: '/admin/referrals/owners', method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner (staff)', url: '/admin/referrals/owners/:kind/:id', probe: `/admin/referrals/owners/member/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner referrals (staff)', url: '/admin/referrals/owners/:kind/:id/referrals', probe: `/admin/referrals/owners/member/${randomUUID()}/referrals`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner xp (staff)', url: '/admin/referrals/owners/:kind/:id/xp', probe: `/admin/referrals/owners/member/${randomUUID()}/xp`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral link disable (staff)', url: '/admin/referrals/links/:linkId/disable', probe: `/admin/referrals/links/${randomUUID()}/disable`, method: 'POST', audience: 'staff', module: 'referrals', flag: 'status' },
+  { name: 'xp reverse (staff)', url: '/admin/referrals/xp/:entryId/reverse', probe: `/admin/referrals/xp/${randomUUID()}/reverse`, method: 'POST', audience: 'staff', module: 'referrals', flag: 'status' },
+  { name: 'xp rate (staff)', url: '/admin/referrals/xp-rate', method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'xp rate change (staff)', url: '/admin/referrals/xp-rate', method: 'PUT', audience: 'staff', module: 'referrals', flag: 'edit' },
   // Public, never indexed (surfaces `referral-landing`, `app-links`): anyone
   // holding a link must be able to open it, and an OS must be able to read the
   // two app-link files without credentials (research R8, R9).
