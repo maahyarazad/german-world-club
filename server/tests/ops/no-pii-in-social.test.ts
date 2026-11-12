@@ -60,6 +60,25 @@ describe.skipIf(!hasDatabase)('no private data in Threads or profile responses',
     }
     // Anna's own view of her Activity includes Ben as the actor.
     bodies.push({ url: '/threads/activity (anna)', body: (await get(app, anna, '/threads/activity')).body })
+
+    // Feature 018: Ben's referrals, with Anna as somebody he referred. The
+    // referral is written directly — this suite is about what responses carry,
+    // not about how a referral comes to exist (tests/referrals/ covers that).
+    await get(app, ben, '/referrals')
+    await app.pg.query(
+      `INSERT INTO referrals (link_id, referrer_kind, referrer_id, referee_member_id)
+       SELECT id, 'member', owner_id, $2 FROM referral_links WHERE owner_id = $1 AND state = 'active'`,
+      [ben.id, anna.id],
+    )
+    await app.pg.query(
+      `INSERT INTO xp_entries (owner_kind, owner_id, kind, amount, referral_id, rate_id, reason)
+       SELECT 'member', $1, 'award', 100, r.id, (SELECT id FROM referral_xp_rates LIMIT 1), 'referral'
+         FROM referrals r WHERE r.referee_member_id = $2`,
+      [ben.id, anna.id],
+    )
+    for (const url of ['/referrals', '/referrals/referrals', '/referrals/xp']) {
+      bodies.push({ url: `${url} (ben)`, body: (await get(app, ben, url)).body })
+    }
   })
   afterAll(async () => { await app.close() })
 

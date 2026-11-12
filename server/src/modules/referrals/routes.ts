@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin'
-import { referralSummarySchema } from '@gwc/contracts/referrals'
+import { referralSummarySchema, referralPageSchema, xpEntryPageSchema, pageQuerySchema } from '@gwc/contracts/referrals'
 import { createReferralsController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -40,6 +40,27 @@ export default fp(
           schema: { response: { 200: referralSummarySchema } },
         },
         controller.summary,
+      )
+
+      // US3: who came through the link and how far they got, and the XP
+      // history — keyset-paged, newest first.
+      app.get(
+        `${mount.prefix}/referrals`,
+        {
+          config: { auth: mount.auth, budget: mount.budget, rateLimit: app.bucket(mount.bucket) },
+          onRequest: app.guard,
+          schema: { querystring: pageQuerySchema, response: { 200: referralPageSchema } },
+        },
+        controller.referrals,
+      )
+      app.get(
+        `${mount.prefix}/xp`,
+        {
+          config: { auth: mount.auth, budget: mount.budget, rateLimit: app.bucket(mount.bucket) },
+          onRequest: app.guard,
+          schema: { querystring: pageQuerySchema, response: { 200: xpEntryPageSchema } },
+        },
+        controller.xp,
       )
 
       // A write, so the write-heavy bucket: replacing in a loop would mint codes

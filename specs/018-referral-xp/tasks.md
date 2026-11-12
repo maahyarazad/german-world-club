@@ -381,20 +381,20 @@ shows Did not join with no reason.
 
 ### Tests for User Story 3 ⚠️ (write first, see them fail)
 
-- [ ] T048 [P] [US3] `server/tests/referrals/stages.test.ts`: approval moves the stage to
+- [X] T048 [P] [US3] `server/tests/referrals/stages.test.ts`: approval moves the stage to
   `approved` (with `approvedAt`), profiling completion to `joined`, and denial to `did_not_join`.
   No stage change adds an `xp_entries` row. Counter-assertion: a just-verified referral is
   `registered`.
-- [ ] T049 [P] [US3] `server/tests/referrals/balance.test.ts`:
+- [X] T049 [P] [US3] `server/tests/referrals/balance.test.ts`:
   - the balance equals Σ `amount` after an award, after a reversal inserted by SQL, and after a
     new rate row inserted by SQL followed by a new referral;
   - the earlier award keeps 100 while the new one is the new rate (FR-013).
 
   Counter-assertion: the balance is not 0 after the first award.
-- [ ] T050 [P] [US3] `server/tests/referrals/ledger-immutable.test.ts` (raw SQL): `UPDATE` and
+- [X] T050 [P] [US3] `server/tests/referrals/ledger-immutable.test.ts` (raw SQL): `UPDATE` and
   `DELETE` on `xp_entries`, `referrals` and `referral_xp_rates` are each refused. A reversal with
   the wrong amount, or of a reversal, is refused. Counter-assertion: a valid `INSERT` succeeds.
-- [ ] T051 [P] [US3] `server/tests/referrals/no-pii.test.ts`, and extend
+- [X] T051 [P] [US3] `server/tests/referrals/no-pii.test.ts`, and extend
   `server/tests/ops/no-pii-in-social.test.ts` to include `/referrals*`: no response from the
   owner list or XP routes contains the referee's email, mobile, birthday, country, denial reason
   or profiling fields. Counter-assertion: the referee's handle, or their first name and initial,
@@ -402,21 +402,21 @@ shows Did not join with no reason.
 
 ### Implementation for User Story 3
 
-- [ ] T052 [US3] Create `server/src/modules/referrals/application/lists.ts`:
+- [X] T052 [US3] Create `server/src/modules/referrals/application/lists.ts`:
   - `listReferrals(db, owner, cursor)`: `REFEREE_COLUMNS` + `STAGE_SQL` + the award amount, keyset
     on `(created_at, id)` descending, 50 per page;
   - `listXp(db, owner, cursor)`: entries, with the reason rendered as data (the client builds
     "Referral: *name*" / "Reversed: *reason*"), same paging.
 
   Opaque cursors as in existing paged routes.
-- [ ] T053 [US3] Add `GET {prefix}/referrals` and `GET {prefix}/xp` to the four mounts in
+- [X] T053 [US3] Add `GET {prefix}/referrals` and `GET {prefix}/xp` to the four mounts in
   `server/src/modules/referrals/routes.ts` and `controller.ts` (`member-api` / `admin-api`).
-- [ ] T054 [US3] Web: extend `client/src/member/Referrals.tsx` with the paged **Your referrals**
+- [X] T054 [US3] Web: extend `client/src/member/Referrals.tsx` with the paged **Your referrals**
   list (name, stage badge, date of current stage) and the paged **XP history** (+/− amount, reason
   text, date). Add the empty states and i18n keys to both catalogues. Extend
   `client/tests/member/referrals.test.tsx` with list rendering and the `did_not_join` badge
   showing no reason.
-- [ ] T055 [US3] App: add `referralsApi.{referrals, xp}` in
+- [X] T055 [US3] App: add `referralsApi.{referrals, xp}` in
   `expo-client/german-world-club/src/api/endpoints.ts` and extend
   `expo-client/german-world-club/src/components/referrals-view.tsx` with both lists, using
   `usePaged` from `src/hooks/use-paged.ts`. Add the i18n keys to both app catalogues.

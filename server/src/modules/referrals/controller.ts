@@ -3,6 +3,7 @@ import { REFERRAL_OWNER_KINDS } from '@gwc/contracts/referrals'
 import { forbidden } from '../../authz/require-permission.ts'
 import { getOrCreateLink, replaceLink } from './application/links.ts'
 import { summaryFor } from './application/read-model.ts'
+import { listReferrals, listXp } from './application/lists.ts'
 import type { Owner } from './application/codes.ts'
 import type { ReferralOwnerKind } from '@gwc/contracts/referrals'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
@@ -36,6 +37,18 @@ export function createReferralsController(app: GwcApp) {
       const link = await getOrCreateLink(app, owner, { requestId: request.id })
       reply.header('cache-control', 'private, no-store')
       return reply.send(await summaryFor(app.pg, origin, owner, link))
+    },
+
+    referrals: async (request: GwcRequest, reply: GwcReply) => {
+      const { cursor } = request.query as { cursor?: string }
+      reply.header('cache-control', 'private, no-store')
+      return reply.send(await listReferrals(app.pg, ownerOf(request), cursor))
+    },
+
+    xp: async (request: GwcRequest, reply: GwcReply) => {
+      const { cursor } = request.query as { cursor?: string }
+      reply.header('cache-control', 'private, no-store')
+      return reply.send(await listXp(app.pg, ownerOf(request), cursor))
     },
 
     replace: async (request: GwcRequest, reply: GwcReply) => {

@@ -23,6 +23,9 @@ import { useTranslations } from '@/i18n';
  * failed, so the screen can offer a retry instead of spinning forever.
  */
 const COPIED_FOR_MS = 2000;
+/** The server's page size: a page shorter than this was the last one. */
+const PAGE_SIZE = 50;
+const mayHaveMore = (count: number) => count > 0 && count % PAGE_SIZE === 0;
 
 export function ReferralsView({ prefix }: { prefix: string }) {
   const { t, locale, format, formatDate } = useTranslations();
@@ -144,7 +147,7 @@ export function ReferralsView({ prefix }: { prefix: string }) {
           </Card>
         );
       })}
-      {referrals.items.length > 0 ? (
+      {mayHaveMore(referrals.items.length) ? (
         <Button label={t.referrals.loadMore} onPress={() => void referrals.loadMore()} variant="secondary" />
       ) : null}
 
@@ -165,6 +168,9 @@ export function ReferralsView({ prefix }: { prefix: string }) {
           <ThemedText type="small" themeColor="textSecondary">{formatDate(e.createdAt)}</ThemedText>
         </Card>
       ))}
+      {mayHaveMore(history.items.length) ? (
+        <Button label={t.referrals.loadMore} onPress={() => void history.loadMore()} variant="secondary" />
+      ) : null}
     </FormScreen>
   );
 }

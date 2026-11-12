@@ -290,6 +290,14 @@ const ROUTE_CLASSES = [
   // and fourth exemption rather than a module.
   { name: 'referrals summary (own, staff)', url: '/admin/referrals/me', method: 'GET', audience: 'staff', anyStaff: true },
   { name: 'referrals replace link (own, staff)', url: '/admin/referrals/me/link/replace', method: 'POST', audience: 'staff', anyStaff: true },
+  { name: 'referrals list', url: '/referrals/referrals', method: 'GET', audience: 'member' },
+  { name: 'referrals xp history', url: '/referrals/xp', method: 'GET', audience: 'member' },
+  { name: 'referrals list (merchant)', url: '/referrals/merchant/referrals', method: 'GET', audience: 'merchant' },
+  { name: 'referrals xp history (merchant)', url: '/referrals/merchant/xp', method: 'GET', audience: 'merchant' },
+  { name: 'referrals list (partner)', url: '/referrals/partner/referrals', method: 'GET', audience: 'partner' },
+  { name: 'referrals xp history (partner)', url: '/referrals/partner/xp', method: 'GET', audience: 'partner' },
+  { name: 'referrals list (own, staff)', url: '/admin/referrals/me/referrals', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'referrals xp history (own, staff)', url: '/admin/referrals/me/xp', method: 'GET', audience: 'staff', anyStaff: true },
   // Public, never indexed (surfaces `referral-landing`, `app-links`): anyone
   // holding a link must be able to open it, and an OS must be able to read the
   // two app-link files without credentials (research R8, R9).
@@ -391,7 +399,7 @@ describe('the declared matrix', () => {
    * gate rather than the narrow answer to two specific problems.
    *
    * Grown deliberately by feature 018: a staff member's OWN referral link
-   * (`/admin/referrals/me`, read and replace). The same shape as the first two —
+   * (`/admin/referrals/me`: the link, replacing it, the referrals and the XP history). The same shape as the first two —
    * about the caller's own record, nothing else in the system — and the spec
    * decided (Q2) that every staff member earns XP, so making it a module grant
    * would let somebody else's grant decide whether a staff member may refer at
@@ -406,8 +414,8 @@ describe('the declared matrix', () => {
       .sort()
 
     expect(exempt).toEqual([
-      'GET /admin/referrals/me', 'GET /auth/session',
-      'POST /admin/referrals/me/link/replace', 'POST /auth/staff/sign-out',
+      'GET /admin/referrals/me', 'GET /admin/referrals/me/referrals', 'GET /admin/referrals/me/xp',
+      'GET /auth/session', 'POST /admin/referrals/me/link/replace', 'POST /auth/staff/sign-out',
     ])
   })
 })
