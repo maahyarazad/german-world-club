@@ -46,7 +46,7 @@ on its own.
 
 **Purpose**: contracts, constants and dependencies every later phase imports
 
-- [ ] T001 Create `packages/contracts/src/referrals.ts`:
+- [X] T001 Create `packages/contracts/src/referrals.ts`:
   - `REFERRAL_CODE_ALPHABET` (Crockford base-32: `0123456789ABCDEFGHJKMNPQRSTVWXYZ`) and
     `REFERRAL_CODE_LENGTH = 8`.
   - `normaliseReferralCode(input): string | null`: upper-case, strip spaces and hyphens, map
@@ -58,20 +58,20 @@ on its own.
     `reverseXpRequest`, `xpRate` and `setXpRateRequest`, exactly as listed in
     `specs/018-referral-xp/data-model.md` § Contracts.
   - Reasons are 1–500 characters after trim. XP rate is an integer from 1 to 100000.
-- [ ] T002 [P] Add a unit test `packages/contracts/src/referrals.test.ts` for
+- [X] T002 [P] Add a unit test `packages/contracts/src/referrals.test.ts` for
   `normaliseReferralCode`: `abcd-efgh`, `ABCD EFGH` and `abcdefgh` all give `ABCDEFGH`; `ILO0`
   maps to `1100`; 7 or 9 characters and any `U` give `null`. Counter-assertion: a valid code
   survives a round trip through `formatReferralCode`.
-- [ ] T003 Export `"./referrals": "./src/referrals.ts"` in `packages/contracts/package.json`.
-- [ ] T004 [P] Add `'referrals'` to `MODULES` in `packages/contracts/src/permissions.ts`, with a
+- [X] T003 Export `"./referrals": "./src/referrals.ts"` in `packages/contracts/package.json`.
+- [X] T004 [P] Add `'referrals'` to `MODULES` in `packages/contracts/src/permissions.ts`, with a
   comment: flags used are `read` (view), `status` (disable link, reverse award) and `edit` (XP
   rate); `write`/`delete` are unused because staff create nothing and nothing is deleted (R12).
-- [ ] T005 [P] Add `referralCode: z.string().trim().max(20).optional()` to
+- [X] T005 [P] Add `referralCode: z.string().trim().max(20).optional()` to
   `registerRequestSchema` in `packages/contracts/src/onboarding.ts`, with a comment that the
   server normalises it and silently ignores an invalid value (FR-006, R10).
-- [ ] T006 [P] Add `expo-clipboard` (SDK 57 compatible, via `npx expo install expo-clipboard`) to
+- [X] T006 [P] Add `expo-clipboard` (SDK 57 compatible, via `npx expo install expo-clipboard`) to
   `expo-client/german-world-club/package.json`.
-- [ ] T007 [P] Add two optional settings to `server/src/config/env.ts`:
+- [X] T007 [P] Add two optional settings to `server/src/config/env.ts`:
   - `ANDROID_APP_CERT_SHA256`: comma-separated SHA-256 fingerprints, parsed to an array, empty
     when unset.
   - `APPLE_APP_ID`: defaults to `YQFY6269ZL.com.buenapublica.germanworldclub`.
@@ -87,7 +87,7 @@ on its own.
 
 **⚠️ CRITICAL**: no user story work can begin until this phase is complete
 
-- [ ] T008 Write `server/migrations/040_referrals.sql` exactly per
+- [X] T008 Write `server/migrations/040_referrals.sql` exactly per
   `specs/018-referral-xp/data-model.md`:
   - `ALTER TYPE admin_module ADD VALUE IF NOT EXISTS 'referrals'` (not used later in the same
     file, as `030_server_faults.sql` explains).
@@ -104,23 +104,23 @@ on its own.
   - The initial rate row `(100, now(), NULL, 'initial rate')`.
   - A header comment explaining why (Principle IV, FR-014), and that `TRUNCATE` is used only by
     the test reset.
-- [ ] T009 Add `resetReferrals(pool)` to `server/tests/helpers/db.ts`. It truncates
+- [X] T009 Add `resetReferrals(pool)` to `server/tests/helpers/db.ts`. It truncates
   `xp_entries, referrals, referral_links` and resets the pending column. It keeps
   `referral_xp_rates`, deleting only rows other than the initial one, via `TRUNCATE` plus a
   re-insert of the initial row. Mirror `resetServerFaults` and say why `TRUNCATE` (row triggers
   don't fire).
-- [ ] T010 [P] Classify `referral_links`, `referrals`, `xp_entries` and `referral_xp_rates` under
+- [X] T010 [P] Classify `referral_links`, `referrals`, `xp_entries` and `referral_xp_rates` under
   `SEEDED` in `server/src/seed/tables.ts`, with a comment that none holds a credential and all
   follow the consistent-history rule (R18). `tests/seed/table-manifest.test.ts` must stay green.
-- [ ] T011 [P] Add three rows to `SURFACES` in `server/src/modules/seo/surfaces.ts`:
+- [X] T011 [P] Add three rows to `SURFACES` in `server/src/modules/seo/surfaces.ts`:
   - `referral-landing` `['/r']`: public, `indexed: false`;
   - `app-links` `['/.well-known']`: public, `indexed: false`;
   - `referrals` `['/referrals']`: gated, `indexed: false`.
 
   Each gets a `why`, and the landing row's comment says why it is not under `/invite` (R8).
-- [ ] T012 [P] Add `'xp'` to `SAFE_DETAIL_KEYS` in `server/src/ops/audit.ts`. Add a comment there
+- [X] T012 [P] Add `'xp'` to `SAFE_DETAIL_KEYS` in `server/src/ops/audit.ts`. Add a comment there
   that referral codes are never audited, link ids are (R17).
-- [ ] T013 Create `server/src/modules/referrals/application/codes.ts`:
+- [X] T013 Create `server/src/modules/referrals/application/codes.ts`:
   - `generateCode()`: `crypto.randomInt` over the alphabet.
   - `insertLinkWithFreshCode(client, owner)`: retries on a `referral_links_code_key` unique
     violation, at most 5 times, then throws.
@@ -130,14 +130,14 @@ on its own.
 
   Unknown, retired, disabled and inactive-owner codes must be indistinguishable to callers
   (FR-006).
-- [ ] T014 [P] Create `server/src/modules/referrals/application/owner-name.ts`:
+- [X] T014 [P] Create `server/src/modules/referrals/application/owner-name.ts`:
   `ownerDisplayName(db, ownerKind, ownerId)`.
   - member → `members.display_name`;
   - merchant/partner → the `organisation_profiles` name of the user's organisation;
   - admin → `null`, which the template renders as "the German World Club team".
 
   Names columns explicitly (R8).
-- [ ] T015 Create `server/src/modules/referrals/application/read-model.ts`:
+- [X] T015 Create `server/src/modules/referrals/application/read-model.ts`:
   - `REFEREE_COLUMNS`: `handle`, else the first word of `display_name` + ` ` + the initial of the
     last word + `.`, computed in SQL (R15).
   - `STAGE_SQL`: computes `stage`, `approved_at`, `joined_at` and `ended_at` from
@@ -165,17 +165,17 @@ other client and see the same code. Replace it and see a new code. The old link 
 
 ### Tests for User Story 1 ⚠️ (write first, see them fail)
 
-- [ ] T016 [P] [US1] `server/tests/referrals/links.test.ts`:
+- [X] T016 [P] [US1] `server/tests/referrals/links.test.ts`:
   - The first `GET /referrals` creates a link, and a second returns the same code.
   - 10 concurrent first calls produce exactly one active link.
   - `POST /referrals/link/replace` returns a new code and the old row is `retired`.
   - The merchant, partner and `/admin/referrals/me` mounts each return the caller's own link.
 
   Counter-assertion: two different members get different codes.
-- [ ] T017 [P] [US1] `server/tests/referrals/applicant-refused.test.ts`: an applicant who is
+- [X] T017 [P] [US1] `server/tests/referrals/applicant-refused.test.ts`: an applicant who is
   pending, or approved but not profiled, is refused on `GET /referrals` with the same problem
   10-auth gives elsewhere. Counter-assertion: an approved and profiled member gets `200`.
-- [ ] T018 [P] [US1] `server/tests/referrals/link-transitions.test.ts` (raw SQL):
+- [X] T018 [P] [US1] `server/tests/referrals/link-transitions.test.ts` (raw SQL):
   - `retired→active` and changing `code` are refused, and `DELETE` is refused;
   - a second `active` link for the same owner violates the partial unique index.
 
@@ -183,17 +183,17 @@ other client and see the same code. Replace it and see a new code. The old link 
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Create `server/src/modules/referrals/application/links.ts`:
+- [X] T019 [US1] Create `server/src/modules/referrals/application/links.ts`:
   - `getOrCreateLink(app, owner)`: select the active link; else `insertLinkWithFreshCode`. On a
     partial-unique conflict, re-read. Audit `referral_link_created`.
   - `replaceLink(app, owner)`: one transaction, retire the current link and insert a new one.
     Audit `referral_link_replaced` with both link ids.
 
   Owner is `{ kind: 'member'|'merchant'|'partner'|'admin', id }`.
-- [ ] T020 [US1] Create `server/src/modules/referrals/controller.ts`: `summary` and
+- [X] T020 [US1] Create `server/src/modules/referrals/controller.ts`: `summary` and
   `replace`. Each derives the owner from `request.principal` and the mount's audience, never from
   the body or params, and returns `summaryFor`.
-- [ ] T021 [US1] Create `server/src/modules/referrals/routes.ts`. One loop mounts `GET {prefix}`
+- [X] T021 [US1] Create `server/src/modules/referrals/routes.ts`. One loop mounts `GET {prefix}`
   and `POST {prefix}/link/replace` for `[['/referrals','member'], ['/referrals/merchant',
   'merchant'], ['/referrals/partner','partner'], ['/admin/referrals/me','staff']]`, following the
   `/media` mounts in `server/src/modules/media/routes.ts`.
@@ -201,28 +201,28 @@ other client and see the same code. Replace it and see a new code. The old link 
   - Buckets: `member-api` / `admin-api` for GET, `write-heavy` for replace.
   - Budgets: `member-read` / `admin-read`.
   - `cache-control: private, no-store` on every response.
-- [ ] T022 [US1] Register the referrals route plugin in the route-plugin list (where
+- [X] T022 [US1] Register the referrals route plugin in the route-plugin list (where
   `onboarding-routes` is registered, after `15-openapi`).
   `tests/authz/route-posture.test.ts` must pass.
-- [ ] T023 [P] [US1] Web: add a `referrals` namespace to `client/src/i18n/de.ts` and
+- [X] T023 [P] [US1] Web: add a `referrals` namespace to `client/src/i18n/de.ts` and
   `client/src/i18n/en.ts`. Keys: title ("Empfehlen & verdienen" / "Refer & earn"), yourLink,
   yourCode, copyLink, copyCode, copied, replace, replaceConfirm (the old link stops working for
   new sign-ups and people already referred stay credited), xpBalance, the four stage labels,
   emptyReferrals, xpHistory, loadFailed and retry. `npm run -w client test:i18n` must pass.
-- [ ] T024 [US1] Create `client/src/member/Referrals.tsx`, used by all three web faces through a
+- [X] T024 [US1] Create `client/src/member/Referrals.tsx`, used by all three web faces through a
   `basePath` prop (`/referrals`, `/referrals/merchant`, `/referrals/partner`,
   `/admin/referrals/me`). It shows:
   - the link and code (`formatReferralCode`) with Copy buttons (`navigator.clipboard`, a 2 s
     "copied" flag);
   - Replace behind the existing `Modal` confirm;
   - the XP balance (formatted by the active locale, **no currency**) and the stage counts.
-- [ ] T025 [US1] Wire the web routes and navigation:
+- [X] T025 [US1] Wire the web routes and navigation:
   - `empfehlen` under `/konsole/mitglied`, `/konsole/{merchant,partner}` and `/konsole/admin`
     in `client/src/console/routes.tsx`;
   - nav items in `client/src/member/MemberLayout.tsx`,
     `client/src/organisation/OrganisationLayout.tsx` and
     `client/src/console/admin/AdminLayout.tsx` (all staff, with no `RequireGrant`).
-- [ ] T026 [P] [US1] `client/tests/member/referrals.test.tsx` (Testing Library, mocked API):
+- [X] T026 [P] [US1] `client/tests/member/referrals.test.tsx` (Testing Library, mocked API):
   - it renders the code formatted;
   - Copy writes the full URL;
   - Replace asks for confirmation before posting;
@@ -230,16 +230,16 @@ other client and see the same code. Replace it and see a new code. The old link 
 
   Counter-assertion: with the API failing it shows the load-failed state and keeps no problem
   text.
-- [ ] T027 [P] [US1] App: add a `referrals` namespace to
+- [X] T027 [P] [US1] App: add a `referrals` namespace to
   `expo-client/german-world-club/src/i18n/en.ts` and `de.ts` (same keys as T023, plus share and
   shareMessage), and `referralsApi.{summary, replace}` to
   `expo-client/german-world-club/src/api/endpoints.ts`, typed from `@gwc/contracts/referrals`.
   `summary`/`replace` take the audience prefix.
-- [ ] T028 [US1] Create `expo-client/german-world-club/src/components/referrals-view.tsx`: link,
+- [X] T028 [US1] Create `expo-client/german-world-club/src/components/referrals-view.tsx`: link,
   code, Copy link and Copy code (`expo-clipboard`), Share (React Native `Share.share` with
   `shareMessage` and the URL), Replace behind an `Alert` confirm, then balance and stage counts.
   It takes the audience prefix as a prop.
-- [ ] T029 [US1] Create the two app screens:
+- [X] T029 [US1] Create the two app screens:
   - `expo-client/german-world-club/src/app/(member)/profile/referrals.tsx` (prefix `/referrals`)
     and its entry row in `expo-client/german-world-club/src/app/(member)/profile/index.tsx`;
   - `expo-client/german-world-club/src/app/(organisation)/referrals.tsx` (prefix from the

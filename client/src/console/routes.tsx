@@ -26,6 +26,8 @@ import Push from './admin/Push'
 import ServerFaults from './admin/ServerFaults'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
+import Referrals from '../member/Referrals'
+import AdminReferrals from './admin/Referrals'
 import NotBuilt from './NotBuilt'
 import Register from '../onboarding/Register'
 import VerifyMobile from '../onboarding/VerifyMobile'
@@ -187,6 +189,11 @@ export function ConsoleRoutes() {
             like Marketplace does, so a direct URL gets "not available". */}
         <Route path="push" element={<Push />} />
         <Route path="fehlerprotokoll" element={<ServerFaults />} />
+        {/* A staff member's OWN link needs no grant (every staff member earns,
+            spec Q2); overseeing everybody's is the `referrals` module. */}
+        <Route path="empfehlen" element={<Referrals basePath="/admin/referrals/me" />} />
+        {/* Wraps itself in RequireGrant referrals/read, like Push.tsx. */}
+        <Route path="empfehlungen" element={<AdminReferrals />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}
@@ -217,6 +224,9 @@ export function ConsoleRoutes() {
         <Route path="mitglieder/:ref/follower" element={<FollowList direction="followers" />} />
         <Route path="mitglieder/:ref/folgt" element={<FollowList direction="following" />} />
         <Route path="organisationen/:slug" element={<OrganisationView />} />
+        {/* Refer & earn (018): the same page on every face, told apart by the
+            mount the server serves that principal's own referrals at. */}
+        <Route path="empfehlen" element={<Referrals basePath="/referrals" />} />
         {/* Same reasoning as the admin area's `*`: an unbuilt member path must
             not fall through to the top-level `*` and read as a logout on a
             session that is still perfectly valid. */}
@@ -238,6 +248,7 @@ export function ConsoleRoutes() {
         >
           <Route index element={<OrganisationHome />} />
           <Route path="profil" element={<OrganisationProfilePage kind={kind} />} />
+          <Route path="empfehlen" element={<Referrals basePath={`/referrals/${kind}`} />} />
           <Route path="*" element={<NotBuilt />} />
         </Route>
       ))}

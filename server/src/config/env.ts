@@ -116,6 +116,23 @@ const schema = z
     FCM_CLIENT_EMAIL: z.string().optional(),
     FCM_PRIVATE_KEY: z.string().optional(),
 
+    // --- App links for referral links (feature 018, research R9) -----------
+    // What /.well-known/* answers so a tapped https://<host>/r/CODE opens the
+    // app instead of the browser. Neither is a boot precondition: the landing
+    // page at /r/CODE works without them, so an unset value degrades to "opens
+    // in the browser" rather than to a server that will not start.
+    // The iOS app id is <Team ID>.<bundle id>; the default is the shipped app's.
+    APPLE_APP_ID: z.string().regex(/^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$/).default('YQFY6269ZL.com.buenapublica.germanworldclub'),
+    ANDROID_APP_PACKAGE: z.string().default('com.buenapublica.germanworldclub'),
+    // SHA-256 signing-certificate fingerprints from EAS credentials, comma
+    // separated (`AB:CD:…`). Unset: /.well-known/assetlinks.json answers 404 and
+    // Android opens the link in the browser.
+    ANDROID_APP_CERT_SHA256: z
+      .string()
+      .optional()
+      .transform((v) => (v ?? '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))
+      .pipe(z.array(z.string().regex(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/, 'must be a colon-separated SHA-256 fingerprint'))),
+
     // Retrieval-augmented answering (pgai). The embeddings live in whichever
     // database pgai was installed into, which need not be the application's —
     // so this is separate from DATABASE_URL and falls back to it rather than

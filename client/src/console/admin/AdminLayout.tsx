@@ -22,6 +22,7 @@ export const ADMIN_ITEMS: readonly SidebarItem[] = [
   { to: '/konsole/admin/seo', module: 'seo' },
   { to: '/konsole/admin/push', module: 'mass_messages' },
   { to: '/konsole/admin/fehlerprotokoll', module: 'server_faults' },
+  { to: '/konsole/admin/empfehlungen', module: 'referrals' },
   { to: '/konsole/admin/jobs', module: 'jobs' },
   { to: '/konsole/admin/rollen', module: 'admins' },
   { to: '/konsole/admin/einstellungen', module: 'settings' },
@@ -29,7 +30,15 @@ export const ADMIN_ITEMS: readonly SidebarItem[] = [
 
 export function AdminLayout() {
   const t = useTranslations()
-  return <ConsoleShell title={t.portals.staff} items={ADMIN_ITEMS} signOutPath="/auth/staff/sign-out" />
+  // Every staff member's own Refer & earn page (feature 018). No module: it
+  // needs no grant, the same way the server mounts it with `anyStaff` — and
+  // it is labelled here because only module items take their label from
+  // `t.modules`.
+  const items: readonly SidebarItem[] = [
+    ...ADMIN_ITEMS,
+    { to: '/konsole/admin/empfehlen', label: t.referrals.tabLabel },
+  ]
+  return <ConsoleShell title={t.portals.staff} items={items} signOutPath="/auth/staff/sign-out" />
 }
 
 export default AdminLayout

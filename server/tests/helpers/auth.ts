@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { buildApp } from '../../src/app.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { hashPassword } from '../../src/modules/auth/passwords.ts'
+import { resetReferrals } from './db.ts'
 import { MODULES, FLAGS } from '@gwc/contracts/permissions'
 import type { Pool } from 'pg'
 import type { Module, Flag } from '@gwc/contracts/permissions'
@@ -51,6 +52,10 @@ export async function resetAuthTables(pool: Pool) {
   // Feature 013's. member_id is ON DELETE RESTRICT, same reason as above —
   // gwc_cities is reference data, not per-test, so it is left alone.
   await pool.query('TRUNCATE member_profiling RESTART IDENTITY CASCADE')
+  // Feature 018's. referrals point at members, and links, reversals and rates
+  // at admin_users, all ON DELETE RESTRICT — so they go before the deletes
+  // below, through the one helper that knows to restore the initial rate.
+  await resetReferrals(pool)
   // admin_users guards the last active superadmin (§11). A suite that made one
   // *is* the last one in a clean test database, so tearing it down trips the
   // trigger. Suspend it for the teardown only — the rule stays armed for every

@@ -275,6 +275,21 @@ const ROUTE_CLASSES = [
   // deletes them. The probe is a well-formed ULID that no fault carries, so a
   // reached route answers 404.
   { name: 'server faults list', url: '/admin/server-faults', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
+  // --- Referral links and XP (018) ----------------------------------------------
+  // A person's own link, referrals and XP: one mount per audience (research
+  // R13). The member mount carries no onboarding/profiling flag, so applicants
+  // are refused by 10-auth (tests/referrals/applicant-refused.test.ts).
+  { name: 'referrals summary', url: '/referrals', method: 'GET', audience: 'member' },
+  { name: 'referrals replace link', url: '/referrals/link/replace', method: 'POST', audience: 'member' },
+  { name: 'referrals summary (merchant)', url: '/referrals/merchant', method: 'GET', audience: 'merchant' },
+  { name: 'referrals replace link (merchant)', url: '/referrals/merchant/link/replace', method: 'POST', audience: 'merchant' },
+  { name: 'referrals summary (partner)', url: '/referrals/partner', method: 'GET', audience: 'partner' },
+  { name: 'referrals replace link (partner)', url: '/referrals/partner/link/replace', method: 'POST', audience: 'partner' },
+  // Staff earn XP too (spec Q2), so every staff member has a link of their own
+  // without a grant — see the anyStaff test below for why that is the third
+  // and fourth exemption rather than a module.
+  { name: 'referrals summary (own, staff)', url: '/admin/referrals/me', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'referrals replace link (own, staff)', url: '/admin/referrals/me/link/replace', method: 'POST', audience: 'staff', anyStaff: true },
   { name: 'server fault by request id', url: '/admin/server-faults/by-request/:requestId', probe: '/admin/server-faults/by-request/01J8Z3K2QX0000000000000000', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
   // The console's SPA shell. Public because it IS public: an empty application
   // shell with no member content, no capability data and no principal in it.
@@ -367,8 +382,15 @@ describe('the declared matrix', () => {
    * This list is written out in full so growing it is a decision, not a drift.
    * If a third route appears here, `anyStaff` has become the easy way past the
    * gate rather than the narrow answer to two specific problems.
+   *
+   * Grown deliberately by feature 018: a staff member's OWN referral link
+   * (`/admin/referrals/me`, read and replace). The same shape as the first two —
+   * about the caller's own record, nothing else in the system — and the spec
+   * decided (Q2) that every staff member earns XP, so making it a module grant
+   * would let somebody else's grant decide whether a staff member may refer at
+   * all. Overseeing OTHER people's referrals stays on the `referrals` module.
    */
-  it('uses the anyStaff exemption on exactly two routes, both about the caller\'s own session', () => {
+  it('uses the anyStaff exemption only on routes about the caller\'s own session or own referral link', () => {
     const exempt = app
       .routePostures()
       .filter((r) => r.auth.anyStaff === true)
@@ -376,7 +398,10 @@ describe('the declared matrix', () => {
       .filter((k) => !k.startsWith('HEAD '))
       .sort()
 
-    expect(exempt).toEqual(['GET /auth/session', 'POST /auth/staff/sign-out'])
+    expect(exempt).toEqual([
+      'GET /admin/referrals/me', 'GET /auth/session',
+      'POST /admin/referrals/me/link/replace', 'POST /auth/staff/sign-out',
+    ])
   })
 })
 

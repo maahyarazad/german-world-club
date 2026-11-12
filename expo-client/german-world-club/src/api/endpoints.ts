@@ -20,6 +20,8 @@ import type {
   CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, TermsResponse,
 } from '@gwc/contracts/marketplace';
 
+import type { ReferralPage, ReferralSummary, XpEntryPage } from '@gwc/contracts/referrals';
+
 import { api } from './client';
 
 /**
@@ -186,4 +188,17 @@ export const marketplaceApi = {
   /** After the listing exists: marketplace media attach to a listing, unlike a thread post's (feature 010). */
   attachMedia: (listingId: string, assetId: string) =>
     api<unknown>(`/marketplace/listings/${listingId}/media`, { method: 'POST', body: { assetId } }),
+};
+
+/**
+ * Refer & earn (feature 018). `prefix` is the mount the server serves THIS
+ * principal's own referrals at — `/referrals` for a member,
+ * `/referrals/merchant` or `/referrals/partner` for an organisation user. There
+ * is no id: whose referrals they are comes from the session, server-side.
+ */
+export const referralsApi = {
+  summary: (prefix: string) => api<ReferralSummary>(prefix),
+  replace: (prefix: string) => api<ReferralSummary>(`${prefix}/link/replace`, { method: 'POST' }),
+  referrals: (prefix: string, cursor: string | null) => api<ReferralPage>(`${prefix}/referrals${q({ cursor })}`),
+  xp: (prefix: string, cursor: string | null) => api<XpEntryPage>(`${prefix}/xp${q({ cursor })}`),
 };

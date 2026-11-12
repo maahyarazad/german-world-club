@@ -58,6 +58,7 @@ export function MemberLayout() {
     },
     { to: '/konsole/mitglied', end: true, label: t.memberMarketplace.tabLabel },
     { to: '/konsole/mitglied/profil', label: t.memberProfile.tabLabel },
+    { to: '/konsole/mitglied/empfehlen', label: t.referrals.tabLabel },
   ]
   return <ConsoleShell title={t.portals.member} items={items} signOutPath="/auth/sign-out" />
 }

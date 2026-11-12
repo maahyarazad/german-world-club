@@ -44,6 +44,10 @@ declare module 'fastify' {
       OLLAMA_HOST: string
       RAG_MODEL: string
       RAG_EMBED_MODEL: string
+      /** Feature 018: what /.well-known/* answers for app links (research R9). */
+      APPLE_APP_ID: string
+      ANDROID_APP_PACKAGE: string
+      ANDROID_APP_CERT_SHA256: string[]
     }
     pg: Pool
     redis?: unknown

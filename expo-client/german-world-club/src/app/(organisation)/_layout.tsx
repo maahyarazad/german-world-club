@@ -13,6 +13,7 @@ export default function OrganisationLayout() {
     <Stack>
       <Stack.Screen name="index" options={{ title: t.profile.organisation }} />
       <Stack.Screen name="public-profile" options={{ title: t.profile.publicProfile }} />
+      <Stack.Screen name="referrals" options={{ title: t.referrals.title }} />
     </Stack>
   );
 }

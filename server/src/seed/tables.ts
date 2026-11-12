@@ -73,6 +73,16 @@ export const SEEDED = Object.freeze([
   'organisation_profiles',
   'thread_post_media',
   'thread_post_mentions',
+  // --- Referral links and XP (feature 018) ------------------------------------
+  // None holds a credential: a code names a link and signs nobody in. All four
+  // follow the consistent-history rule (src/seed/referrals.ts): a referral only
+  // where a seeded member's mobile verification implies one, stamped at it, and
+  // exactly one award at the rate in force then. The rate table's one row is the
+  // migration's own.
+  'referral_links',
+  'referrals',
+  'xp_entries',
+  'referral_xp_rates',
   // Not seeded, but writable in principle: no seeded fact implies a block, a
   // mute or where somebody stopped reading Activity, so the demo leaves them
   // empty (data-model §6). They hold no credential, so NEVER_SEEDED is wrong.

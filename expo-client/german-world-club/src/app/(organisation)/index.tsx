@@ -44,6 +44,7 @@ export default function OrganisationHome() {
         </Card>
       ) : null}
       <Button label={t.profile.publicProfile} onPress={() => router.push('/public-profile')} variant="secondary" />
+      <Button label={t.referrals.entry} onPress={() => router.push('/referrals')} variant="secondary" />
       <Button label={t.common.signOut} onPress={signOut} variant="danger" />
     </FormScreen>
   );

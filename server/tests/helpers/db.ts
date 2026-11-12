@@ -50,3 +50,19 @@ if (!hasDatabase) {
 export async function resetServerFaults(pool: { query(sql: string): Promise<unknown> }) {
   await pool.query('TRUNCATE server_faults, server_fault_suppressions')
 }
+
+/**
+ * Empty the referral tables between tests (feature 018).
+ *
+ * TRUNCATE on purpose, for the same reason as above: referrals, XP entries and
+ * rates refuse UPDATE and DELETE by trigger (FR-014), and TRUNCATE fires no row
+ * triggers. This and resetAuthTables are the only callers.
+ *
+ * The rate table is emptied too — a test that set a rate must not leak it into
+ * the next — and the migration's initial 100 XP row put back, because every
+ * award reads "the rate in force" and there must always be one.
+ */
+export async function resetReferrals(pool: { query(sql: string): Promise<unknown> }) {
+  await pool.query('TRUNCATE xp_entries, referrals, referral_links, referral_xp_rates RESTART IDENTITY CASCADE')
+  await pool.query(`INSERT INTO referral_xp_rates (xp, set_by, reason) VALUES (100, NULL, 'initial rate')`)
+}

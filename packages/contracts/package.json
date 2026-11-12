@@ -23,7 +23,8 @@
     "./offers": "./src/offers.ts",
     "./server-faults": "./src/server-faults.ts",
     "./request-id": "./src/request-id.ts",
-    "./dial-codes": "./src/dial-codes.ts"
+    "./dial-codes": "./src/dial-codes.ts",
+    "./referrals": "./src/referrals.ts"
   },
   "dependencies": {
     "zod": "^4.6.5"
