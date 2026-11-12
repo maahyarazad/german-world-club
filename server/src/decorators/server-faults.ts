@@ -75,7 +75,7 @@ const NAME_MAX = 100
 const ROUTE_MAX = 300
 
 const MINUTE_MS = 60_000
-/** Longer than one insert's statement timeout, far shorter than server.ts's 15 s hard exit. */
+/** Longer than one insert's statement timeout, far shorter than gwc-server.ts's 15 s hard exit. */
 const SHUTDOWN_DRAIN_MS = 2000
 
 function sqlInsert(pool: Pool) {
