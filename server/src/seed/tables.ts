@@ -89,6 +89,10 @@ export const SEEDED = Object.freeze([
   'member_blocks',
   'member_mutes',
   'member_activity_cursor',
+  // Feature 020: when the next message email to a recipient may be sent. No
+  // seeded fact implies an email was scheduled, so the demo leaves it empty;
+  // it holds no credential, so NEVER_SEEDED would be wrong.
+  'message_mail_schedule',
 
   // --- Push notifications (011) ----------------------------------------------
   // Not seeded: no seeded fact implies a member chose anything, and no row

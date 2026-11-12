@@ -77,6 +77,11 @@ export function createMailClient({ host, port = 587, user, pass, from, origin = 
         // The same id on a retry, so a mail whose acknowledgement was lost is
         // recognisable as a repeat by the receiving side.
         messageId: `<${id}@german-world-club>`,
+        // Every platform mail is machine-sent and nobody reads replies to it
+        // (feature 020, research R6): these stop out-of-office and other
+        // auto-responders from answering, which would otherwise bounce
+        // between two robots or land in MAIL_FROM unread.
+        headers: { 'Auto-Submitted': 'auto-generated', 'X-Auto-Response-Suppress': 'All' },
       })
       return { delivered: true, messageId: id, providerId: info?.messageId ?? null }
     },

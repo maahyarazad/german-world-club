@@ -110,7 +110,7 @@ with A's message exists. B's own listing shows no button.
 
 ### Tests (write first)
 
-- [ ] T006 [P] [US1] Create `client/tests/member/listing-request.test.tsx`, using `renderConsole`
+- [X] T006 [P] [US1] Create `client/tests/member/listing-request.test.tsx`, using `renderConsole`
   and `mockCapabilityFetch(memberSnapshot(), { extraRoutes })` with stubbed
   `/marketplace/categories`, `/marketplace/listings` and `/marketplace/terms` (as in
   `tests/member/marketplace.test.tsx`):
@@ -125,12 +125,12 @@ with A's message exists. B's own listing shows no button.
 
 ### Implementation
 
-- [ ] T007 [P] [US1] Web i18n: add a `memberRequests` namespace to `client/src/i18n/de.ts` and
+- [X] T007 [P] [US1] Web i18n: add a `memberRequests` namespace to `client/src/i18n/de.ts` and
   `en.ts`. Keys: `send` (Anfrage senden / Send request), `dialogTitle`, `placeholder`, `counter`
   ("{n}/4000"), `submit`, `cancel`, `sent` (Anfrage gesendet / Request sent), `openConversation`,
   `closed` (this listing no longer accepts requests), `slowDown`, `failed`. Run
   `npm run -w client test:i18n`.
-- [ ] T008 [US1] In `client/src/member/Marketplace.tsx`, on each listing `<li>`:
+- [X] T008 [US1] In `client/src/member/Marketplace.tsx`, on each listing `<li>`:
   - when `listing.owner.id !== snapshot.id` and `listing.contact?.available`, render a
     **Send request** button that opens the existing `Modal` from `./threads/Modal` with a
     `<textarea maxLength={MESSAGE_MAX}>` and a counter;
@@ -141,7 +141,7 @@ with A's message exists. B's own listing shows no button.
     otherwise log and show `failed`.
 
   Comment why the button is hidden on your own listing but the server still decides.
-- [ ] T009 [P] [US1] App: add `messagingApi` to `expo-client/german-world-club/src/api/endpoints.ts`:
+- [X] T009 [P] [US1] App: add `messagingApi` to `expo-client/german-world-club/src/api/endpoints.ts`:
   - `inquire(listingId, body)` → `InquireResponse`;
   - `inbox(cursor)` → `InboxPage`;
   - `read(id, cursor)` → `ConversationView`;
@@ -149,7 +149,7 @@ with A's message exists. B's own listing shows no button.
 
   All typed from `@gwc/contracts/messaging`. Add a `requests` namespace to
   `src/i18n/en.ts` / `de.ts` with the same keys as T007.
-- [ ] T010 [US1] App: in `expo-client/german-world-club/src/components/listing-detail.tsx`, show
+- [X] T010 [US1] App: in `expo-client/german-world-club/src/components/listing-detail.tsx`, show
   a **Send request** `Button` when the listing isn't the signed-in member's own (from
   `useSession()`) and `contact.available`. It pushes `/marketplace/request/[id]`. Create
   `expo-client/german-world-club/src/app/(member)/marketplace/request/[id].tsx`: a `FormScreen`
@@ -171,7 +171,7 @@ A burst of 10 gives one row with `count = 10`. B replies and one row appears for
 
 ### Tests (write first)
 
-- [ ] T011 [P] [US2] Create `server/tests/messaging/notify-mail.test.ts`, using the messaging
+- [X] T011 [P] [US2] Create `server/tests/messaging/notify-mail.test.ts`, using the messaging
   helpers and reading `mail_outbox` directly:
   1. A's request gives exactly 1 unsent row to B's address, template `messaging.new-message`,
      `next_attempt_at` between 50 s and 70 s from now, `variables` with `listingTitle`, A's
@@ -185,7 +185,7 @@ A burst of 10 gives one row with `count = 10`. B replies and one row appears for
 
   Counter-assertion: with `app.notifyMessage` unset (`delete`), no row appears, which proves the
   rows come from this feature.
-- [ ] T012 [P] [US2] Add a case to `server/tests/integrations/` (or the existing mail-template
+- [X] T012 [P] [US2] Add a case to `server/tests/integrations/` (or the existing mail-template
   test file, if there is one; otherwise create
   `server/tests/ops/mail-template-messaging.test.ts`): `renderMail('messaging.new-message', vars,
   { origin })`'s
@@ -198,14 +198,14 @@ A burst of 10 gives one row with `count = 10`. B replies and one row appears for
 
 ### Implementation
 
-- [ ] T013 [US2] Create `server/migrations/041_message_mail.sql`: the table
+- [X] T013 [US2] Create `server/migrations/041_message_mail.sql`: the table
   `message_mail_schedule (conversation_id uuid REFERENCES conversations ON DELETE CASCADE,
   member_id uuid REFERENCES members ON DELETE RESTRICT, pending_message_id text,
   last_scheduled_for timestamptz, PRIMARY KEY (conversation_id, member_id))`, with a header
   comment pointing to research R3. Add `'message_mail_schedule'` to `server/src/seed/tables.ts`
   next to `member_activity_cursor`, with the same comment rationale (writable; no seeded fact
   implies a row).
-- [ ] T014 [US2] Create `server/src/modules/messaging/application/notify-mail.ts` exporting
+- [X] T014 [US2] Create `server/src/modules/messaging/application/notify-mail.ts` exporting
   `scheduleMessageMail(app, { conversationId, messageId, recipientIds })`. For each recipient, in
   its own `withTransaction`:
   1. **Eligibility (R4)**: load the recipient (`status`, `email`, `email_suppressed`,
@@ -226,11 +226,11 @@ A burst of 10 gives one row with `count = 10`. B replies and one row appears for
 
   Variables are per data-model.md, with the listing title read via the conversation's subject.
   Comment each step with why (R3).
-- [ ] T015 [US2] Create `server/src/decorators/message-mail.ts` with `registerMessageMail(app)`,
+- [X] T015 [US2] Create `server/src/decorators/message-mail.ts` with `registerMessageMail(app)`,
   which does `app.decorate('notifyMessage', (event) => scheduleMessageMail(app, event))`.
   Register it in `server/src/app.ts` right after `registerMail(app)`. Leave the `notifyMessage?`
   typing in `src/types/fastify.d.ts` optional, so suites can remove it.
-- [ ] T016 [US2] Add `case 'messaging.new-message'` to `renderMail` in
+- [X] T016 [US2] Add `case 'messaging.new-message'` to `renderMail` in
   `server/src/integrations/mail-templates.ts`, per contracts/http-and-ui.md: subject singular or
   plural with the listing title, body German then English via `both()`, greeting, the latest
   messages (sender name: text), the link, and the "replies are not read" line. In
@@ -286,12 +286,12 @@ it, replies. A sees the reply. Both work on web and app.
     `unreadCount` over the first inbox page), polled with the same `useUnread`-style hook
     (visibility-aware, 60 s, refresh on focus) as Activity's badge;
   - add `nachrichten` to any route-guard or unbuilt-area lists that enumerate member tabs.
-- [ ] T022 [P] [US3] App: create
+- [X] T022 [P] [US3] App: create
   `expo-client/german-world-club/src/app/(member)/marketplace/messages/index.tsx` (inbox, using
   `usePaged(messagingApi.inbox)`, rows → `[id]`) and `messages/[id].tsx` (conversation, reply
   box, own messages right-aligned). Register both in `(member)/marketplace/_layout.tsx`. Add i18n
   keys under `requests`/`messages` to both app catalogues.
-- [ ] T023 [US3] App: in `expo-client/german-world-club/src/app/(member)/marketplace/index.tsx`,
+- [X] T023 [US3] App: in `expo-client/german-world-club/src/app/(member)/marketplace/index.tsx`,
   add a `headerRight` mail icon (or a text button if no icon component exists) that pushes
   `/marketplace/messages`, with a dot when the inbox's total `unreadCount > 0`, re-read on focus.
 

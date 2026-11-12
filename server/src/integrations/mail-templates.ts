@@ -86,6 +86,30 @@ export function renderMail(template: string, variables: Variables, { origin }: {
       }
     }
 
+    // Feature 020: a message about a listing. The email links to the
+    // conversation; replies to the email itself are not read (Q2), which the
+    // text says in both languages — the headers set in mail.ts stop auto-
+    // responders, this stops people. Names only, never contact details.
+    case 'messaging.new-message': {
+      const title = str(variables.listingTitle)
+      const count = Math.max(1, Number(variables.count) || 1)
+      const quoted = (Array.isArray(variables.messages) ? variables.messages : []) as Array<Record<string, unknown>>
+      const link = `${origin}/konsole/mitglied/nachrichten/${encodeURIComponent(str(variables.conversationId))}`
+      const lines = quoted.map((m) => `${str(m.senderName)}:\n${str(m.body)}`).join('\n\n')
+      const more = (de: boolean) => (count > quoted.length && quoted.length > 0
+        ? (de ? `\n\n… und ${count - quoted.length} weitere.` : `\n\n… and ${count - quoted.length} more.`)
+        : '')
+      return {
+        subject: count > 1
+          ? `${count} neue Nachrichten zu „${title}“ / ${count} new messages about "${title}"`
+          : `Neue Nachricht zu „${title}“ / New message about "${title}"`,
+        text: both(
+          `${greeting(variables.recipientName, true)}\n\n${count > 1 ? `Sie haben ${count} neue Nachrichten` : 'Sie haben eine neue Nachricht'} zu Ihrer Unterhaltung über „${title}“.${lines ? `\n\n${lines}` : ''}${more(true)}\n\nZur Unterhaltung:\n${link}\n\nAntworten auf diese E-Mail werden nicht gelesen – bitte antworten Sie über den Link.\n\nGerman World Club`,
+          `${greeting(variables.recipientName, false)}\n\n${count > 1 ? `You have ${count} new messages` : 'You have a new message'} in your conversation about "${title}".${lines ? `\n\n${lines}` : ''}${more(false)}\n\nOpen the conversation:\n${link}\n\nReplies to this email are not read – please answer through the link.\n\nGerman World Club`,
+        ),
+      }
+    }
+
     default:
       // A template with no text is a bug, not a mail to send half-empty: the
       // outbox keeps the row, records this as its last error, and retries.
