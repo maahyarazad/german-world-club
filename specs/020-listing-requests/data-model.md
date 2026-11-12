@@ -62,6 +62,6 @@ contracts (R8).
 
 ## Seed
 
-`message_mail_schedule` goes under `HISTORY`-free **SEEDED = no rows**, because no seeded fact
-implies a scheduled email. It's listed in `server/src/seed/tables.ts` as written-by-the-
-application, the way `member_activity_cursor` is.
+`message_mail_schedule` is listed in `server/src/seed/tables.ts` and left empty by the demo
+seed: no seeded fact implies an email that was scheduled. It's the same treatment
+`member_activity_cursor` gets (writable, but nothing seeded implies a row).
