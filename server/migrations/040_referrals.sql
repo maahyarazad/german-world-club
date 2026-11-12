@@ -15,6 +15,13 @@
 -- TRUNCATE fires no row triggers. Only the test reset uses it
 -- (tests/helpers/db.ts resetReferrals); nothing in src/ truncates these tables.
 
+-- Every trigger below is created as `DROP TRIGGER IF EXISTS` + `CREATE
+-- TRIGGER`, so the file is safe to re-run. On a first apply each DROP finds
+-- nothing and Postgres prints a NOTICE ("does not exist, skipping") — six of
+-- them, which read like failures and are not. LOCAL: the runner wraps each file
+-- in its own transaction, so this lasts for this file only.
+SET LOCAL client_min_messages = warning;
+
 -- Not used below, which is what allows ADD VALUE inside the runner's
 -- transaction (as in 030_server_faults.sql).
 ALTER TYPE admin_module ADD VALUE IF NOT EXISTS 'referrals';
