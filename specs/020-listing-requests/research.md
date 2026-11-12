@@ -86,7 +86,7 @@ body text covers the rest.
 ## R7. A request needs a recipient who can be reached
 
 **Decision**: `inquire()` additionally refuses when either side blocked the other. It answers
-`422 listing-not-inquirable`, the same refusal as a closed listing, so a block isn't revealed.
+`410 gone`, the same refusal as a closed listing, so a block isn't revealed.
 The message length stays at the existing **1–4000** characters (the database `CHECK` in
 `018_messaging.sql`). The spec's FR-004 (2000) is amended to match, rather than tightening a
 constraint that existing data obeys.

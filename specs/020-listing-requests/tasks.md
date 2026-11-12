@@ -251,7 +251,7 @@ it, replies. A sees the reply. Both work on web and app.
 
 ### Tests (write first)
 
-- [ ] T017 [P] [US3] Create `client/tests/member/messages.test.tsx`:
+- [X] T017 [P] [US3] Create `client/tests/member/messages.test.tsx`:
   - `/konsole/mitglied/nachrichten` with a stubbed `/messages/conversations` lists items showing
     the listing title, counterpart name, excerpt and an unread marker when `unreadCount > 0`;
   - `/konsole/mitglied/nachrichten/<id>` with a stubbed `/messages/conversations/<id>` shows the
@@ -264,14 +264,14 @@ it, replies. A sees the reply. Both work on web and app.
 
 ### Implementation
 
-- [ ] T018 [P] [US3] Web i18n: add a `memberMessages` namespace to both catalogues: `tabLabel`
+- [X] T018 [P] [US3] Web i18n: add a `memberMessages` namespace to both catalogues: `tabLabel`
   (Nachrichten / Messages), `title`, `empty`, `unread`, `you`, `reply`, `send`, `listingClosed`,
   `loadFailed`, `back`, `about` ("zu {title}" / "about {title}"), `listingGone`. Run `test:i18n`.
-- [ ] T019 [US3] Create `client/src/member/messages/Inbox.tsx`: a paged
+- [X] T019 [US3] Create `client/src/member/messages/Inbox.tsx`: a paged
   `GET /messages/conversations` list. Each row is a link to `nachrichten/<id>` showing the
   listing title (or `listingGone`), `counterpart.displayName`, the `lastMessage.excerpt`, a
   formatted time, and an unread pill. Include a load-failed state with retry. Newest first.
-- [ ] T020 [US3] Create `client/src/member/messages/Conversation.tsx`:
+- [X] T020 [US3] Create `client/src/member/messages/Conversation.tsx`:
   - `GET /messages/conversations/:id`; the messages arrive newest first, so reverse them for
     display;
   - own messages (`senderId === snapshot.id`) aligned right;
@@ -279,7 +279,7 @@ it, replies. A sees the reply. Both work on web and app.
   - a reply `textarea` (max 4000) posting to `/messages/conversations/:id/messages` and
     appending the result;
   - 404 → a not-found state; 429 → `slowDown` from `memberRequests`.
-- [ ] T021 [US3] Wire the web routes and tab:
+- [X] T021 [US3] Wire the web routes and tab:
   - `nachrichten` and `nachrichten/:id` under `/konsole/mitglied` in
     `client/src/console/routes.tsx`;
   - a Messages item in `client/src/member/MemberLayout.tsx` with an unread badge (sum of
@@ -301,14 +301,14 @@ it, replies. A sees the reply. Both work on web and app.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T024 [P] Add a short paragraph to `CLAUDE.md`'s marketplace/messaging section: requests use
+- [X] T024 [P] Add a short paragraph to `CLAUDE.md`'s marketplace/messaging section: requests use
   008's inquiry; `app.notifyMessage` is the email scheduler; there's one pending email per
   recipient per conversation, merged under a row lock, spaced 15 minutes apart, with nothing
   dropped (research R3); emails are bilingual and replies to them aren't read; recipients who
   are blocked, locked, suppressed or have no address are skipped.
-- [ ] T025 [P] Add a `MAIL_FROM` note to `server/README.md`'s Environment table: it should be a
+- [X] T025 [P] Add a `MAIL_FROM` note to `server/README.md`'s Environment table: it should be a
   no-reply address, because message emails tell people replies aren't read (R6).
-- [ ] T026 Run the gates:
+- [X] T026 Run the gates:
   - `DATABASE_URL=… npx vitest run` in `server/` (compare against the known failures already on
     `main`: the `seed:demo` gate and 3 resilience budget tests);
   - `npm run -w client test` and `test:i18n`;

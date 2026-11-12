@@ -37,10 +37,33 @@ function useUnread() {
   return { unread, refresh, clear: () => setUnread(0) }
 }
 
+/**
+ * Unread messages (feature 020), polled exactly like Activity's badge above:
+ * there is no push or socket to be told by. The sum over the first inbox page
+ * — the conversations with the newest activity, which is where anything new is.
+ */
+function useUnreadMessages() {
+  const [unread, setUnread] = useState(0)
+  const refresh = useCallback(() => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    void get('/messages/conversations')
+      .then((b) => setUnread((b as { items: { unreadCount: number }[] }).items.reduce((n, c) => n + (c.unreadCount ?? 0), 0)))
+      .catch((err) => console.error('useUnreadMessages.refresh', err instanceof ApiError ? err.problem : err))
+  }, [])
+  useEffect(() => {
+    refresh()
+    const timer = setInterval(refresh, UNREAD_POLL_MS)
+    window.addEventListener('focus', refresh)
+    return () => { clearInterval(timer); window.removeEventListener('focus', refresh) }
+  }, [refresh])
+  return unread
+}
+
 export function MemberLayout() {
   const t = useTranslations()
   const { locale } = useLocale()
   const { unread } = useUnread()
+  const unreadMessages = useUnreadMessages()
   // No `module` on these items — Sidebar.tsx's label fallback is `t.modules[…]`,
   // which only exists for staff modules, so each label is named explicitly.
   const items: readonly SidebarItem[] = [
@@ -57,6 +80,17 @@ export function MemberLayout() {
       ),
     },
     { to: '/konsole/mitglied', end: true, label: t.memberMarketplace.tabLabel },
+    {
+      to: '/konsole/mitglied/nachrichten',
+      label: (
+        <span className="flex items-center gap-2">
+          {t.memberMessages.tabLabel}
+          {unreadMessages > 0 && (
+            <span className="rounded-full bg-accent px-1.5 text-[11px] font-semibold text-ink">{formatNumber(unreadMessages, locale)}</span>
+          )}
+        </span>
+      ),
+    },
     { to: '/konsole/mitglied/profil', label: t.memberProfile.tabLabel },
     { to: '/konsole/mitglied/empfehlen', label: t.referrals.tabLabel },
   ]

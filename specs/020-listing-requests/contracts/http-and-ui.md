@@ -4,14 +4,14 @@
 
 | Route | Change in 020 |
 |---|---|
-| `POST /marketplace/listings/:id/inquire` `{ body }` → `201 { conversationId, created, message }` | Also refuses `422 listing-not-inquirable` when either side has blocked the other (R7). Unchanged otherwise. |
+| `POST /marketplace/listings/:id/inquire` `{ body }` → `201 { conversationId, created, message }` | Also refuses `410 gone` when either side has blocked the other, the same answer as a closed listing or a lapsed owner (R7). Unchanged otherwise. |
 | `POST /messages/conversations/:id/messages` `{ body }` → `201 Message` | None. It already triggers notification. |
 | `GET /messages/conversations?cursor=` → `InboxPage` | Response is the contract shape, with `subject.title`, `counterpart` and `lastMessage` (R8) |
 | `GET /messages/conversations/:id?cursor=` → `{ conversation, participants, messages, nextCursor }` | `conversation` gains the same fields. Still marks it read. |
 
-Refusals keep their existing types: 404 (not a participant / no such listing), 422
-`listing-not-inquirable`, 422 self-inquiry, and 429 when the message flood limit is hit. No new
-problem types.
+Refusals keep their existing types: 404 `not-found` (not a participant / no such listing),
+410 `gone` (closed listing, lapsed owner or block), 400 `validation-failed` (own listing, empty or
+too long), and 429 `rate-limited` (message flood limit). No new problem types.
 
 ## Email: `messaging.new-message`
 

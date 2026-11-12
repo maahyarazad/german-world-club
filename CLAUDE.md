@@ -280,6 +280,21 @@ job is already stale, and a queued one sits readable in the table
 contents included, so onboarding can be finished on a laptop — the same
 bargain `seed:demo` makes.
 
+**Requests about listings email the other side (feature 020,
+`specs/020-listing-requests/`).** A request is 008's inquiry (one conversation per
+member per listing); Messages is the inbox on both faces. `app.notifyMessage`,
+called by `notifyAfterCommit` after the message is committed, is the email
+scheduler (`messaging/application/notify-mail.ts`): one `messaging.new-message`
+outbox email per recipient per conversation, a burst merged into the email still
+waiting, the next one scheduled 15 minutes after the last so nothing is dropped.
+"Waiting" means `mail_outbox.next_attempt_at` still equals
+`message_mail_schedule.last_scheduled_for` — written by one statement, compared
+for equality, because `mail.deliver`'s lease moves it and merging into an email
+being sent would lose the message. No email to locked, suppressed or
+address-less recipients or across a block (which also refuses a new request,
+answering like a lapsed owner). Mails are German then English and say replies
+are not read; every mail carries `Auto-Submitted`.
+
 **Member events are `/member/events`, not `/events`.** `/events` is the
 public, indexed page surface; member JSON with prices and seat counts must not
 inherit its crawl posture. Capacity is still the trigger's job, and a cancelled

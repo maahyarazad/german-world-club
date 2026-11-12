@@ -40,3 +40,22 @@ npx tsc --noEmit -p client && npx tsc --noEmit -p expo-client/german-world-club
    when B has replied.
 9. **Languages.** Repeat step 1 with the console in English. The email contains both languages
    either way.
+
+## Walkthrough record (2026-11-12)
+
+Not yet walked by hand (T027 open). What the automated suites already prove, per step:
+
+| Step | Covered by |
+|---|---|
+| 1 A sends a request; email queued to B | `client/tests/member/listing-request.test.tsx`, `server/tests/messaging/notify-mail.test.ts` |
+| 2 No button on own / closed listing | `listing-request.test.tsx`; server refusals in `tests/messaging/inquiry.test.ts` |
+| 3 B reads (unread) and replies; email to A | `client/tests/member/messages.test.tsx`, `notify-mail.test.ts` |
+| 4 Burst → one email "N new messages" | `notify-mail.test.ts` |
+| 5 Next email ≥ 15 min after the last | `notify-mail.test.ts` |
+| 6 Closed listing: old conversation still answerable | `inquiry.test.ts` (008 FR-027) |
+| 7 Locked / blocked: no request, no email | `inquiry.test.ts`, `notify-mail.test.ts` |
+| 8 App | `tsc` only. Needs a device. |
+| 9 Email content, both languages | `server/tests/ops/mail-smtp.test.ts` |
+
+Still needs a person: the app screens on a device, and a real email arriving in a real mailbox
+(SMTP configured).
