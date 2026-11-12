@@ -48,6 +48,14 @@ export type ReportState = (typeof REPORT_STATES)[number]
 /** States a listing is visible in the member index in. */
 export const VISIBLE_STATES = Object.freeze(['active'] as const)
 
+/**
+ * Photos and/or videos on one listing. The authority is the
+ * `listing_media_position_bounded` CHECK (position 0–19) in 019_marketplace.sql;
+ * this constant only lets the server and both clients refuse early with the
+ * same number instead of three copies of it.
+ */
+export const LISTING_MEDIA_MAX = 20
+
 /** Only the owner may reach these, and only from `active`. */
 export const OWNER_TERMINAL_STATES = Object.freeze(
   ['sold', 'filled', 'withdrawn'] as const,

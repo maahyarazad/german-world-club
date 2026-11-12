@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
 
-type Page<T> = { items: T[]; nextCursor: string | null };
+// `readonly`: contract pages (e.g. ListingPage) are read-only, and this hook only copies from them.
+type Page<T> = { items: readonly T[]; nextCursor: string | null };
 
 /**
  * A cursor-paged list: first load, pull-to-refresh, load-more.
@@ -24,7 +25,7 @@ export function usePaged<T>(fetchPage: (cursor: string | null) => Promise<Page<T
     try {
       const page = await fetchPage(null);
       if (mine !== generation.current) return;
-      setItems(page.items);
+      setItems([...page.items]);
       setCursor(page.nextCursor);
     } catch (e) {
       console.error('usePaged.reload', e instanceof ApiError ? e.problem : e);

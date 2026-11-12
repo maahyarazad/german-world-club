@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { CATEGORY_DEFS } from '@gwc/contracts/marketplace'
 import { ConsoleRoutes } from '../../src/console/routes'
 import { t } from '../../src/i18n/de'
@@ -58,6 +58,19 @@ function routes({ termsFail = false, failUploads = 0 }: { termsFail?: boolean; f
 
 const poster = () => ({ ...memberSnapshot(), permissions: ['marketplace_post'] })
 
+/**
+ * The form lives in a drawer that stays mounted while closed (feature 017,
+ * R3), so its fields are in the DOM before anyone asks for them. Every test
+ * opens it the way a member does and checks it opened — without that, these
+ * tests would pass against a drawer nobody could open.
+ */
+async function openCompose() {
+  fireEvent.click(await screen.findByRole('button', { name: t.memberMarketplace.newListing }))
+  expect(composeDialog().hasAttribute('open')).toBe(true)
+}
+
+const composeDialog = () => document.querySelector('dialog')!
+
 async function fillBasics() {
   fireEvent.change(await screen.findByLabelText(t.memberMarketplace.titleField), { target: { value: 'BMW 320d Touring' } })
   fireEvent.change(screen.getByLabelText(t.memberMarketplace.body), { target: { value: 'Scheckheftgepflegt, zweite Hand.' } })
@@ -68,6 +81,7 @@ describe('publishing from the member tab', () => {
     const { calls, extraRoutes } = routes()
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     // The category's own required field is on screen — the form knows its
     // category. Before the fix nothing below DESCRIPTION rendered.
@@ -78,6 +92,10 @@ describe('publishing from the member tab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.memberMarketplace.submit }))
 
     await waitFor(() => expect(screen.getByText(t.memberMarketplace.posted)).toBeInTheDocument())
+    // A complete publish closes the panel; the confirmation is on the page,
+    // where it can still be seen.
+    expect(composeDialog().hasAttribute('open')).toBe(false)
+    expect(composeDialog()).not.toContainElement(screen.getByText(t.memberMarketplace.posted))
     const created = calls.find((c) => c.url === 'POST /marketplace/listings')!.body as Record<string, unknown>
     expect(created.category).toBe('vehicle')
     expect(created.details).toEqual({ make: 'BMW' })
@@ -87,6 +105,7 @@ describe('publishing from the member tab', () => {
     const { extraRoutes } = routes({ termsFail: true })
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     expect(await screen.findByText(t.memberMarketplace.loadFailed)).toBeInTheDocument()
     await fillBasics()
@@ -97,6 +116,7 @@ describe('publishing from the member tab', () => {
     const { calls, extraRoutes } = routes()
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     await screen.findByLabelText('make *')
     await fillBasics()
@@ -134,6 +154,7 @@ describe('publishing from the member tab', () => {
     const { extraRoutes } = routes()
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     // The defect: a bare file input rendered as text with nothing clickable.
     expect(await screen.findByRole('button', { name: t.memberMarketplace.mediaChoose })).toBeEnabled()
@@ -152,6 +173,7 @@ describe('publishing from the member tab', () => {
     const { extraRoutes } = routes()
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     await screen.findByRole('button', { name: t.memberMarketplace.mediaChoose })
     fireEvent.change(screen.getByLabelText(t.memberMarketplace.media), {
@@ -165,6 +187,7 @@ describe('publishing from the member tab', () => {
     const { calls, extraRoutes } = routes()
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     await screen.findByLabelText('make *')
     await fillBasics()
@@ -188,6 +211,7 @@ describe('publishing from the member tab', () => {
     const { calls, extraRoutes } = routes({ failUploads: 1 })
     mockCapabilityFetch(poster(), { extraRoutes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
 
     await screen.findByLabelText('make *')
     await fillBasics()
@@ -200,9 +224,14 @@ describe('publishing from the member tab', () => {
 
     expect(await screen.findByText(t.memberMarketplace.mediaFailed)).toBeInTheDocument()
     expect(screen.getByText(t.memberMarketplace.mediaStatus.failed)).toBeInTheDocument()
+    // A partial publish keeps the panel open: the retry only exists in there.
+    expect(composeDialog().hasAttribute('open')).toBe(true)
+    expect(within(composeDialog()).getByRole('button', { name: t.memberMarketplace.mediaRetry })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: t.memberMarketplace.mediaRetry }))
     await waitFor(() => expect(screen.queryByText('front.jpg')).toBeNull())
+    // Counter-assertion: once everything is attached the panel closes as for a clean publish.
+    expect(composeDialog().hasAttribute('open')).toBe(false)
 
     // One listing, not two: the retry attached to the listing that exists.
     expect(calls.filter((c) => c.url === 'POST /marketplace/listings')).toHaveLength(1)

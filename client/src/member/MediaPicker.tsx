@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
+import { LISTING_MEDIA_MAX } from '@gwc/contracts/marketplace'
 import Button from '../components/ui/Button'
 import Field from '../components/ui/Field'
 import StatusPill from '../components/ui/StatusPill'
@@ -26,9 +27,6 @@ export const MEDIA_TYPES = Object.freeze([
   'image/jpeg', 'image/png', 'image/webp', 'image/avif',
   'video/mp4', 'video/webm', 'video/quicktime',
 ])
-
-/** data-model.md §5; also a CHECK constraint on marketplace_listing_media. */
-export const MAX_MEDIA_PER_LISTING = 20
 
 export type MediaStatus = 'pending' | 'uploading' | 'processing' | 'attached' | 'failed'
 
@@ -79,7 +77,7 @@ export function MediaPicker({ items, onChange, onError, disabled = false }: {
     // an upload that is certain to be refused.
     if (picked.some((f) => !MEDIA_TYPES.includes(f.type))) return onError(t.memberMarketplace.mediaUnsupported)
     if (picked.some((f) => f.size > MEDIA_MAX_BYTES)) return onError(t.memberMarketplace.mediaTooLarge)
-    if (items.length + picked.length > MAX_MEDIA_PER_LISTING) return onError(t.memberMarketplace.mediaTooMany)
+    if (items.length + picked.length > LISTING_MEDIA_MAX) return onError(t.memberMarketplace.mediaTooMany)
     onError(null)
     onChange([
       ...items,
@@ -106,7 +104,7 @@ export function MediaPicker({ items, onChange, onError, disabled = false }: {
     if (!disabled) add(event.dataTransfer.files)
   }
 
-  const full = items.length >= MAX_MEDIA_PER_LISTING
+  const full = items.length >= LISTING_MEDIA_MAX
 
   return (
     <div className="flex flex-col gap-3">

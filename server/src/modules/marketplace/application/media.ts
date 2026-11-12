@@ -1,4 +1,5 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
+import { LISTING_MEDIA_MAX } from '@gwc/contracts/marketplace'
 import { query, withTransaction } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { urlForVariant } from '../../media/application/format.ts'
@@ -18,9 +19,6 @@ import type { GwcApp } from '../../../app.ts'
  * for a video that means its `poster` variant, so a browse page never
  * autoplays and never waits on a transcode.
  */
-
-/** Bound from data-model.md §5; also a CHECK constraint on the table. */
-export const MAX_MEDIA_PER_LISTING = 20
 
 export async function attachMedia(
   app: GwcApp,
@@ -71,9 +69,9 @@ export async function attachMedia(
       [listingId],
     )
     const next = Number(existing[0]!.last) + 1
-    if (next >= MAX_MEDIA_PER_LISTING) {
+    if (next >= LISTING_MEDIA_MAX) {
       throw forbidden(PROBLEMS.VALIDATION_FAILED,
-        `A listing may carry at most ${MAX_MEDIA_PER_LISTING} media items.`)
+        `A listing may carry at most ${LISTING_MEDIA_MAX} media items.`)
     }
 
     await client.query(

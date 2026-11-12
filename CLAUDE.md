@@ -188,8 +188,10 @@ in `routes.ts`, the `/admin/marketplace/*` moderation routes in
 `modules/messaging/` is its own module because it outlives the marketplace —
 threads and system notifications will ride the same tables — so a conversation
 references its subject softly (`subject_type`, `subject_id`) rather than by a
-foreign key to listings, and the application enforces that reference. Four
-rules that look optional and are not:
+foreign key to listings, and the application enforces that reference. On the
+clients (feature 017), the web compose form lives in a right-edge `Drawer`
+opened from the page header, and the app's Marketplace tab is the fifth — and
+last — bottom-bar slot. Four rules that look optional and are not:
 
 - **Ownership refusals are 404, never 403**, and indistinguishable from an
   absent id (status, body and headers — `tests/marketplace/ownership.test.ts`).

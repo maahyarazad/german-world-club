@@ -478,6 +478,8 @@ export const de = {
     title: 'Marktplatz',
     subtitle: 'Anzeigen von Mitgliedern für Mitglieder — kein Zahlungsverkehr, nur der Kontakt.',
     composeTitle: 'Neue Anzeige',
+    newListing: 'Neue Anzeige',
+    close: 'Schließen',
     browseTitle: 'Anzeigen durchsuchen',
     category: 'Kategorie',
     mode: 'Art',
