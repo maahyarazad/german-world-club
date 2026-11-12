@@ -81,6 +81,7 @@ export default function Profile() {
       <Button label={t.profile.edit} onPress={() => router.push('/profile/edit')} variant="secondary" />
       <Button label={t.profile.privacy} onPress={() => router.push('/profile/privacy')} variant="secondary" />
       <Button label={t.notifications.settingsLink} onPress={() => router.push('/profile/notifications')} variant="secondary" />
+      <Button label={t.referrals.entry} onPress={() => router.push('/profile/referrals')} variant="secondary" />
 
       <TabChips tab={tab} onChange={setTab} />
       <View>

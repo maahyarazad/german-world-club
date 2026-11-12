@@ -275,6 +275,46 @@ const ROUTE_CLASSES = [
   // deletes them. The probe is a well-formed ULID that no fault carries, so a
   // reached route answers 404.
   { name: 'server faults list', url: '/admin/server-faults', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
+  // --- Referral links and XP (018) ----------------------------------------------
+  // A person's own link, referrals and XP: one mount per audience (research
+  // R13). The member mount carries no onboarding/profiling flag, so applicants
+  // are refused by 10-auth (tests/referrals/applicant-refused.test.ts).
+  { name: 'referrals summary', url: '/referrals', method: 'GET', audience: 'member' },
+  { name: 'referrals replace link', url: '/referrals/link/replace', method: 'POST', audience: 'member' },
+  { name: 'referrals summary (merchant)', url: '/referrals/merchant', method: 'GET', audience: 'merchant' },
+  { name: 'referrals replace link (merchant)', url: '/referrals/merchant/link/replace', method: 'POST', audience: 'merchant' },
+  { name: 'referrals summary (partner)', url: '/referrals/partner', method: 'GET', audience: 'partner' },
+  { name: 'referrals replace link (partner)', url: '/referrals/partner/link/replace', method: 'POST', audience: 'partner' },
+  // Staff earn XP too (spec Q2), so every staff member has a link of their own
+  // without a grant — see the anyStaff test below for why that is the third
+  // and fourth exemption rather than a module.
+  { name: 'referrals summary (own, staff)', url: '/admin/referrals/me', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'referrals replace link (own, staff)', url: '/admin/referrals/me/link/replace', method: 'POST', audience: 'staff', anyStaff: true },
+  { name: 'referrals list', url: '/referrals/referrals', method: 'GET', audience: 'member' },
+  { name: 'referrals xp history', url: '/referrals/xp', method: 'GET', audience: 'member' },
+  { name: 'referrals list (merchant)', url: '/referrals/merchant/referrals', method: 'GET', audience: 'merchant' },
+  { name: 'referrals xp history (merchant)', url: '/referrals/merchant/xp', method: 'GET', audience: 'merchant' },
+  { name: 'referrals list (partner)', url: '/referrals/partner/referrals', method: 'GET', audience: 'partner' },
+  { name: 'referrals xp history (partner)', url: '/referrals/partner/xp', method: 'GET', audience: 'partner' },
+  { name: 'referrals list (own, staff)', url: '/admin/referrals/me/referrals', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'referrals xp history (own, staff)', url: '/admin/referrals/me/xp', method: 'GET', audience: 'staff', anyStaff: true },
+  // Overseeing everybody's referrals is the `referrals` module (research R12):
+  // read to look, status to disable or reverse, edit to change the rate.
+  { name: 'referral owners (staff)', url: '/admin/referrals/owners', method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner (staff)', url: '/admin/referrals/owners/:kind/:id', probe: `/admin/referrals/owners/member/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner referrals (staff)', url: '/admin/referrals/owners/:kind/:id/referrals', probe: `/admin/referrals/owners/member/${randomUUID()}/referrals`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral owner xp (staff)', url: '/admin/referrals/owners/:kind/:id/xp', probe: `/admin/referrals/owners/member/${randomUUID()}/xp`, method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'referral link disable (staff)', url: '/admin/referrals/links/:linkId/disable', probe: `/admin/referrals/links/${randomUUID()}/disable`, method: 'POST', audience: 'staff', module: 'referrals', flag: 'status' },
+  { name: 'xp reverse (staff)', url: '/admin/referrals/xp/:entryId/reverse', probe: `/admin/referrals/xp/${randomUUID()}/reverse`, method: 'POST', audience: 'staff', module: 'referrals', flag: 'status' },
+  { name: 'xp rate (staff)', url: '/admin/referrals/xp-rate', method: 'GET', audience: 'staff', module: 'referrals', flag: 'read' },
+  { name: 'xp rate change (staff)', url: '/admin/referrals/xp-rate', method: 'PUT', audience: 'staff', module: 'referrals', flag: 'edit' },
+  // Public, never indexed (surfaces `referral-landing`, `app-links`): anyone
+  // holding a link must be able to open it, and an OS must be able to read the
+  // two app-link files without credentials (research R8, R9).
+  { name: 'referral landing', url: '/r/:code', probe: '/r/zzzz9999', method: 'GET', audience: 'public' },
+  { name: 'referral landing (English)', url: '/r/:code/en', probe: '/r/zzzz9999/en', method: 'GET', audience: 'public' },
+  { name: 'iOS app-link file', url: '/.well-known/apple-app-site-association', method: 'GET', audience: 'public' },
+  { name: 'Android app-link file', url: '/.well-known/assetlinks.json', method: 'GET', audience: 'public' },
   { name: 'server fault by request id', url: '/admin/server-faults/by-request/:requestId', probe: '/admin/server-faults/by-request/01J8Z3K2QX0000000000000000', method: 'GET', audience: 'staff', module: 'server_faults', flag: 'read' },
   // The console's SPA shell. Public because it IS public: an empty application
   // shell with no member content, no capability data and no principal in it.
@@ -367,8 +407,15 @@ describe('the declared matrix', () => {
    * This list is written out in full so growing it is a decision, not a drift.
    * If a third route appears here, `anyStaff` has become the easy way past the
    * gate rather than the narrow answer to two specific problems.
+   *
+   * Grown deliberately by feature 018: a staff member's OWN referral link
+   * (`/admin/referrals/me`: the link, replacing it, the referrals and the XP history). The same shape as the first two —
+   * about the caller's own record, nothing else in the system — and the spec
+   * decided (Q2) that every staff member earns XP, so making it a module grant
+   * would let somebody else's grant decide whether a staff member may refer at
+   * all. Overseeing OTHER people's referrals stays on the `referrals` module.
    */
-  it('uses the anyStaff exemption on exactly two routes, both about the caller\'s own session', () => {
+  it('uses the anyStaff exemption only on routes about the caller\'s own session or own referral link', () => {
     const exempt = app
       .routePostures()
       .filter((r) => r.auth.anyStaff === true)
@@ -376,7 +423,10 @@ describe('the declared matrix', () => {
       .filter((k) => !k.startsWith('HEAD '))
       .sort()
 
-    expect(exempt).toEqual(['GET /auth/session', 'POST /auth/staff/sign-out'])
+    expect(exempt).toEqual([
+      'GET /admin/referrals/me', 'GET /admin/referrals/me/referrals', 'GET /admin/referrals/me/xp',
+      'GET /auth/session', 'POST /admin/referrals/me/link/replace', 'POST /auth/staff/sign-out',
+    ])
   })
 })
 

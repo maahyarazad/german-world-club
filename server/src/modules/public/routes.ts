@@ -116,6 +116,66 @@ export default fp(
     // the gated one, so adding this route cannot be mistaken for relaxing that
     // one (FR-034, FR-037).
     app.get('/marktplatz', publicConfig, controller.marketplaceDiscovery)
+
+    // --- 8. Referral links (018, research R8, R9) ---------------------------
+    //
+    // Public, never indexed (`referral-landing` and `app-links` in
+    // seo/surfaces.ts). `public-read` is enough of a limit for /r: with 32⁸
+    // possible codes, guessing a live one at 300 a minute finds nothing, and a
+    // fail-closed bucket would take a page people were sent to down whenever
+    // Redis is (research R16).
+    // German at /r/<code>, English at /r/<code>/en: one language per URL, and a
+    // path rather than a query because canonical-origin strips unknown queries.
+    for (const url of ['/r/:code', '/r/:code/en']) {
+      app.get(
+        url,
+        { ...publicConfig, schema: { ...htmlRoute.schema, params: z.object({ code: z.string().max(40) }) } },
+        controller.referralLanding,
+      )
+    }
+    const appLinkConfig = {
+      config: { auth: { audience: 'public' }, budget: 'public-page', rateLimit: app.bucket('public-read') },
+    } as const
+    app.get(
+      '/.well-known/apple-app-site-association',
+      {
+        ...appLinkConfig,
+        schema: {
+          response: {
+            200: z.object({
+              applinks: z.object({
+                details: z.array(z.object({
+                  appIDs: z.array(z.string()).optional(),
+                  appID: z.string().optional(),
+                  components: z.array(z.record(z.string(), z.string())).optional(),
+                  paths: z.array(z.string()).optional(),
+                })),
+              }),
+            }),
+          },
+        },
+      },
+      controller.appleAppLinks,
+    )
+    app.get(
+      '/.well-known/assetlinks.json',
+      {
+        ...appLinkConfig,
+        schema: {
+          response: {
+            200: z.array(z.object({
+              relation: z.array(z.string()),
+              target: z.object({
+                namespace: z.literal('android_app'),
+                package_name: z.string(),
+                sha256_cert_fingerprints: z.array(z.string()),
+              }),
+            })),
+          },
+        },
+      },
+      controller.androidAppLinks,
+    )
   },
   { name: 'public-routes', dependencies: ['rate-limit'] },
 )

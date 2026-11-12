@@ -60,6 +60,13 @@ export const MODULES = Object.freeze([
   // rather than `settings` or `jobs`, because stack traces reveal internals and
   // granting either of those should not quietly grant them too.
   'server_faults',
+  // Referral links and XP (feature 018, research R12). `read` views anyone's
+  // links, referrals and XP history; `status` disables a link or reverses an
+  // award — both state changes that need a reason; `edit` changes the XP rate.
+  // `write` and `delete` are unused on purpose: staff create no referral and
+  // nothing in the ledger is ever deleted. A module of its own because XP is to
+  // become money, and granting `members` must not quietly grant control of it.
+  'referrals',
 ] as const)
 
 /** Per-member permission flags — members have no module matrix. */

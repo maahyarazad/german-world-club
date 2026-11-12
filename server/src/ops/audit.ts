@@ -13,6 +13,10 @@ import type { Pool } from 'pg'
 const SAFE_DETAIL_KEYS = new Set([
   'reason', 'module', 'flag', 'audience', 'routeClass', 'bucket', 'deviceIdHash',
   'statusFrom', 'statusTo', 'variant', 'format', 'count', 'sessionId',
+  // Feature 018: the XP an award, reversal or rate change was for. Referral
+  // CODES are deliberately absent — a code is what opens someone's landing
+  // page, so the audit log records link ids instead (research R17).
+  'xp', 'linkId', 'previousLinkId', 'referralId', 'entryId',
 ])
 
 export function sanitizeDetail(detail) {

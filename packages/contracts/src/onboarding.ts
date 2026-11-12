@@ -99,6 +99,14 @@ export const registerRequestSchema = z.object({
   primaryLanguage: z.enum(PRIMARY_LANGUAGES),
   /** Mobile only. Absent marks the web face. */
   deviceId: z.string().min(1).max(128).optional(),
+  /**
+   * Someone's referral code (feature 018), as typed or as carried by a link.
+   * Deliberately loose: the server normalises it and *silently ignores* one
+   * that is malformed, unknown, retired or disabled (FR-006), so the response
+   * cannot tell anybody whether a code exists. A strict pattern here would
+   * answer 400 for a malformed one — an oracle with extra steps.
+   */
+  referralCode: z.string().trim().max(20).optional(),
 })
 
 /**

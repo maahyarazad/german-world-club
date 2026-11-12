@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
+import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals';
 
 import { MobileField } from '@/components/mobile-field';
 import { ThemedText } from '@/components/themed-text';
@@ -39,6 +40,11 @@ export default function Register() {
   const [gender, setGender] = useState<Gender | undefined>(draft.gender);
   const [primaryLanguage, setPrimaryLanguage] = useState<PrimaryLanguage | undefined>(draft.primaryLanguage);
   const [ageConfirmed, setAgeConfirmed] = useState(draft.ageConfirmed === true);
+  // Someone's referral code (feature 018): filled in by a tapped link
+  // (app/r/[code].tsx) or typed by hand — the way in for somebody who installed
+  // the app after tapping. Never checked here: the server ignores one that
+  // credits nobody without saying so (FR-006), and so does this screen.
+  const [referralCode, setReferralCode] = useState(formatReferralCode(draft.referralCode ?? ''));
   const [errors, setErrors] = useState<Errors>({});
   // Return on each text input focuses the next one, in the order they appear.
   const emailRef = useRef<TextInput>(null);
@@ -66,7 +72,11 @@ export default function Register() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    update({ fullName: fullName.trim(), email: email.trim().toLowerCase(), password, mobile: normalisedMobile, birthday, gender, primaryLanguage, ageConfirmed: true });
+    const code = referralCode.trim();
+    update({
+      fullName: fullName.trim(), email: email.trim().toLowerCase(), password, mobile: normalisedMobile, birthday, gender, primaryLanguage, ageConfirmed: true,
+      referralCode: code ? normaliseReferralCode(code) ?? code : undefined,
+    });
     router.push('/country');
   };
 
@@ -133,6 +143,10 @@ export default function Register() {
         <Chip label={t.register.ageConfirm} selected={ageConfirmed} onPress={() => setAgeConfirmed((v) => !v)} />
         {errors.ageConfirmed ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.ageConfirmed}</ThemedText> : null}
       </View>
+
+      <TextField label={t.referrals.codeField} hint={t.referrals.codeFieldHint} value={referralCode}
+        onChangeText={(v) => setReferralCode(formatReferralCode(v))}
+        autoCapitalize="characters" autoCorrect={false} autoComplete="off" />
 
       <Button label={t.common.continue} onPress={next} />
     </FormScreen>

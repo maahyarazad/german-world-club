@@ -72,6 +72,8 @@ import eventRoutes from './modules/events/routes.ts'
 import offerRoutes from './modules/offers/routes.ts'
 import threadRoutes from './modules/threads/routes.ts'
 import threadStaffRoutes from './modules/threads/staff-routes.ts'
+import referralRoutes from './modules/referrals/routes.ts'
+import referralStaffRoutes from './modules/referrals/staff-routes.ts'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIR = path.resolve(HERE, '..', '..', 'client')
@@ -369,6 +371,8 @@ export async function buildApp({
   await app.register(offerRoutes)
   await app.register(threadRoutes)
   await app.register(threadStaffRoutes)
+  await app.register(referralRoutes)
+  await app.register(referralStaffRoutes)
   await app.register(seoStaffRoutes)
   await app.register(serverFaultRoutes)
   await app.register(organisationRoutes)

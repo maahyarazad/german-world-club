@@ -6,6 +6,7 @@ import { issueChallenge, verifyChallenge, OTP_OUTCOME, WEB_DEVICE } from '../../
 import { startSession } from '../../auth/sessions.ts'
 import { loadStatus } from './status.ts'
 import { applyDecision, auditAutomaticDecision } from './review.ts'
+import { recordReferral, auditAttribution } from '../../referrals/application/attribution.ts'
 import type { Decision } from './review.ts'
 import type { GwcApp } from '../../../app.ts'
 
@@ -46,10 +47,19 @@ export async function verifyMobile(
   if (result.outcome !== OTP_OUTCOME.VERIFIED) refuseOutcome(result.outcome)
   const memberId = String(result.accountId)
 
-  await app.pg.query(
-    'UPDATE members SET mobile_verified_at = now() WHERE id = $1 AND mobile_verified_at IS NULL',
-    [memberId],
-  )
+  // Proving the number and recording a referral are one transaction (feature
+  // 018, research R1): this is the moment registration completes, and the only
+  // moment a referral can be recorded. `RETURNING` says whether THIS call is
+  // the one that proved it — a repeated verification (a retry, a second
+  // device) finds the column already set and records nothing.
+  const referral = await withTransaction(app.pg, async (client) => {
+    const { rows } = await client.query(
+      'UPDATE members SET mobile_verified_at = now() WHERE id = $1 AND mobile_verified_at IS NULL RETURNING id',
+      [memberId],
+    )
+    return rows.length > 0 ? recordReferral(client, memberId) : null
+  })
+  if (referral) await auditAttribution(app, referral, { memberId, requestId })
 
   // The face decides how the session travels (the controller: tokens in the
   // body for the app, cookies for the browser) and how long it lives.

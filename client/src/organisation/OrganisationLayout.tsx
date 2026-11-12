@@ -21,6 +21,7 @@ export function OrganisationLayout({ kind }: { kind: 'merchant' | 'partner' }) {
   const items: readonly SidebarItem[] = [
     { to: home, end: true, label: t.organisationPortal.home },
     { to: `${home}/profil`, label: t.organisationProfile.tabLabel },
+    { to: `${home}/empfehlen`, label: t.referrals.tabLabel },
   ]
   return <ConsoleShell title={t.portals[kind]} items={items} signOutPath={`/auth/${kind}/sign-out`} />
 }

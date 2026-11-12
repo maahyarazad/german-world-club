@@ -31,9 +31,10 @@ afterEach(() => vi.unstubAllGlobals())
  * built `threads_moderation` (console/admin/Threads.tsx) and the influencer
  * panel under `members` (console/admin/Influencers.tsx). Feature 011 built
  * `mass_messages` (console/admin/Push.tsx). Feature 012 built
- * `server_faults` (console/admin/ServerFaults.tsx).
+ * `server_faults` (console/admin/ServerFaults.tsx). Feature 018 built
+ * `referrals` (console/admin/Referrals.tsx).
  */
-const BUILT: readonly string[] = ['marketplace_moderation', 'threads_moderation', 'members', 'mass_messages', 'server_faults']
+const BUILT: readonly string[] = ['marketplace_moderation', 'threads_moderation', 'members', 'mass_messages', 'server_faults', 'referrals']
 const GATED = ADMIN_ITEMS.filter((item) => item.module && !BUILT.includes(item.module))
 
 describe('an admin area with no page yet', () => {

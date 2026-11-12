@@ -321,3 +321,45 @@ describe('an applicant with a session', () => {
     expect(screen.queryByRole('heading', { name: t.waitingTitle })).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Feature 018: a referral code carried in by the landing page's `?ref=`.
+ * Prefilled, formatted for reading, sent as typed — and never judged here.
+ */
+describe('registering through a referral link', () => {
+  const register = () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202)
+
+  async function submit() {
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+    await screen.findByRole('heading', { name: t.mobileTitle })
+  }
+
+  it('prefills the code from ?ref=, formatted, and sends it normalised', async () => {
+    const fetchMock = mockCapabilityFetch(null, { extraRoutes: { '/onboarding/register': register } })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren?ref=abcd-efgh' })
+
+    const field = (await screen.findByLabelText(de.referrals.codeField)) as HTMLInputElement
+    expect(field.value).toBe('ABCD-EFGH')
+    await submit()
+    expect(bodyOf(fetchMock, '/onboarding/register')).toMatchObject({ referralCode: 'ABCDEFGH' })
+  })
+
+  it('sends a code it cannot recognise as typed, and says nothing about it', async () => {
+    const fetchMock = mockCapabilityFetch(null, { extraRoutes: { '/onboarding/register': register } })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren?ref=nope' })
+    await submit()
+    expect(bodyOf(fetchMock, '/onboarding/register')).toMatchObject({ referralCode: 'nope' })
+  })
+
+  it('sends no referralCode at all without one', async () => {
+    // Counter-assertion: the field above is filled by the link, not by default.
+    const fetchMock = mockCapabilityFetch(null, { extraRoutes: { '/onboarding/register': register } })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    expect(((await screen.findByLabelText(de.referrals.codeField)) as HTMLInputElement).value).toBe('')
+    await submit()
+    expect(bodyOf(fetchMock, '/onboarding/register')).not.toHaveProperty('referralCode')
+  })
+})

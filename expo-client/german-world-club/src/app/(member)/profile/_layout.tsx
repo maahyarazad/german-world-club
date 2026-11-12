@@ -11,6 +11,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="handle" options={{ presentation: 'modal', title: t.profile.handleTitle }} />
       <Stack.Screen name="privacy" options={{ title: t.profile.privacy }} />
       <Stack.Screen name="notifications" options={{ title: t.notifications.title }} />
+      <Stack.Screen name="referrals" options={{ title: t.referrals.title }} />
     </Stack>
   );
 }
