@@ -26,6 +26,16 @@ configured (`SMSGLOBAL_API_KEY`/`SECRET` in `server/.env`), on purpose: a verifi
 that is never sent is not a verification. Email codes do not need a provider in development:
 with `NODE_ENV=development` the server logs queued mail, code included.
 
+**Referral links open the app only in a native build** (feature 018). A tapped
+`https://<host>/r/<code>` reaches `src/app/r/[code].tsx` through iOS universal links and
+Android App Links, configured in `app.config.js` from `EXPO_PUBLIC_LINK_HOST`. That host must
+equal the host of the server's `CANONICAL_ORIGIN`, which serves the matching
+`/.well-known` files; Android also needs `ANDROID_APP_CERT_SHA256` set on the server. These
+are native settings: an EAS build delivers them, an over-the-air update cannot. A production
+build without `EXPO_PUBLIC_LINK_HOST` is refused by `app.config.js`. In Expo Go and older
+builds the link opens the landing page, whose *Open in the app* button
+(`germanworldclub://r/<code>`) and the code field at Register still work.
+
 ## Checks
 
 ```bash

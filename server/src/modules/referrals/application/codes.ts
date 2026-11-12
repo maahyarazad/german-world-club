@@ -9,7 +9,11 @@ import type { ReferralOwnerKind } from '@gwc/contracts/referrals'
  * the link it names (research R7, R8).
  */
 
-/** Anything with `query` — the pool, or a client inside a transaction. */
+/**
+ * Anything with `query` — the pool, or a client inside a transaction. Rows are
+ * untyped SQL results: every caller names its columns and converts them.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }> }
 
 export type Owner = { kind: ReferralOwnerKind; id: string }

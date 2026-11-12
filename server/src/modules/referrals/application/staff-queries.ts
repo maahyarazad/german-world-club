@@ -34,7 +34,14 @@ const LATEST_LINK = `
      FROM referral_links l WHERE l.owner_kind = o.owner_kind AND l.owner_id = o.owner_id
     ORDER BY l.created_at DESC, l.id DESC LIMIT 1)`
 
-async function toOwner(db: Queryable, row: Record<string, any>): Promise<StaffReferralOwner> {
+type OwnerRow = {
+  owner_kind: string
+  owner_id: string
+  name: string | null
+  link: { id: string; code: string; state: 'active' | 'retired' | 'disabled' } | null
+}
+
+async function toOwner(db: Queryable, row: OwnerRow): Promise<StaffReferralOwner> {
   const owner: Owner = { kind: row.owner_kind as ReferralOwnerKind, id: String(row.owner_id) }
   const [xpBalance, counts] = await Promise.all([balanceOf(db, owner), stageCounts(db, owner)])
   return {

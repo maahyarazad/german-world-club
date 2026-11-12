@@ -385,6 +385,51 @@ rules that look optional and are not:
   an ad-hoc `DELETE` is refused. The elsewhere branch's GWC match and outcome
   are computed at submit from the cities as saved, not when they are entered.
 
+**Referral links and XP (feature 018, `specs/018-referral-xp/`).** Everybody who
+can sign in — member, merchant user, partner user, staff — has one personal link,
+`/r/<code>`, created on first read of Refer & earn. XP is to become real money,
+so it is treated as money already. Six rules that look optional and are not:
+
+- **A referral is recorded at mobile verification, never at `register`.**
+  `/onboarding/register` only resolves the code into
+  `membership_applications.pending_referral_link_id` (the last code before
+  verification wins); `verifyMobile` records the referral *and* its award in
+  the transaction that sets `mobile_verified_at`, and only when that update is
+  the one that set it. Register creates the account before any proof —
+  recording there pays XP for any number typed into the form. The link and its
+  owner are re-checked at that moment, and the owner's own email or mobile
+  credits nobody (silently, audited as `referral_refused`).
+- **The ledger is append-only by trigger, and no balance is stored.**
+  `referrals`, `xp_entries` and `referral_xp_rates` refuse UPDATE and DELETE
+  (`040_referrals.sql`); one referrer per person, one award per referral and
+  one reversal per award are unique constraints. A balance is
+  `SUM(amount)`. A correction is a reversal entry; a new rate is a new row, and
+  an award copies the amount in force. Tests empty these tables only through
+  `resetReferrals` (TRUNCATE, which fires no row trigger).
+- **Stages are computed on read** from `membership_applications` and
+  `member_profiling` (`application/read-model.ts`). XP never moves with a
+  stage. `REFEREE_NAME` is the only referee field that reaches a referrer —
+  handle or "First L." — and `tests/referrals/no-pii.test.ts` guards it.
+- **Every code that credits nobody is one identical 404** — malformed,
+  unknown, replaced, disabled, owner locked. `resolveActiveLink` returns `null`
+  for all of them and nothing may tell them apart, on `/r/` or through
+  registration, whose response never changes with a code. Clients never look a
+  code up.
+- **`/r/<code>` is lower case, English at `/r/<code>/en`.** `/r` is a public
+  surface, and `03-canonical-origin` lower-cases public paths and strips unknown
+  query parameters — `?lang=en` cannot work there. Never indexed, `no-store`,
+  `no-referrer`, no script. `/.well-known/*` claim `/r/*` only.
+- **Staff never act on their own records.** Every staff member earns XP, so
+  `/admin/referrals/me` is `anyStaff` (the pinned exemption list in
+  `tests/authz/matrix.test.ts` grew for it), while reversing, disabling and the
+  rate are the `referrals` module (`status`, `status`, `edit`) and refuse the
+  actor's own link or entry with 403.
+
+Opening a link *in the app* is native configuration (`associatedDomains`,
+`intentFilters` from `EXPO_PUBLIC_LINK_HOST`, plus `expo-clipboard`): it needs a
+new EAS build, and Android also needs `ANDROID_APP_CERT_SHA256` on the server.
+Until then the landing page and a typed code still work.
+
 **Server faults are recorded, not just logged (feature 012,
 `specs/012-error-persistence/`).** A request the error handler answers with the
 generic `INTERNAL` problem also leaves a row in `server_faults`, keyed on the

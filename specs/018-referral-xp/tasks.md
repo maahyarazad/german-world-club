@@ -492,7 +492,7 @@ both entries show, the audit log names the actor and reason, and a second revers
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T064 [P] Create `server/src/seed/referrals.ts`, called from `server/src/scripts/seed-demo.ts`
+- [X] T064 [P] Create `server/src/seed/referrals.ts`, called from `server/src/scripts/seed-demo.ts`
   after members and organisations, following R18 and the consistent-history rule:
   - links for a sample of members, two organisation users and one staff member, each
     `created_at` before its referees;
@@ -504,10 +504,10 @@ both entries show, the audit log names the actor and reason, and a second revers
 
   `tests/seed/coverage.test.ts`, `determinism.test.ts` and `no-live-credentials.test.ts` must
   stay green.
-- [ ] T065 [P] Add `server/tests/seed/referrals-history.test.ts`: after `seed:demo`, every
+- [X] T065 [P] Add `server/tests/seed/referrals-history.test.ts`: after `seed:demo`, every
   referral has exactly one award, and every award's `created_at` equals its referral's and its
   `amount` equals the rate in force then. Counter-assertion: at least one referral was seeded.
-- [ ] T066 [P] Add a **Referrals and XP** section to `CLAUDE.md` under "Things that will bite
+- [X] T066 [P] Add a **Referrals and XP** section to `CLAUDE.md` under "Things that will bite
   you", with the rules a future change could break:
   - a referral is recorded at mobile verification, never at `register`;
   - the ledger is append-only by trigger and the balance is never stored;
@@ -515,10 +515,10 @@ both entries show, the audit log names the actor and reason, and a second revers
   - invalid codes are one indistinguishable 404;
   - staff can't act on their own records;
   - the app link needs a native build.
-- [ ] T067 [P] Document `ANDROID_APP_CERT_SHA256`, `APPLE_APP_ID` and `EXPO_PUBLIC_LINK_HOST`
+- [X] T067 [P] Document `ANDROID_APP_CERT_SHA256`, `APPLE_APP_ID` and `EXPO_PUBLIC_LINK_HOST`
   (must equal the `CANONICAL_ORIGIN` host) and the EAS build step in `server/README.md` and
   `expo-client/german-world-club/README.md`.
-- [ ] T068 Run the full gate: `npm test`, `npm run -w client test:i18n`,
+- [X] T068 Run the full gate: `npm test`, `npm run -w client test:i18n`,
   `npx -w expo-client/german-world-club tsc --noEmit` and
   `npm run -w expo-client/german-world-club lint`. Fix anything red.
 - [ ] T069 Walk `specs/018-referral-xp/quickstart.md` steps 1–9 on the web and a development

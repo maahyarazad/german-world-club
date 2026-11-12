@@ -85,6 +85,9 @@ prevents boot; it never degrades behaviour silently.
 | `EXPO_ACCESS_TOKEN` | **production** | Boot is refused without it. Turn on *enhanced push security* for the Expo project too, so a leaked token alone cannot push to members. Unset outside production with no FCM either, the push jobs use a logging transport that records "would send" and marks deliveries sent |
 | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | all three or none | Only for devices registered with `provider: 'fcm'`; the app registers Expo tokens, and Android reaches FCM through Expo's own credentials in EAS. A partial set refuses boot in every environment. The private key is a secret: environment or secret manager, never a JSON file in the repo |
 | `MEDIA_*` | defaults are fine locally | Storage driver, size and pixel bounds, per-account quota |
+| `APPLE_APP_ID` | no (default `YQFY6269ZL.com.buenapublica.germanworldclub`) | Feature 018. `<Team ID>.<bundle id>` in `/.well-known/apple-app-site-association`, which lets a tapped `/r/<code>` open the iOS app. Covers `/r/*` only |
+| `ANDROID_APP_PACKAGE` | no (default `com.buenapublica.germanworldclub`) | Feature 018. The package in `/.well-known/assetlinks.json` |
+| `ANDROID_APP_CERT_SHA256` | to open referral links in the Android app | Feature 018. The app's SHA-256 signing fingerprints (`eas credentials -p android`, or Play Console → App signing), comma-separated `AB:CD:…`. Unset, `assetlinks.json` answers 404 and Android opens `/r/` links in the browser — not a boot precondition, the landing page works without it |
 | `SERVER_FAULTS_PER_MINUTE` | no (default `60`) | Unexpected 500s stored per instance per minute; beyond it they are only counted, so a dependency outage cannot turn fault recording into extra database load |
 
 ---

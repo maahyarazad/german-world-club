@@ -96,6 +96,7 @@ try {
   const { seedVehicleFeatures } = await import('../seed/vehicle-features.ts')
   const { seedMarketplace } = await import('../seed/marketplace.ts')
   const { seedThreads } = await import('../seed/threads.ts')
+  const { seedReferrals } = await import('../seed/referrals.ts')
   const { CREDENTIALS, renderCredentials, writeCredentials } = await import('../seed/credentials.ts')
 
   // One hash per distinct password, before anything inserts (research R5).
@@ -119,6 +120,9 @@ try {
   // influencer grant needs staff who hold members.write, and organisation
   // profiles need organisations.
   counts.threads = await seedThreads(pool, faker, options)
+  // Last: referrals need members (verified ones, as referees), organisation
+  // users and staff (as referrers) — everyone who can hold a link (018).
+  counts.referrals = await seedReferrals(pool, faker, options)
 
   if (!options.quiet) {
     for (const [group, result] of Object.entries(counts)) {

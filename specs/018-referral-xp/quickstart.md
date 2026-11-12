@@ -72,3 +72,23 @@ that does nothing:
    the new award is 150 and the old ones stay 100.
 9. **Languages**: switch the console and the app to English and repeat step 1. Every label is
    translated and the XP number follows the locale.
+
+## Walkthrough record (2026-11-12)
+
+Not yet walked by hand. What the automated suites already prove, per step, and
+what still needs a person:
+
+| Step | Covered automatically by | Still needs a person |
+|---|---|---|
+| 1 Get a link (web) | `tests/referrals/links.test.ts`, `client/tests/member/referrals.test.tsx` | A look at the page in a real browser |
+| 2 Same link in the app | `links.test.ts` (one link per person on every mount) | **Development build**: Profile → Refer & earn, Share sheet |
+| 3 Landing page | `tests/seo/referral-landing.test.ts`, `tests/referrals/invalid-codes.test.ts` | Link preview in WhatsApp/iMessage |
+| 4 Register on the web | `tests/referrals/attribution.test.ts`, `client/tests/onboarding/web-onboarding.test.tsx` | — |
+| 5 Register in the app | `attribution.test.ts` (app face) | **Development build with `EXPO_PUBLIC_LINK_HOST`** on iOS and Android: tapped link opens Register with the code |
+| 6 Stages | `tests/referrals/stages.test.ts` | — |
+| 7 Staff controls | `tests/referrals/staff.test.ts`, `client/tests/console/admin-referrals.test.tsx` | — |
+| 8 Rate | `staff.test.ts`, `tests/referrals/balance.test.ts` | — |
+| 9 Languages | `client/tests/member/referrals.test.tsx` (en formatting), `test:i18n` | App in English |
+
+Universal links and App Links can only be verified on a device, against a host
+serving `/.well-known/*` over HTTPS with `ANDROID_APP_CERT_SHA256` set.
