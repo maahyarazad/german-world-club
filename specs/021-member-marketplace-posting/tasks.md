@@ -348,13 +348,13 @@ no animation. A reopened dialog is empty.
 - [X] T036 [P] Search for any remaining reference:
   `grep -rn "marketplace_post" server/src client/src expo-client/german-world-club/src packages/contracts/src server/tests client/tests`.
   Only comments that state the history (feature 021 retired it) may remain.
-- [ ] T037 Run the gates:
+- [X] T037 Run the gates:
   - `DATABASE_URL=…/gwc_test npm run -w server test` (compare with the T001 baseline; the 7
     known failures on main are the `seed:demo` gate and resilience budgets);
   - `npm run -w client test` and `npm run -w client test:i18n`;
   - `npx tsc --noEmit -p packages/contracts`, `-p client`, `-p expo-client/german-world-club`;
   - `npm run -w expo-client/german-world-club lint` (only problems that already exist).
-- [ ] T038 Run `npm run -w server seed:demo` against the **dev** database only if the user
+- [X] T038 Run `npm run -w server seed:demo` against the **dev** database only if the user
   agrees, since it's additive. Otherwise check the seed with the seed test suite on `gwc_test`.
   It creates no job offers and owners have no `marketplace_post`.
 - [ ] T039 Walk through `specs/021-member-marketplace-posting/quickstart.md` steps 1–9 by hand

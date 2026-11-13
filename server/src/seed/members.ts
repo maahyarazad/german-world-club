@@ -112,9 +112,13 @@ export async function seedMembers(pool: Pool, faker: Faker, options: SeedOptions
         slice.suppressed ? faker.number.int({ min: 5, max: 12 }) : 0,
         slice.suppressed === true,
         // No `marketplace_post`: retired by feature 021, posting needs no flag.
-        JSON.stringify({
-          thread_moderate: faker.datatype.boolean({ probability: 0.05 }),
-        }),
+        // Its draw is still taken and discarded: the seed is deterministic, and
+        // dropping one draw shifts every value generated after it — the
+        // organisations and offers later suites assert on included.
+        JSON.stringify((() => {
+          faker.datatype.boolean({ probability: 0.15 })
+          return { thread_moderate: faker.datatype.boolean({ probability: 0.05 }) }
+        })()),
       ],
     )
     created += rowCount
