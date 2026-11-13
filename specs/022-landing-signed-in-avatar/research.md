@@ -100,3 +100,17 @@ authz matrix.
 - a name like `<script>alert(1)</script>` comes out escaped;
 - no response contains a `<script>`;
 - both shells contain both markers.
+
+## Implementation notes (2026-11-13)
+
+- **T004 was done more simply than planned.** `peekViewer` runs the *existing* `applyMemberGates`
+  and `applyOrganisationGates` against a stand-in request object (`principal`, `permissions`,
+  `deadlineSignal`), and catches their refusals. Staff go through `permissions.resolve`
+  (`exists && isActive`), the same resolver the console uses. The only change to
+  `authenticate` is the extracted `liveSession()` (denylist plus session row), and the
+  seo/authz/auth suites are unchanged at 672 (674 with the two marker tests). Because the gates
+  run with `{ audience: 'member' }` and no `requires`, the one path that audits can't be
+  reached.
+- **A third marker, `gwc:footer`**: the footer also links to `/konsole/anmelden`.
+- **The build keeps the markers.** `client/dist/index.html` and `en.html` contain them, so no
+  switch to attributes is needed.

@@ -217,6 +217,38 @@
         color: var(--text);
         border: 1px solid var(--hairline);
       }
+
+      /* Feature 022: a signed-in visitor sees themselves here instead of the
+         sign-in button. The server swaps the marked blocks below; nothing on
+         this page runs JavaScript. */
+      .masthead .account {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 1px solid var(--navy);
+        background: var(--navy);
+        color: #fff;
+        text-decoration: none;
+      }
+      .masthead .account img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .masthead .account .initials {
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .masthead .account:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 2px;
+      }
       .btn:focus-visible {
         outline: 2px solid var(--navy);
         outline-offset: 2px;
@@ -435,7 +467,8 @@
             <span class="sep" aria-hidden="true">·</span>
             <span aria-current="true" lang="en">English</span>
           </nav>
-          <a class="btn btn-primary" href="/konsole/anmelden">Sign in</a>
+          <!-- The server replaces what sits between each gwc: marker pair for a signed-in visitor (feature 022). Keep the markers. -->
+          <!--gwc:account--><a class="btn btn-primary" href="/konsole/anmelden">Sign in</a><!--/gwc:account-->
         </div>
       </div>
     </header>
@@ -560,10 +593,10 @@
             Partners all use the same form; after signing in, the console takes each role to its own
             area.
           </p>
-          <div class="login-actions">
+          <!--gwc:signin--><div class="login-actions">
             <a class="btn btn-primary" href="/konsole/anmelden">Anmelden</a>
             <a class="btn btn-secondary" href="/konsole/passwort">Forgotten your password?</a>
-          </div>
+          </div><!--/gwc:signin-->
           <!--
             There is deliberately NO account-creation link here.
 
@@ -593,7 +626,7 @@
           <p>GERMAN WORLD CLUB</p>
           <p>
             <a href="/imprint">Imprint</a> · <a href="/privacy">Privacy</a> ·
-            <a href="/konsole/anmelden">Anmelden</a>
+            <!--gwc:footer--><a href="/konsole/anmelden">Anmelden</a><!--/gwc:footer-->
           </p>
         </div>
       </div>

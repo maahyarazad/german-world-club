@@ -140,6 +140,12 @@ declare module 'fastify' {
     }) => Promise<void>
     audit(...args: unknown[]): Promise<void>
     auditDenial(...args: unknown[]): Promise<void>
+    /**
+     * Who is looking at a public page, judged by the console's own session
+     * and gate rules; null when nobody (or nobody admissible). Never throws,
+     * never sets request.principal (feature 022).
+     */
+    peekViewer(request: FastifyRequest): Promise<{ id: string; kind: string } | null>
     auditLog(...args: unknown[]): Promise<void>
     /** Resolves published records for the public surface. Injectable in tests. */
     contentSource: {

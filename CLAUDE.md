@@ -125,6 +125,20 @@ declaration — which search engines ignore, suppressing both pages — cannot b
 written. Canonicalising `/en` onto `/` delists the English page entirely; that
 is the single most consequential line in the feature.
 
+**The landing pages know who is looking, without JavaScript (feature 022,
+`specs/022-landing-signed-in-avatar/`).** `/` and `/en` render a signed-in
+visitor's avatar (or initials) linking to `/konsole` in place of every sign-in
+link: the server fills the `<!--gwc:account|signin|footer-->` marker pairs in
+`client/index.html` and `en.html` (`tests/seo/landing-viewer.test.ts` fails if a
+shell loses one). Who is looking is `app.peekViewer` in 10-auth — the console's
+own session and gate rules, run against a stand-in request, so the route stays
+`audience: 'public'`, gets no `request.principal` and audits nothing. A
+signed-in page is `private, no-store` with `Vary: Cookie`; the anonymous page is
+byte-for-byte the shell with its public caching — never add `Vary: Cookie` to
+it, which would make nearly every visitor a cache miss. The refresh cookie is
+scoped to `/auth/refresh`, so after the ~10-minute access token lapses the page
+shows "Anmelden" until the console is used again; that is accepted, not a bug.
+
 **Interface strings live in `client/src/i18n/`, one module per locale, read
 through `useTranslations()`.** A component that imports a catalogue directly
 hard-codes its language and survives every switch silently, so

@@ -17,3 +17,17 @@ DATABASE_URL=postgres://…/gwc_test npm run -w server test -- seo authz
    value signed out.
 6. Sign out, then open `/`: "Anmelden" again.
 7. View source: no `<script>`.
+
+## Walkthrough record (2026-11-13)
+
+Not walked in a browser yet (T016 open). `tests/seo/landing-viewer.test.ts` covers steps 2–7:
+- the avatar and initials, and the `/en` labels;
+- headers, with `private, no-store` and `Vary: Cookie` signed in, and public caching unchanged
+  anonymously;
+- revoked, garbage and expired cookies, and locked, pending and suspended accounts, all
+  anonymous;
+- escaping, and no `<script>`;
+- the anonymous body is byte-for-byte the shell.
+
+`verify:seo` wasn't run, because it needs a running server. The crawl is anonymous, so it sees
+the unchanged page.

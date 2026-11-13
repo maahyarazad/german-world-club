@@ -15,6 +15,10 @@ Markers in both shells (must exist; a test checks them):
 ```html
 <!--gwc:account--> …sign-in button… <!--/gwc:account-->
 <!--gwc:signin--> …login-actions… <!--/gwc:signin-->
+<!--gwc:footer--> …footer sign-in link… <!--/gwc:footer-->
 ```
+
+Footer, signed in: `<a href="/konsole">Zur Konsole</a>` / `Go to the console`. Added during
+implementation: the footer's own "Anmelden" link would otherwise remain on a signed-in page.
 
 `{name}`, `{AB}` and `{derivative url}` are HTML-escaped. The page carries no `<script>`.

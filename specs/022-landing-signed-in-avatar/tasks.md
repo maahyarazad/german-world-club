@@ -21,7 +21,7 @@ run against `gwc_test` only.
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the branch is `022-landing-signed-in-avatar`. Run
+- [X] T001 Confirm the branch is `022-landing-signed-in-avatar`. Run
   `DATABASE_URL=postgres://postgres:postgres@localhost:5432/gwc_test npm run -w server test -- seo authz auth`
   and record the baseline, so the 10-auth refactor (T004) can be shown not to change any
   outcome.
@@ -33,7 +33,7 @@ run against `gwc_test` only.
 **Purpose**: one definition of "signed in", shared by the console and the landing page
 (research R1). Blocks every story.
 
-- [ ] T002 [P] Add the markers to `client/index.html` and `client/en.html`:
+- [X] T002 [P] Add the markers to `client/index.html` and `client/en.html`:
   - `<!--gwc:account-->` and `<!--/gwc:account-->` around the masthead sign-in `<a class="btn btn-primary" href="/konsole/anmelden">`;
   - `<!--gwc:signin-->` and `<!--/gwc:signin-->` around the `<div class="login-actions">…</div>`
     in the sign-in section.
@@ -46,10 +46,10 @@ run against `gwc_test` only.
   - Add an HTML comment above each marker explaining that the server swaps the content for
     signed-in visitors (feature 022).
   - Change nothing else in the shells.
-- [ ] T003 [P] Create `server/tests/seo/landing-viewer.test.ts` with the markers check: read
+- [X] T003 [P] Create `server/tests/seo/landing-viewer.test.ts` with the markers check: read
   `client/index.html` and `client/en.html`, and assert each contains both marker pairs, each
   exactly once.
-- [ ] T004 In `server/src/plugins/10-auth.ts`, refactor so the gates can be evaluated without
+- [X] T004 In `server/src/plugins/10-auth.ts`, refactor so the gates can be evaluated without
   throwing:
   - extract the session check (denylist plus `loadSession` revoked) and the member and
     organisation gate predicates into functions returning a refusal or `null`;
@@ -57,7 +57,7 @@ run against `gwc_test` only.
   - staff: `peekViewer` follows whatever `authenticate`/11-rbac checks for staff (look for an
     `admin_users` status check, and reuse it if one exists).
   - Re-run the T001 suites: identical results.
-- [ ] T005 In the same file, decorate `app.peekViewer(request): Promise<{ id: string; kind: 'member' | 'admin' | 'merchant' | 'partner' } | null>`:
+- [X] T005 In the same file, decorate `app.peekViewer(request): Promise<{ id: string; kind: 'member' | 'admin' | 'merchant' | 'partner' } | null>`:
   - `null` immediately when there's no `gwc_at` cookie, so anonymous visitors cost nothing;
   - otherwise `app.verifyAccessToken(request, undefined)` for any audience, then the T004
     session check, then the gates for that audience as a member console route would apply
@@ -80,7 +80,7 @@ run against `gwc_test` only.
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] In `server/tests/seo/landing-viewer.test.ts`, mint the cookie the way
+- [X] T006 [P] [US1] In `server/tests/seo/landing-viewer.test.ts`, mint the cookie the way
   existing cookie tests do (`signIn` helper from `tests/helpers/auth.ts`, as in
   `tests/marketplace/parity.test.ts`). Cover:
   - **member with an avatar**: insert an asset with variants and a `member_avatars` row the way
@@ -99,7 +99,7 @@ run against `gwc_test` only.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Create `server/src/modules/public/application/viewer.ts` with
+- [X] T007 [P] [US1] Create `server/src/modules/public/application/viewer.ts` with
   `loadViewer(app, viewer, { signal })` (research R2):
   - **member**: `SELECT display_name FROM members WHERE id = $1`, plus
     `SELECT asset_id FROM member_avatars WHERE member_id = $1`, then `loadMediaItems`. Pick the
@@ -109,7 +109,7 @@ run against `gwc_test` only.
   - Return `{ name, initials, avatar: { url, width, height } | null }`. `initials` is the first
     letters of up to two words of `name`, upper-cased, or `'?'`.
   - Columns are named.
-- [ ] T008 [US1] In `server/src/modules/public/application/landing.ts`:
+- [X] T008 [US1] In `server/src/modules/public/application/landing.ts`:
   - add `LANDING_ACCOUNT_LABELS = { de: { toConsole: 'Zur Konsole' }, en: { toConsole: 'Go to the console' } }`;
   - extend `renderLanding({ shell, record, origin, cspNonce, viewer = null, language = 'de' })`.
     With a viewer and a shell, replace the content between `<!--gwc:account-->` and
@@ -118,7 +118,7 @@ run against `gwc_test` only.
     every value;
   - without a viewer, return exactly what it returns today;
   - keep `withCspNonces` applied last.
-- [ ] T009 [US1] In `server/src/modules/public/controller.ts` `landingHandler`:
+- [X] T009 [US1] In `server/src/modules/public/controller.ts` `landingHandler`:
   - `const principal = await app.peekViewer(request)`;
   - if non-null, `viewer = await loadViewer(app, principal, { signal: request.deadlineSignal })`,
     wrapped so a failure means `viewer = null`;
@@ -137,7 +137,7 @@ run against `gwc_test` only.
 
 ### Tests for User Story 3
 
-- [ ] T010 [P] [US3] In `server/tests/seo/landing-viewer.test.ts`:
+- [X] T010 [P] [US3] In `server/tests/seo/landing-viewer.test.ts`:
   - **headers**: signed in → `cache-control` is exactly `private, no-store` and `vary` includes
     `Cookie`. Anonymous → `cache-control` equals `PUBLIC_CACHE` (import it) and `vary` has no
     `Cookie`;
@@ -152,7 +152,7 @@ run against `gwc_test` only.
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Fix whatever T010 shows in `peekViewer` (T005) or the controller (T009). Don't
+- [X] T011 [US3] Fix whatever T010 shows in `peekViewer` (T005) or the controller (T009). Don't
   loosen T010.
 
 ---
@@ -161,18 +161,18 @@ run against `gwc_test` only.
 
 **Goal**: US2.
 
-- [ ] T012 [P] [US2] In `server/tests/seo/landing-viewer.test.ts`, sign in staff
+- [X] T012 [P] [US2] In `server/tests/seo/landing-viewer.test.ts`, sign in staff
   (`createAdmin` and the staff sign-in helper), a merchant user and a partner user (the
   organisation helpers used by `tests/organisations`). Each gets `class="initials"` with their
   initials and `href="/konsole"`. Counter-assertion: a merchant user whose organisation is
   `suspended` gets the anonymous page.
-- [ ] T013 [US2] Make T012 pass in `viewer.ts` (T007) and `peekViewer` (T005) if needed.
+- [X] T013 [US2] Make T012 pass in `viewer.ts` (T007) and `peekViewer` (T005) if needed.
 
 ---
 
 ## Phase 6: Polish
 
-- [ ] T014 Add a paragraph to `CLAUDE.md` after the "Two languages, two mechanisms" paragraph:
+- [X] T014 Add a paragraph to `CLAUDE.md` after the "Two languages, two mechanisms" paragraph:
   - the landing pages render a signed-in variant on the server (feature 022): `peekViewer` and
     the markers in the shells;
   - signed-in responses are `private, no-store` with `Vary: Cookie`; anonymous responses are
@@ -180,7 +180,7 @@ run against `gwc_test` only.
   - there's still no JavaScript;
   - the refresh-cookie limit;
   - never add `Vary: Cookie` to the anonymous response.
-- [ ] T015 Run the gates:
+- [X] T015 Run the gates:
   - the full `npm run -w server test` on `gwc_test` (the 7 known failures on `main` excepted);
   - `npm run -w server verify:seo` if a dev server and database are available;
   - `npm run -w client test`, since the shells are part of the client build;
