@@ -31,6 +31,37 @@ const PARTICIPANT_COLUMNS = `
   m.display_name AS participant_display_name, m.status AS participant_status
 `
 
+/**
+ * What a conversation response says about itself (feature 020, research R8):
+ * the listing's title, the other person and the latest message, for a
+ * conversation aliased `c` joined to the caller's participation `p`, where the
+ * caller's id is parameter `$me`.
+ *
+ * Names only — `m.email` and `m.mobile` sit on the joined row and are not
+ * selected, for exactly the reason PARTICIPANT_COLUMNS gives.
+ */
+const conversationColumns = (me: string) => `
+  c.id, c.subject_type, c.subject_id, c.created_at, c.last_message_at, p.last_read_at,
+  (SELECT l.title FROM marketplace_listings l
+    WHERE c.subject_type = 'marketplace_listing' AND l.id = c.subject_id) AS subject_title,
+  other.member_id AS counterpart_id, om.display_name AS counterpart_display_name,
+  om.handle::text AS counterpart_handle,
+  latest.sender_id AS last_sender_id, left(latest.body, 140) AS last_excerpt,
+  latest.created_at AS last_created_at,
+  (SELECT count(*) FROM messages m2
+    WHERE m2.conversation_id = c.id
+      AND (p.last_read_at IS NULL OR m2.created_at > p.last_read_at)
+      AND m2.sender_id <> ${me}::uuid) AS unread_count`
+
+const conversationJoins = (me: string) => `
+  LEFT JOIN conversation_participants other
+    ON other.conversation_id = c.id AND other.member_id <> ${me}::uuid
+  LEFT JOIN members om ON om.id = other.member_id
+  LEFT JOIN LATERAL (
+    SELECT msg.sender_id, msg.body, msg.created_at FROM messages msg
+     WHERE msg.conversation_id = c.id
+     ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) latest ON true`
+
 const MESSAGE_COLUMNS = `
   msg.id, msg.conversation_id, msg.sender_id, msg.body, msg.created_at
 `
@@ -60,10 +91,11 @@ async function loadParticipation(
 ) {
   const { rows } = await query(
     app.pg,
-    `SELECT c.id, c.subject_type, c.subject_id, c.created_at, c.last_message_at
+    `SELECT ${conversationColumns('$2')}
        FROM conversations c
        JOIN conversation_participants p
          ON p.conversation_id = c.id AND p.member_id = $2::uuid
+       ${conversationJoins('$2')}
       WHERE c.id = $1::uuid`,
     [conversationId, memberId],
     { signal },
@@ -221,15 +253,11 @@ export async function listConversations(
 
   const { rows } = await query(
     app.pg,
-    `SELECT c.id, c.subject_type, c.subject_id, c.created_at, c.last_message_at,
-            p.last_read_at,
-            (SELECT count(*) FROM messages m2
-              WHERE m2.conversation_id = c.id
-                AND (p.last_read_at IS NULL OR m2.created_at > p.last_read_at)
-                AND m2.sender_id <> $1::uuid) AS unread_count
+    `SELECT ${conversationColumns('$1')}
        FROM conversations c
        JOIN conversation_participants p
          ON p.conversation_id = c.id AND p.member_id = $1::uuid
+       ${conversationJoins('$1')}
       WHERE true ${keyset}
       ORDER BY c.last_message_at DESC, c.id DESC
       LIMIT $${params.length}`,

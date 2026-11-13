@@ -171,15 +171,33 @@ const decodeMessageCursor = (raw: string) => {
 // Response shaping — named fields only (FR-026)
 // ---------------------------------------------------------------------------
 
+const iso = (value: unknown) => (value == null ? null : new Date(value as string).toISOString())
+
+/**
+ * A conversation in the @gwc/contracts/messaging shape (feature 020, R8).
+ * Names its fields, so a column added to the query is not emitted by accident.
+ */
 function toConversationSummary(row: Record<string, unknown>) {
   return {
-    id: row.id,
-    subjectType: row.subject_type,
-    subjectId: row.subject_id ?? null,
-    createdAt: row.created_at,
-    lastMessageAt: row.last_message_at,
-    ...(row.unread_count === undefined ? {} : { unreadCount: Number(row.unread_count) }),
-    ...(row.last_read_at === undefined ? {} : { lastReadAt: row.last_read_at ?? null }),
+    id: String(row.id),
+    subject: {
+      type: row.subject_type,
+      id: row.subject_id == null ? null : String(row.subject_id),
+      title: (row.subject_title as string | null) ?? null,
+    },
+    counterpart: row.counterpart_id == null ? null : {
+      memberId: String(row.counterpart_id),
+      displayName: (row.counterpart_display_name as string | null) ?? null,
+      handle: (row.counterpart_handle as string | null) ?? null,
+    },
+    lastMessage: row.last_sender_id == null ? null : {
+      senderId: String(row.last_sender_id),
+      excerpt: String(row.last_excerpt ?? ''),
+      createdAt: iso(row.last_created_at)!,
+    },
+    createdAt: iso(row.created_at)!,
+    lastMessageAt: iso(row.last_message_at)!,
+    unreadCount: Number(row.unread_count ?? 0),
   }
 }
 
@@ -189,7 +207,7 @@ function toParticipant(row: Record<string, unknown>) {
     memberId: row.member_id,
     displayName: row.participant_display_name ?? null,
     status: row.participant_status,
-    lastReadAt: row.last_read_at ?? null,
+    lastReadAt: iso(row.last_read_at),
   }
 }
 
@@ -199,6 +217,6 @@ function toMessage(row: Record<string, unknown>) {
     conversationId: row.conversation_id,
     senderId: row.sender_id,
     body: row.body,
-    createdAt: row.created_at,
+    createdAt: iso(row.created_at),
   }
 }

@@ -6,7 +6,7 @@ import { MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/market
 import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contracts/marketplace';
 
 import { ApiError } from '@/api/client';
-import { authApi, marketplaceApi } from '@/api/endpoints';
+import { authApi, marketplaceApi, messagingApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
 import { Card, Chip, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -43,6 +43,16 @@ export default function Marketplace() {
     );
   }, []));
 
+  // Feature 020: whether any conversation has something new — the dot on
+  // Messages. Re-read on focus; there is no real-time transport (008).
+  const [unread, setUnread] = useState(false);
+  useFocusEffect(useCallback(() => {
+    messagingApi.inbox(null).then(
+      (page) => setUnread(page.items.some((c) => c.unreadCount > 0)),
+      (e) => console.error('Marketplace.loadUnread', e instanceof ApiError ? e.problem : e),
+    );
+  }, []));
+
   // Coming back from a listing or from posting one: show what changed. Skipped
   // on the first focus, which the initial load already covers.
   const focusedOnce = useRef(false);
@@ -55,12 +65,23 @@ export default function Marketplace() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen options={{
-        headerRight: canPost ? () => (
-          <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
-            onPress={() => router.push('/marketplace/new')}>
-            {t.marketplace.newListing}
-          </ThemedText>
-        ) : undefined,
+        // Messages always (feature 020 — the five bottom-bar slots are full),
+        // New listing only for a member who may post.
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', gap: Spacing.three }}>
+            <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
+              accessibilityLabel={unread ? `${t.messages.open} •` : t.messages.open}
+              onPress={() => router.push('/marketplace/messages')}>
+              {unread ? `${t.messages.open} •` : t.messages.open}
+            </ThemedText>
+            {canPost ? (
+              <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
+                onPress={() => router.push('/marketplace/new')}>
+                {t.marketplace.newListing}
+              </ThemedText>
+            ) : null}
+          </View>
+        ),
       }} />
       {/* Horizontal: five category chips do not fit a phone's width. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}

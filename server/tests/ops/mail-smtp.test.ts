@@ -57,3 +57,42 @@ describe('mail over SMTP', () => {
     expect(createMailClient({ host: 'smtp.test' }).configured).toBe(true)
   })
 })
+
+/** Feature 020: the message email, German then English, link and no-reply note. */
+describe('messaging.new-message', () => {
+  const origin = 'https://german-world-club.com'
+  const vars = (count: number) => ({
+    recipientName: 'Sabine', listingTitle: 'Kinderfahrrad 20 Zoll', conversationId: '00000000-0000-4000-8000-0000000000c1',
+    count,
+    messages: [
+      { senderName: 'Bernd Buyer', body: 'Noch da?', at: '2026-11-12T10:00:00.000Z' },
+      { senderName: 'Bernd Buyer', body: 'Ich könnte heute kommen.', at: '2026-11-12T10:01:00.000Z' },
+    ].slice(0, count),
+  })
+
+  it('names the listing in both languages and links to the conversation', () => {
+    const { subject, text } = renderMail('messaging.new-message', vars(1), { origin })
+    expect(subject).toContain('„Kinderfahrrad 20 Zoll“')
+    expect(subject).toContain('"Kinderfahrrad 20 Zoll"')
+    expect(text).toContain(`${origin}/konsole/mitglied/nachrichten/00000000-0000-4000-8000-0000000000c1`)
+    expect(text).toContain('Bernd Buyer')
+    expect(text).toContain('Noch da?')
+    expect(text).toContain('Antworten auf diese E-Mail werden nicht gelesen')
+    expect(text).toContain('Replies to this email are not read')
+  })
+
+  it('says how many when there are several', () => {
+    const { subject, text } = renderMail('messaging.new-message', vars(2), { origin })
+    expect(subject).toMatch(/^2 neue Nachrichten/)
+    expect(subject).toContain('2 new messages')
+    expect(text).toContain('Ich könnte heute kommen.')
+  })
+
+  it('renders with no messages at all rather than throwing', () => {
+    // Counter-assertion for robustness: a cleared or partial variables object
+    // must still produce a mail, never an exception inside mail.deliver.
+    const { subject, text } = renderMail('messaging.new-message', {}, { origin })
+    expect(subject).toBeTruthy()
+    expect(text).toContain('German World Club')
+  })
+})

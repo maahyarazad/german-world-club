@@ -22,6 +22,8 @@ import type {
 
 import type { ReferralPage, ReferralSummary, XpEntryPage } from '@gwc/contracts/referrals';
 
+import type { ConversationView, InboxPage, InquireResponse, Message } from '@gwc/contracts/messaging';
+
 import { api } from './client';
 
 /**
@@ -201,4 +203,19 @@ export const referralsApi = {
   replace: (prefix: string) => api<ReferralSummary>(`${prefix}/link/replace`, { method: 'POST' }),
   referrals: (prefix: string, cursor: string | null) => api<ReferralPage>(`${prefix}/referrals${q({ cursor })}`),
   xp: (prefix: string, cursor: string | null) => api<XpEntryPage>(`${prefix}/xp${q({ cursor })}`),
+};
+
+/**
+ * Requests about listings and the conversations they start (feature 020). The
+ * server decides who may send what; the app only avoids offering a request on
+ * the member's own listing.
+ */
+export const messagingApi = {
+  inquire: (listingId: string, body: string) =>
+    api<InquireResponse>(`/marketplace/listings/${listingId}/inquire`, { method: 'POST', body: { body } }),
+  inbox: (cursor: string | null) => api<InboxPage>(`/messages/conversations${q({ cursor })}`),
+  /** Opening a conversation marks it read. */
+  read: (id: string, cursor: string | null) => api<ConversationView>(`/messages/conversations/${id}${q({ cursor })}`),
+  reply: (id: string, body: string) =>
+    api<Message>(`/messages/conversations/${id}/messages`, { method: 'POST', body: { body } }),
 };

@@ -59,6 +59,7 @@ import { registerMediaDecorators } from './decorators/media.ts'
 import { registerIntegrations } from './decorators/integrations.ts'
 import { registerSendOtp } from './decorators/send-otp.ts'
 import { registerMail } from './decorators/mail.ts'
+import { registerMessageMail } from './decorators/message-mail.ts'
 import { registerPush } from './decorators/push.ts'
 import { registerServerFaults } from './decorators/server-faults.ts'
 import type { ServerFaultRow } from './decorators/server-faults.ts'
@@ -266,6 +267,8 @@ export async function buildApp({
   registerShutdownHook(app)
   registerSendOtp(app)
   registerMail(app)
+  // After mail: a message's email goes through the outbox (feature 020).
+  registerMessageMail(app)
   registerPush(app, { pushTransport })
   registerServerFaults(app, { perMinute: env.SERVER_FAULTS_PER_MINUTE, ...serverFaults })
 

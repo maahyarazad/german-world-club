@@ -26,6 +26,8 @@ import Push from './admin/Push'
 import ServerFaults from './admin/ServerFaults'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
+import Inbox from '../member/messages/Inbox'
+import Conversation from '../member/messages/Conversation'
 import Referrals from '../member/Referrals'
 import AdminReferrals from './admin/Referrals'
 import NotBuilt from './NotBuilt'
@@ -224,6 +226,10 @@ export function ConsoleRoutes() {
         <Route path="mitglieder/:ref/follower" element={<FollowList direction="followers" />} />
         <Route path="mitglieder/:ref/folgt" element={<FollowList direction="following" />} />
         <Route path="organisationen/:slug" element={<OrganisationView />} />
+        {/* Feature 020: requests about listings and the replies to them. The
+            message emails link to nachrichten/:id. */}
+        <Route path="nachrichten" element={<Inbox />} />
+        <Route path="nachrichten/:id" element={<Conversation />} />
         {/* Refer & earn (018): the same page on every face, told apart by the
             mount the server serves that principal's own referrals at. */}
         <Route path="empfehlen" element={<Referrals basePath="/referrals" />} />

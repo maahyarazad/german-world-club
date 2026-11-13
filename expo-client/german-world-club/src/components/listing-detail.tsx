@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -8,21 +9,26 @@ import { ApiError } from '@/api/client';
 import { marketplaceApi } from '@/api/endpoints';
 import { MediaCarousel } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
-import { FormScreen, Loading } from '@/components/ui';
+import { Button, FormScreen, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
+import { useSession } from '@/session/session';
 
 /**
  * A marketplace listing, read-only. Rendered by two stacks — the Marketplace
  * tab (feature 017) and Activity, where a listing notification lands (feature
  * 011) — because native tabs cannot share a screen, and a second copy of this
- * would drift. No edit or contact actions: messaging is not in the app yet.
+ * would drift. No edit actions. Feature 020 adds "Send request" — not on the
+ * member's own listing, and only when the listing can be contacted; the server
+ * decides regardless.
  * A listing that is gone, hidden or not the member's to see answers 404 and
  * stays on the spinner rather than showing a stale copy.
  */
 export function ListingDetail({ id }: { id: string }) {
   const { t, format, formatMoney } = useTranslations();
   const [listing, setListing] = useState<Listing | null>(null);
+  const { state } = useSession();
+  const memberId = state.status === 'member' ? state.principal.id : null;
 
   useEffect(() => {
     marketplaceApi.listing(id).then(setListing, (e) => console.error('ListingDetail.load', e instanceof ApiError ? e.problem : e));
@@ -51,6 +57,9 @@ export function ListingDetail({ id }: { id: string }) {
       <ThemedText>{listing.body}</ThemedText>
       {listing.owner?.displayName ? (
         <ThemedText type="small" themeColor="textSecondary">{format(t.listing.by, { name: listing.owner.displayName })}</ThemedText>
+      ) : null}
+      {memberId && listing.owner?.id !== memberId && listing.contact?.available ? (
+        <Button label={t.requests.send} onPress={() => router.push(`/marketplace/request/${listing.id}`)} />
       ) : null}
     </FormScreen>
   );

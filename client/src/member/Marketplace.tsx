@@ -14,6 +14,7 @@ import Field from '../components/ui/Field'
 import Callout from '../components/ui/Callout'
 import Drawer from '../components/ui/Drawer'
 import StatusPill from '../components/ui/StatusPill'
+import ListingRequest from './ListingRequest'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
 
@@ -554,6 +555,8 @@ export function Marketplace() {
                 {!listing.contact?.available && (
                   <p className="mt-1 text-[11px] text-text-muted">{t.memberMarketplace.contactUnavailable}</p>
                 )}
+                {/* Feature 020: the way to answer a listing. */}
+                <ListingRequest listing={listing} memberId={snapshot?.kind === 'member' ? String(snapshot.id) : undefined} />
               </li>
             ))}
           </ul>
