@@ -3,8 +3,9 @@ import { Link } from 'react-router'
 import { PROFILE_BIO_MAX, PROFILE_LINKS_MAX } from '@gwc/contracts/profile'
 import type { MemberProfile, ProfileLink } from '@gwc/contracts/profile'
 import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
-import { get, patch, post, put, ApiError } from '../../lib/api'
-import { fill, formatDate } from '../../lib/format'
+import { get, patch, put, upload, ApiError } from '../../lib/api'
+import type { UploadProgress } from '../../lib/api'
+import { fill, formatDate, formatPercent } from '../../lib/format'
 import PageHeader from '../../components/ui/PageHeader'
 import Button from '../../components/ui/Button'
 import Field, { FormMessage } from '../../components/ui/Field'
@@ -32,6 +33,9 @@ export function EditProfile() {
   const [handleOpen, setHandleOpen] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  // Where a profile picture upload has got to; null when none is running
+  // (feature 021, Story 6).
+  const [progress, setProgress] = useState<UploadProgress | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
 
   const adopt = (p: MemberProfile) => {
@@ -58,14 +62,30 @@ export function EditProfile() {
       setMessage({ tone: 'danger', text: t.memberThreads.mediaUnsupported })
       return
     }
-    void run(async () => {
-      const form = new FormData()
-      form.append('alt', fill(t.memberProfile.avatarAlt, { name: profile?.displayName ?? '' }))
-      form.append('file', file)
-      const asset = (await post('/media', form)) as { id: string }
-      return put('/profile/me/avatar', { assetId: asset.id })
-    })
+    void (async () => {
+      setBusy(true)
+      setMessage(null)
+      setProgress({ phase: 'uploading', fraction: 0 })
+      try {
+        const form = new FormData()
+        // `alt` before `file`: the server reads the fields that precede the file part.
+        form.append('alt', fill(t.memberProfile.avatarAlt, { name: profile?.displayName ?? '' }))
+        form.append('file', file)
+        // upload(), not post(): it reports the share the server has received,
+        // then that the server is processing the picture.
+        const asset = (await upload('/media', form, { onProgress: setProgress })) as { id: string }
+        adopt((await put('/profile/me/avatar', { assetId: asset.id })) as MemberProfile)
+        setMessage({ tone: 'success', text: t.memberProfile.saved })
+      } catch (err) {
+        console.error('EditProfile.uploadAvatar', err instanceof ApiError ? err.problem : err)
+      } finally {
+        setProgress(null)
+        setBusy(false)
+      }
+    })()
   }
+
+  const uploadingFraction = progress?.phase === 'uploading' ? progress.fraction : null
 
   if (!profile) return null
 
@@ -81,6 +101,26 @@ export function EditProfile() {
           {profile.avatar && <Button variant="quiet" disabled={busy} onClick={() => run(() => put('/profile/me/avatar', { assetId: null }))}>{t.memberProfile.avatarRemove}</Button>}
           <input ref={avatarInput} type="file" accept={IMAGE_TYPES.join(',')} className="sr-only" tabIndex={-1}
             aria-label={t.memberProfile.avatarChange} onChange={(e) => { uploadAvatar(e.target.files?.[0]); e.target.value = '' }} />
+        </div>
+        {/* A native <progress>: accessible by itself, and no inline width
+            style for the CSP to refuse. With a value while the share is
+            known, without one (indeterminate) while the server processes. */}
+        <div aria-live="polite" className="mt-3">
+          {progress && (
+            <div className="flex flex-col gap-1.5">
+              <progress
+                max={1}
+                {...(uploadingFraction !== null ? { value: uploadingFraction } : {})}
+                aria-label={t.memberProfile.avatar}
+                className="h-2 w-full accent-navy"
+              />
+              <span className="text-[12px] text-text-muted">
+                {progress.phase === 'processing'
+                  ? t.memberProfile.avatarProcessing
+                  : fill(t.memberProfile.avatarUploading, { percent: formatPercent(uploadingFraction ?? 0, locale) })}
+              </span>
+            </div>
+          )}
         </div>
       </Card>
 

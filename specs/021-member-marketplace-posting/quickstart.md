@@ -72,7 +72,7 @@ Not walked by hand yet (T034, T040 and T045 open). What the automated suites pro
 | 7 Not members | `audience.test.ts` (staff, unauthenticated); the matrix (merchant and partner audiences) |
 | 8 App | `tsc` and lint only. Needs a device. |
 | 9 `/auth/me` | The migration strips the key, and `/auth/me` reports only `true` keys |
-| 13–14 Profile picture progress | `client/tests/lib/upload.test.ts`, `client/tests/member/edit-profile-upload.test.tsx` (once US6 is built) |
+| 13–14 Profile picture progress | `client/tests/lib/upload.test.ts` (progress, processing, CSRF retry once, refusal as ApiError, abort, network failure), `client/tests/member/edit-profile-upload.test.tsx` (bar, percentage, processing, Saved, refusal). A real slow upload needs a browser. |
 | 10–12 Web dialogs | `client/tests/components/modal.test.tsx` (classes, deferred unmount, reset, Escape). The variants were checked in the built CSS (T032). Actual centering and motion need a browser. |
 
 Still needs a person: the dialogs in a real browser (desktop, 375 px, Reduce motion), and the app

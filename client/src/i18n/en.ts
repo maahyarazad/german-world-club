@@ -765,6 +765,8 @@ export const en = {
     avatar: 'Profile picture',
     avatarChange: 'Change profile picture',
     avatarRemove: 'Remove profile picture',
+    avatarUploading: 'Uploading… {percent}',
+    avatarProcessing: 'Processing…',
     avatarAlt: 'Profile picture of {name}',
     displayNameHint: 'Name changes go through a request to the GWC team.',
     save: 'Save',

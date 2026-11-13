@@ -759,6 +759,8 @@ export const de = {
     avatar: 'Profilbild',
     avatarChange: 'Profilbild ändern',
     avatarRemove: 'Profilbild entfernen',
+    avatarUploading: 'Wird hochgeladen … {percent}',
+    avatarProcessing: 'Wird verarbeitet …',
     avatarAlt: 'Profilbild von {name}',
     displayNameHint: 'Namensänderungen laufen über einen Antrag an das GWC-Team.',
     save: 'Speichern',

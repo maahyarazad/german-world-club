@@ -348,7 +348,7 @@ removes it and re-enables the buttons.
 
 ### Tests for User Story 6
 
-- [ ] T035 [P] [US6] Create `client/tests/lib/upload.test.ts` for `upload()` in
+- [X] T035 [P] [US6] Create `client/tests/lib/upload.test.ts` for `upload()` in
   `client/src/lib/api.ts`. Use a fake `XMLHttpRequest` installed with
   `vi.stubGlobal('XMLHttpRequest', …)` that records `open`, `setRequestHeader`, `send`,
   `withCredentials` and `abort`, and lets the test fire `upload.onprogress`, `upload.onload`,
@@ -368,7 +368,7 @@ removes it and re-enables the buttons.
   - **abort**: an aborted `AbortSignal` calls `xhr.abort()` and rejects;
   - **network failure**: `onerror` rejects.
   - Counter-assertion: no `onProgress` call before `send`.
-- [ ] T036 [P] [US6] Create `client/tests/member/edit-profile-upload.test.tsx`. Render
+- [X] T036 [P] [US6] Create `client/tests/member/edit-profile-upload.test.tsx`. Render
   `/konsole/mitglied/profil/bearbeiten` (check the route name in
   `client/src/console/routes.tsx`) with `mockCapabilityFetch(memberSnapshot(), …)`, routing
   `/profile/me` and `PUT /profile/me/avatar` through the existing helper, and `POST /media`
@@ -384,7 +384,7 @@ removes it and re-enables the buttons.
 
 ### Implementation for User Story 6
 
-- [ ] T037 [US6] Add `upload(path, form, { onProgress, signal })` to `client/src/lib/api.ts`,
+- [X] T037 [US6] Add `upload(path, form, { onProgress, signal })` to `client/src/lib/api.ts`,
   next to `request()` (research R9).
   - **Mechanism**: `XMLHttpRequest`, with `withCredentials = true`, the `accept` header and
     `x-csrf-token` from `fetchCsrfToken()`.
@@ -400,11 +400,11 @@ removes it and re-enables the buttons.
   - **Exports**: `export type UploadProgress = { phase: 'uploading'; fraction: number | null } | { phase: 'processing' }`.
   - Add a doc comment on why XHR: `fetch` has no upload progress in Safari or Firefox.
   - Keep `request()` itself unchanged.
-- [ ] T038 [P] [US6] Add to `client/src/i18n/de.ts` and `en.ts`, under `memberProfile`:
+- [X] T038 [P] [US6] Add to `client/src/i18n/de.ts` and `en.ts`, under `memberProfile`:
   - `avatarUploading`: de „Wird hochgeladen … {percent}“, en "Uploading… {percent}";
   - `avatarProcessing`: de „Wird verarbeitet …“, en "Processing…".
   - Run `npm run -w client test:i18n`.
-- [ ] T039 [US6] In `client/src/member/profile/EditProfile.tsx` `uploadAvatar`:
+- [X] T039 [US6] In `client/src/member/profile/EditProfile.tsx` `uploadAvatar`:
   - replace `post('/media', form)` with `upload('/media', form, { onProgress: setProgress })`,
     where `progress` is state, `null` when idle;
   - while not null, render under the avatar row, inside a `<div aria-live="polite">`:
@@ -437,7 +437,7 @@ removes it and re-enables the buttons.
 - [X] T042 [P] Search for any remaining reference:
   `grep -rn "marketplace_post" server/src client/src expo-client/german-world-club/src packages/contracts/src server/tests client/tests`.
   Only comments that state the history (feature 021 retired it) may remain.
-- [ ] T043 Run the gates:
+- [X] T043 Run the gates:
   - `DATABASE_URL=…/gwc_test npm run -w server test` (compare with the T001 baseline; the 7
     known failures on main are the `seed:demo` gate and resilience budgets);
   - `npm run -w client test` and `npm run -w client test:i18n`;

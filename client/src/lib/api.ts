@@ -202,6 +202,96 @@ export async function request(
   return contentType.includes('application/json') ? response.json() : response.text()
 }
 
+/**
+ * Where an upload has got to (feature 021, Story 6, research R9).
+ *
+ * `uploading` is the share of the body the server has received — what the
+ * browser's upload progress events measure. `fraction` is null when the size
+ * is not computable. `processing` follows once the whole body has gone and
+ * lasts until the server answers: it is inspecting, stripping and deriving.
+ * The server cannot report anything mid-request; a request has no channel
+ * back to the client until its response.
+ */
+export type UploadProgress =
+  | { phase: 'uploading'; fraction: number | null }
+  | { phase: 'processing' }
+
+export type UploadOptions = {
+  onProgress?: (progress: UploadProgress) => void
+  signal?: AbortSignal
+}
+
+/**
+ * A multipart POST that reports its progress.
+ *
+ * On `XMLHttpRequest` rather than `fetch` because `fetch` reports no upload
+ * progress in Safari or Firefox; a streaming request body (`duplex: 'half'`)
+ * is Chromium-only and needs HTTP/2. Everything else is `request()`'s rules:
+ * cookies, the problem-aware `accept`, the CSRF header with exactly one
+ * refresh-and-retry on `csrf-token-invalid`, and refusals as `ApiError` read
+ * by the same `readProblem`.
+ */
+export async function upload(path: string, form: FormData, { onProgress, signal }: UploadOptions = {}): Promise<unknown> {
+  const send = async (): Promise<Response> => {
+    const token = csrfToken ?? (await fetchCsrfToken())
+    return new Promise<Response>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'))
+        return
+      }
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', path)
+      xhr.withCredentials = true
+      // No content-type of our own: the browser writes the multipart header,
+      // boundary included.
+      xhr.setRequestHeader('accept', `${PROBLEM_TYPE}, application/json`)
+      if (token) xhr.setRequestHeader('x-csrf-token', token)
+
+      xhr.upload.onprogress = (e) => {
+        onProgress?.({ phase: 'uploading', fraction: e.lengthComputable && e.total > 0 ? e.loaded / e.total : null })
+      }
+      xhr.upload.onload = () => onProgress?.({ phase: 'processing' })
+
+      const onAbort = () => xhr.abort()
+      signal?.addEventListener('abort', onAbort, { once: true })
+      const done = () => signal?.removeEventListener('abort', onAbort)
+
+      xhr.onload = () => {
+        done()
+        const contentType = xhr.getResponseHeader('content-type')
+        // A null-body status may not carry a body in a Response.
+        const body = xhr.status === 204 ? null : xhr.responseText
+        resolve(new Response(body, {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers: contentType ? { 'content-type': contentType } : {},
+        }))
+      }
+      xhr.onerror = () => { done(); reject(new TypeError('Network request failed')) }
+      xhr.onabort = () => { done(); reject(new DOMException('Aborted', 'AbortError')) }
+      xhr.send(form)
+    })
+  }
+
+  let response = await send()
+
+  // Exactly once, as in request(): a stale token is mechanical and never
+  // shown; a second refusal is real.
+  if (response.status === 403) {
+    const problem = await readProblem(response.clone())
+    if (problem?.type === PROBLEMS.CSRF_TOKEN_INVALID.type) {
+      clearCsrfToken()
+      await fetchCsrfToken()
+      response = await send()
+    }
+  }
+
+  if (!response.ok) throw new ApiError(await readProblem(response), response)
+  if (response.status === 204) return null
+  const contentType = response.headers.get('content-type') ?? ''
+  return contentType.includes('application/json') ? response.json() : response.text()
+}
+
 type BodylessOptions = Omit<RequestOptions, 'method' | 'body'>
 type BodyOptions = Omit<RequestOptions, 'method' | 'body'>
 
