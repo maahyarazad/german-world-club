@@ -39,3 +39,12 @@ npx tsc --noEmit -p client && npx tsc --noEmit -p expo-client/german-world-club
 7. **Not members.** A merchant or partner login still can't post a member listing.
 8. **App.** Repeat 1, 3 and 4 in the app.
 9. **`/auth/me`** no longer lists `marketplace_post`.
+
+## Web dialogs (Story 5, web only)
+
+10. **Centered.** Open Send request on a listing at 1440 px and at 375 px. It's centered both
+    ways. Repeat for the Threads compose dialog and the handle dialog.
+11. **Animated.** Open and close it: it fades and scales in and out, and the backdrop fades.
+    With macOS "Reduce motion" on, it appears with no animation.
+12. **Unchanged.** Escape and Cancel close it. Reopening shows an empty message. New listing
+    still slides in from the right. The app is unchanged.

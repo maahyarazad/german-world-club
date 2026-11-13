@@ -18,7 +18,7 @@ wherever a test could pass against a server that did nothing. Server SQL suites 
 
 - **[P]**: can run in parallel (different files, no dependency on an incomplete task)
 - **[Story]**: US1 (anyone can post), US2 (no job offers), US3 (legacy job offers wind down),
-  US4 (business description)
+  US4 (business description), US5 (web dialogs centered and animated)
 
 ---
 
@@ -268,28 +268,96 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 ---
 
-## Phase 7: Polish & cross-cutting
+## Phase 7: User Story 5 - Web dialogs centered and animated (Priority: P3, web only)
 
-- [ ] T030 Update `CLAUDE.md`'s marketplace paragraph:
+**Goal**: FR-013–FR-015. Every dialog built on `client/src/member/threads/Modal.tsx` opens
+centered and animates in and out. The Drawer (New listing) and the app are untouched (research
+R8).
+
+**Independent test**: on the web, open Send request on a listing at desktop and at 375 px. It's
+centered and fades and scales in and out. Escape and Cancel close it. With reduced motion there's
+no animation. A reopened dialog is empty.
+
+### Tests for User Story 5
+
+- [ ] T030 [P] [US5] Create `client/tests/components/modal.test.tsx`, in the style of
+  `drawer.test.tsx` (jsdom has no `showModal`, so `open` is the attribute the fallback sets):
+  - **centering**: the dialog's `className` contains `m-auto` and a bounded max height. A
+    comment says why: Tailwind v4 preflight zeroes the browser's `margin: auto`, and jsdom can't
+    check layout;
+  - **animation**: it contains `starting:open:` and `transition-discrete` classes and
+    `motion-reduce:transition-none`;
+  - **exit**: after `open` becomes false, the dialog is still in the document, without `open`,
+    until a `transitionend` fires on it (or 250 ms pass with fake timers). Then it's gone;
+  - **reset**: reopening shows a fresh child, with typed text gone;
+  - **Escape**: a `cancel` event calls `onClose` with the default prevented;
+  - counter-assertion: a `transitionend` bubbling from a **child** doesn't unmount the dialog
+    early.
+
+### Implementation for User Story 5
+
+- [ ] T031 [US5] Rework `client/src/member/threads/Modal.tsx` (research R8). Keep the props (`title`, `open`, `onClose`, `children`) and both exports
+  unchanged.
+  - **State**: `mounted`. It's true when `open` becomes true. When `open` becomes false, call
+    `dialog.close()` (or remove the attribute in jsdom) and keep it mounted until
+    `onTransitionEnd` with `e.target === e.currentTarget`, or a 250 ms fallback timeout, whichever
+    comes first. Clear the timer on unmount and on reopen.
+  - **Classes**, added to the existing ones:
+    - centering: `m-auto max-h-[calc(100dvh-2rem)] overflow-y-auto`;
+    - animation: `opacity-0 scale-95 open:opacity-100 open:scale-100 starting:open:opacity-0 starting:open:scale-95 transition-[opacity,scale,overlay,display] transition-discrete duration-200 ease-out motion-reduce:transition-none`;
+    - backdrop: `backdrop:opacity-0 open:backdrop:opacity-100 starting:open:backdrop:opacity-0 backdrop:transition-[opacity,overlay,display] backdrop:transition-discrete backdrop:duration-200`.
+  - **No inline `style`**: the CSP allows styles by nonce only. Update the doc comment with why
+    `m-auto` is needed and why it unmounts after the exit, not on close.
+- [ ] T032 [US5] Check that the variants exist in the built CSS: run `npm run -w client build`
+  and grep the output CSS for `@starting-style`, plus the `scale` and `opacity` utilities used. If
+  `open:backdrop:` or `starting:open:backdrop:` don't compile in Tailwind 4.3, fall back to an
+  equivalent arbitrary variant (`[&[open]::backdrop]:opacity-100`) and record it in the
+  component comment.
+- [ ] T033 [P] [US5] Run every consumer's tests unchanged:
+  - `client/tests/member/listing-request.test.tsx`
+  - the Threads composer and post-card tests
+  - the handle dialog test
+  - the member and admin Referrals tests
+  - `drawer.test.tsx`
+
+  Fix only what the deferred unmount breaks. A test that expected the content gone
+  synchronously after Cancel may need `await waitFor(...)`, with a comment.
+- [ ] T034 [US5] Check by hand in the browser (`npm run -w client dev`), web only:
+  - Send request (Marketplace), the Threads compose dialog, the handle dialog, and Refer & earn,
+    at 1440 px and 375 px: centered, animated in and out;
+  - a long dialog scrolls inside the window;
+  - Escape works;
+  - macOS "Reduce motion" turns the animation off;
+  - "New listing" still slides from the right.
+
+  Record the result in `specs/021-member-marketplace-posting/quickstart.md`.
+
+**Checkpoint**: T030 and T033 pass, and T034 is recorded.
+
+---
+
+## Phase 8: Polish & cross-cutting
+
+- [ ] T035 Update `CLAUDE.md`'s marketplace paragraph:
   - replace "`marketplace_post` gates *creating* a listing…" with: posting is open to every
     member (feature 021), and members can't offer jobs;
   - the allowed modes per category are in `CATEGORY_DEFS`;
   - the trigger `marketplace_no_new_job_offer` refuses only the *creation* of a job offer, which
     is why it isn't a CHECK.
   - Keep "ownership refusals are 404".
-- [ ] T031 [P] Search for any remaining reference:
+- [ ] T036 [P] Search for any remaining reference:
   `grep -rn "marketplace_post" server/src client/src expo-client/german-world-club/src packages/contracts/src server/tests client/tests`.
   Only comments that state the history (feature 021 retired it) may remain.
-- [ ] T032 Run the gates:
+- [ ] T037 Run the gates:
   - `DATABASE_URL=…/gwc_test npm run -w server test` (compare with the T001 baseline; the 7
     known failures on main are the `seed:demo` gate and resilience budgets);
   - `npm run -w client test` and `npm run -w client test:i18n`;
   - `npx tsc --noEmit -p packages/contracts`, `-p client`, `-p expo-client/german-world-club`;
   - `npm run -w expo-client/german-world-club lint` (only problems that already exist).
-- [ ] T033 Run `npm run -w server seed:demo` against the **dev** database only if the user
+- [ ] T038 Run `npm run -w server seed:demo` against the **dev** database only if the user
   agrees, since it's additive. Otherwise check the seed with the seed test suite on `gwc_test`.
   It creates no job offers and owners have no `marketplace_post`.
-- [ ] T034 Walk through `specs/021-member-marketplace-posting/quickstart.md` steps 1–9 by hand
+- [ ] T039 Walk through `specs/021-member-marketplace-posting/quickstart.md` steps 1–9 by hand
   (web, the app on a device, a merchant login). Record the result in quickstart.md.
 
 ---
@@ -302,7 +370,7 @@ the listing is unchanged. The compose form shows only Request for Job.
   migration file T013 creates, so T013 comes first.
 - **US3 (T027–T028)** depends on US2's trigger (T020) and the edit check (T022).
 - **US4 (T029)** is independent.
-- **Polish (T030–T034)** comes after all stories.
+- **Polish (T035–T039)** comes after all stories.
 
 Within a story, tests come first and must fail before implementation (except pure renames).
 
@@ -314,6 +382,7 @@ US1 tests:    T006 ∥ T007 ∥ T009 ∥ T010   (T008 alone: shared matrix file)
 US1 impl:     T014 ∥ T015 ∥ T016          (T011 → T012 → T013 server-side, in order)
 US2 tests:    T017/T018 (one file, sequential) ∥ T019
 US2 impl:     T024 ∥ T025 ∥ T026          (T020 → T021 → T022 → T023 server-side)
+US5:          T030 ∥ (any US1–US4 task); then T031 → T032 → T033 → T034
 ```
 
 ## Implementation strategy
@@ -322,6 +391,7 @@ US2 impl:     T024 ∥ T025 ∥ T026          (T020 → T021 → T022 → T023 s
    open to everyone, so **don't release US1 without US2**. Both are P1.
 2. **US2**: the rule, at three layers (contract definition, application check, trigger).
 3. **US3**: proves the wind-down. Mostly tests, because the trigger's design is what delivers it.
-4. **US4 and Polish**: docs, gates, the walkthrough.
+4. **US5**: web dialog polish, independent and shippable on its own.
+5. **US4 and Polish**: docs, gates, the walkthrough.
 
 Commit per phase on `021-member-marketplace-posting`. Don't push or open a PR unless asked.

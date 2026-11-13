@@ -34,6 +34,16 @@ Merchant, partner and staff tokens are still refused on every member listing rou
 | Refusal `mode-not-allowed` | Logged (`console.error('ComposeListing.submit', problem)`) and shown as the same note. |
 | Browse filters | Unchanged. Job and both modes stay filterable. |
 
+## Web dialogs (`client/src/member/threads/Modal.tsx`, Story 5)
+
+| What | Behaviour |
+|---|---|
+| Position | Centered horizontally and vertically, `min(560px, 100vw − 2rem)` wide, at most `100dvh − 2rem` tall, with scrolling content |
+| Enter | Fades in and scales from 95% to 100%, about 200 ms, ease-out; the backdrop fades in |
+| Exit | The reverse. The content unmounts after the exit, so a reopened dialog starts fresh |
+| Reduced motion | No transition |
+| Unchanged | Escape and Cancel close it; title and `aria-label`; consumers' props. The Drawer and the app aren't touched. |
+
 ## App (`expo-client/german-world-club`)
 
 | Where | What |

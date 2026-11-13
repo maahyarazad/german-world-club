@@ -153,3 +153,37 @@ one rule, which is the defect Principle I names.
     - a member with no flags sees New listing;
     - choosing Job leaves only Request and shows the note.
   - App: `tsc` plus lint.
+
+## R8. Web dialogs: centered and animated (Story 5)
+
+**Cause**: `Modal` calls `showModal()`. The browser's style for a modal dialog centers it with
+`position: fixed; inset: 0; margin: auto`. Tailwind v4's preflight sets `margin: 0` on every
+element, which wins, so the dialog sits at the top-left.
+
+**Decision**: in `client/src/member/threads/Modal.tsx`:
+- **Centering**: add `m-auto` (with the browser's `inset: 0` this centers both ways) and
+  `max-h-[calc(100dvh-2rem)] overflow-y-auto`, so a tall dialog stays inside the window.
+- **Animation**, classes only, the same technique as `ui/Drawer.tsx`. The CSP allows styles by
+  nonce alone, so there are no inline styles and no animation library. Opacity 0→1 and scale
+  95%→100% with `open:` and `starting:open:`, plus
+  `transition-[opacity,scale,overlay,display] transition-discrete duration-200 ease-out`. The
+  backdrop fades the same way (`backdrop:` variants). `motion-reduce:transition-none`.
+- **Exit**: today `Modal` returns `null` as soon as `open` is false, so there's nothing left to
+  animate. It now keeps rendering while closing:
+  - on `open → false` it calls `dialog.close()`, and unmounts on the dialog's own
+    `transitionend`;
+  - a 250 ms fallback timer covers a browser that sends none (reduced motion, no
+    `@starting-style`, jsdom).
+  - Unmounting after the exit keeps today's behaviour: content resets on reopen, which the
+    composer and request dialogs rely on.
+- **Unchanged**: the Drawer (New listing) keeps its slide-in, and the app is untouched.
+
+**Browser support**: `@starting-style` and `transition-behavior: allow-discrete` are in current
+Chrome, Edge, Safari and Firefox. An older browser shows the dialog centered with no animation,
+which is acceptable degradation.
+
+**Alternatives considered**:
+- *Keep Modal mounted while closed, like the Drawer*: changes the reset-on-reopen behaviour
+  that every consumer relies on.
+- *An animation library*: a dependency for two transitions, and its inline styles would fight
+  the CSP.

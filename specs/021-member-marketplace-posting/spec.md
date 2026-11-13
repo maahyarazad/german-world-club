@@ -22,6 +22,10 @@ This feature turns that around:
 
 - Q: Should staff still be able to stop one member from posting? → A: No. Posting is open to
   every onboarded member. Misuse is handled by moderation and locking (FR-003).
+- Q: Which web dialogs are centered and animated? → A: every dialog built on the shared web
+  Modal (Send request, the Threads composer and post actions, the handle dialog, Refer & earn,
+  staff referral actions). "New listing" keeps its right-edge slide-in panel. Web only; the app
+  is unchanged (FR-013–FR-015).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -126,6 +130,36 @@ Core Server Functions table refers to it.
    it says who may post, the four categories, offer and request, and that a member can request
    a job but not offer one.
 
+### User Story 5 - Web dialogs open centered, with a short animation (Priority: P3)
+
+On the web console, a dialog opens in the middle of the screen, not stuck to the top-left
+corner. It fades and grows in slightly, and fades out when it closes. This applies to Send
+request on a listing, the Threads composer, the handle dialog and the others built the same way.
+
+**Why this priority**: the dialog works today, but it appears in the corner of the window, which
+looks broken. Polish rather than function, and web only.
+
+**Independent Test**: on the web, open Send request on a listing at desktop and phone width. The
+dialog is centered both ways, animates in and out, and still closes on Escape and Cancel. With
+"reduce motion" switched on in the operating system, it appears and disappears without
+animation.
+
+**Acceptance Scenarios**:
+
+1. **Given** any web page, **When** a member opens a dialog (Send request, compose post, handle,
+   Refer & earn), **Then** it's centered horizontally and vertically in the window, at any
+   window size.
+2. **Given** a dialog taller than the window, **When** it opens, **Then** it stays within the
+   window and its content scrolls.
+3. **Given** a dialog opening or closing, **When** the member watches, **Then** it fades and
+   scales in over about 200 ms, and fades out the same way. The dimmed background fades with it.
+4. **Given** "reduce motion" is set, **When** a dialog opens or closes, **Then** it does so
+   without animation.
+5. **Given** a dialog that was closed and opened again, **When** it reopens, **Then** its
+   content starts fresh, as today. Closing never keeps a half-written message.
+6. **Given** the "New listing" panel and the mobile app, **When** they're used, **Then** nothing
+   changes.
+
 ### Edge Cases
 
 - **A member who never had the old posting permission, or had it set to false**, can post like
@@ -168,6 +202,13 @@ Core Server Functions table refers to it.
   FR-004 and FR-006, and the four categories with offer and request.
 - **FR-012**: The marketplace's browse and filters MUST keep working for jobs (requests and the
   remaining offers).
+- **FR-013**: Every web dialog built on the shared dialog component MUST open centered in the
+  window, and stay within it (content scrolls) at any size.
+- **FR-014**: Those dialogs MUST animate in and out (fade and slight scale, with the backdrop
+  fading too, about 200 ms), and MUST NOT animate when the member's system asks for reduced
+  motion.
+- **FR-015**: The change MUST be web only. The "New listing" panel, the mobile app, and the
+  dialogs' behaviour (Escape, Cancel, content reset on reopen) are unchanged.
 
 ### Key Entities
 
@@ -189,6 +230,8 @@ Core Server Functions table refers to it.
 - **SC-004**: A member choosing the job category understands in the form, before submitting,
   that only requests are possible. No member sees the job-offer refusal from a normal use of
   the form.
+- **SC-005**: 100% of web dialogs built on the shared component open centered at phone, tablet
+  and desktop widths.
 
 ## Assumptions
 
