@@ -4,7 +4,9 @@ import { join } from 'node:path'
 import {
   CATEGORY_DEFS,
   MARKETPLACE_CATEGORIES,
+  MARKETPLACE_MODES,
   filterableFieldsFor,
+  modesFor,
   requiredFieldsFor,
 } from '@gwc/contracts/marketplace'
 import type { MarketplaceCategory } from '@gwc/contracts/marketplace'
@@ -98,5 +100,27 @@ describe('the definitions describe four categories', () => {
     expect(requiredFieldsFor('general').length).toBeLessThanOrEqual(
       requiredFieldsFor('vehicle').length,
     )
+  })
+})
+
+describe('allowed modes per category (feature 021)', () => {
+  it('every category allows at least one mode, each a real mode, none twice', () => {
+    for (const category of MARKETPLACE_CATEGORIES) {
+      const modes = modesFor(category)
+      expect(modes.length, `${category} allows no mode — nothing could be posted in it`).toBeGreaterThan(0)
+      expect(new Set(modes).size, `${category} lists a mode twice`).toBe(modes.length)
+      for (const mode of modes) expect(MARKETPLACE_MODES).toContain(mode)
+    }
+  })
+
+  it('members may only REQUEST in the job category', () => {
+    expect(modesFor('job')).toEqual(['request'])
+  })
+
+  it('the other categories still take offers — the counter-assertion', () => {
+    // Without this, a definition that allowed only requests everywhere would
+    // satisfy the job assertion above.
+    const offering = MARKETPLACE_CATEGORIES.filter((c) => modesFor(c).includes('offer'))
+    expect(offering).toEqual(['vehicle', 'property', 'general'])
   })
 })

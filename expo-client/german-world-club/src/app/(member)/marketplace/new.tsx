@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
-import { CONTACT_METHODS, LISTING_MEDIA_MAX, MARKETPLACE_MODES } from '@gwc/contracts/marketplace';
+import { PROBLEMS } from '@gwc/contracts/errors';
+import { CONTACT_METHODS, LISTING_MEDIA_MAX, MARKETPLACE_MODES, modesFor } from '@gwc/contracts/marketplace';
 import type {
   CategoryDef, ContactMethod, MarketplaceCategory, MarketplaceMode, TermsResponse, VehicleFeature,
 } from '@gwc/contracts/marketplace';
@@ -28,8 +29,9 @@ const log = (where: string, e: unknown) => console.error(`MarketplaceCompose.${w
  * screen that slides in from the right (see _layout.tsx).
  *
  * The rules are the web's, and the server's before that: the fields come from
- * `GET /marketplace/categories`, posting needs `marketplace_post` (checked by
- * the server, whatever this screen showed), and the thresholds that enable
+ * `GET /marketplace/categories` — including which modes each category allows
+ * (no job offers, feature 021) — the server re-checks everything whatever this
+ * screen showed, and the thresholds that enable
  * Publish are early feedback the server repeats.
  *
  * Media go the opposite way round from a thread post: the listing is created
@@ -72,6 +74,10 @@ export default function NewListing() {
   }, []);
 
   const activeDef = categories.find((c) => c.category === category);
+  // The modes this category allows come from the server's definition (a member
+  // may only REQUEST a job, feature 021) — display only; the server re-checks.
+  const allowedModes: readonly MarketplaceMode[] = activeDef?.modes ?? MARKETPLACE_MODES;
+  const onlyMode = allowedModes.length === 1;
 
   const chooseCategory = (next: MarketplaceCategory) => {
     // A field typed for one category means nothing in another, and the server
@@ -79,6 +85,10 @@ export default function NewListing() {
     setCategory(next);
     setDetails({});
     setFeatures(new Set());
+    // A mode the new category does not allow moves to the first it does, so
+    // the form can always be sent (Offer becomes Request for Job).
+    const modes = categories.find((c) => c.category === next)?.modes ?? modesFor(next);
+    if (!modes.includes(mode)) setMode(modes[0] ?? 'request');
   };
 
   const setDetail = (key: string, value: unknown) =>
@@ -156,6 +166,11 @@ export default function NewListing() {
       }));
     } catch (e) {
       log('submit', e);
+      // Shown as well as logged: only reachable with a stale category list,
+      // and the member cannot proceed without knowing why (CLAUDE.md).
+      if (e instanceof ApiError && e.problem?.type === PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED.type) {
+        setError(t.marketplace.jobOfferNote);
+      }
       setBusy(false);
       return;
     }
@@ -205,10 +220,11 @@ export default function NewListing() {
       <View style={{ gap: Spacing.one }}>
         <ThemedText type="smallBold">{t.marketplace.mode}</ThemedText>
         <View style={styles.chips} accessibilityRole="radiogroup">
-          {MARKETPLACE_MODES.map((m) => (
+          {allowedModes.map((m) => (
             <Chip key={m} label={t.marketplace.modes[m]} selected={mode === m} onPress={() => !locked && setMode(m)} />
           ))}
         </View>
+        {onlyMode ? <ThemedText type="small" themeColor="textSecondary">{t.marketplace.jobOfferNote}</ThemedText> : null}
       </View>
 
       <TextField label={t.marketplace.titleField} value={title} onChangeText={setTitle} editable={!locked} />

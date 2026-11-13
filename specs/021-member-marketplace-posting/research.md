@@ -153,3 +153,78 @@ one rule, which is the defect Principle I names.
     - a member with no flags sees New listing;
     - choosing Job leaves only Request and shows the note.
   - App: `tsc` plus lint.
+
+## R8. Web dialogs: centered and animated (Story 5)
+
+**Cause**: `Modal` calls `showModal()`. The browser's style for a modal dialog centers it with
+`position: fixed; inset: 0; margin: auto`. Tailwind v4's preflight sets `margin: 0` on every
+element, which wins, so the dialog sits at the top-left.
+
+**Decision**: in `client/src/member/threads/Modal.tsx`:
+- **Centering**: add `m-auto` (with the browser's `inset: 0` this centers both ways) and
+  `max-h-[calc(100dvh-2rem)] overflow-y-auto`, so a tall dialog stays inside the window.
+- **Animation**, classes only, the same technique as `ui/Drawer.tsx`. The CSP allows styles by
+  nonce alone, so there are no inline styles and no animation library. Opacity 0→1 and scale
+  95%→100% with `open:` and `starting:open:`, plus
+  `transition-[opacity,scale,overlay,display] transition-discrete duration-200 ease-out`. The
+  backdrop fades the same way (`backdrop:` variants). `motion-reduce:transition-none`.
+- **Exit**: today `Modal` returns `null` as soon as `open` is false, so there's nothing left to
+  animate. It now keeps rendering while closing:
+  - on `open → false` it calls `dialog.close()`, and unmounts on the dialog's own
+    `transitionend`;
+  - a 250 ms fallback timer covers a browser that sends none (reduced motion, no
+    `@starting-style`, jsdom).
+  - Unmounting after the exit keeps today's behaviour: content resets on reopen, which the
+    composer and request dialogs rely on.
+- **Unchanged**: the Drawer (New listing) keeps its slide-in, and the app is untouched.
+
+**Browser support**: `@starting-style` and `transition-behavior: allow-discrete` are in current
+Chrome, Edge, Safari and Firefox. An older browser shows the dialog centered with no animation,
+which is acceptable degradation.
+
+**Alternatives considered**:
+- *Keep Modal mounted while closed, like the Drawer*: changes the reset-on-reopen behaviour
+  that every consumer relies on.
+- *An animation library*: a dependency for two transitions, and its inline styles would fight
+  the CSP.
+
+## R9. Profile picture upload progress (Story 6)
+
+**What "server upload progress" can mean**: the server can't call the browser back in the middle
+of a request, because a request has no channel to the client until its response. What the
+browser *can* observe is how much of the request body the server has accepted. The upload's
+`progress` events are exactly that, give or take a proxy's buffer. So the member sees two
+honest phases:
+1. **uploading**: the share received, from `loaded / total`;
+2. **processing**: from when the body has gone (`upload.onload`) until the response. The server
+   inspects the image, strips its metadata and makes the variants.
+
+**Decision**:
+- Add `upload(path, form, { onProgress, signal })` to `client/src/lib/api.ts`, on
+  `XMLHttpRequest`. `fetch` has no upload progress in Safari or Firefox; a streaming request
+  body with `duplex: 'half'` is Chromium-only and needs HTTP/2.
+- It keeps every rule `request()` has:
+  - `withCredentials`;
+  - `accept` with the problem type;
+  - `x-csrf-token`, and exactly one refresh-and-retry on `csrf-token-invalid`;
+  - non-2xx → `ApiError` built by the same `readProblem` (the XHR response wrapped in a
+    `Response`);
+  - an `AbortSignal` aborts it.
+- `onProgress` receives `{ phase: 'uploading', fraction: number | null }`, where `null` means
+  the length is unknown, and then `{ phase: 'processing' }`.
+- **Edit profile** (`client/src/member/profile/EditProfile.tsx`) uses it for `POST /media`.
+  - The progress is a native `<progress>`: with a value while uploading, without one
+    (indeterminate) while processing.
+  - The label is `formatPercent` in the console's locale, inside an `aria-live="polite"`
+    region.
+  - Native `<progress>` and not a styled div with a width: the CSP allows styles by nonce only,
+    and the element is accessible by itself.
+- **Server**: unchanged. `POST /media` already reads the stream and answers when the asset is
+  stored.
+- **Scope**: Edit profile only. The Marketplace and Threads uploads can adopt `upload()` later.
+  The app is unchanged.
+
+**Alternatives considered**:
+- *Server-sent progress* (a second request polling or an SSE channel keyed to the upload): a
+  new endpoint and state, to report what the browser already knows.
+- *A spinner only*: no sense of how long a 25 MB file will take.

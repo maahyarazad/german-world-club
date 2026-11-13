@@ -442,6 +442,7 @@ export const de: Catalogue = {
     composeTitle: 'Neue Anzeige',
     category: 'Kategorie',
     mode: 'Art',
+    jobOfferNote: 'Hier kannst du Arbeit suchen. Stellenangebote sind für Mitglieder nicht möglich.',
     titleField: 'Titel',
     body: 'Beschreibung',
     features: 'Ausstattung',

@@ -18,6 +18,17 @@ category definition in `@gwc/contracts/marketplace` (job: `request` only):
 
 The business description was updated during `/speckit-specify` (local file, gitignored).
 
+**Web dialogs, Story 5 (added 2026-11-13, web only)**: the shared `client/src/member/threads/Modal.tsx`
+is centered and animated (research R8). It isn't centered today because Tailwind v4's preflight
+resets `margin` to 0, which removes the browser's `margin: auto` for a modal `<dialog>`. It
+gains an enter and exit transition using classes only, like the 017 Drawer. The Drawer and the
+app are untouched.
+
+**Profile picture upload progress, Story 6 (added 2026-11-13, web only)**: a new
+`upload(path, form, { onProgress })` in `client/src/lib/api.ts`, on XHR. It reports the share of
+the file the server has received, then "processing" until the server answers (research R9).
+Edit profile shows a native `<progress>`. The server is unchanged.
+
 ## Technical Context
 
 **Language/Version**: TypeScript on Node 22 (server, run with type stripping), React 19 + Vite
@@ -102,6 +113,12 @@ server/
     └── authz/matrix.test.ts
 
 client/
+├── src/lib/api.ts                # US6: upload() with progress, same CSRF/problem rules
+├── src/member/profile/EditProfile.tsx  # US6: progress while the picture uploads
+├── tests/lib/upload.test.ts      # US6: new
+├── tests/member/edit-profile-upload.test.tsx  # US6: new
+├── src/member/threads/Modal.tsx  # US5: centered (m-auto, bounded height), enter/exit transition
+├── tests/components/modal.test.tsx  # US5: new
 ├── src/member/Marketplace.tsx    # New listing for every member; modes from the definition; note
 ├── src/i18n/de.ts, en.ts         # memberMarketplace.jobOfferNote
 └── tests/member/marketplace-compose.test.tsx, marketplace.test.tsx

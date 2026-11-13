@@ -90,7 +90,16 @@ export type FieldDef = {
 export type CategoryDef = {
   category: MarketplaceCategory
   fields: readonly FieldDef[]
+  /**
+   * The modes a member may CREATE a listing in (feature 021). The server
+   * refuses any other combination, and both compose forms offer only these —
+   * one definition, so the form and the server cannot disagree about which
+   * combinations exist. Listings that predate a narrowing stay as they are.
+   */
+  modes: readonly MarketplaceMode[]
 }
+
+const BOTH_MODES: readonly MarketplaceMode[] = Object.freeze(['offer', 'request'] as const)
 
 /**
  * Money is always integer minor units, never a float — and it is meaningless
@@ -119,6 +128,7 @@ const CURRENCY: FieldDef = {
 const DEFS: Record<MarketplaceCategory, CategoryDef> = {
     vehicle: {
       category: 'vehicle',
+      modes: BOTH_MODES,
       fields: Object.freeze([
         { key: 'make', kind: 'text', required: true, max: 60, filterable: true },
         { key: 'model', kind: 'text', required: false, max: 60 },
@@ -138,6 +148,7 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
 
     property: {
       category: 'property',
+      modes: BOTH_MODES,
       fields: Object.freeze([
         // NOT the same axis as `mode`: a *request* to *rent* is coherent, and
         // collapsing the two would make it unexpressible.
@@ -156,6 +167,12 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
 
     job: {
       category: 'job',
+      // Members look for work here; they do not offer it (feature 021, the
+      // business description's Marketplace section). Hiring is an employer's
+      // business and employers are not members. Job offers posted before the
+      // rule wind down — `042_member_marketplace_posting.sql` refuses only
+      // the *creation* of one.
+      modes: Object.freeze(['request'] as const),
       fields: Object.freeze([
         { key: 'employment_type', kind: 'enum', required: true,
           options: Object.freeze(['full_time', 'part_time', 'contract', 'internship']) },
@@ -180,6 +197,7 @@ const DEFS: Record<MarketplaceCategory, CategoryDef> = {
      */
     general: {
       category: 'general',
+      modes: BOTH_MODES,
       fields: Object.freeze([
         { key: 'kind', kind: 'enum', required: true,
           options: GENERAL_KINDS, filterable: true },
@@ -197,6 +215,10 @@ export const CATEGORY_DEFS: Readonly<Record<MarketplaceCategory, CategoryDef>> =
 /** Required field keys for a category — what the server refuses without. */
 export const requiredFieldsFor = (category: MarketplaceCategory): readonly string[] =>
   CATEGORY_DEFS[category].fields.filter((f) => f.required).map((f) => f.key)
+
+/** The modes a listing in this category may be created in (feature 021). */
+export const modesFor = (category: MarketplaceCategory): readonly MarketplaceMode[] =>
+  CATEGORY_DEFS[category].modes
 
 /** Filterable field keys — must each have a backing index. */
 export const filterableFieldsFor = (category: MarketplaceCategory): readonly string[] =>

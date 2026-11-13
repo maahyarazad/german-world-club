@@ -22,6 +22,13 @@ This feature turns that around:
 
 - Q: Should staff still be able to stop one member from posting? → A: No. Posting is open to
   every onboarded member. Misuse is handled by moderation and locking (FR-003).
+- Q: Which web dialogs are centered and animated? → A: every dialog built on the shared web
+  Modal (Send request, the Threads composer and post actions, the handle dialog, Refer & earn,
+  staff referral actions). "New listing" keeps its right-edge slide-in panel. Web only; the app
+  is unchanged (FR-013–FR-015).
+- Q: What does "upload progress" on Edit profile show, and where? → A: web console only. While the
+  picture is sent: the share of it the server has received. Then "Processing…" while the server
+  checks it and makes its sizes. Then "Saved." (FR-016–FR-019).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -126,6 +133,65 @@ Core Server Functions table refers to it.
    it says who may post, the four categories, offer and request, and that a member can request
    a job but not offer one.
 
+### User Story 5 - Web dialogs open centered, with a short animation (Priority: P3)
+
+On the web console, a dialog opens in the middle of the screen, not stuck to the top-left
+corner. It fades and grows in slightly, and fades out when it closes. This applies to Send
+request on a listing, the Threads composer, the handle dialog and the others built the same way.
+
+**Why this priority**: the dialog works today, but it appears in the corner of the window, which
+looks broken. Polish rather than function, and web only.
+
+**Independent Test**: on the web, open Send request on a listing at desktop and phone width. The
+dialog is centered both ways, animates in and out, and still closes on Escape and Cancel. With
+"reduce motion" switched on in the operating system, it appears and disappears without
+animation.
+
+**Acceptance Scenarios**:
+
+1. **Given** any web page, **When** a member opens a dialog (Send request, compose post, handle,
+   Refer & earn), **Then** it's centered horizontally and vertically in the window, at any
+   window size.
+2. **Given** a dialog taller than the window, **When** it opens, **Then** it stays within the
+   window and its content scrolls.
+3. **Given** a dialog opening or closing, **When** the member watches, **Then** it fades and
+   scales in over about 200 ms, and fades out the same way. The dimmed background fades with it.
+4. **Given** "reduce motion" is set, **When** a dialog opens or closes, **Then** it does so
+   without animation.
+5. **Given** a dialog that was closed and opened again, **When** it reopens, **Then** its
+   content starts fresh, as today. Closing never keeps a half-written message.
+6. **Given** the "New listing" panel and the mobile app, **When** they're used, **Then** nothing
+   changes.
+
+### User Story 6 - See the profile picture upload progress (Priority: P3)
+
+On the web console's Edit profile, a member who chooses a new profile picture sees how far the
+upload has got, as a bar and a percentage. When the file has fully arrived, it says it's
+processing the picture, and then "Saved." with the new picture. A large picture on a slow
+connection no longer looks like nothing is happening.
+
+**Why this priority**: the upload works today, but with no feedback for up to 25 MB on a slow
+connection, so members click again or leave. Web only, polish.
+
+**Independent Test**: on the web, open Edit profile, throttle the network, and choose a picture
+of a few MB. The bar rises from 0 to 100%, then "Processing…" shows, then "Saved." and the new
+picture. A refused file shows no bar, and the buttons are usable again.
+
+**Acceptance Scenarios**:
+
+1. **Given** Edit profile on the web, **When** a member chooses a picture, **Then** a progress bar
+   and a percentage appear and rise as the file is sent.
+2. **Given** the whole file has been sent, **When** the server is still working on it, **Then**
+   the bar shows activity without a percentage and says "Processing…".
+3. **Given** the server accepts the picture, **When** it answers, **Then** the bar disappears,
+   "Saved." shows, and the new picture is displayed.
+4. **Given** the server refuses the picture, or the connection drops, **When** that happens,
+   **Then** the bar disappears, the failure is logged, and Change and Remove are usable again.
+5. **Given** a screen reader, **When** the upload runs, **Then** the progress is announced
+   politely.
+6. **Given** no picture is being uploaded, **When** the page shows, **Then** there's no progress
+   bar.
+
 ### Edge Cases
 
 - **A member who never had the old posting permission, or had it set to false**, can post like
@@ -168,6 +234,23 @@ Core Server Functions table refers to it.
   FR-004 and FR-006, and the four categories with offer and request.
 - **FR-012**: The marketplace's browse and filters MUST keep working for jobs (requests and the
   remaining offers).
+- **FR-013**: Every web dialog built on the shared dialog component MUST open centered in the
+  window, and stay within it (content scrolls) at any size.
+- **FR-014**: Those dialogs MUST animate in and out (fade and slight scale, with the backdrop
+  fading too, about 200 ms), and MUST NOT animate when the member's system asks for reduced
+  motion.
+- **FR-015**: The change MUST be web only. The "New listing" panel, the mobile app, and the
+  dialogs' behaviour (Escape, Cancel, content reset on reopen) are unchanged.
+- **FR-016**: On the web Edit profile, choosing a profile picture MUST show the upload's progress
+  as the share of the file the server has received, as a bar and a percentage formatted for the
+  console's language.
+- **FR-017**: Once the file has been received, and until the server answers, it MUST say the
+  picture is being processed.
+- **FR-018**: Success MUST end with "Saved." and the new picture. A refusal or a broken
+  connection MUST remove the progress, log the failure, and make the buttons usable again.
+- **FR-019**: The upload MUST keep every rule the other requests follow (cookies, the CSRF token
+  and its one refresh, problem responses), and the server is unchanged. The app and the other
+  upload screens are unchanged.
 
 ### Key Entities
 
@@ -189,6 +272,10 @@ Core Server Functions table refers to it.
 - **SC-004**: A member choosing the job category understands in the form, before submitting,
   that only requests are possible. No member sees the job-offer refusal from a normal use of
   the form.
+- **SC-005**: 100% of web dialogs built on the shared component open centered at phone, tablet
+  and desktop widths.
+- **SC-006**: On a throttled connection, a member sees the profile picture progress begin to move
+  within a second of choosing it, and it reaches 100% before "Processing…" shows.
 
 ## Assumptions
 

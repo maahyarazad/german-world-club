@@ -31,14 +31,13 @@ export default function Marketplace() {
   );
   const listings = usePaged<Listing>(fetchPage, [category, mode]);
 
-  // Whether to SHOW "New listing" — display only. The server refuses a post
-  // without `marketplace_post` whatever this says (Principle I). Re-read on
-  // every focus, so a revoked flag hides the button on the next visit, the way
-  // the server's refusal takes effect on the next request.
+  // Whether to SHOW "New listing" — display only (Principle I). Every member
+  // may post since feature 021; the server refuses anyone else whatever this
+  // says. Re-read on every focus, like every session-derived display.
   const [canPost, setCanPost] = useState(false);
   useFocusEffect(useCallback(() => {
     authApi.me().then(
-      (me) => setCanPost(me.kind === 'member' && me.permissions.includes('marketplace_post')),
+      (me) => setCanPost(me.kind === 'member'),
       (e) => console.error('Marketplace.loadMe', e instanceof ApiError ? e.problem : e),
     );
   }, []));

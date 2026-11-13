@@ -34,7 +34,7 @@ describe.skipIf(!hasDatabase)('the listing quota', () => {
   })
 
   const poster = async () => {
-    const row = await createMember(app.pg, { permissions: { marketplace_post: true } })
+    const row = await createMember(app.pg)
     await app.pg.query(
       'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
       [row.id, TERMS],

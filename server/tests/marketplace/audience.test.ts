@@ -16,8 +16,9 @@ import type { GwcApp } from '../../src/app.ts'
  * **Staff do not sell.** A staff member holding `marketplace_moderation` who
  * also lists items is moderating a market they trade in.
  *
- * Both halves of the mechanism are asserted: the route's audience is `member`,
- * and `marketplace_post` is a member-only flag.
+ * The audience is the whole gate since feature 021: every onboarded member may
+ * post, with no per-member flag (`marketplace_post` was retired). The route's
+ * declaration is asserted as well as its effect.
  */
 
 const TERMS = 'v1'
@@ -50,8 +51,8 @@ describe.skipIf(!hasDatabase)('who may create a listing', () => {
   // Without it every case below would pass against a route that refused
   // everybody, which is the failure mode an audience test is most prone to.
 
-  it('a member holding marketplace_post CAN create one', async () => {
-    const row = await createMember(app.pg, { permissions: { marketplace_post: true } })
+  it('a member with no permission flags CAN create one', async () => {
+    const row = await createMember(app.pg, { permissions: {} })
     await app.pg.query(
       'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
       [row.id, TERMS],
@@ -79,21 +80,6 @@ describe.skipIf(!hasDatabase)('who may create a listing', () => {
     expect(response.statusCode).toBe(401)
   })
 
-  it('refuses a member WITHOUT the flag even with terms accepted', async () => {
-    // The flag and the audience are two separate gates, and this pins the
-    // first one independently of the second.
-    const row = await createMember(app.pg, { permissions: {} })
-    await app.pg.query(
-      'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
-      [row.id, TERMS],
-    )
-    const headers = await bearerFor(app, { accountId: row.id, accountKind: 'member' })
-
-    const response = await post(headers)
-    expect(response.statusCode).toBe(403)
-    expect(response.json().type).toMatch(/permission-required/)
-  })
-
   it('declares audience `member` on the posting route — the mechanism, not the effect', async () => {
     // Asserting the declaration as well as the behaviour: the behaviour could
     // be right for the wrong reason, and the posture is what the boot gate and
@@ -106,6 +92,8 @@ describe.skipIf(!hasDatabase)('who may create a listing', () => {
 
     expect(posture, 'the posting route is not in the route table').toBeTruthy()
     expect(posture?.auth.audience).toBe('member')
-    expect(posture?.auth.requires).toBe('marketplace_post')
+    // No per-member flag (feature 021). Re-adding one is a decision this line
+    // makes visible.
+    expect(posture?.auth.requires).toBeUndefined()
   })
 })

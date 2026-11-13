@@ -149,6 +149,12 @@ export const PROBLEMS = {
   // A client shown 429 for an exhausted invitation quota would retry forever.
   RATE_LIMITED: { type: `${BASE}/rate-limited`, title: 'Too many requests', status: 429 },
   QUOTA_EXCEEDED: { type: `${BASE}/quota-exceeded`, title: 'Quota exceeded', status: 422 },
+  // A category that does not allow this mode — a member offering a job
+  // (feature 021). 422 like a quota: the request is well formed and the member
+  // may post, so neither 400 (field errors) nor 403 (permission-required) says
+  // what happened, and retrying changes nothing. Named for the general rule so
+  // a later narrowing reuses it.
+  MARKETPLACE_MODE_NOT_ALLOWED: { type: `${BASE}/marketplace/mode-not-allowed`, title: 'Mode not allowed for this category', status: 422 },
 
   // --- Media ----------------------------------------------------------------
   UNSUPPORTED_MEDIA_TYPE: { type: `${BASE}/unsupported-media-type`, title: 'Unsupported media type', status: 400 },

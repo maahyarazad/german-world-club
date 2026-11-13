@@ -185,7 +185,7 @@ export const marketplaceApi = {
     api<ListingPage>(`/marketplace/listings${q({ category, mode, cursor })}`),
   terms: () => api<TermsResponse>('/marketplace/terms'),
   acceptTerms: () => api<TermsResponse>('/marketplace/terms/accept', { method: 'POST' }),
-  /** Refused by the server without `marketplace_post`, whatever the app showed. */
+  /** Any member may post (feature 021); a job offer is refused 422 `marketplace/mode-not-allowed`. */
   create: (body: CreateListingRequest) => api<{ id: string }>('/marketplace/listings', { method: 'POST', body }),
   /** After the listing exists: marketplace media attach to a listing, unlike a thread post's (feature 010). */
   attachMedia: (listingId: string, assetId: string) =>

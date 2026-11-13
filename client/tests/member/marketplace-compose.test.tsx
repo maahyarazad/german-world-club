@@ -29,7 +29,7 @@ const json = (body: unknown, status = 200) => ({
 
 type Call = { url: string; body: unknown }
 
-function routes({ termsFail = false, failUploads = 0 }: { termsFail?: boolean; failUploads?: number } = {}) {
+function routes({ termsFail = false, failUploads = 0, refuseMode = false }: { termsFail?: boolean; failUploads?: number; refuseMode?: boolean } = {}) {
   const calls: Call[] = []
   const record = (url: string, handler: RouteHandler): RouteHandler => (options) => {
     calls.push({ url, body: options.body })
@@ -41,6 +41,9 @@ function routes({ termsFail = false, failUploads = 0 }: { termsFail?: boolean; f
     '/marketplace/listings': (options) => {
       if (options.method === 'POST') {
         calls.push({ url: 'POST /marketplace/listings', body: JSON.parse(String(options.body)) })
+        if (refuseMode) {
+          return json({ type: 'https://german-world-club.com/problems/marketplace/mode-not-allowed', title: 'Mode not allowed for this category', status: 422 }, 422)
+        }
         return json({ id: 'listing-1' }, 201)
       }
       return json({ items: [], nextCursor: null })
@@ -56,7 +59,8 @@ function routes({ termsFail = false, failUploads = 0 }: { termsFail?: boolean; f
   return { calls, extraRoutes }
 }
 
-const poster = () => ({ ...memberSnapshot(), permissions: ['marketplace_post'] })
+// Any member may post since feature 021 — no permission flag.
+const poster = () => ({ ...memberSnapshot(), permissions: [] as string[] })
 
 /**
  * The form lives in a drawer that stays mounted while closed (feature 017,
@@ -236,5 +240,70 @@ describe('publishing from the member tab', () => {
     // One listing, not two: the retry attached to the listing that exists.
     expect(calls.filter((c) => c.url === 'POST /marketplace/listings')).toHaveLength(1)
     expect(calls.filter((c) => c.url === 'POST attach').map((c) => JSON.parse(String(c.body)))).toEqual([{ assetId: 'asset-1' }])
+  })
+})
+
+/**
+ * Job offers are not open to members (feature 021, US2). The modes come from
+ * the server's category definition, never from a list in the form.
+ */
+describe('the mode follows the category', () => {
+  const modeSelect = () => within(composeDialog()).getByLabelText(t.memberMarketplace.mode) as HTMLSelectElement
+  const categorySelect = () => within(composeDialog()).getByLabelText(t.memberMarketplace.category) as HTMLSelectElement
+  const optionValues = (select: HTMLSelectElement) => [...select.options].map((o) => o.value)
+
+  it('offers only Request for Job, says why, and switches an Offer to Request', async () => {
+    const { calls, extraRoutes } = routes()
+    mockCapabilityFetch(poster(), { extraRoutes })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
+    await screen.findByLabelText('make *')
+
+    fireEvent.change(modeSelect(), { target: { value: 'offer' } })
+    expect(modeSelect().value).toBe('offer')
+    fireEvent.change(categorySelect(), { target: { value: 'job' } })
+
+    expect(optionValues(modeSelect())).toEqual(['request'])
+    expect(modeSelect().value).toBe('request')
+    expect(screen.getByText(t.memberMarketplace.jobOfferNote)).toBeInTheDocument()
+
+    await fillBasics()
+    fireEvent.change(screen.getByLabelText('employment_type *'), { target: { value: 'full_time' } })
+    fireEvent.change(screen.getByLabelText('city *'), { target: { value: 'Dubai' } })
+    fireEvent.click(screen.getByRole('button', { name: t.memberMarketplace.submit }))
+
+    await waitFor(() => expect(calls.some((c) => c.url === 'POST /marketplace/listings')).toBe(true))
+    const created = calls.find((c) => c.url === 'POST /marketplace/listings')!.body as Record<string, unknown>
+    expect(created).toMatchObject({ category: 'job', mode: 'request' })
+  })
+
+  it('shows both modes and no note for General — the counter-assertion', async () => {
+    const { extraRoutes } = routes()
+    mockCapabilityFetch(poster(), { extraRoutes })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
+    await screen.findByLabelText('make *')
+
+    fireEvent.change(categorySelect(), { target: { value: 'general' } })
+    expect(optionValues(modeSelect())).toEqual(['offer', 'request'])
+    expect(screen.queryByText(t.memberMarketplace.jobOfferNote)).not.toBeInTheDocument()
+  })
+
+  it('explains a mode-not-allowed refusal with the same note, and logs it', async () => {
+    // Only reachable with a stale category list; the member still needs to
+    // know why nothing was posted.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { extraRoutes } = routes({ refuseMode: true })
+    mockCapabilityFetch(poster(), { extraRoutes })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
+    await openCompose()
+    await screen.findByLabelText('make *')
+    await fillBasics()
+    fireEvent.change(screen.getByLabelText('make *'), { target: { value: 'BMW' } })
+    fireEvent.click(screen.getByRole('button', { name: t.memberMarketplace.submit }))
+
+    expect(await screen.findByText(t.memberMarketplace.jobOfferNote)).toBeInTheDocument()
+    expect(errors).toHaveBeenCalledWith('ComposeListing.submit', expect.objectContaining({ status: 422 }))
+    errors.mockRestore()
   })
 })

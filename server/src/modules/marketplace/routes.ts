@@ -14,11 +14,15 @@ import type { GwcApp } from '../../app.ts'
  * to boot otherwise (Principle II), and it is the gate that survived
  * constitution 2.0.0.
  *
- * **Posting declares `requires: 'marketplace_post'`.** That is §7's explicit
- * per-member permission flag, and `plugins/10-auth.ts` already resolves it from
- * server-held state per request and audits the denial. Declaring it here rather
- * than checking it in the handler means making the marketplace postable is an
- * affirmative act that shows up in a diff.
+ * **Posting needs no per-member flag (feature 021).** Until 021 posting
+ * declared `requires: 'marketplace_post'`; no staff screen ever granted it, so
+ * almost nobody could post. Every onboarded member may now post — `10-auth`
+ * still refuses applicants in onboarding or profiling and locked or ended
+ * members on every member route, and terms acceptance and the live-listing
+ * quota are checked in `application/create.ts`. What a member may post is the
+ * category definition's `modes` (no job offers), enforced in `application/`
+ * and by the `marketplace_no_new_job_offer` trigger. The `requires` mechanism
+ * stays in 10-auth for the next flag that needs it.
  *
  * **Members only.** `audience: 'member'` is the whole of FR-038: organisations
  * sell through `offers` (§5), and staff do not sell at all — moderating a
@@ -87,7 +91,7 @@ export default fp(
       '/marketplace/listings',
       {
         config: {
-          auth: { audience: 'member', requires: 'marketplace_post' },
+          auth: { audience: 'member' },
           budget: 'marketplace',
           rateLimit: app.bucket('write-heavy'),
         },
@@ -155,10 +159,8 @@ export default fp(
 
     // ---- Managing your own listings (US3) ------------------------------------
     //
-    // No `requires: 'marketplace_post'` on any of these four. That flag gates
-    // making a NEW listing postable; owning ones you already have is not a
-    // second privilege — a member whose flag was later revoked must still be
-    // able to withdraw or edit what they posted while they held it.
+    // Ownership is the gate here (404, never 403). Editing may not turn a
+    // listing into a job offer (feature 021) — `application/manage.ts`.
 
     app.patch(
       '/marketplace/listings/:id',
@@ -265,8 +267,7 @@ export default fp(
     // the guard it needs — the listing must be inquirable. What it produces is
     // a conversation, which `modules/messaging` owns from then on.
     //
-    // No `requires: 'marketplace_post'`: contacting a seller is not selling.
-    // Gating it on the posting flag would mean only sellers could buy.
+    // Contacting a seller is not selling: any member may enquire.
 
     app.post(
       '/marketplace/listings/:id/inquire',
@@ -324,8 +325,8 @@ export default fp(
     //
     // A link, not an upload. `POST /media` did the inspection, the metadata
     // strip and the derivation; these two routes only say which assets belong
-    // to which listing, and in what order. `requires: 'marketplace_post'`
-    // because attaching media to a listing is part of posting one.
+    // to which listing, and in what order. The same posture as posting —
+    // any member — and ownership of the listing is checked in the handler.
 
     const mediaLinkSchema = z.object({
       listingId: z.string(),
@@ -337,7 +338,7 @@ export default fp(
       '/marketplace/listings/:id/media',
       {
         config: {
-          auth: { audience: 'member', requires: 'marketplace_post' },
+          auth: { audience: 'member' },
           budget: 'marketplace',
           rateLimit: app.bucket('write-heavy'),
         },
@@ -355,7 +356,7 @@ export default fp(
       '/marketplace/listings/:id/media/:assetId',
       {
         config: {
-          auth: { audience: 'member', requires: 'marketplace_post' },
+          auth: { audience: 'member' },
           budget: 'marketplace',
           rateLimit: app.bucket('write-heavy'),
         },

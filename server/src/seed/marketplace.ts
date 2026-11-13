@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Pool } from 'pg'
 import { PLATFORM_JOBS } from '../ops/jobs.ts'
+import { MARKETPLACE_CATEGORIES, modesFor } from '@gwc/contracts/marketplace'
 import type { Faker } from './faker.ts'
 import type { SeedOptions } from './options.ts'
 
@@ -55,8 +56,12 @@ type Expiry = 'none' | 'future' | 'past'
  * filled. `expired` always carries a past expiry; nothing else can reach it.
  */
 const PLAN: ReadonlyArray<{ category: Category; mode: Mode; state: State; expiry: Expiry }> = [
-  ...(['vehicle', 'property', 'job', 'general'] as const).flatMap((category) =>
-    (['offer', 'request'] as const).flatMap((mode) => [
+  // Built from the shared definition: a category's `modes` are what a member
+  // may create (feature 021), so the seed never writes a job offer — the
+  // `marketplace_no_new_job_offer` trigger would refuse it, and the seeder
+  // never disables a trigger to get its way.
+  ...MARKETPLACE_CATEGORIES.flatMap((category) =>
+    modesFor(category).flatMap((mode) => [
       { category, mode, state: 'active' as const, expiry: 'none' as const },
       { category, mode, state: 'active' as const, expiry: 'future' as const },
     ])),
@@ -65,8 +70,6 @@ const PLAN: ReadonlyArray<{ category: Category; mode: Mode; state: State; expiry
   { category: 'property', mode: 'offer', state: 'withdrawn', expiry: 'future' },
   { category: 'property', mode: 'offer', state: 'hidden', expiry: 'none' },
   { category: 'property', mode: 'request', state: 'expired', expiry: 'past' },
-  { category: 'job', mode: 'offer', state: 'filled', expiry: 'none' },
-  { category: 'job', mode: 'offer', state: 'expired', expiry: 'past' },
   { category: 'job', mode: 'request', state: 'filled', expiry: 'none' },
   { category: 'general', mode: 'offer', state: 'sold', expiry: 'future' },
   { category: 'general', mode: 'offer', state: 'hidden', expiry: 'none' },
@@ -135,17 +138,26 @@ export async function seedMarketplace(pool: Pool, faker: Faker, _options: SeedOp
   if (seeded[0].n > 0) return counts
 
   /**
-   * Owners are members who hold `marketplace_post`, in every status.
+   * Owners are members who could have posted, in every status.
    *
-   * Posting needs the flag, so a listing owned by a member without it would be
-   * history that could not have happened. Non-active owners are included on
-   * purpose: their listings exist and are hidden from the index by the
-   * owner-status cascade (R7), which is a path worth being able to see.
+   * Since feature 021 that is any member past onboarding — no application row
+   * (invited, legacy) or an approved one with profiling complete — and no
+   * permission flag. A listing owned by an applicant still in onboarding would
+   * be history that could not have happened. Owners are a deterministic spread
+   * (about one in five, by email hash) rather than everybody, so the rest can
+   * report and enquire as people who did not post. Non-active owners are
+   * included on purpose: their listings exist and are hidden from the index by
+   * the owner-status cascade (R7), which is a path worth being able to see.
    */
   const { rows: posters } = await pool.query(
-    `SELECT id, status FROM members
-      WHERE email LIKE '%@demo.invalid' AND (permissions->>'marketplace_post')::boolean
-      ORDER BY (status = 'active') DESC, email`,
+    `SELECT m.id, m.status FROM members m
+      WHERE m.email LIKE '%@demo.invalid' AND left(md5(m.email), 1) IN ('0', '1', '2')
+        AND (NOT EXISTS (SELECT 1 FROM membership_applications a WHERE a.member_id = m.id)
+              OR EXISTS (SELECT 1 FROM membership_applications a
+                           JOIN member_profiling p ON p.member_id = a.member_id
+                          WHERE a.member_id = m.id AND a.state = 'approved'
+                            AND p.completed_at IS NOT NULL))
+      ORDER BY (m.status = 'active') DESC, m.email`,
   )
   const activePosters = posters.filter((p) => p.status === 'active')
   const otherPosters = posters.filter((p) => p.status !== 'active')
@@ -154,7 +166,7 @@ export async function seedMarketplace(pool: Pool, faker: Faker, _options: SeedOp
   const { rows: others } = await pool.query(
     `SELECT id FROM members
       WHERE email LIKE '%@demo.invalid' AND status = 'active'
-        AND NOT coalesce((permissions->>'marketplace_post')::boolean, false)
+        AND left(md5(email), 1) NOT IN ('0', '1', '2')
       ORDER BY email LIMIT 12`,
   )
 

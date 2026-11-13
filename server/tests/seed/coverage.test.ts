@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { withSeededDatabase } from './helpers.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import type { SeededDatabase } from '../seed/helpers.ts'
+import { MARKETPLACE_CATEGORIES, modesFor } from '@gwc/contracts/marketplace'
 
 /**
  * SC-002 — the population covers every state, and is not uniform.
@@ -115,7 +116,7 @@ describe.skipIf(!hasDatabase)('the seeded population spans every state', () => {
 
   // ---- Marketplace (008, SC-009) --------------------------------------------
 
-  it('covers every listing state, and every category in both modes', async () => {
+  it('covers every listing state, and every category in each mode a member may create', async () => {
     const { rows: states } = await db.pool.query(
       `SELECT DISTINCT state::text AS s FROM marketplace_listings ORDER BY 1`,
     )
@@ -126,7 +127,14 @@ describe.skipIf(!hasDatabase)('the seeded population spans every state', () => {
       `SELECT category::text || '/' || mode::text AS c FROM marketplace_listings
         WHERE state = 'active' GROUP BY 1 ORDER BY 1`,
     )
-    expect(combos).toHaveLength(8)
+    // From the shared definition, not a literal: job is request-only since
+    // feature 021, so seven combinations — and no job offer at all.
+    const expected = MARKETPLACE_CATEGORIES.flatMap((c) => modesFor(c).map((m) => `${c}/${m}`)).sort()
+    expect(combos.map((r) => r.c)).toEqual(expected)
+    expect(expected).toHaveLength(7)
+    const { rows: jobOffers } = await db.pool.query(
+      `SELECT count(*)::int AS n FROM marketplace_listings WHERE category = 'job' AND mode = 'offer'`)
+    expect(jobOffers[0].n).toBe(0)
 
     // Unlimited is a first-class choice (FR-028), so both must be on screen —
     // a corpus where every listing expires would never exercise the null half

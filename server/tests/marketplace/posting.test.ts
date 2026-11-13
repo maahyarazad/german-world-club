@@ -27,11 +27,14 @@ describe.skipIf(!hasDatabase)('posting a marketplace listing', () => {
     await resetAuthTables(app.pg)
   })
 
-  /** A member, their bearer header, and their accepted terms if asked for. */
-  const member = async ({ canPost = true, acceptTerms = true } = {}) => {
-    const row = await createMember(app.pg, {
-      permissions: canPost ? { marketplace_post: true } : {},
-    })
+  /**
+   * A member, their bearer header, and their accepted terms if asked for.
+   *
+   * No permission flags: since feature 021 posting needs none. `permissions`
+   * is only passed to prove a stale `marketplace_post: false` changes nothing.
+   */
+  const member = async ({ acceptTerms = true, permissions = {} as Record<string, boolean> } = {}) => {
+    const row = await createMember(app.pg, { permissions })
     if (acceptTerms) {
       await app.pg.query(
         'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
@@ -55,9 +58,11 @@ describe.skipIf(!hasDatabase)('posting a marketplace listing', () => {
     ...over,
   })
 
-  // ---- The permission pair (FR-001, SC-001) --------------------------------
+  // ---- Anyone may post (021 FR-001, FR-003) --------------------------------
 
-  it('accepts a listing from a member holding marketplace_post', async () => {
+  it('accepts a listing from a member with NO permission flags', async () => {
+    // Feature 021 opened posting to every onboarded member. Before it, this
+    // member was refused 403 permission-required.
     const { headers } = await member()
     const response = await post(headers, generalListing())
 
@@ -65,15 +70,29 @@ describe.skipIf(!hasDatabase)('posting a marketplace listing', () => {
     expect(response.json().category).toBe('general')
   })
 
-  it('REFUSES a member without the flag, at the API', async () => {
-    // The whole point. A suite that only checked the happy path would pass
-    // against a server that let anybody post, which is precisely the defect
-    // an explicit per-member flag exists to prevent.
-    const { headers } = await member({ canPost: false })
+  it('accepts a member whose stored flag says marketplace_post: false', async () => {
+    // The retired key is consulted nowhere — not even a leftover `false`.
+    const { headers } = await member({ permissions: { marketplace_post: false } })
+    const response = await post(headers, generalListing())
+
+    expect(response.statusCode).toBe(201)
+  })
+
+  it('still REFUSES an applicant whose profiling is incomplete — the counter-assertion', async () => {
+    // "Every member may post" means every ONBOARDED member. Without this, a
+    // server that dropped the onboarding gate would pass the two tests above.
+    const { row, headers } = await member()
+    await app.pg.query(
+      `INSERT INTO membership_applications (member_id, device_id, state, submitted_at, reviewed_at)
+       VALUES ($1, 'device-x', 'approved', now(), now())`,
+      [row.id],
+    )
     const response = await post(headers, generalListing())
 
     expect(response.statusCode).toBe(403)
-    expect(response.json().type).toMatch(/permission-required/)
+    expect(response.json().type).toMatch(/profiling-incomplete/)
+    const { rows } = await app.pg.query('SELECT count(*)::int AS n FROM marketplace_listings')
+    expect(rows[0].n).toBe(0)
   })
 
   // ---- Terms (FR-002) ------------------------------------------------------
@@ -130,7 +149,8 @@ describe.skipIf(!hasDatabase)('posting a marketplace listing', () => {
       generalListing(),
       generalListing({ category: 'vehicle', details: { make: 'Toyota', price_minor: 900000 } }),
       generalListing({ category: 'property', details: { deal: 'rent', city: 'Dubai', rooms: 2.5 } }),
-      generalListing({ category: 'job', details: { employment_type: 'full_time', city: 'Dubai' } }),
+      // A job REQUEST: members look for work, they do not offer it (021).
+      generalListing({ category: 'job', mode: 'request', details: { employment_type: 'full_time', city: 'Dubai' } }),
     ]
     for (const payload of payloads) {
       const response = await post(headers, payload)
