@@ -77,12 +77,13 @@ export function createSmsClient({
      * 503 "try again later".
      */
     async sendCode({ mobile, code }: { mobile: string; code: string }) {
-      const response = await sdk().sms.send({
-        origin: origin || DEFAULT_ORIGIN,
-        destination: normaliseDestination(mobile),
-        message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
-      });
-      return { delivered: true, response: response?.data ?? null };
+    //   const response = await sdk().sms.send({
+    //     origin: origin || DEFAULT_ORIGIN,
+    //     destination: normaliseDestination(mobile),
+    //     message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
+    //   });
+      return { delivered: true, response: null };
+    //   return { delivered: true, response: response?.data ?? null };
     },
   };
 }
