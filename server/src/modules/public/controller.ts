@@ -1,5 +1,6 @@
 import { renderRecord, PUBLIC_CACHE, VARY } from './application/render-record.ts'
 import { renderLanding, LANDING_RECORD, LANDING_RECORD_EN, LANDING_ALTERNATES } from './application/landing.ts'
+import { loadViewer } from './application/viewer.ts'
 import { renderMarketplaceDiscovery } from './application/marketplace-discovery.ts'
 import { renderReferralPage, appleAppSiteAssociation, androidAssetLinks } from './application/referral-landing.ts'
 import { PROBLEMS } from '@gwc/contracts/errors'
@@ -32,13 +33,31 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
       .send(html)
   }
 
-  const landingHandler = (shell, record) => async (request: FastifyRequest, reply: FastifyReply) => {
-    reply
-      .type('text/html; charset=utf-8')
-      .header('cache-control', PUBLIC_CACHE)
-      .header('vary', VARY)
+  const landingHandler = (shell, record, language: 'de' | 'en') => async (request: FastifyRequest, reply: FastifyReply) => {
+    // Feature 022: a signed-in visitor sees themselves instead of "Anmelden".
+    // Judged by the console's own rules (`peekViewer`); any failure on the
+    // way is simply the anonymous page — never an error on the landing page.
+    let viewer = null
+    const principal = await app.peekViewer(request)
+    if (principal) {
+      try {
+        viewer = await loadViewer(app, principal, { signal: request.deadlineSignal })
+      } catch (err) {
+        request.log.warn({ err }, 'landing viewer could not be loaded; serving the anonymous page')
+      }
+    }
 
-    const html = renderLanding({ shell, record, origin, cspNonce: reply.cspNonce })
+    reply.type('text/html; charset=utf-8')
+    if (viewer) {
+      // A page carrying a person's name and picture is never stored by a
+      // shared cache. The anonymous page keeps its public caching and gets no
+      // `Vary: Cookie`, which would make almost every visitor a cache miss.
+      reply.header('cache-control', 'private, no-store').header('vary', `${VARY}, Cookie`)
+    } else {
+      reply.header('cache-control', PUBLIC_CACHE).header('vary', VARY)
+    }
+
+    const html = renderLanding({ shell, record, origin, cspNonce: reply.cspNonce, viewer, language })
     return reply.send(html)
   }
 
@@ -92,8 +111,8 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
     appleAppLinks,
     androidAppLinks,
     renderRecordPage,
-    landing: landingHandler(landingShell, LANDING_RECORD),
-    landingEn: landingHandler(landingShellEn, LANDING_RECORD_EN),
+    landing: landingHandler(landingShell, LANDING_RECORD, 'de'),
+    landingEn: landingHandler(landingShellEn, LANDING_RECORD_EN, 'en'),
     marketplaceDiscovery,
   }
 }
