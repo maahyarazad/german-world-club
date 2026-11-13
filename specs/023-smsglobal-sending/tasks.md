@@ -18,7 +18,7 @@ description: "Tasks for feature 023: SMSGlobal sends every verification SMS, and
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the branch is `023-smsglobal-sending`. Run
+- [X] T001 Confirm the branch is `023-smsglobal-sending`. Run
   `DATABASE_URL=postgres://postgres:postgres@localhost:5432/gwc_test npm run -w server test -- auth onboarding`
   and record the baseline.
 
@@ -26,7 +26,7 @@ description: "Tasks for feature 023: SMSGlobal sends every verification SMS, and
 
 ## Phase 2: Foundational
 
-- [ ] T002 In `server/src/integrations/sms.ts`, give `createSmsClient` an optional
+- [X] T002 In `server/src/integrations/sms.ts`, give `createSmsClient` an optional
   `sdkFactory` parameter, defaulting to the real `smsglobal` export (plan R3), and use it in
   place of the module-level `sdk()` helper. Keep one instance per client, created on first use
   so a server without credentials still boots. `import smsglobal from "smsglobal"` stays in this
@@ -39,7 +39,7 @@ description: "Tasks for feature 023: SMSGlobal sends every verification SMS, and
 **Independent test**: a fake SDK whose `sms.send` rejects makes `sendCode` reject. Through the
 gateway, a code request answers 503, with one `SMS_PROVIDER_ERROR` log line.
 
-- [ ] T003 [P] [US1] Create `server/tests/auth/sms-client.test.ts` (no database) covering:
+- [X] T003 [P] [US1] Create `server/tests/auth/sms-client.test.ts` (no database) covering:
   - **rejection**: `createSmsClient({ apiKey: 'k', apiSecret: 's', origin: 'B P', sdkFactory })`
     with a fake whose `sms.send` rejects
     `{ statusCode: 400, data: { errors: { origin: ['Origin is invalid.'] } } }` → `sendCode`
@@ -49,7 +49,7 @@ gateway, a code request answers 503, with one `SMS_PROVIDER_ERROR` log line.
     `{ delivered: true, response: { messages: [] } }` (the counter-assertion);
   - **no console output**: `console.error` is not called (spy) in any case. Failures are the
     gateway's to log.
-- [ ] T004 [P] [US1] Extend `server/tests/auth/sms-gateway.test.ts` with a database-backed case.
+- [X] T004 [P] [US1] Extend `server/tests/auth/sms-gateway.test.ts` with a database-backed case.
   Build the onboarding app (`buildOnboardingApp` in `tests/onboarding/helpers.ts`) with an
   `integrations.sms` override whose `sendCode` rejects
   `{ statusCode: 402, data: 'no credit' }`, and register an applicant with an approved number.
@@ -60,7 +60,7 @@ gateway, a code request answers 503, with one `SMS_PROVIDER_ERROR` log line.
   - the serialised log lines contain neither the full number nor the code.
 
   If `buildOnboardingApp` can't take an override, add an optional `smsSend` parameter to it.
-- [ ] T005 [US1] In `server/src/integrations/sms.ts` `sendCode`, remove the
+- [X] T005 [US1] In `server/src/integrations/sms.ts` `sendCode`, remove the
   `try { … } catch (error) { console.error(error) }` and let the SDK's rejection propagate.
   Update the doc comment: `decorators/send-otp.ts` logs SMSGlobal's answer and replies 503, and
   a swallowed error here reported a code as sent when none was (spec FR-001).
@@ -71,14 +71,14 @@ gateway, a code request answers 503, with one `SMS_PROVIDER_ERROR` log line.
 
 ## Phase 4: User Story 2 - The sender is configuration, `B P` (Priority: P1)
 
-- [ ] T006 [P] [US2] In `server/tests/auth/sms-client.test.ts`, assert the fake SDK received
+- [X] T006 [P] [US2] In `server/tests/auth/sms-client.test.ts`, assert the fake SDK received
   `origin: 'B P'` when configured so, and `origin: 'Club'` when `origin: 'Club'` is passed.
   That second case is the counter-assertion against a hard-coded sender. Also assert
   `destination` is digits only (from `+49 151 …` and from `0049…`).
-- [ ] T007 [US2] In `server/src/integrations/sms.ts`, send
+- [X] T007 [US2] In `server/src/integrations/sms.ts`, send
   `origin: origin ?? DEFAULT_ORIGIN` instead of `"B P"`, with
   `export const DEFAULT_ORIGIN = 'B P'`.
-- [ ] T008 [P] [US2] Set the sender default to `B P` everywhere it appears:
+- [X] T008 [P] [US2] Set the sender default to `B P` everywhere it appears:
   - `server/src/config/env.ts`: `SMSGLOBAL_ORIGIN: z.string().default('B P')`;
   - `server/.env.example`: `SMSGLOBAL_ORIGIN='B P'`;
   - `server/README.md` line 82: mention that the sender must be registered on the SMSGlobal
@@ -89,7 +89,7 @@ gateway, a code request answers 503, with one `SMS_PROVIDER_ERROR` log line.
 
 ## Phase 5: Polish
 
-- [ ] T009 Run `npm run -w server test -- auth onboarding` and compare with the T001 baseline,
+- [X] T009 Run `npm run -w server test -- auth onboarding` and compare with the T001 baseline,
   then run the full `npm run -w server test` on `gwc_test` (the 7 known failures on `main`
   excepted).
 - [ ] T010 Walk through `specs/023-smsglobal-sending/quickstart.md` steps 1–3 with real

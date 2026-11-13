@@ -34,10 +34,11 @@ describe('there is exactly one way to send an SMS', () => {
 describe.skipIf(!hasDatabase)('the gateway enforces the country policy', () => {
   let app: GwcApp
   let sms: { mobile: string; code: string }[]
+  let smsControl: { failure: unknown }
   const lines: Record<string, unknown>[] = []
 
   beforeAll(async () => {
-    ({ app, sms } = await buildOnboardingApp({
+    ({ app, sms, smsControl } = await buildOnboardingApp({
       logger: { level: 'info', stream: { write: (s: string) => lines.push(JSON.parse(s)) } },
     }))
   })
@@ -72,6 +73,26 @@ describe.skipIf(!hasDatabase)('the gateway enforces the country policy', () => {
     const r = await register(app, applicant())
     expect(r.statusCode).toBe(202)
     expect(sms).toHaveLength(before + 1)
+  })
+
+  it('answers 503 when SMSGlobal refuses, logging its answer masked — never "sent" (feature 023)', async () => {
+    const details = applicant()
+    lines.length = 0
+    smsControl.failure = { statusCode: 402, data: 'Insufficient credit' }
+    try {
+      const r = await register(app, details)
+      expect(r.statusCode).toBe(503)
+      expect(r.json().type).toBe(PROBLEMS.SERVICE_UNAVAILABLE.type)
+    } finally {
+      smsControl.failure = null
+    }
+
+    const failures = lines.filter((l) => l.msg === 'SMS_PROVIDER_ERROR')
+    expect(failures).toHaveLength(1)
+    expect(failures[0]).toMatchObject({ providerStatus: 402, providerResponse: 'Insufficient credit', route: 'onboarding.register' })
+    const digits = String(details.mobile).replace(/\D/g, '')
+    expect(failures[0]!.destination).toMatch(/^\*+\d{4}$/)
+    expect(JSON.stringify(lines)).not.toContain(digits)
   })
 
   it('refuses at the gateway itself, for every caller', async () => {

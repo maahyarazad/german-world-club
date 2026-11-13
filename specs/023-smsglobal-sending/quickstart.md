@@ -12,3 +12,18 @@ By hand, with real credentials in `server/.env` (`SMSGLOBAL_API_KEY`, `SMSGLOBAL
    few minutes" (503), and the server log has `SMS_PROVIDER_ERROR` with SMSGlobal's status, a
    masked number and no code.
 3. Put the secret back. Codes arrive again.
+
+## Record (2026-11-13)
+
+Automated:
+- `tests/auth/sms-client.test.ts`: 9 tests with a fake SDK. They cover:
+  - refusal and transport failure reject, and success resolves;
+  - no console output;
+  - the SDK is created once;
+  - the sender comes from configuration, `B P` by default;
+  - numbers are digits only.
+- `tests/auth/sms-gateway.test.ts`: a provider refusal → 503 and one masked
+  `SMS_PROVIDER_ERROR` line.
+- Full server suite: only the 7 known failures on `main`.
+
+Not yet walked with a real phone (T010).
