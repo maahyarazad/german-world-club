@@ -26,6 +26,9 @@ This feature turns that around:
   Modal (Send request, the Threads composer and post actions, the handle dialog, Refer & earn,
   staff referral actions). "New listing" keeps its right-edge slide-in panel. Web only; the app
   is unchanged (FR-013–FR-015).
+- Q: What does "upload progress" on Edit profile show, and where? → A: web console only. While the
+  picture is sent: the share of it the server has received. Then "Processing…" while the server
+  checks it and makes its sizes. Then "Saved." (FR-016–FR-019).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -160,6 +163,35 @@ animation.
 6. **Given** the "New listing" panel and the mobile app, **When** they're used, **Then** nothing
    changes.
 
+### User Story 6 - See the profile picture upload progress (Priority: P3)
+
+On the web console's Edit profile, a member who chooses a new profile picture sees how far the
+upload has got, as a bar and a percentage. When the file has fully arrived, it says it's
+processing the picture, and then "Saved." with the new picture. A large picture on a slow
+connection no longer looks like nothing is happening.
+
+**Why this priority**: the upload works today, but with no feedback for up to 25 MB on a slow
+connection, so members click again or leave. Web only, polish.
+
+**Independent Test**: on the web, open Edit profile, throttle the network, and choose a picture
+of a few MB. The bar rises from 0 to 100%, then "Processing…" shows, then "Saved." and the new
+picture. A refused file shows no bar, and the buttons are usable again.
+
+**Acceptance Scenarios**:
+
+1. **Given** Edit profile on the web, **When** a member chooses a picture, **Then** a progress bar
+   and a percentage appear and rise as the file is sent.
+2. **Given** the whole file has been sent, **When** the server is still working on it, **Then**
+   the bar shows activity without a percentage and says "Processing…".
+3. **Given** the server accepts the picture, **When** it answers, **Then** the bar disappears,
+   "Saved." shows, and the new picture is displayed.
+4. **Given** the server refuses the picture, or the connection drops, **When** that happens,
+   **Then** the bar disappears, the failure is logged, and Change and Remove are usable again.
+5. **Given** a screen reader, **When** the upload runs, **Then** the progress is announced
+   politely.
+6. **Given** no picture is being uploaded, **When** the page shows, **Then** there's no progress
+   bar.
+
 ### Edge Cases
 
 - **A member who never had the old posting permission, or had it set to false**, can post like
@@ -209,6 +241,16 @@ animation.
   motion.
 - **FR-015**: The change MUST be web only. The "New listing" panel, the mobile app, and the
   dialogs' behaviour (Escape, Cancel, content reset on reopen) are unchanged.
+- **FR-016**: On the web Edit profile, choosing a profile picture MUST show the upload's progress
+  as the share of the file the server has received, as a bar and a percentage formatted for the
+  console's language.
+- **FR-017**: Once the file has been received, and until the server answers, it MUST say the
+  picture is being processed.
+- **FR-018**: Success MUST end with "Saved." and the new picture. A refusal or a broken
+  connection MUST remove the progress, log the failure, and make the buttons usable again.
+- **FR-019**: The upload MUST keep every rule the other requests follow (cookies, the CSRF token
+  and its one refresh, problem responses), and the server is unchanged. The app and the other
+  upload screens are unchanged.
 
 ### Key Entities
 
@@ -232,6 +274,8 @@ animation.
   the form.
 - **SC-005**: 100% of web dialogs built on the shared component open centered at phone, tablet
   and desktop widths.
+- **SC-006**: On a throttled connection, a member sees the profile picture progress begin to move
+  within a second of choosing it, and it reaches 100% before "Processing…" shows.
 
 ## Assumptions
 

@@ -187,3 +187,44 @@ which is acceptable degradation.
   that every consumer relies on.
 - *An animation library*: a dependency for two transitions, and its inline styles would fight
   the CSP.
+
+## R9. Profile picture upload progress (Story 6)
+
+**What "server upload progress" can mean**: the server can't call the browser back in the middle
+of a request, because a request has no channel to the client until its response. What the
+browser *can* observe is how much of the request body the server has accepted. The upload's
+`progress` events are exactly that, give or take a proxy's buffer. So the member sees two
+honest phases:
+1. **uploading**: the share received, from `loaded / total`;
+2. **processing**: from when the body has gone (`upload.onload`) until the response. The server
+   inspects the image, strips its metadata and makes the variants.
+
+**Decision**:
+- Add `upload(path, form, { onProgress, signal })` to `client/src/lib/api.ts`, on
+  `XMLHttpRequest`. `fetch` has no upload progress in Safari or Firefox; a streaming request
+  body with `duplex: 'half'` is Chromium-only and needs HTTP/2.
+- It keeps every rule `request()` has:
+  - `withCredentials`;
+  - `accept` with the problem type;
+  - `x-csrf-token`, and exactly one refresh-and-retry on `csrf-token-invalid`;
+  - non-2xx → `ApiError` built by the same `readProblem` (the XHR response wrapped in a
+    `Response`);
+  - an `AbortSignal` aborts it.
+- `onProgress` receives `{ phase: 'uploading', fraction: number | null }`, where `null` means
+  the length is unknown, and then `{ phase: 'processing' }`.
+- **Edit profile** (`client/src/member/profile/EditProfile.tsx`) uses it for `POST /media`.
+  - The progress is a native `<progress>`: with a value while uploading, without one
+    (indeterminate) while processing.
+  - The label is `formatPercent` in the console's locale, inside an `aria-live="polite"`
+    region.
+  - Native `<progress>` and not a styled div with a width: the CSP allows styles by nonce only,
+    and the element is accessible by itself.
+- **Server**: unchanged. `POST /media` already reads the stream and answers when the asset is
+  stored.
+- **Scope**: Edit profile only. The Marketplace and Threads uploads can adopt `upload()` later.
+  The app is unchanged.
+
+**Alternatives considered**:
+- *Server-sent progress* (a second request polling or an SSE channel keyed to the upload): a
+  new endpoint and state, to report what the browser already knows.
+- *A spinner only*: no sense of how long a 25 MB file will take.

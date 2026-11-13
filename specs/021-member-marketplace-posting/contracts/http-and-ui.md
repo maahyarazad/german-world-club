@@ -44,6 +44,20 @@ Merchant, partner and staff tokens are still refused on every member listing rou
 | Reduced motion | No transition |
 | Unchanged | Escape and Cancel close it; title and `aria-label`; consumers' props. The Drawer and the app aren't touched. |
 
+## Edit profile upload progress (`client/src/member/profile/EditProfile.tsx`, Story 6)
+
+| Phase | What the member sees |
+|---|---|
+| Idle | Nothing new |
+| Uploading | `<progress value={fraction} max={1}>`, with **„Wird hochgeladen … 42 %“ / "Uploading… 42%"** (`formatPercent`, `aria-live="polite"`). Indeterminate if the size is unknown. |
+| Processing | `<progress>` with no value, and **„Wird verarbeitet …“ / "Processing…"** |
+| Done | The progress is removed. **Saved.** and the new picture |
+| Refused or failed | The progress is removed, `console.error('EditProfile.uploadAvatar', problem)`, and the buttons are enabled again |
+
+HTTP is unchanged: `POST /media` (multipart, `alt` before `file`), then `PUT /profile/me/avatar`.
+`upload()` sends the same cookies, CSRF header and `accept` as `request()`, and refusals arrive
+as the same `ApiError`.
+
 ## App (`expo-client/german-world-club`)
 
 | Where | What |

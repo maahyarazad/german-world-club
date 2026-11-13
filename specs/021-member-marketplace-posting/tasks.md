@@ -18,7 +18,7 @@ wherever a test could pass against a server that did nothing. Server SQL suites 
 
 - **[P]**: can run in parallel (different files, no dependency on an incomplete task)
 - **[Story]**: US1 (anyone can post), US2 (no job offers), US3 (legacy job offers wind down),
-  US4 (business description), US5 (web dialogs centered and animated)
+  US4 (business description), US5 (web dialogs centered and animated), US6 (profile picture upload progress)
 
 ---
 
@@ -336,28 +336,117 @@ no animation. A reopened dialog is empty.
 
 ---
 
-## Phase 8: Polish & cross-cutting
+## Phase 8: User Story 6 - Profile picture upload progress (Priority: P3, web only)
 
-- [X] T035 Update `CLAUDE.md`'s marketplace paragraph:
+**Goal**: FR-016–FR-019. On the web Edit profile, the member sees the share of the picture the
+server has received, then "Processing…", then "Saved." (research R9). The server, the app and
+the other upload screens are unchanged.
+
+**Independent test**: on a throttled connection, choose a picture of a few MB on Edit profile.
+The progress rises to 100%, then shows processing, then disappears with "Saved." A refusal
+removes it and re-enables the buttons.
+
+### Tests for User Story 6
+
+- [ ] T035 [P] [US6] Create `client/tests/lib/upload.test.ts` for `upload()` in
+  `client/src/lib/api.ts`. Use a fake `XMLHttpRequest` installed with
+  `vi.stubGlobal('XMLHttpRequest', …)` that records `open`, `setRequestHeader`, `send`,
+  `withCredentials` and `abort`, and lets the test fire `upload.onprogress`, `upload.onload`,
+  `onload`, `onerror` and `onabort`. Stub `fetch` for `/auth/csrf`, as other client tests do.
+  It covers:
+  - **progress**: `onProgress` is called with `{ phase: 'uploading', fraction }` from
+    `loaded/total`;
+  - **unknown size**: `lengthComputable: false` gives `fraction: null`;
+  - **processing**: after `upload.onload`, `{ phase: 'processing' }`;
+  - **success**: a 201 JSON response resolves to the parsed body;
+  - **refusal**: a 4xx `application/problem+json` rejects with an `ApiError` whose
+    `problem.type` matches;
+  - **CSRF**: a 403 `csrf-token-invalid` is retried exactly once with a fresh token, and a
+    second 403 rejects;
+  - **request rules**: `withCredentials === true`, and the `x-csrf-token` and `accept` headers
+    are set;
+  - **abort**: an aborted `AbortSignal` calls `xhr.abort()` and rejects;
+  - **network failure**: `onerror` rejects.
+  - Counter-assertion: no `onProgress` call before `send`.
+- [ ] T036 [P] [US6] Create `client/tests/member/edit-profile-upload.test.tsx`. Render
+  `/konsole/mitglied/profil/bearbeiten` (check the route name in
+  `client/src/console/routes.tsx`) with `mockCapabilityFetch(memberSnapshot(), …)`, routing
+  `/profile/me` and `PUT /profile/me/avatar` through the existing helper, and `POST /media`
+  through the fake XHR from T035 (move it to `client/tests/helpers/fake-xhr.ts`). It covers:
+  - before choosing, there's no `progressbar` role (the counter-assertion);
+  - after choosing a PNG `File` and firing progress 42/100, a progressbar with `value` 0.42 and
+    the text `fill(t.memberProfile.avatarUploading, { percent: formatPercent(0.42, 'de') })`;
+  - after `upload.onload`, an indeterminate progressbar (no `value` attribute) and
+    `t.memberProfile.avatarProcessing`;
+  - after a 201, the progress is gone and `t.memberProfile.saved` shows;
+  - a 400 problem: the progress is gone, `console.error` was called with
+    `'EditProfile.uploadAvatar'`, and the Change button is enabled.
+
+### Implementation for User Story 6
+
+- [ ] T037 [US6] Add `upload(path, form, { onProgress, signal })` to `client/src/lib/api.ts`,
+  next to `request()` (research R9).
+  - **Mechanism**: `XMLHttpRequest`, with `withCredentials = true`, the `accept` header and
+    `x-csrf-token` from `fetchCsrfToken()`.
+  - **Progress**: `xhr.upload.onprogress` →
+    `onProgress({ phase: 'uploading', fraction: e.lengthComputable ? e.loaded / e.total : null })`;
+    `xhr.upload.onload` → `onProgress({ phase: 'processing' })`.
+  - **Response**: wrap it as `new Response(xhr.responseText, { status, statusText, headers: { 'content-type': … } })`.
+    Reuse `readProblem` for non-2xx and throw `ApiError(problem, response)`. On a 403
+    `csrf-token-invalid`, call `clearCsrfToken()` and `fetchCsrfToken()`, then send once more.
+    Return parsed JSON, `null` for 204, otherwise text.
+  - **Abort and errors**: `signal` → `xhr.abort()` → reject with `DOMException('Aborted',
+    'AbortError')`; `onerror` → reject with `TypeError('Network request failed')`.
+  - **Exports**: `export type UploadProgress = { phase: 'uploading'; fraction: number | null } | { phase: 'processing' }`.
+  - Add a doc comment on why XHR: `fetch` has no upload progress in Safari or Firefox.
+  - Keep `request()` itself unchanged.
+- [ ] T038 [P] [US6] Add to `client/src/i18n/de.ts` and `en.ts`, under `memberProfile`:
+  - `avatarUploading`: de „Wird hochgeladen … {percent}“, en "Uploading… {percent}";
+  - `avatarProcessing`: de „Wird verarbeitet …“, en "Processing…".
+  - Run `npm run -w client test:i18n`.
+- [ ] T039 [US6] In `client/src/member/profile/EditProfile.tsx` `uploadAvatar`:
+  - replace `post('/media', form)` with `upload('/media', form, { onProgress: setProgress })`,
+    where `progress` is state, `null` when idle;
+  - while not null, render under the avatar row, inside a `<div aria-live="polite">`:
+    - a native `<progress max={1}>`, with `value={fraction}` while uploading and a known size,
+      and no `value` otherwise;
+    - a `<span>` with `fill(t.memberProfile.avatarUploading, { percent: formatPercent(fraction, locale) })`,
+      or `t.memberProfile.avatarProcessing`;
+  - `setProgress(null)` in a `finally`, on success and on failure;
+  - change the catch's log tag to `'EditProfile.uploadAvatar'`, keeping
+    `ApiError.problem` (CLAUDE.md).
+  - No inline `style`, because of the CSP. Size with classes only (`w-full h-2 accent-navy`).
+  - Remove and Change stay disabled while `busy`.
+- [ ] T040 [US6] Check by hand (`npm run -w client dev`, DevTools network "Slow 4G"): quickstart
+  steps 13–14 in Chrome and Safari. Record the result in
+  `specs/021-member-marketplace-posting/quickstart.md`.
+
+**Checkpoint**: T035 and T036 pass, and T040 is recorded.
+
+---
+
+## Phase 9: Polish & cross-cutting
+
+- [X] T041 Update `CLAUDE.md`'s marketplace paragraph:
   - replace "`marketplace_post` gates *creating* a listing…" with: posting is open to every
     member (feature 021), and members can't offer jobs;
   - the allowed modes per category are in `CATEGORY_DEFS`;
   - the trigger `marketplace_no_new_job_offer` refuses only the *creation* of a job offer, which
     is why it isn't a CHECK.
   - Keep "ownership refusals are 404".
-- [X] T036 [P] Search for any remaining reference:
+- [X] T042 [P] Search for any remaining reference:
   `grep -rn "marketplace_post" server/src client/src expo-client/german-world-club/src packages/contracts/src server/tests client/tests`.
   Only comments that state the history (feature 021 retired it) may remain.
-- [X] T037 Run the gates:
+- [ ] T043 Run the gates:
   - `DATABASE_URL=…/gwc_test npm run -w server test` (compare with the T001 baseline; the 7
     known failures on main are the `seed:demo` gate and resilience budgets);
   - `npm run -w client test` and `npm run -w client test:i18n`;
   - `npx tsc --noEmit -p packages/contracts`, `-p client`, `-p expo-client/german-world-club`;
   - `npm run -w expo-client/german-world-club lint` (only problems that already exist).
-- [X] T038 Run `npm run -w server seed:demo` against the **dev** database only if the user
+- [X] T044 Run `npm run -w server seed:demo` against the **dev** database only if the user
   agrees, since it's additive. Otherwise check the seed with the seed test suite on `gwc_test`.
   It creates no job offers and owners have no `marketplace_post`.
-- [ ] T039 Walk through `specs/021-member-marketplace-posting/quickstart.md` steps 1–9 by hand
+- [ ] T045 Walk through `specs/021-member-marketplace-posting/quickstart.md` steps 1–9 by hand
   (web, the app on a device, a merchant login). Record the result in quickstart.md.
 
 ---
@@ -370,7 +459,10 @@ no animation. A reopened dialog is empty.
   migration file T013 creates, so T013 comes first.
 - **US3 (T027–T028)** depends on US2's trigger (T020) and the edit check (T022).
 - **US4 (T029)** is independent.
-- **Polish (T035–T039)** comes after all stories.
+- **US6 (T035–T040)** is web only and independent of US1–US5. T035, T036 and T038 come
+  first, then T037 → T039 → T040.
+- **Polish (T041–T045)** comes after all stories. T041, T042 and T044 ran before US6 was added;
+  T043 (the test runs) is reopened and runs again after US6.
 
 Within a story, tests come first and must fail before implementation (except pure renames).
 
@@ -383,6 +475,7 @@ US1 impl:     T014 ∥ T015 ∥ T016          (T011 → T012 → T013 server-sid
 US2 tests:    T017/T018 (one file, sequential) ∥ T019
 US2 impl:     T024 ∥ T025 ∥ T026          (T020 → T021 → T022 → T023 server-side)
 US5:          T030 ∥ (any US1–US4 task); then T031 → T032 → T033 → T034
+US6:          T035 ∥ T036 ∥ T038; then T037 → T039 → T040
 ```
 
 ## Implementation strategy
@@ -392,6 +485,7 @@ US5:          T030 ∥ (any US1–US4 task); then T031 → T032 → T033 → T03
 2. **US2**: the rule, at three layers (contract definition, application check, trigger).
 3. **US3**: proves the wind-down. Mostly tests, because the trigger's design is what delivers it.
 4. **US5**: web dialog polish, independent and shippable on its own.
+4b. **US6**: profile picture upload progress, web only and independent.
 5. **US4 and Polish**: docs, gates, the walkthrough.
 
 Commit per phase on `021-member-marketplace-posting`. Don't push or open a PR unless asked.
