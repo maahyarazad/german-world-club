@@ -590,6 +590,7 @@ export const de = {
     browseTitle: 'Anzeigen durchsuchen',
     category: 'Kategorie',
     mode: 'Art',
+    jobOfferNote: 'Hier kannst du Arbeit suchen. Stellenangebote sind für Mitglieder nicht möglich.',
     titleField: 'Titel',
     body: 'Beschreibung',
     features: 'Ausstattung',

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { get, post, ApiError } from '../lib/api'
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace'
 import type {
   CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse,
@@ -23,7 +24,8 @@ import { formatDate } from '../lib/format'
  *
  * Browsing comes first (feature 017): the compose form is not on the page but
  * in a drawer that slides in from the right, opened by the New listing button
- * in the header. Both are absent — not disabled — without `marketplace_post`.
+ * in the header. Every member sees them since feature 021 (no per-member flag);
+ * they are absent — not disabled — for anyone who is not a member.
  *
  * §7's classifieds, on the shared member-audience API — the same one the
  * mobile face calls (FR-031). Nothing here is a second source of truth: the
@@ -164,6 +166,17 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   // leaving it in `details` would fail the server's validation with an
   // "unknown field" error the member never asked for.
   const activeDef = categories.find((c) => c.category === category)
+  // Which modes this category allows comes from the server's definition (a
+  // member may only REQUEST a job, feature 021) — display only; the server
+  // re-checks. Falls back to both while the definitions load.
+  const allowedModes: readonly string[] = activeDef?.modes ?? MARKETPLACE_MODES
+  const onlyMode = allowedModes.length === 1
+
+  // A mode the new category does not allow moves to the first one it does, so
+  // the form can always be sent (an Offer becomes a Request when Job is chosen).
+  useEffect(() => {
+    if (!allowedModes.includes(mode)) setMode(allowedModes[0] ?? 'request')
+  }, [allowedModes, mode])
 
   const setDetail = (key: string, value: unknown) =>
     setDetails((prev) => {
@@ -217,6 +230,11 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       listingId = created.id
     } catch (err) {
       console.error('ComposeListing.submit', err instanceof ApiError ? err.problem : err)
+      // Shown as well as logged: only reachable with a stale category list,
+      // and the member cannot proceed without knowing why (CLAUDE.md).
+      if (err instanceof ApiError && err.problem?.type === PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED.type) {
+        setError(t.memberMarketplace.jobOfferNote)
+      }
       setBusy(false)
       return
     }
@@ -312,12 +330,13 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
             onChange={(e) => setMode(e.target.value)}
             className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
           >
-            {MARKETPLACE_MODES.map((m) => (
-              <option key={m} value={m}>{t.memberMarketplace.modes[m]}</option>
+            {allowedModes.map((m) => (
+              <option key={m} value={m}>{t.memberMarketplace.modes[m as keyof typeof t.memberMarketplace.modes] ?? m}</option>
             ))}
           </select>
         </label>
       </div>
+      {onlyMode && <p className="-mt-2 text-[12px] text-text-muted">{t.memberMarketplace.jobOfferNote}</p>}
 
       <Field label={t.memberMarketplace.titleField} value={title} onChange={(e) => setTitle(e.target.value)} />
       <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -420,12 +439,10 @@ export function Marketplace() {
   const [posted, setPosted] = useState(false)
   const newListingButton = useRef<HTMLButtonElement>(null)
 
-  // Whether the New listing button and its drawer render at all — absent,
-  // not disabled, without the flag (the same rule RequireGrant.tsx states for
-  // staff modules; members hold this one as a per-member permission, resolved
-  // the same way everywhere).
-  const permissions = (snapshot?.permissions as string[] | undefined) ?? []
-  const canPost = permissions.includes('marketplace_post')
+  // Whether the New listing button and its drawer render at all. Display
+  // only (Principle I): every member may post since feature 021, and the
+  // server refuses anyone else whatever this says.
+  const canPost = snapshot?.kind === 'member'
 
   useEffect(() => {
     void get('/marketplace/categories').then((body) => {

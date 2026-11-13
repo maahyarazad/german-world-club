@@ -32,8 +32,8 @@ async function csrfFor(app: GwcApp, accessCookieValue: string) {
  * identical. This asserts that identity directly against the two real
  * authentication paths, not by inspecting the route declaration: the same
  * member, the same filters, must see the same listings regardless of which
- * credential carried the request, and a member without `marketplace_post`
- * must be refused on both.
+ * credential carried the request, and a refusal (a job offer, feature 021)
+ * must be the same refusal on both.
  *
  * The two calls are sequential rather than concurrent — minting a bearer
  * supersedes the account's cookie session (one active session per account,
@@ -53,7 +53,7 @@ describe.skipIf(!hasDatabase)('the marketplace API answers identically over cook
   })
 
   it('returns the SAME result set for the same member, same filters', async () => {
-    const member = await createMember(app.pg, { permissions: { marketplace_post: true } })
+    const member = await createMember(app.pg)
     await app.pg.query(
       'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
       [member.id, TERMS],
@@ -85,31 +85,35 @@ describe.skipIf(!hasDatabase)('the marketplace API answers identically over cook
       .toEqual(viaCookie.json().items.map((l: { id: string }) => l.id))
   })
 
-  it('refuses a member WITHOUT marketplace_post, on both faces', async () => {
-    const member = await createMember(app.pg) // no permissions granted
+  it('refuses a job offer the same way on both faces (feature 021)', async () => {
+    const member = await createMember(app.pg)
+    await app.pg.query(
+      'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
+      [member.id, TERMS],
+    )
+    const jobOffer = {
+      category: 'job', mode: 'offer', title: 'Barista wanted', body: 'Full time in Dubai Marina.',
+      details: { employment_type: 'full_time', city: 'Dubai' }, termsVersion: TERMS,
+    }
 
     const signedIn = await signIn(app, member.email)
     const accessCookie = signedIn.response.cookies.find((c) => c.name === COOKIES.access)!
     const csrf = await csrfFor(app, accessCookie.value)
-
-    const viaCookie = await app.inject({
-      method: 'POST', url: '/marketplace/listings', ...csrf,
-      payload: { category: 'general', mode: 'offer', title: 'x', body: 'y', termsVersion: TERMS },
-    })
-    expect(viaCookie.statusCode).toBe(403)
+    const viaCookie = await app.inject({ method: 'POST', url: '/marketplace/listings', ...csrf, payload: jobOffer })
 
     const bearer = await bearerFor(app, { accountId: member.id, accountKind: 'member' })
-    const viaBearer = await app.inject({
-      method: 'POST', url: '/marketplace/listings', headers: bearer,
-      payload: { category: 'general', mode: 'offer', title: 'x', body: 'y', termsVersion: TERMS },
-    })
-    expect(viaBearer.statusCode).toBe(403)
+    const viaBearer = await app.inject({ method: 'POST', url: '/marketplace/listings', headers: bearer, payload: jobOffer })
+
+    expect(viaCookie.statusCode).toBe(422)
+    expect(viaBearer.statusCode).toBe(422)
+    expect(viaBearer.json().type).toBe(viaCookie.json().type)
+    expect(viaCookie.json().type).toMatch(/marketplace\/mode-not-allowed$/)
   })
 
-  it('ADMITS the same member on both faces once the flag is granted — the counter-assertion', async () => {
+  it('ADMITS a member with no flags on both faces — the counter-assertion', async () => {
     // Without this, the refusal test above would pass against an endpoint
-    // that refused every member regardless of the flag.
-    const member = await createMember(app.pg, { permissions: { marketplace_post: true } })
+    // that refused every member regardless of what they posted.
+    const member = await createMember(app.pg)
     await app.pg.query(
       'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2)',
       [member.id, TERMS],

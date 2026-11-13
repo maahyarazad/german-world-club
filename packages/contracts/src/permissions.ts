@@ -69,8 +69,13 @@ export const MODULES = Object.freeze([
   'referrals',
 ] as const)
 
-/** Per-member permission flags — members have no module matrix. */
-export const MEMBER_PERMISSIONS = Object.freeze(['marketplace_post', 'thread_moderate'] as const)
+/**
+ * Per-member permission flags — members have no module matrix.
+ *
+ * `marketplace_post` was retired by feature 021: every onboarded member may
+ * post, and `042_member_marketplace_posting.sql` stripped the stored key.
+ */
+export const MEMBER_PERMISSIONS = Object.freeze(['thread_moderate'] as const)
 
 /** Member account states (§3.2). Only `active` may sign in. */
 export const MEMBER_STATUSES = Object.freeze(['active', 'locked', 'inactive', 'ended'] as const)

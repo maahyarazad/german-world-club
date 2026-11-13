@@ -2,16 +2,16 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { ConsoleRoutes } from '../../src/console/routes'
 import { t } from '../../src/i18n/de'
-import { renderConsole, mockCapabilityFetch, memberSnapshot } from '../helpers/console'
+import { renderConsole, mockCapabilityFetch, memberSnapshot, staffSnapshot } from '../helpers/console'
+import { Marketplace } from '../../src/member/Marketplace'
 
 /**
  * The member marketplace tab (008 US6, T093).
  *
- * The compose control is a per-member PERMISSION (`marketplace_post`), not a
- * staff module — but the rule is the same one `RequireGrant.tsx` states for
- * staff screens: absent, not disabled, without the flag. A member who can
- * browse but not sell must see a browse page with no compose form at all, not
- * a greyed-out one that invites finding out what a re-enabled button does.
+ * Since feature 021 every member may post: the compose control no longer
+ * depends on a per-member flag (`marketplace_post` was retired). It is still
+ * absent, not disabled, for anyone who is not a member — the server refuses
+ * them regardless (Principle I: the client only decides what to display).
  */
 
 afterEach(() => vi.unstubAllGlobals())
@@ -58,21 +58,8 @@ describe('the member marketplace tab', () => {
     })
   })
 
-  it('has NO compose control without marketplace_post', async () => {
+  it('HAS the New listing button for a member with NO permissions, top right, and no form until asked', async () => {
     mockCapabilityFetch(member([]), { extraRoutes: routes })
-    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
-
-    await waitFor(() => {
-      expect(screen.getByText(t.memberMarketplace.browseTitle)).toBeInTheDocument()
-    })
-    // Absent, not disabled: no button, and no drawer holding a form either.
-    expect(screen.queryByRole('button', { name: t.memberMarketplace.newListing })).not.toBeInTheDocument()
-    expect(document.querySelector('dialog')).toBeNull()
-    expect(screen.queryByText(t.memberMarketplace.composeTitle)).not.toBeInTheDocument()
-  })
-
-  it('HAS the New listing button with marketplace_post, top right, and no form until asked — the counter-assertion', async () => {
-    mockCapabilityFetch(member(['marketplace_post']), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
     const button = await screen.findByRole('button', { name: t.memberMarketplace.newListing })
@@ -84,8 +71,21 @@ describe('the member marketplace tab', () => {
     expect(document.querySelector('dialog')!.hasAttribute('open')).toBe(false)
   })
 
+  it('has NO compose control for a principal who is not a member — the counter-assertion', async () => {
+    // Without this, the test above would pass against a page that showed the
+    // button to everybody, staff included.
+    mockCapabilityFetch(staffSnapshot(), { extraRoutes: routes })
+    renderConsole(<Marketplace />, { route: '/konsole/mitglied' })
+
+    await waitFor(() => {
+      expect(screen.getByText(t.memberMarketplace.browseTitle)).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: t.memberMarketplace.newListing })).not.toBeInTheDocument()
+    expect(document.querySelector('dialog')).toBeNull()
+  })
+
   it('opens the compose panel from the header button', async () => {
-    mockCapabilityFetch(member(['marketplace_post']), { extraRoutes: routes })
+    mockCapabilityFetch(member([]), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied' })
 
     const button = await screen.findByRole('button', { name: t.memberMarketplace.newListing })

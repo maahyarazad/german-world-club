@@ -441,6 +441,7 @@ export const en = {
     composeTitle: 'New listing',
     category: 'Category',
     mode: 'Mode',
+    jobOfferNote: 'You can look for work here. Job offers are not available to members.',
     titleField: 'Title',
     body: 'Description',
     features: 'Features',

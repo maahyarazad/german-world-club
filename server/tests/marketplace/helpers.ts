@@ -16,12 +16,10 @@ export const TERMS = 'v1'
 
 export async function poster(
   app: GwcApp,
-  { status = 'active', canPost = true }: { status?: string; canPost?: boolean } = {},
+  { status = 'active' }: { status?: string } = {},
 ) {
-  const row = await createMember(app.pg, {
-    status,
-    permissions: canPost ? { marketplace_post: true } : {},
-  })
+  // No permission flags: posting needs none since feature 021.
+  const row = await createMember(app.pg, { status })
   await app.pg.query(
     'INSERT INTO marketplace_terms_acceptances (member_id, version) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [row.id, TERMS],
@@ -40,14 +38,29 @@ type ListingSeed = {
   details?: Record<string, unknown>
 }
 
-/** Insert a listing directly, in any state. Returns its id. */
+/**
+ * Insert a listing directly, in any state. Returns its id.
+ *
+ * A job OFFER is inserted the way one came to exist before feature 021: with
+ * row triggers off for that one insert (`session_replication_role = replica`,
+ * transaction-local, test database only). The `marketplace_no_new_job_offer`
+ * trigger refuses creating one now, but the browse, filter and public-summary
+ * suites need the job offers that predate it — they stay visible until they
+ * end (021 FR-008, FR-012).
+ */
 export async function seedListing(pool: Pool, seed: ListingSeed): Promise<string> {
   const {
     ownerId, category = 'general', mode = 'offer',
     title = `A ${category} ${mode}`, state = 'active', expiresAt = null, details = {},
   } = seed
 
-  const { rows } = await pool.query(
+  const legacy = category === 'job' && mode === 'offer'
+  const client = await pool.connect()
+  let rows: Array<{ id: unknown }>
+  try {
+    await client.query('BEGIN')
+    if (legacy) await client.query('SET LOCAL session_replication_role = replica')
+    ;({ rows } = await client.query(
     `INSERT INTO marketplace_listings
        (owner_id, category, mode, title, body, state, terms_version,
         published_at, expires_at, state_changed_at)
@@ -55,7 +68,14 @@ export async function seedListing(pool: Pool, seed: ListingSeed): Promise<string
      RETURNING id`,
     [ownerId, category, mode, title,
      'A body comfortably longer than the ten-character minimum.', state, TERMS, expiresAt],
-  )
+    ))
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
   const id = String(rows[0].id)
 
   const table = {

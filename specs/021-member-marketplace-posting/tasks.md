@@ -26,7 +26,7 @@ wherever a test could pass against a server that did nothing. Server SQL suites 
 
 **Purpose**: confirm the starting point.
 
-- [ ] T001 Confirm `git branch --show-current` is `021-member-marketplace-posting` and that
+- [X] T001 Confirm `git branch --show-current` is `021-member-marketplace-posting` and that
   `server/migrations/` ends at `041_message_mail.sql`, so the next is `042`. Run
   `npm run -w server migrate` against `gwc_test`
   (`DATABASE_URL=postgres://postgres:postgres@localhost:5432/gwc_test`). Record the baseline:
@@ -38,20 +38,20 @@ wherever a test could pass against a server that did nothing. Server SQL suites 
 
 **Purpose**: the shared definitions every story reads. Nothing in US1–US3 starts before this.
 
-- [ ] T002 In `packages/contracts/src/marketplace.ts`:
+- [X] T002 In `packages/contracts/src/marketplace.ts`:
   - add `modes: readonly MarketplaceMode[]` to `CategoryDef`;
   - set it in `DEFS`: vehicle, property and general `['offer', 'request']`, job `['request']`.
     Add a comment on `job` saying why: members don't offer jobs (feature 021, the business
     description's Marketplace section), and existing job offers wind down;
   - export `modesFor(category)` next to `requiredFieldsFor`.
-- [ ] T003 [P] In `packages/contracts/src/errors.ts`, add
+- [X] T003 [P] In `packages/contracts/src/errors.ts`, add
   `MARKETPLACE_MODE_NOT_ALLOWED: { type: \`${BASE}/marketplace/mode-not-allowed\`, title: 'Mode not allowed for this category', status: 422 }`
   next to `QUOTA_EXCEEDED`, with a comment on why it's 422 and not 400 or 403 (research R6).
-- [ ] T004 [P] In `packages/contracts/src/permissions.ts`, remove `'marketplace_post'` from
+- [X] T004 [P] In `packages/contracts/src/permissions.ts`, remove `'marketplace_post'` from
   `MEMBER_PERMISSIONS` (leave `thread_moderate`) and add a comment that posting needs no member
   flag since 021. Run `npx tsc --noEmit -p packages/contracts`, then for client and app, and fix
   every type error the removal names.
-- [ ] T005 Extend `server/tests/marketplace/definitions.test.ts`:
+- [X] T005 Extend `server/tests/marketplace/definitions.test.ts`:
   - every category's `modes` is non-empty, has no duplicates, and is a subset of
     `MARKETPLACE_MODES`;
   - `modesFor('job')` is `['request']`;
@@ -71,18 +71,18 @@ attaches media. A merchant, a partner and staff are still refused.
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] In `server/tests/marketplace/posting.test.ts`:
+- [X] T006 [P] [US1] In `server/tests/marketplace/posting.test.ts`:
   - turn the permission-pair tests into "a member with **no** permissions can post" (201);
   - keep "terms not accepted" refused as today;
   - add a member with `permissions: { marketplace_post: false }` who can also post.
   - Keep a counter-assertion that an applicant still in profiling is refused (403
     `profiling-incomplete`).
-- [ ] T007 [P] [US1] In `server/tests/marketplace/audience.test.ts`:
+- [X] T007 [P] [US1] In `server/tests/marketplace/audience.test.ts`:
   - the posting route's posture is `audience: 'member'` and `requires` is **undefined**;
   - the "member holding marketplace_post CAN create" case becomes "a member with no flags CAN
     create";
   - merchant, partner and staff refusals are unchanged. Update the header comment.
-- [ ] T008 [US1] In `server/tests/authz/matrix.test.ts`:
+- [X] T008 [US1] In `server/tests/authz/matrix.test.ts`:
   - drop `requires: 'marketplace_post'` from the three marketplace rows (create listing, attach
     media, detach media);
   - replace the two flag sweeps ("refuses a member the routes gated on a per-member flag",
@@ -92,11 +92,11 @@ attaches media. A merchant, a partner and staff are still refused.
     - (b) a member with `permissions: {}` is not 403 on those three rows. This is the
       counter-assertion to (a).
   - Remove `flaggedMember` if nothing else uses it.
-- [ ] T009 [P] [US1] Update `server/tests/marketplace/helpers.ts`,
+- [X] T009 [P] [US1] Update `server/tests/marketplace/helpers.ts`,
   `server/tests/marketplace/quota.test.ts`, `parity.test.ts` and
   `no-server-localisation.test.ts`. Stop creating members with `marketplace_post`, and remove
   any `canPost: false` path that expected a 403. Assertions must keep their meaning.
-- [ ] T010 [P] [US1] In `client/tests/member/marketplace.test.tsx`:
+- [X] T010 [P] [US1] In `client/tests/member/marketplace.test.tsx`:
   - "has NO compose control without marketplace_post" becomes "HAS New listing for a member with
     no permissions";
   - keep a counter-assertion that a non-member snapshot (e.g. a merchant) gets no compose
@@ -106,30 +106,30 @@ attaches media. A merchant, a partner and staff are still refused.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] In `server/src/modules/marketplace/routes.ts`, remove
+- [X] T011 [US1] In `server/src/modules/marketplace/routes.ts`, remove
   `requires: 'marketplace_post'` from `POST /marketplace/listings`,
   `POST /marketplace/listings/:id/media` and `DELETE /marketplace/listings/:id/media/:assetId`.
   Rewrite the header comment: posting is open to every member since 021, and the `requires`
   mechanism stays in `10-auth` for future flags. Update the comments at the media block and the
   "no requires on these four" note.
-- [ ] T012 [US1] In `server/src/modules/marketplace/application/create.ts`, update the header
+- [X] T012 [US1] In `server/src/modules/marketplace/application/create.ts`, update the header
   comment: there is no permission flag, terms and quota are the checks, and the rest is
   unchanged.
-- [ ] T013 [US1] Create `server/migrations/042_member_marketplace_posting.sql`, part 1:
+- [X] T013 [US1] Create `server/migrations/042_member_marketplace_posting.sql`, part 1:
   - a header comment (feature 021, research R2);
   - `UPDATE members SET permissions = permissions - 'marketplace_post' WHERE permissions ? 'marketplace_post'`,
     with a comment: a retirement of a concept, so no audit row; members are updated, never
     deleted.
   - Part 2 (the trigger) is T020.
-- [ ] T014 [P] [US1] In `server/src/seed/members.ts`, stop setting `marketplace_post`. In
+- [X] T014 [P] [US1] In `server/src/seed/members.ts`, stop setting `marketplace_post`. In
   `server/src/seed/marketplace.ts`:
   - pick owners from active demo members with `member_profiling.completed_at IS NOT NULL`
     instead of the flag (both queries around lines 138–160), and update the doc comment;
   - keep the history rule.
-- [ ] T015 [P] [US1] In `client/src/member/Marketplace.tsx`:
+- [X] T015 [P] [US1] In `client/src/member/Marketplace.tsx`:
   - `canPost` becomes `snapshot?.kind === 'member'`, with the `permissions` read removed;
   - update the header comment at line ~26 (no longer "absent without marketplace_post").
-- [ ] T016 [P] [US1] In `expo-client/german-world-club/src/app/(member)/marketplace/index.tsx`,
+- [X] T016 [P] [US1] In `expo-client/german-world-club/src/app/(member)/marketplace/index.tsx`,
   `setCanPost(me.kind === 'member')`, with the comment updated. In `src/api/endpoints.ts`
   (~line 188) and `src/app/(member)/marketplace/new.tsx` (~line 31), update the comments that
   mention `marketplace_post`.
@@ -149,7 +149,7 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Create `server/tests/marketplace/job-offer.test.ts` (against `gwc_test`)
+- [X] T017 [P] [US2] Create `server/tests/marketplace/job-offer.test.ts` (against `gwc_test`)
   covering the application refusals:
   - create job and offer → 422, `type` ends `/marketplace/mode-not-allowed`, no
     `marketplace_listings` row, and the live-listing counter unchanged (no quota reserved);
@@ -157,7 +157,7 @@ the listing is unchanged. The compose form shows only Request for Job.
   - `PATCH` a general **offer** with `category: 'job'` (plus valid job details) → 422, and the
     row still has `category = 'general'` and its general detail row;
   - counter-assertion: `PATCH` a general **request** to `category: 'job'` → 200.
-- [ ] T018 [P] [US2] In the same file, a `describe('database trigger')` block covering the
+- [X] T018 [P] [US2] In the same file, a `describe('database trigger')` block covering the
   trigger, with direct SQL through `app.pg`:
   - `INSERT` of a job offer → rejected with constraint `marketplace_no_new_job_offer`;
   - `UPDATE` of a job request to `mode = 'offer'` → rejected;
@@ -165,7 +165,7 @@ the listing is unchanged. The compose form shows only Request for Job.
   - Build legacy rows inside one transaction with `SET LOCAL session_replication_role = replica`
     (test database only, comment why: it's how pre-migration rows exist).
   - Counter-assertion: a job request insert succeeds.
-- [ ] T019 [P] [US2] In `client/tests/member/marketplace-compose.test.tsx`:
+- [X] T019 [P] [US2] In `client/tests/member/marketplace-compose.test.tsx`:
   - the categories mock gains `modes`;
   - choosing Job leaves only the Request option, and the `jobOfferNote` text is shown;
   - with Offer selected, switching to Job sets the mode to Request, and the submitted body has
@@ -175,7 +175,7 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Add part 2 to `server/migrations/042_member_marketplace_posting.sql`:
+- [X] T020 [US2] Add part 2 to `server/migrations/042_member_marketplace_posting.sql`:
   - function `marketplace_listings_no_new_job_offer()` and its trigger, `BEFORE INSERT OR UPDATE
     OF category, mode, state ON marketplace_listings FOR EACH ROW`;
   - it raises `check_violation` with `CONSTRAINT = 'marketplace_no_new_job_offer'` under the
@@ -184,33 +184,33 @@ the listing is unchanged. The compose form shows only Request for Job.
     040_referrals.sql does);
   - a comment explaining why this isn't a CHECK constraint (research R4).
   - Run `npm run -w server migrate` against `gwc_test` twice; the second run must be a no-op.
-- [ ] T021 [US2] Add `ListingModeNotAllowedError` in
+- [X] T021 [US2] Add `ListingModeNotAllowedError` in
   `server/src/modules/marketplace/application/create.ts` (next to `TermsNotAcceptedError`), with
   the English message "Members cannot offer a job; post a job request instead." for job, or a
   generic one for other categories. Throw it in `createListing` when
   `!modesFor(category).includes(mode)`, **before** the quota `reserve`.
-- [ ] T022 [US2] In `server/src/modules/marketplace/application/manage.ts` `editListing`, when
+- [X] T022 [US2] In `server/src/modules/marketplace/application/manage.ts` `editListing`, when
   `categoryChanged` and `!modesFor(category).includes(row.mode)`, throw
   `ListingModeNotAllowedError` before any write.
-- [ ] T023 [US2] In `server/src/modules/marketplace/controller.ts`:
+- [X] T023 [US2] In `server/src/modules/marketplace/controller.ts`:
   - map `ListingModeNotAllowedError` to
     `reply.code(422).send({ ...PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED, detail, instance })` in
     `create` and in `edit`;
   - also map a pg error with `code === '23514' && constraint === 'marketplace_no_new_job_offer'`
     to the same problem, as a backstop;
   - check the route response schemas allow a 422, the same way the quota refusal does.
-- [ ] T024 [P] [US2] In `client/src/member/Marketplace.tsx` `ComposeListing`:
+- [X] T024 [P] [US2] In `client/src/member/Marketplace.tsx` `ComposeListing`:
   - render mode options from `activeDef?.modes ?? MARKETPLACE_MODES`;
   - when the category changes and `mode` isn't allowed, `setMode(modes[0])`;
   - when `modes.length === 1`, show `t.memberMarketplace.jobOfferNote` under the control;
   - on a 422 `MARKETPLACE_MODE_NOT_ALLOWED`, log
     `console.error('ComposeListing.submit', problem)` and show the same note.
   - Browse filters are unchanged.
-- [ ] T025 [P] [US2] In `client/src/i18n/de.ts` and `en.ts`, add `memberMarketplace.jobOfferNote`:
+- [X] T025 [P] [US2] In `client/src/i18n/de.ts` and `en.ts`, add `memberMarketplace.jobOfferNote`:
   - de: „Hier kannst du Arbeit suchen. Stellenangebote sind für Mitglieder nicht möglich.“
   - en: "You can look for work here. Job offers aren't available to members."
   - Run `npm run -w client test:i18n`.
-- [ ] T026 [P] [US2] In `expo-client/german-world-club/src/app/(member)/marketplace/new.tsx`:
+- [X] T026 [P] [US2] In `expo-client/german-world-club/src/app/(member)/marketplace/new.tsx`:
   - mode chips from `activeDef?.modes`;
   - `chooseCategory` switches the mode to the first allowed one;
   - show the note when there's only one;
@@ -235,7 +235,7 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 ### Tests for User Story 3
 
-- [ ] T027 [US3] In `server/tests/marketplace/job-offer.test.ts`, `describe('legacy job offers')`,
+- [X] T027 [US3] In `server/tests/marketplace/job-offer.test.ts`, `describe('legacy job offers')`,
   with legacy rows built as in T018:
   - the owner's `PATCH` of title and details → 200, and it's still a job offer;
   - the owner marks it `filled` → 200;
@@ -248,7 +248,7 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] If T027 fails anywhere, fix the trigger condition in
+- [X] T028 [US3] If T027 fails anywhere, fix the trigger condition in
   `server/migrations/042_member_marketplace_posting.sql` or the application check (T022 must
   only fire on a category change). Don't loosen T018 to get there.
 
@@ -260,7 +260,7 @@ the listing is unchanged. The compose form shows only Request for Job.
 
 **Goal**: FR-011.
 
-- [ ] T029 [US4] Verify that `german-world-club-business-description.md` (gitignored and
+- [X] T029 [US4] Verify that `german-world-club-business-description.md` (gitignored and
   local, already updated during `/speckit-specify`) has the "## Marketplace" section with rules
   1–7, and that the Core Server Functions row says "Members post (no job offers)". Make it match
   the final behaviour: the error wording, and that drafts can't be published. It isn't

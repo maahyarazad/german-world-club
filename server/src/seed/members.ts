@@ -111,8 +111,8 @@ export async function seedMembers(pool: Pool, faker: Faker, options: SeedOptions
         faker.datatype.boolean({ probability: 0.05 }),
         slice.suppressed ? faker.number.int({ min: 5, max: 12 }) : 0,
         slice.suppressed === true,
+        // No `marketplace_post`: retired by feature 021, posting needs no flag.
         JSON.stringify({
-          marketplace_post: faker.datatype.boolean({ probability: 0.15 }),
           thread_moderate: faker.datatype.boolean({ probability: 0.05 }),
         }),
       ],

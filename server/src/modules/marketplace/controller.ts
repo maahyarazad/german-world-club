@@ -3,7 +3,7 @@ import { CATEGORY_DEFS } from '@gwc/contracts/marketplace'
 import { query } from '../../db/query.ts'
 import {
   createListing, currentTermsVersion, TermsNotAcceptedError, DetailsInvalidError,
-  QuotaExceededError,
+  QuotaExceededError, ListingModeNotAllowedError,
 } from './application/create.ts'
 import { browseListings, findVisibleListing, UnknownFilterError } from './application/browse.ts'
 import { attachMedia, detachMedia, mediaForListings } from './application/media.ts'
@@ -49,6 +49,7 @@ export function createMarketplaceController(app: GwcApp) {
         })
         return reply.code(201).send(toListingResponse(listing))
       } catch (err) {
+        if (modeNotAllowed(err, request, reply)) return reply
         if (err instanceof TermsNotAcceptedError) {
           return reply.code(400).send({
             ...PROBLEMS.VALIDATION_FAILED,
@@ -472,10 +473,33 @@ function resolveContact(preference: unknown) {
 }
 
 /**
+ * A category that does not allow the mode — a job offer (feature 021) — is its
+ * own 422 problem, distinct from permission-required and from field errors.
+ * The database trigger's violation maps to the same answer, so a path that
+ * skipped the application check still tells the member why. Sends and returns
+ * true when it answered.
+ */
+function modeNotAllowed(err: unknown, request: GwcRequest, reply: GwcReply): boolean {
+  const fromTrigger = typeof err === 'object' && err !== null
+    && (err as { code?: string }).code === '23514'
+    && (err as { constraint?: string }).constraint === 'marketplace_no_new_job_offer'
+  if (!(err instanceof ListingModeNotAllowedError) && !fromTrigger) return false
+  reply.code(PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED.status).send({
+    ...PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED,
+    detail: err instanceof ListingModeNotAllowedError
+      ? err.message
+      : 'Members cannot offer a job; post a job request instead.',
+    instance: request.url,
+  })
+  return true
+}
+
+/**
  * The mapping every US3 handler shares: not-yours-or-absent is 404, an invalid
  * transition is 400, and a details failure is 400 with the field named.
  */
 function manageErrorOrThrow(err: unknown, request: GwcRequest, reply: GwcReply) {
+  if (modeNotAllowed(err, request, reply)) return reply
   if (err instanceof ManageNotFoundError) {
     return reply.code(PROBLEMS.NOT_FOUND.status).send({ ...PROBLEMS.NOT_FOUND, instance: request.url })
   }

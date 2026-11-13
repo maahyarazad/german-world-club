@@ -5,18 +5,20 @@ import { forbidden } from '../../../authz/require-permission.ts'
 import { validateDetails, detailColumns } from '../categories.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
+import { modesFor } from '@gwc/contracts/marketplace'
 import type {
-  CreateListingRequest, MarketplaceCategory,
+  CreateListingRequest, MarketplaceCategory, MarketplaceMode,
 } from '@gwc/contracts/marketplace'
 
 /**
  * Creating a listing (§7, FR-001…FR-002, FR-021, FR-028).
  *
- * Framework-free: takes `app` plus plain data, returns plain data. The
- * `marketplace_post` flag is NOT checked here — it is declared on the route as
- * `config.auth.requires`, which `plugins/10-auth.ts` resolves from server-held
- * state per request and audits on denial. Checking it twice would put the rule
- * in two places, and the route declaration is the one that shows up in a diff.
+ * Framework-free: takes `app` plus plain data, returns plain data. There is
+ * no permission flag to check (feature 021: every onboarded member may post;
+ * `10-auth` has already refused anyone who is not one). What is checked here:
+ * the category allows the mode (no job offers), the current terms are
+ * accepted, and the live-listing quota — in that order, so a refused
+ * combination never reserves quota.
  */
 
 /** How many live listings one member may hold. Configuration, not a constant of nature. */
@@ -38,6 +40,28 @@ export class TermsNotAcceptedError extends Error {
   }
 }
 
+/**
+ * Raised when the category does not allow the mode — a member offering a job
+ * (feature 021). Shared with `manage.ts`, where an edit into the job category
+ * can produce the same combination.
+ */
+export class ListingModeNotAllowedError extends Error {
+  readonly category: MarketplaceCategory
+  readonly mode: string
+  constructor(category: MarketplaceCategory, mode: string) {
+    super(category === 'job' && mode === 'offer'
+      ? 'Members cannot offer a job; post a job request instead.'
+      : `A ${category} listing cannot be a ${mode}.`)
+    this.name = 'ListingModeNotAllowedError'
+    this.category = category
+    this.mode = mode
+  }
+}
+
+/** Whether a member may create a listing in this category and mode (021). */
+export const modeAllowed = (category: MarketplaceCategory, mode: string): boolean =>
+  modesFor(category).includes(mode as MarketplaceMode)
+
 /** Raised when the category's own fields do not validate (FR-009). */
 export class DetailsInvalidError extends Error {
   readonly problems: { field: string; reason: string }[]
@@ -57,6 +81,12 @@ export async function createListing(app: GwcApp, input: CreateInput) {
     memberId, category, mode, title, body, details = {}, features = [],
     contactMethod = 'platform_message', expiresAt = null, termsVersion, signal,
   } = input
+
+  // First, before terms and quota: a combination no member may create is
+  // refused the same way whoever asks, and must never reserve quota.
+  if (!modeAllowed(category as MarketplaceCategory, mode)) {
+    throw new ListingModeNotAllowedError(category as MarketplaceCategory, mode)
+  }
 
   const current = currentTermsVersion(app)
 

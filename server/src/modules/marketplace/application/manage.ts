@@ -2,6 +2,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 import { withTransaction, query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { validateDetails, detailColumns, DETAIL_TABLE } from '../categories.ts'
+import { ListingModeNotAllowedError, modeAllowed } from './create.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 import type { MarketplaceCategory, ListingDetails } from '@gwc/contracts/marketplace'
@@ -94,6 +95,13 @@ export async function editListing(app: GwcApp, input: EditInput) {
     const row = await loadOwned(client, { listingId, ownerId })
     const category = (input.category ?? row.category) as MarketplaceCategory
     const categoryChanged = input.category !== undefined && input.category !== row.category
+
+    // Mode is not editable, so the only way an edit makes a job offer is a
+    // category change (feature 021). Checked only on a change: a job offer
+    // that predates the rule may still have its text and details edited.
+    if (categoryChanged && !modeAllowed(category, row.mode)) {
+      throw new ListingModeNotAllowedError(category, row.mode)
+    }
 
     // Validated against the FINAL category, whether or not it changed — an
     // edit that only touches `title` on a `job` listing still owes `job` a

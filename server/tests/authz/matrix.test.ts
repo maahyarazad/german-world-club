@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { MEMBER_PERMISSIONS } from '@gwc/contracts/permissions'
 import { randomUUID } from 'node:crypto'
 import { buildAuthApp, createMember, createAdmin, grant, resetAuthTables, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
@@ -85,23 +84,18 @@ const ROUTE_CLASSES = [
   // --- Marketplace (008) -----------------------------------------------------
   // Members only. Organisations sell through `offers` (§5) and staff do not
   // sell at all — moderating a market you trade in is a conflict of interest.
-  // Posting additionally requires the per-member `marketplace_post` flag.
-  { name: 'marketplace create listing', url: '/marketplace/listings', method: 'POST', audience: 'member', requires: 'marketplace_post' },
-  // No `requires` on the terms routes: a member must be able to read and
-  // accept the terms before they can hold the flag that posting needs.
+  // Posting needs no per-member flag since feature 021 (`marketplace_post` was
+  // retired): every onboarded member may post, after accepting the terms.
+  { name: 'marketplace create listing', url: '/marketplace/listings', method: 'POST', audience: 'member' },
   { name: 'marketplace read terms', url: '/marketplace/terms', method: 'GET', audience: 'member' },
   { name: 'marketplace accept terms', url: '/marketplace/terms/accept', method: 'POST', audience: 'member' },
   { name: 'marketplace categories', url: '/marketplace/categories', method: 'GET', audience: 'member' },
-  // No `requires` on browsing: reading the market is not gated on being able
-  // to sell in it. Only creating a listing needs the per-member flag.
   { name: 'marketplace browse', url: '/marketplace/listings', method: 'GET', audience: 'member' },
   { name: 'marketplace read listing', url: '/marketplace/listings/:id', probe: `/marketplace/listings/${randomUUID()}`, method: 'GET', audience: 'member' },
-  // Attaching media to a listing is part of posting one, so it carries the
-  // same flag as the create route.
-  { name: 'marketplace attach media', url: '/marketplace/listings/:id/media', probe: `/marketplace/listings/${randomUUID()}/media`, method: 'POST', audience: 'member', requires: 'marketplace_post' },
-  { name: 'marketplace detach media', url: '/marketplace/listings/:id/media/:assetId', probe: `/marketplace/listings/${randomUUID()}/media/${randomUUID()}`, method: 'DELETE', audience: 'member', requires: 'marketplace_post' },
-  // No `requires` on enquiring: contacting a seller is not selling, and gating
-  // it on the posting flag would mean only sellers could buy.
+  // Attaching media to a listing is part of posting one, so it has the same
+  // posture as the create route: any member (ownership is the 404 in the handler).
+  { name: 'marketplace attach media', url: '/marketplace/listings/:id/media', probe: `/marketplace/listings/${randomUUID()}/media`, method: 'POST', audience: 'member' },
+  { name: 'marketplace detach media', url: '/marketplace/listings/:id/media/:assetId', probe: `/marketplace/listings/${randomUUID()}/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   { name: 'marketplace enquire', url: '/marketplace/listings/:id/inquire', probe: `/marketplace/listings/${randomUUID()}/inquire`, method: 'POST', audience: 'member' },
   // No `requires` on any of the three below: owning what you already posted is
   // not a second privilege, and a member whose posting flag was later revoked
@@ -456,17 +450,12 @@ describe('anonymous reaches public routes and nothing else', () => {
 
 describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', () => {
   let member: Record<string, unknown>
-  /** A member holding every per-member flag, for the `requires` rows. */
-  let flaggedMember: Record<string, unknown>
   let departmentAdmin
   let superadmin
 
   beforeAll(async () => {
     await resetAuthTables(app.pg)
     member = await createMember(app.pg)
-    flaggedMember = await createMember(app.pg, {
-      permissions: Object.fromEntries(MEMBER_PERMISSIONS.map((p) => [p, true])),
-    })
     departmentAdmin = await createAdmin(app.pg, { grants: { settings: { read: true } } })
     superadmin = await createAdmin(app.pg, { isSuperadmin: true })
     app.permissions.invalidateAll()
@@ -519,23 +508,23 @@ describe.skipIf(!hasDatabase)('the live matrix, per principal kind (SC-002)', ()
     })
   })
 
-  it('refuses a member the routes gated on a per-member flag they lack', async () => {
-    // §7's marketplace_post is the first of these. A member without it must be
-    // refused by the API, not merely shown no button.
+  it('no member route is gated on a per-member flag today (feature 021)', () => {
+    // §7's marketplace_post was the only one, and feature 021 retired it.
+    // `config.auth.requires` still works in 10-auth; adding a flag-gated
+    // member route must change this pin on purpose, together with a sweep
+    // that refuses a member without the flag and admits one holding it.
     const gated = ROUTE_CLASSES.filter((r) => r.audience === 'member' && r.requires)
-    expect(gated.length, 'no flag-gated member route — this sweep proves nothing').toBeGreaterThan(0)
-
-    await sweep({ accountId: member.id, accountKind: 'member' }, gated, (route, status) => {
-      expect(status, `member without '${route.requires}' must not reach ${route.name}`).toBe(403)
-    })
+    expect(gated.map((r) => r.name)).toEqual([])
   })
 
-  it('admits a member who HOLDS the flag — the counter-assertion', async () => {
-    // Without this the sweep above would pass against a route that refused
-    // every member, flag or not.
-    const gated = ROUTE_CLASSES.filter((r) => r.audience === 'member' && r.requires)
-    await sweep({ accountId: flaggedMember.id, accountKind: 'member' }, gated, (route, status) => {
-      expect(status, `member holding '${route.requires}' should reach ${route.name}`).not.toBe(403)
+  it('admits a member with NO flags to the posting routes — the counter-assertion', async () => {
+    // Without this the pin above would pass against a server that still
+    // refused flagless members while the matrix rows merely forgot to say so.
+    const posting = ROUTE_CLASSES.filter((r) =>
+      ['marketplace create listing', 'marketplace attach media', 'marketplace detach media'].includes(r.name))
+    expect(posting).toHaveLength(3)
+    await sweep({ accountId: member.id, accountKind: 'member' }, posting, (route, status) => {
+      expect(status, `a member with no flags must reach ${route.name}`).not.toBe(403)
     })
   })
 

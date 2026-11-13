@@ -22,7 +22,7 @@ describe.skipIf(!hasDatabase)('the marketplace sends keys, not words', () => {
     app = await buildAuthApp()
     await resetAuthTables(app.pg)
     await seedVehicleFeatures(app.pg)
-    const row = await createMember(app.pg, { permissions: { marketplace_post: true } })
+    const row = await createMember(app.pg)
     headers = await bearerFor(app, { accountId: row.id, accountKind: 'member' })
   })
   afterAll(async () => { await app.close() })

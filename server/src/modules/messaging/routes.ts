@@ -13,9 +13,9 @@ import type { GwcApp } from '../../app.ts'
  * `seo/surfaces.ts` with the reason "Private correspondence", so this feature
  * continues a declaration rather than making one.
  *
- * **No `requires` flag.** Posting to the marketplace is gated on
- * `marketplace_post`; replying to someone who contacted you is not a privilege
- * a member has to be granted. Gating the reply would let a seller start a
+ * **No `requires` flag.** Replying to someone who contacted you is not a
+ * privilege a member has to be granted (and since feature 021 posting to the
+ * marketplace needs none either). Gating the reply would let a seller start a
  * conversation the buyer could not answer.
  *
  * **Message volume is rate-limited to 429, never 422.** A transport limit means
