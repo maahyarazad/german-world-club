@@ -280,7 +280,7 @@ no animation. A reopened dialog is empty.
 
 ### Tests for User Story 5
 
-- [ ] T030 [P] [US5] Create `client/tests/components/modal.test.tsx`, in the style of
+- [X] T030 [P] [US5] Create `client/tests/components/modal.test.tsx`, in the style of
   `drawer.test.tsx` (jsdom has no `showModal`, so `open` is the attribute the fallback sets):
   - **centering**: the dialog's `className` contains `m-auto` and a bounded max height. A
     comment says why: Tailwind v4 preflight zeroes the browser's `margin: auto`, and jsdom can't
@@ -296,7 +296,7 @@ no animation. A reopened dialog is empty.
 
 ### Implementation for User Story 5
 
-- [ ] T031 [US5] Rework `client/src/member/threads/Modal.tsx` (research R8). Keep the props (`title`, `open`, `onClose`, `children`) and both exports
+- [X] T031 [US5] Rework `client/src/member/threads/Modal.tsx` (research R8). Keep the props (`title`, `open`, `onClose`, `children`) and both exports
   unchanged.
   - **State**: `mounted`. It's true when `open` becomes true. When `open` becomes false, call
     `dialog.close()` (or remove the attribute in jsdom) and keep it mounted until
@@ -308,12 +308,12 @@ no animation. A reopened dialog is empty.
     - backdrop: `backdrop:opacity-0 open:backdrop:opacity-100 starting:open:backdrop:opacity-0 backdrop:transition-[opacity,overlay,display] backdrop:transition-discrete backdrop:duration-200`.
   - **No inline `style`**: the CSP allows styles by nonce only. Update the doc comment with why
     `m-auto` is needed and why it unmounts after the exit, not on close.
-- [ ] T032 [US5] Check that the variants exist in the built CSS: run `npm run -w client build`
+- [X] T032 [US5] Check that the variants exist in the built CSS: run `npm run -w client build`
   and grep the output CSS for `@starting-style`, plus the `scale` and `opacity` utilities used. If
   `open:backdrop:` or `starting:open:backdrop:` don't compile in Tailwind 4.3, fall back to an
   equivalent arbitrary variant (`[&[open]::backdrop]:opacity-100`) and record it in the
   component comment.
-- [ ] T033 [P] [US5] Run every consumer's tests unchanged:
+- [X] T033 [P] [US5] Run every consumer's tests unchanged:
   - `client/tests/member/listing-request.test.tsx`
   - the Threads composer and post-card tests
   - the handle dialog test
@@ -338,14 +338,14 @@ no animation. A reopened dialog is empty.
 
 ## Phase 8: Polish & cross-cutting
 
-- [ ] T035 Update `CLAUDE.md`'s marketplace paragraph:
+- [X] T035 Update `CLAUDE.md`'s marketplace paragraph:
   - replace "`marketplace_post` gates *creating* a listing…" with: posting is open to every
     member (feature 021), and members can't offer jobs;
   - the allowed modes per category are in `CATEGORY_DEFS`;
   - the trigger `marketplace_no_new_job_offer` refuses only the *creation* of a job offer, which
     is why it isn't a CHECK.
   - Keep "ownership refusals are 404".
-- [ ] T036 [P] Search for any remaining reference:
+- [X] T036 [P] Search for any remaining reference:
   `grep -rn "marketplace_post" server/src client/src expo-client/german-world-club/src packages/contracts/src server/tests client/tests`.
   Only comments that state the history (feature 021 retired it) may remain.
 - [ ] T037 Run the gates:

@@ -48,3 +48,23 @@ npx tsc --noEmit -p client && npx tsc --noEmit -p expo-client/german-world-club
     With macOS "Reduce motion" on, it appears with no animation.
 12. **Unchanged.** Escape and Cancel close it. Reopening shows an empty message. New listing
     still slides in from the right. The app is unchanged.
+
+## Walkthrough record (2026-11-13)
+
+Not walked by hand yet (T034, T039 open). What the automated suites prove, per step:
+
+| Step | Covered by |
+|---|---|
+| 1 A member with no flags posts | `server/tests/marketplace/posting.test.ts`, `audience.test.ts`, `authz/matrix.test.ts`; web `client/tests/member/marketplace.test.tsx` |
+| 2 Terms still apply | `posting.test.ts` (terms cases unchanged) |
+| 3 No job offer in the form; Offer → Request | `client/tests/member/marketplace-compose.test.tsx` ("the mode follows the category") |
+| 4 A job request works | `server/tests/marketplace/job-offer.test.ts`, `posting.test.ts` |
+| 5 Refused directly, and by an edit into Job | `job-offer.test.ts` (API and trigger), `parity.test.ts` (both faces) |
+| 6 Legacy job offers wind down | `job-offer.test.ts` ("job offers that predate the rule") |
+| 7 Not members | `audience.test.ts` (staff, unauthenticated); the matrix (merchant and partner audiences) |
+| 8 App | `tsc` and lint only. Needs a device. |
+| 9 `/auth/me` | The migration strips the key, and `/auth/me` reports only `true` keys |
+| 10–12 Web dialogs | `client/tests/components/modal.test.tsx` (classes, deferred unmount, reset, Escape). The variants were checked in the built CSS (T032). Actual centering and motion need a browser. |
+
+Still needs a person: the dialogs in a real browser (desktop, 375 px, Reduce motion), and the app
+on a device.

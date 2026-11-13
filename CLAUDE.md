@@ -191,12 +191,22 @@ references its subject softly (`subject_type`, `subject_id`) rather than by a
 foreign key to listings, and the application enforces that reference. On the
 clients (feature 017), the web compose form lives in a right-edge `Drawer`
 opened from the page header, and the app's Marketplace tab is the fifth — and
-last — bottom-bar slot. Four rules that look optional and are not:
+last — bottom-bar slot. Five rules that look optional and are not:
 
 - **Ownership refusals are 404, never 403**, and indistinguishable from an
   absent id (status, body and headers — `tests/marketplace/ownership.test.ts`).
-  `marketplace_post` gates *creating* a listing, not managing one you already
-  have: a member whose flag was revoked can still withdraw what they posted.
+- **Every member may post, and no member may offer a job** (feature 021,
+  `specs/021-member-marketplace-posting/`). There is no posting flag —
+  `marketplace_post` was retired and stripped. Which modes a category allows
+  is `CATEGORY_DEFS[…].modes` in `@gwc/contracts/marketplace` (job:
+  `request` only); the server refuses anything else with 422
+  `marketplace/mode-not-allowed` and both compose forms display only those
+  modes. Behind it, the `marketplace_no_new_job_offer` trigger refuses
+  *creating* a job offer — insert, change into one, publish a draft — and
+  deliberately not a CHECK, which would also refuse filling, withdrawing,
+  expiring or moderating the job offers that predate the rule. Tests that
+  need one create it with `session_replication_role = replica`
+  (`tests/marketplace/helpers.ts`); the seed never does.
 - **`expires_at IS NULL` means unlimited**, a first-class choice. The
   `marketplace-expiry` job's predicate is `expires_at IS NOT NULL AND
   expires_at <= now()` — both halves, or it silently expires every unlimited
