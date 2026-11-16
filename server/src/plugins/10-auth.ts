@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import { COOKIES } from '@gwc/contracts/auth'
 import { query } from '../db/query.ts'
 import { createDenylist, loadSession } from '../modules/auth/sessions.ts'
 import { createPermissionResolver } from '../authz/permissions.ts'
@@ -70,6 +71,18 @@ export default fp(
       }
     })
 
+    /**
+     * The session behind a token, or null when it has ended. The denylist
+     * closes the window between a revocation and the token's own ten-minute
+     * expiry; the row is the record. Shared by `authenticate` and
+     * `peekViewer`, so "signed in" means one thing.
+     */
+    async function liveSession(sid: string, signal?: AbortSignal) {
+      if (await denylist.has(sid)) return null
+      const session = await loadSession(app.pg, sid, { signal })
+      return session && session.revoked_at === null ? session : null
+    }
+
     /** Load the live member row behind a token. */
     async function loadMember(memberId: string, signal?: AbortSignal) {
       // LEFT JOIN: most members never applied (invited, legacy), and for them
@@ -130,16 +143,8 @@ export default fp(
         throw forbidden(PROBLEMS.UNAUTHENTICATED, 'A valid access token is required.')
       }
 
-      // Session-level revocation. The denylist closes the window between a
-      // revocation and the token's own ten-minute expiry.
-      if (await denylist.has(String(claims.sid))) {
-        throw forbidden(PROBLEMS.SESSION_REVOKED, 'This session has been ended.')
-      }
-
-      const session = await loadSession(app.pg, String(claims.sid), { signal: request.deadlineSignal })
-      if (!session || session.revoked_at !== null) {
-        throw forbidden(PROBLEMS.SESSION_REVOKED, 'This session has been ended.')
-      }
+      const session = await liveSession(String(claims.sid), request.deadlineSignal)
+      if (!session) throw forbidden(PROBLEMS.SESSION_REVOKED, 'This session has been ended.')
 
       request.principal = {
         id: String(claims.sub),
@@ -295,6 +300,49 @@ export default fp(
         throw forbidden(PROBLEMS.PERMISSION_REQUIRED, `This action requires the '${auth.requires}' permission.`)
       }
     }
+
+    /**
+     * Who is looking at a PUBLIC page, if anyone (feature 022) — the landing
+     * pages show a signed-in visitor their avatar instead of "Anmelden".
+     *
+     * The same rules as the console, not a lighter copy: a verified access
+     * token of any audience, a live session, and the same gates `authenticate`
+     * applies — run here against a stand-in request, so the real one is never
+     * touched. A public route must not start behaving like an authenticated
+     * one: this sets no `request.principal`, writes no `request.permissions`,
+     * and records no denial (a stale cookie on the landing page is not an
+     * access attempt). Every failure is `null`, which renders the anonymous
+     * page. No cookie at all costs nothing.
+     */
+    app.decorate('peekViewer', async function peekViewer(request: FastifyRequest) {
+      if (!request.cookies?.[COOKIES.access]) return null
+      try {
+        const claims = await app.verifyAccessToken(request, undefined as unknown as string)
+        const session = await liveSession(String(claims.sid), request.deadlineSignal)
+        if (!session) return null
+
+        const kind = String(claims.aud)
+        const principal = { id: String(claims.sub), kind, sid: claims.sid, deviceId: session.device_id ?? null }
+        // The gates read and write these three; nothing else of the request.
+        const standIn = { principal, permissions: null, deadlineSignal: request.deadlineSignal } as unknown as FastifyRequest
+
+        if (kind === 'member') {
+          // As an ordinary member console route: not `onboarding`/`profiling`,
+          // and no `requires`, so nothing here can audit.
+          await applyMemberGates(standIn, { audience: 'member' })
+        } else if (kind === 'merchant' || kind === 'partner') {
+          await applyOrganisationGates(standIn)
+        } else if (kind === 'admin') {
+          const snapshot = await permissions.resolve(principal.id, { signal: request.deadlineSignal })
+          if (!snapshot?.exists || !snapshot.isActive) return null
+        } else {
+          return null
+        }
+        return { id: principal.id, kind }
+      } catch {
+        return null
+      }
+    })
 
     app.decorate('requirePermission', makeRequirePermission(app))
 
