@@ -44,8 +44,8 @@ export default fp(
       keyGenerator: (request: FastifyRequest) => `otp-send:${request.otpPhoneKey ?? request.ip}`,
     })
 
-    const publicAuth = (bucket) => ({
-      config: { auth: { audience: 'public' }, budget: 'auth', rateLimit: app.bucket(bucket) },
+    const publicAuth = (bucket, budget = 'auth') => ({
+      config: { auth: { audience: 'public' }, budget, rateLimit: app.bucket(bucket) },
     })
 
     app.addHook('onSend', async (request: FastifyRequest, reply: FastifyReply, payload) => {
@@ -79,7 +79,9 @@ export default fp(
     app.post(
       '/auth/sign-in',
       {
-        ...publicAuth('sign-in-ip'),
+        // Sign-in texts a code, so it runs on the SMS route class: the 5 s
+        // 'auth' deadline was shorter than one SMSGlobal send.
+        ...publicAuth('sign-in-ip', 'otp-send'),
         preHandler: limitSignInAccount,
         schema: { body: signInRequestSchema, response: { 200: signInResponseSchema } },
       },
@@ -102,7 +104,8 @@ export default fp(
     app.post(
       '/auth/otp/resend',
       {
-        ...publicAuth('otp-verify'),
+        // Texts a code: the SMS route class, as register and contact use.
+        ...publicAuth('otp-verify', 'otp-send'),
         // Keyed on the phone number, not the address: each send costs real
         // money and an address-keyed limit is trivially bypassed.
         preHandler: [controller.loadOtpResendPreHandler, limitOtpSend],
