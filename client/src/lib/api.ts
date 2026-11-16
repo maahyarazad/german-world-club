@@ -127,8 +127,18 @@ async function readProblem(response: Response): Promise<ProblemResponse> {
       // unparseably".
     }
   }
+  // A reverse proxy's own error page — Node down, restarting, or too slow —
+  // carries no problem type, and its status text ("Bad Gateway") is nothing an
+  // applicant can act on. It means exactly "temporarily unavailable", which
+  // has translated copy. Only for these three statuses, and only without a
+  // problem body: a real problem answered with 503 keeps its own type above.
+  if (GATEWAY_STATUSES.has(response.status)) {
+    return { ...PROBLEMS.SERVICE_UNAVAILABLE, status: response.status }
+  }
   return { type: 'about:blank', title: response.statusText || 'Fehler', status: response.status }
 }
+
+const GATEWAY_STATUSES = new Set([502, 503, 504])
 
 /**
  * One request.

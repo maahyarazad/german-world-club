@@ -20,7 +20,7 @@ against `gwc_test` only.
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm `git branch --show-current` is `024-onboarding-contact-error` and that the
+- [X] T001 Confirm `git branch --show-current` is `024-onboarding-contact-error` and that the
   last migration in `server/migrations/` is `042_member_marketplace_posting.sql`, so the new one
   is `043`. Run `npm run -w server migrate` against `gwc_test`
   (`DATABASE_URL=postgres://postgres:postgres@localhost:5432/gwc_test`).
@@ -32,7 +32,7 @@ against `gwc_test` only.
 **Independent test**: a session with an expired, unconsumed refresh token is revoked as
 `expired` by the job, which succeeds. A live one is untouched.
 
-- [ ] T002 [US1] Create `server/tests/ops/sessions-expire.test.ts` against `gwc_test`. Build the
+- [X] T002 [US1] Create `server/tests/ops/sessions-expire.test.ts` against `gwc_test`. Build the
   app with `buildAuthApp`, then:
   - create a member;
   - insert two sessions for it, each with one `refresh_tokens` row: one with
@@ -47,7 +47,7 @@ against `gwc_test` only.
     production row) is revoked the same way.
 
   It must fail before T003 with `sessions_revoked_reason_check`.
-- [ ] T003 [US1] Create `server/migrations/043_session_revoked_reason_expired.sql`:
+- [X] T003 [US1] Create `server/migrations/043_session_revoked_reason_expired.sql`:
   - `ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_revoked_reason_check`, then
     `ADD CONSTRAINT sessions_revoked_reason_check CHECK (revoked_reason IS NULL OR revoked_reason IN ('superseded','logout','staff_action','token_reuse','status_change','password_reset','expired'))`;
   - first confirm the constraint name with
@@ -60,7 +60,7 @@ against `gwc_test` only.
   - leave the paired CHECK `(revoked_at IS NULL) = (revoked_reason IS NULL)` untouched.
 
   Run migrate twice on `gwc_test`; the second run must be a no-op. Then T002 passes.
-- [ ] T004 [P] [US1] Add a comment above the `UPDATE` in `server/src/ops/jobs.ts`
+- [X] T004 [P] [US1] Add a comment above the `UPDATE` in `server/src/ops/jobs.ts`
   `'sessions.expire'`: `expired` is an allowed reason since migration 043, and a new reason must
   be added to the constraint in the same change.
 
@@ -73,7 +73,7 @@ against `gwc_test` only.
 **Independent test**: `/onboarding/register` answering 502 with an HTML body shows the translated
 "Dienst nicht verfügbar" text at step 2, never "Bad Gateway".
 
-- [ ] T005 [P] [US2] Create `client/tests/lib/api-gateway.test.ts`. With `fetch` stubbed (as
+- [X] T005 [P] [US2] Create `client/tests/lib/api-gateway.test.ts`. With `fetch` stubbed (as
   `tests/lib/upload.test.ts` stubs it), call `get('/x')`:
   - 502 with `content-type: text/html` and body `<html>Bad Gateway</html>`, statusText
     `Bad Gateway` → rejects with an `ApiError` whose `problem.type` is
@@ -82,7 +82,7 @@ against `gwc_test` only.
   - counter-assertion: a 503 with `application/problem+json`
     `{ ...PROBLEMS.REQUEST_DEADLINE_EXCEEDED }` keeps that type;
   - counter-assertion: a non-problem 404 still gets `type: 'about:blank'`.
-- [ ] T006 [P] [US2] In `client/tests/onboarding/web-onboarding.test.tsx` (`steps 1 and 2`),
+- [X] T006 [P] [US2] In `client/tests/onboarding/web-onboarding.test.tsx` (`steps 1 and 2`),
   add a test: `/onboarding/register` returns
   `{ status: 502, body: '<html>Bad Gateway</html>', headers: { 'content-type': 'text/html' } }`.
   After submitting step 2:
@@ -90,7 +90,7 @@ against `gwc_test` only.
     describeProblem output with `describeProblem({ ...PROBLEMS.SERVICE_UNAVAILABLE, status: 502 }, 'de')`;
   - `queryByText(/Bad Gateway/)` is absent;
   - the applicant is still on step 2.
-- [ ] T007 [US2] In `client/src/lib/api.ts` `readProblem`:
+- [X] T007 [US2] In `client/src/lib/api.ts` `readProblem`:
   - when the body is not problem or JSON and `response.status` is 502, 503 or 504, return
     `{ ...PROBLEMS.SERVICE_UNAVAILABLE, status: response.status }`;
   - otherwise keep the existing `about:blank` fallback;
@@ -120,7 +120,7 @@ against `gwc_test` only.
 
 ## Phase 5: Polish
 
-- [ ] T010 Run the gates:
+- [X] T010 Run the gates:
   - `DATABASE_URL=…/gwc_test npm run -w server test` (the 7 known failures on `main` excepted);
   - `npm run -w client test` and `npm run -w client test:i18n`;
   - `npx tsc --noEmit -p client`.
