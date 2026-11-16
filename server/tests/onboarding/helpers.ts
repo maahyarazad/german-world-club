@@ -21,6 +21,9 @@ const mailSent = new WeakMap<GwcApp, SentMail[]>()
  */
 export async function buildOnboardingApp(options: BuildAppOptions = {}) {
   const sms: { mobile: string; code: string }[] = []
+  // Set `smsControl.failure` to make every SMS send reject with it, the way
+  // the SMSGlobal SDK does (feature 023).
+  const smsControl: { failure: unknown } = { failure: null }
   const sent: SentMail[] = []
   const mail = {
     failing: false,
@@ -42,6 +45,7 @@ export async function buildOnboardingApp(options: BuildAppOptions = {}) {
       sms: {
         configured: true,
         sendCode: async ({ mobile, code }: { mobile: string; code: string }) => {
+          if (smsControl.failure) throw smsControl.failure
           sms.push({ mobile, code })
           return { delivered: true }
         },
@@ -50,7 +54,7 @@ export async function buildOnboardingApp(options: BuildAppOptions = {}) {
   })
   await app.ready()
   mailSent.set(app, sent)
-  return { app, sms, mail }
+  return { app, sms, mail, smsControl }
 }
 
 export const DEVICE = 'device-applicant'

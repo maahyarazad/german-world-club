@@ -85,7 +85,7 @@ const schema = z
     // a second factor that quietly does not send is not a second factor.
     SMSGLOBAL_API_KEY: z.string().optional(),
     SMSGLOBAL_API_SECRET: z.string().optional(),
-    SMSGLOBAL_ORIGIN: z.string().default('GWC'),
+    SMSGLOBAL_ORIGIN: z.string().default('B P'),
     // Outbound SMS country policy (integrations/sms-country-policy.ts). Both
     // optional and read once at boot. SMS_BLOCKED_COUNTRIES is dialing codes
     // and REPLACES the shipped sanctions denylist, so a code can be removed as
