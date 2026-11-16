@@ -243,6 +243,23 @@ describe('step 3: the SMS code', () => {
     error.mockRestore()
   })
 
+  it('says the verification has ended, and offers to continue, when the code session is gone', async () => {
+    // The server answers 404 when the pending challenge can no longer be
+    // edited — spent, replaced, already verified, or the made-up id a resend
+    // returns for a dead challenge. Not "the requested entry does not exist".
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.NOT_FOUND))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+971 58 583 1595' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByRole('heading', { name: t.challengeEndedTitle })).toBeInTheDocument()
+    expect(screen.getByText(t.challengeEndedBody)).toBeInTheDocument()
+    expect(screen.queryByText(/existiert nicht|does not exist/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: t.restart }))
+    expect(await screen.findByRole('heading', { name: t.detailsTitle })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('after a reload, sends the applicant back to registration rather than to a dead form', async () => {
     mockCapabilityFetch(null)
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren/mobil' })

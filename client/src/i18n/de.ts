@@ -117,6 +117,11 @@ export const de = {
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
     mobileUnavailable: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.',
     noContactChange: 'Geben Sie eine neue E-Mail-Adresse oder Mobilnummer ein, bevor Sie speichern.',
+    challengeEndedTitle: 'Diese Bestätigung ist beendet',
+    challengeEndedBody:
+      'Dieser Code ist nicht mehr gültig: Ein neuerer wurde gesendet, er wurde bereits verwendet, oder diese '
+      + 'Nummer ist bereits bestätigt. Starten Sie die Registrierung erneut mit denselben Angaben – Sie setzen '
+      + 'dort fort, wo Sie aufgehört haben.',
     missingChallengeTitle: 'Registrierung unterbrochen',
     missingChallengeBody:
       'Diese Seite wurde neu geladen, bevor der Code eingegeben war. Starten Sie die Registrierung '

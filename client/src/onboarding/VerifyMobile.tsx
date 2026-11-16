@@ -55,6 +55,10 @@ export function VerifyMobile() {
   const [email, setEmail] = useState(initial?.email ?? '')
   const [mobile, setMobile] = useState(initial?.mobile ?? '')
   const [contactErrors, setContactErrors] = useState<{ email?: string; mobile?: string }>({})
+  // The pending challenge can no longer be edited (spent, replaced, already
+  // verified — or the made-up id a resend answers for a dead challenge). The
+  // only way on is registering again, which resumes the application.
+  const [ended, setEnded] = useState(false)
 
   /**
    * Router state does not survive a reload, and the challenge id is kept out
@@ -62,6 +66,17 @@ export function VerifyMobile() {
    * email and password, the server resumes the application rather than
    * refusing the address.
    */
+  if (ended) {
+    return (
+      <AuthCard title={copy.challengeEndedTitle}>
+        <p className="mt-2 text-[13px] text-text-muted">{copy.challengeEndedBody}</p>
+        <Button className="mt-6 w-full" onClick={() => navigate('/konsole/registrieren', { replace: true })}>
+          {copy.restart}
+        </Button>
+      </AuthCard>
+    )
+  }
+
   if (!challengeId) {
     return (
       <AuthCard title={copy.missingChallengeTitle}>
@@ -160,6 +175,8 @@ export function VerifyMobile() {
       else if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
       else if (type === PROBLEMS.SMS_DESTINATION_NOT_ALLOWED.type) setContactErrors({ mobile: copy.mobileUnavailable })
       else if (type === PROBLEMS.VALIDATION_FAILED.type) setRequestError(copy.noContactChange)
+      // Not "the requested entry does not exist": the verification itself is over.
+      else if (type === PROBLEMS.NOT_FOUND.type) setEnded(true)
       else showRequestError(error)
     } finally {
       setBusy(false)
