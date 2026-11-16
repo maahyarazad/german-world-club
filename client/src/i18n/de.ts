@@ -114,6 +114,7 @@ export const de = {
     changeEmailSave: 'Speichern und neuen Code senden',
     newEmail: 'Neue E-Mail-Adresse',
     emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
+    emailRegistered: 'Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Melden Sie sich an oder verwenden Sie eine andere Adresse.',
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
     mobileUnavailable: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.',
     noContactChange: 'Geben Sie eine neue E-Mail-Adresse oder Mobilnummer ein, bevor Sie speichern.',

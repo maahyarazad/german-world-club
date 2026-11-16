@@ -7,6 +7,7 @@ import type { Gender, PrimaryLanguage, RegisterRequest, RegisterResponse } from 
 import { COUNTRIES } from '@gwc/contracts/countries'
 import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals'
 
+import { PROBLEMS } from '@gwc/contracts/errors'
 import { post, ApiError } from '../lib/api'
 import { describeProblem } from '../lib/problems'
 import { collatorFor, fill } from '../lib/format'
@@ -121,10 +122,14 @@ export function Register() {
       })
     } catch (error) {
       console.error('Register.submit', error instanceof ApiError ? error.problem : error)
-      // Shown as well as logged: a taken mobile number (the one case this step
-      // can refuse) leaves the applicant stuck with no way to tell why.
-      // Registration itself never says whether an email is taken (§6.1); that
-      // stays true because `describeProblem` translates by type, not by detail.
+      // Shown as well as logged: a taken email or mobile number leaves the
+      // applicant stuck with no way to tell why. A taken email goes back to
+      // step 1, onto the field it is about.
+      if (error instanceof ApiError && error.problem?.type === PROBLEMS.EMAIL_IN_USE.type) {
+        setStep(1)
+        setErrors({ email: copy.emailRegistered })
+        return
+      }
       if (error instanceof ApiError) {
         const described = describeProblem(error.problem, locale)
         setErrors((current) => ({

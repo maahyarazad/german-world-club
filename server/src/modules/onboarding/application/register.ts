@@ -1,5 +1,4 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
-import { randomUUID } from 'node:crypto'
 import { OTP_TTL_SECONDS } from '@gwc/contracts/auth'
 import { query, withTransaction } from '../../../db/query.ts'
 import { hashPassword, verifyPassword } from '../../auth/passwords.ts'
@@ -91,7 +90,7 @@ export async function register(
       }, { signal })
     }
 
-    return addressInUse(app, { email, mobile, requestId })
+    return addressInUse(app, { email, requestId })
   }
 
   const passwordHash = await hashPassword(password)
@@ -125,7 +124,7 @@ export async function register(
     if (conflict?.code === '23505' && conflict.constraint === 'members_mobile_unique') {
       throw refuse(PROBLEMS.MOBILE_IN_USE, 'This mobile number is already in use.')
     }
-    if (conflict?.code === '23505') return addressInUse(app, { email, mobile, requestId })
+    if (conflict?.code === '23505') return addressInUse(app, { email, requestId })
     throw err
   }
 }
@@ -160,19 +159,24 @@ async function challengeAndSend(
 }
 
 /**
- * The address already belongs to somebody.
+ * The address already belongs to somebody, and the applicant could not resume
+ * it (no pending application, or not their password).
  *
- * The response has the same shape as a real one, carrying a challenge id that
- * exists nowhere, so the answer itself is not a membership oracle. That is not
- * the whole of non-enumeration and does not pretend to be: no SMS arrives, so
- * somebody holding the phone they typed in can tell. What closes the loop is
- * the mail — the address's owner learns someone tried, and it is keyed per
- * hour so repeated attempts cannot flood their inbox.
+ * Refused with `email-in-use` (409), so the applicant learns why and can sign
+ * in or use another address. This used to answer like a fresh registration,
+ * with a challenge id that existed nowhere, to keep registration from saying
+ * whether an address is a member's. That protection was not real: step 3's
+ * contact change already answers `email-in-use`, and `mobile-in-use` is said
+ * here openly. All the disguise achieved was an applicant waiting for an SMS
+ * that never came, then a dead code screen.
+ *
+ * The owner is still told someone tried their address (keyed per hour, so
+ * repeated attempts cannot flood their inbox), and the attempt is audited.
  */
 async function addressInUse(
   app: GwcApp,
-  { email, mobile, requestId }: { email: string; mobile: string; requestId?: string },
-): Promise<RegisterResponse> {
+  { email, requestId }: { email: string; requestId?: string },
+): Promise<never> {
   await app.enqueueMail({
     to: email,
     template: 'onboarding.address-in-use',
@@ -182,5 +186,5 @@ async function addressInUse(
     action: 'membership_application_refused', outcome: 'denied', requestId,
     detail: { reason: 'address-in-use' },
   })
-  return { challengeId: randomUUID(), expiresIn: OTP_TTL_SECONDS, sentTo: maskPhone(mobile) }
+  throw refuse(PROBLEMS.EMAIL_IN_USE, 'This email address is already in use.')
 }

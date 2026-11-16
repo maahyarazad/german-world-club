@@ -120,6 +120,7 @@ export const en = {
     changeEmailSave: 'Save and send a new code',
     newEmail: 'New email address',
     emailInUse: 'This email address is already in use.',
+    emailRegistered: 'An account with this email address already exists. Sign in instead, or use another address.',
     mobileInUse: 'This mobile number is already in use.',
     mobileUnavailable: 'We can’t send a verification code to this number. Please try another.',
     noContactChange: 'Enter a new email address or mobile number before saving.',
