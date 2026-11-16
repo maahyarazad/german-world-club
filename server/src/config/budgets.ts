@@ -14,7 +14,9 @@
 /** Per-dependency outbound budgets, in milliseconds. */
 export const OUTBOUND: Readonly<Record<string, number>> = Object.freeze({
   payments: 8000,
-  sms: 5000,
+  // SMSGlobal has been seen taking ~4.2 s to accept a message; 5 s left no
+  // room, and a send past it was refused while the SMS still went out.
+  sms: 10000,
   mail: 10000,
   geocoding: 3000,
   redis: 250,
@@ -50,7 +52,9 @@ export const ROUTE_BUDGETS = Object.freeze({
   'public-page': { deadlineMs: 3000, calls: ['redis'] },
   sitemap: { deadlineMs: 10000, calls: ['redis'] },
   auth: { deadlineMs: 5000, calls: ['redis'] },
-  'otp-send': { deadlineMs: 10000, calls: ['sms', 'redis'] },
+  // Every route that texts a code: register, contact, sign-in and resend.
+  // 10250 (sms 10000 + redis 250) < 20000 < requestTimeout.
+  'otp-send': { deadlineMs: 20000, calls: ['sms', 'redis'] },
   // 10250 (mail 10000 + redis 250) < 15000, the same rule 'otp-send' obeys.
   'email-send': { deadlineMs: 15000, calls: ['mail', 'redis'] },
   'member-read': { deadlineMs: 2000, calls: ['redis'] },
