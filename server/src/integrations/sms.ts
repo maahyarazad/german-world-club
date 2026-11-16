@@ -6,9 +6,10 @@ import type { DecoratedError } from "../types/errors.ts";
 /**
  * SMS via **SMSGlobal**, through their official SDK (`smsglobal` on npm).
  *
- * One SDK instance for the whole process, created on first use: the SDK throws
- * when constructed without credentials, and a server with no SMSGlobal account
- * configured must still boot (sends are then refused — see send-otp.ts).
+ * One SDK instance per client (the process has one), created on first use: the
+ * SDK throws when constructed without credentials, and a server with no
+ * SMSGlobal account configured must still boot (sends are then refused — see
+ * send-otp.ts).
  *
  * Only `app.sendOtp` (decorators/send-otp.ts) may call this; the country policy
  * sits there, in front of it.
@@ -24,9 +25,14 @@ type SmsGlobalSdk = {
   };
 };
 
-let instance: SmsGlobalSdk | null = null;
-const sdk = (apiKey: string, apiSecret: string): SmsGlobalSdk =>
-  (instance ??= smsglobal(apiKey, apiSecret) as SmsGlobalSdk);
+/** What `require("smsglobal")(apiKey, apiSecret)` is: a factory for the SDK. */
+export type SmsGlobalFactory = (apiKey: string, apiSecret: string) => SmsGlobalSdk;
+
+/**
+ * The sender id when SMSGLOBAL_ORIGIN is not set. SMSGlobal refuses one the
+ * account has not registered ("Origin is invalid.").
+ */
+export const DEFAULT_ORIGIN = "B P";
 
 /** Digits only, no leading `+` or `00` — the form SMSGlobal expects. */
 export function normaliseDestination(mobile: string) {
@@ -38,7 +44,19 @@ export function createSmsClient({
   apiKey,
   apiSecret,
   origin,
-}: { apiKey?: string; apiSecret?: string; origin?: string } = {}) {
+  sdkFactory = smsglobal as unknown as SmsGlobalFactory,
+}: {
+  apiKey?: string;
+  apiSecret?: string;
+  origin?: string;
+  /** The real SDK by default; a test passes a fake so nothing leaves the machine. */
+  sdkFactory?: SmsGlobalFactory;
+} = {}) {
+  // Created on first use: the SDK throws when constructed without
+  // credentials, and a server with no SMSGlobal account must still boot.
+  let instance: SmsGlobalSdk | null = null;
+  const sdk = () => (instance ??= sdkFactory(apiKey!, apiSecret!));
+
   return {
     name: "sms",
     provider: "smsglobal",
@@ -49,20 +67,22 @@ export function createSmsClient({
      * identifies the member: an SMS is rendered on a lock screen, and "you are
      * a member of X" is itself the fact an invite-only club protects.
      *
-     * `origin` is the sender id, and SMSGlobal refuses one the account has not
-     * registered ("Origin is invalid.") — set SMSGLOBAL_ORIGIN to one it has.
+     * The sender is SMSGLOBAL_ORIGIN (default `B P`) — configuration, never a
+     * value written here.
+     *
+     * A rejection is NOT caught here (feature 023). It used to be logged to the
+     * console and swallowed, which reported a code as sent when SMSGlobal had
+     * refused it: the member waited for an SMS that never came. The gateway
+     * (decorators/send-otp.ts) logs SMSGlobal's answer, masked, and replies
+     * 503 "try again later".
      */
     async sendCode({ mobile, code }: { mobile: string; code: string }) {
-      try {
-        const response = await sdk(apiKey!, apiSecret!).sms.send({
-          origin: "B P",
-          destination: normaliseDestination(mobile),
-          message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
-        });
-        return { delivered: true, response: response?.data ?? null };
-      } catch (error) {
-        console.error(error);
-      }
+      const response = await sdk().sms.send({
+        origin: origin || DEFAULT_ORIGIN,
+        destination: normaliseDestination(mobile),
+        message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
+      });
+      return { delivered: true, response: response?.data ?? null };
     },
   };
 }
