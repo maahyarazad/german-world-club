@@ -123,7 +123,6 @@ export const en = {
     emailRegistered: 'An account with this email address already exists. Sign in instead, or use another address.',
     mobileInUse: 'This mobile number is already in use.',
     mobileUnavailable: 'We can’t send a verification code to this number. Please try another.',
-    noContactChange: 'Enter a new email address or mobile number before saving.',
     challengeEndedTitle: 'This verification has ended',
     challengeEndedBody:
       'This code is no longer valid: a newer one was sent, it was already used, or this number is already '
