@@ -196,6 +196,7 @@ describe('step 3: the SMS code', () => {
       extraRoutes: {
         '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
         '/onboarding/contact': contact,
+        '/auth/otp/resend': () => json({ resent: true, cooldownSeconds: 60, challengeId: '33333333-3333-4333-8333-333333333333' }, 202),
       },
     })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
@@ -237,17 +238,22 @@ describe('step 3: the SMS code', () => {
     error.mockRestore()
   })
 
-  it('asks for a changed field, and sends nothing, when save is pressed with no change', async () => {
-    // Regression: an unchanged save used to reach the server, which answered
-    // the generic validation refusal — shown as "check the highlighted fields"
-    // with nothing highlighted. Now it is caught here with a clear reason.
+  it('sends a new code to the same number when save is pressed with nothing changed', async () => {
+    // Both fields filled, nothing changed: the button still means "send a new
+    // code". It used to be refused — first as "check the highlighted fields",
+    // then as "enter a new email or number" — when the applicant only wanted
+    // the SMS that never came.
     const fetchMock = await reachStepThree(() => json({}, 202))
     fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
 
-    expect(await screen.findByText(t.noContactChange)).toBeInTheDocument()
-    // Not the old nonsense: "check the highlighted fields" with nothing highlighted.
-    expect(screen.queryByText(/markierten Felder/)).not.toBeInTheDocument()
+    expect(await screen.findByText(t.resent)).toBeInTheDocument()
+    // Back on the code screen, with a fresh code requested for the same challenge.
+    expect(screen.getByRole('heading', { name: t.mobileTitle })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.changeDetailsSave })).not.toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/auth/otp/resend')).toEqual({ challengeId: '11111111-1111-4111-8111-111111111111' })
+    // Counter-assertion: nothing was "changed" on the server.
     expect(fetchMock.mock.calls.some(([url]) => String(url) === '/onboarding/contact')).toBe(false)
+    expect(screen.queryByText(/markierten Felder/)).not.toBeInTheDocument()
   })
 
   it('explains, on the mobile field, when the number cannot receive texts', async () => {

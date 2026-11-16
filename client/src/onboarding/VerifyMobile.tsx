@@ -144,13 +144,16 @@ export function VerifyMobile() {
     setRequestError(null)
     if (Object.keys(found).length > 0) return
 
-    // Send only what actually changed. If nothing did, say so here — otherwise
-    // the server answers with the generic validation refusal, which the console
-    // renders as "check the highlighted fields" with no field highlighted.
+    // Send only what actually changed. With nothing changed, the button still
+    // means what it says — "send a new code" — so it does exactly that, to the
+    // same number, back on the code screen. (The contact endpoint refuses an
+    // empty change, and an applicant whose SMS never came presses this button
+    // precisely to get another.)
     const emailChanged = nextEmail !== (initial?.email ?? '').trim().toLowerCase()
     const mobileChanged = nextMobile !== (initial?.mobile ?? '').replace(/[\s\-()]/g, '')
     if (!emailChanged && !mobileChanged) {
-      setRequestError(copy.noContactChange)
+      setEditing(false)
+      await resend()
       return
     }
 
@@ -174,7 +177,6 @@ export function VerifyMobile() {
       if (type === PROBLEMS.EMAIL_IN_USE.type) setContactErrors({ email: copy.emailInUse })
       else if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
       else if (type === PROBLEMS.SMS_DESTINATION_NOT_ALLOWED.type) setContactErrors({ mobile: copy.mobileUnavailable })
-      else if (type === PROBLEMS.VALIDATION_FAILED.type) setRequestError(copy.noContactChange)
       // Not "the requested entry does not exist": the verification itself is over.
       else if (type === PROBLEMS.NOT_FOUND.type) setEnded(true)
       else showRequestError(error)
