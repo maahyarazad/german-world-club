@@ -74,6 +74,7 @@ export const en = {
     changeDetailsCancel: 'Cancel',
     detailsChanged: 'Saved. A new code is on its way to {target}.',
     emailInUse: 'This email address is already in use.',
+    emailRegistered: 'An account with this email address already exists. Sign in instead, or go back and use another address.',
     mobileInUse: 'This mobile number is already in use.',
     emailTitle: 'Verify your email address',
     changeEmail: 'Wrong email address? Change it',

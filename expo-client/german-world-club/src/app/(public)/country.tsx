@@ -9,13 +9,14 @@ import { onboardingApi } from '@/api/endpoints';
 import { CountryPicker, countryName } from '@/components/country-picker';
 import { RESIDENCE_SHORTCUTS } from '@gwc/contracts/onboarding';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, styles } from '@/components/ui';
+import { Button, Chip, Message, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
+import { PROBLEMS } from '@gwc/contracts/errors';
 
 /**
  * Onboarding step 2 (§6.1): primary country of residence — the value Phase 2
@@ -31,9 +32,13 @@ export default function Country() {
   const [others, setOthers] = useState(Boolean(draft.countryOfResidence) && !shortcut);
   const { deviceId } = useSession();
   const [busy, setBusy] = useState(false);
+  // Shown as well as logged: a taken email or number leaves the applicant
+  // with no way to tell why nothing happened (CLAUDE.md's exceptions).
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     setBusy(true);
+    setError(null);
     try {
       // Step 1 validated every field and cannot be skipped to reach here.
       const request = { ...draft, deviceId: deviceId! } as RegisterRequest;
@@ -41,6 +46,8 @@ export default function Country() {
       router.replace({ pathname: '/verify-mobile', params: { challengeId: sent.challengeId, sentTo: sent.sentTo } });
     } catch (e) {
       console.error('Country.submit', e instanceof ApiError ? e.problem : e);
+      if (e instanceof ApiError && e.type === PROBLEMS.EMAIL_IN_USE.type) setError(t.register.emailRegistered);
+      else if (e instanceof ApiError && e.type === PROBLEMS.MOBILE_IN_USE.type) setError(t.register.mobileInUse);
     } finally {
       setBusy(false);
     }
@@ -73,6 +80,7 @@ export default function Country() {
             onSelect={(code) => update({ countryOfResidence: code })}
           />
         ) : null}
+        {error ? <Message text={error} /> : null}
         <Button label={t.register.submit} onPress={submit} loading={busy} disabled={!draft.countryOfResidence} />
       </View>
     </SafeAreaView>

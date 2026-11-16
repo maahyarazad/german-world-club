@@ -96,6 +96,24 @@ describe('steps 1 and 2: details, then country', () => {
     expect(sent).not.toHaveProperty('deviceId')
   })
 
+  it('says the email is already registered, on the email field, back at step 1', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: { '/onboarding/register': () => refusal(PROBLEMS.EMAIL_IN_USE) },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+
+    expect(await screen.findByText(t.emailRegistered)).toBeInTheDocument()
+    // Back on step 1 with what was typed, so only the address needs changing.
+    expect(screen.getByLabelText(t.email)).toHaveValue('Anna@Example.com')
+    expect(screen.queryByRole('heading', { name: t.mobileTitle })).not.toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('builds the number from the picked calling code, and lets a typed + win', async () => {
     const fetchMock = mockCapabilityFetch(null, {
       extraRoutes: {

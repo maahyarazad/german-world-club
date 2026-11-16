@@ -53,13 +53,18 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       })
     })
 
-    it('answers an address already in use with the same shape, sends no SMS, and tells the owner', async () => {
+    it('refuses an address already in use with email-in-use, sends no SMS, and still tells the owner', async () => {
+      // Said openly since step 3's contact change already answers email-in-use;
+      // the old disguise (a fake challenge) only left applicants at a dead
+      // code screen.
       const owner = await createMember(app.pg)
       const response = await register(app, applicant({ email: owner.email }))
       const fresh = await register(app, applicant())
 
-      expect(response.statusCode).toBe(fresh.statusCode)
-      expect(Object.keys(response.json()).sort()).toEqual(Object.keys(fresh.json()).sort())
+      expect(response.statusCode).toBe(409)
+      expect(response.json().type).toBe(PROBLEMS.EMAIL_IN_USE.type)
+      // Counter-assertion: a fresh address still registers.
+      expect(fresh.statusCode).toBe(202)
       // One SMS — for the fresh address only.
       expect(sms).toHaveLength(1)
       const { rows } = await app.pg.query(
