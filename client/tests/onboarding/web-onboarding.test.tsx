@@ -5,6 +5,7 @@ import ConsoleRoutes from '../../src/console/routes'
 import { de } from '../../src/i18n/de'
 import { en } from '../../src/i18n/en'
 import { renderConsole, mockCapabilityFetch, memberSnapshot } from '../helpers/console'
+import { describeProblem } from '../../src/lib/problems'
 import type { RouteHandler } from '../helpers/console'
 
 /**
@@ -111,6 +112,28 @@ describe('steps 1 and 2: details, then country', () => {
     // Back on step 1 with what was typed, so only the address needs changing.
     expect(screen.getByLabelText(t.email)).toHaveValue('Anna@Example.com')
     expect(screen.queryByRole('heading', { name: t.mobileTitle })).not.toBeInTheDocument()
+    error.mockRestore()
+  })
+
+  it('shows "temporarily unavailable", not "Bad Gateway", when the proxy cannot reach the server', async () => {
+    // What the applicant saw in production at step 2 while Node was down.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => ({ status: 502, body: '<html>Bad Gateway</html>', headers: { 'content-type': 'text/html' } }),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+
+    const expected = describeProblem({ ...PROBLEMS.SERVICE_UNAVAILABLE, status: 502 }, 'de')
+    expect(await screen.findByText(`${expected.title}: ${expected.body}`)).toBeInTheDocument()
+    expect(screen.queryByText(/Bad Gateway/)).not.toBeInTheDocument()
+    // Still on step 2, so submitting again is one click.
+    expect(screen.getByRole('button', { name: t.submit })).toBeInTheDocument()
     error.mockRestore()
   })
 

@@ -119,6 +119,10 @@ export function createJobHandlers(app: GwcApp) {
     'push.deliver': async () => dispatchDue(app, { transport: app.pushTransport }),
     'push.receipts': async () => checkReceipts(app, { transport: app.pushTransport }),
     'sessions.expire': async () => {
+      // `expired` is an allowed revoked_reason only since migration 043: from
+      // feature 007 until then this UPDATE failed on every run in production. A new reason
+      // written here must be added to sessions_revoked_reason_check in the
+      // same change, or the job fails on the first matching row.
       const { rowCount } = await app.pg.query(
         `UPDATE sessions SET revoked_at = now(), revoked_reason = 'expired'
           WHERE revoked_at IS NULL

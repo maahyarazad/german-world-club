@@ -25,3 +25,16 @@ npm run -w client test
    - restart;
    - confirm the next `sessions.expire` line says `job finished`;
    - try register step 2.
+
+## Record (2026-11-16)
+
+- `tests/ops/sessions-expire.test.ts` reproduced the production error exactly
+  (`sessions_revoked_reason_check`, on a partner session) before migration 043, and passes after
+  it. Migrate is idempotent.
+- `tests/lib/api-gateway.test.ts` and the step-2 test: a proxy 502, 503 or 504 reads as
+  service-unavailable, never "Bad Gateway". A real problem answered with 503 keeps its type.
+- Full suites: server 1915 pass. Besides the 7 known failures on `main`,
+  `referrals/balance` failed once under full-suite load and passed 3 of 3 alone (unrelated to
+  this work). Client 466 pass; one full run showed a single intermittent failure that did not
+  reproduce in two reruns.
+- Still open: T008, T009 and T011 need access to `dedi10021`.
