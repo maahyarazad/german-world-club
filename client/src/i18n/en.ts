@@ -121,6 +121,8 @@ export const en = {
     newEmail: 'New email address',
     emailInUse: 'This email address is already in use.',
     mobileInUse: 'This mobile number is already in use.',
+    mobileUnavailable: 'We can’t send a verification code to this number. Please try another.',
+    noContactChange: 'Enter a new email address or mobile number before saving.',
     missingChallengeTitle: 'Registration interrupted',
     missingChallengeBody:
       'This page was reloaded before the code was entered. Start the registration again with the '

@@ -219,6 +219,30 @@ describe('step 3: the SMS code', () => {
     error.mockRestore()
   })
 
+  it('asks for a changed field, and sends nothing, when save is pressed with no change', async () => {
+    // Regression: an unchanged save used to reach the server, which answered
+    // the generic validation refusal — shown as "check the highlighted fields"
+    // with nothing highlighted. Now it is caught here with a clear reason.
+    const fetchMock = await reachStepThree(() => json({}, 202))
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.noContactChange)).toBeInTheDocument()
+    // Not the old nonsense: "check the highlighted fields" with nothing highlighted.
+    expect(screen.queryByText(/markierten Felder/)).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/onboarding/contact')).toBe(false)
+  })
+
+  it('explains, on the mobile field, when the number cannot receive texts', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.SMS_DESTINATION_NOT_ALLOWED))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+1 212 555 0100' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.mobileUnavailable)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.changeDetailsSave })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('after a reload, sends the applicant back to registration rather than to a dead form', async () => {
     mockCapabilityFetch(null)
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren/mobil' })

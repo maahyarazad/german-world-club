@@ -245,6 +245,13 @@ register(PROBLEMS.VALIDATION_FAILED, {
   retry: RETRY.IMMEDIATE,
 })
 
+// Mapped so a refused number reads as a reason, not the bare server title.
+register(PROBLEMS.SMS_DESTINATION_NOT_ALLOWED, {
+  de: { title: 'Nummer nicht unterstützt', body: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.' },
+  en: { title: 'Number not supported', body: 'We can’t send a verification code to this number. Please try another.' },
+  retry: RETRY.NEVER,
+})
+
 // --- Limits -----------------------------------------------------------------
 
 register(PROBLEMS.RATE_LIMITED, {

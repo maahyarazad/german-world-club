@@ -126,16 +126,26 @@ export function VerifyMobile() {
     if (!fields.email.safeParse(nextEmail).success) found.email = copy.errors.email
     if (!fields.mobile.safeParse(nextMobile).success) found.mobile = copy.errors.mobile
     setContactErrors(found)
+    setRequestError(null)
     if (Object.keys(found).length > 0) return
+
+    // Send only what actually changed. If nothing did, say so here — otherwise
+    // the server answers with the generic validation refusal, which the console
+    // renders as "check the highlighted fields" with no field highlighted.
+    const emailChanged = nextEmail !== (initial?.email ?? '').trim().toLowerCase()
+    const mobileChanged = nextMobile !== (initial?.mobile ?? '').replace(/[\s\-()]/g, '')
+    if (!emailChanged && !mobileChanged) {
+      setRequestError(copy.noContactChange)
+      return
+    }
 
     setBusy(true)
     setNotice(null)
-    setRequestError(null)
     try {
       const sent = (await post('/onboarding/contact', {
         challengeId,
-        ...(nextEmail !== initial?.email ? { email: nextEmail } : {}),
-        ...(nextMobile !== initial?.mobile ? { mobile: nextMobile } : {}),
+        ...(emailChanged ? { email: nextEmail } : {}),
+        ...(mobileChanged ? { mobile: nextMobile } : {}),
       })) as RegisterResponse
       // The old code is spent; the next one belongs to the new challenge.
       setChallengeId(sent.challengeId)
@@ -147,8 +157,10 @@ export function VerifyMobile() {
       console.error('VerifyMobile.changeContact', error instanceof ApiError ? error.problem : error)
       const type = error instanceof ApiError ? error.problem?.type : null
       if (type === PROBLEMS.EMAIL_IN_USE.type) setContactErrors({ email: copy.emailInUse })
-      if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
-      else if (type !== PROBLEMS.EMAIL_IN_USE.type) showRequestError(error)
+      else if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
+      else if (type === PROBLEMS.SMS_DESTINATION_NOT_ALLOWED.type) setContactErrors({ mobile: copy.mobileUnavailable })
+      else if (type === PROBLEMS.VALIDATION_FAILED.type) setRequestError(copy.noContactChange)
+      else showRequestError(error)
     } finally {
       setBusy(false)
     }

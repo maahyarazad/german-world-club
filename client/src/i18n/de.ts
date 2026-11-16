@@ -115,6 +115,8 @@ export const de = {
     newEmail: 'Neue E-Mail-Adresse',
     emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
+    mobileUnavailable: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.',
+    noContactChange: 'Geben Sie eine neue E-Mail-Adresse oder Mobilnummer ein, bevor Sie speichern.',
     missingChallengeTitle: 'Registrierung unterbrochen',
     missingChallengeBody:
       'Diese Seite wurde neu geladen, bevor der Code eingegeben war. Starten Sie die Registrierung '
