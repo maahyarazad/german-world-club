@@ -10,7 +10,8 @@ import { requestPasswordReset } from './application/request-password-reset.ts'
 import { confirmPasswordReset } from './application/confirm-password-reset.ts'
 import { loadMe } from './application/me.ts'
 import { loadSession } from './application/session.ts'
-import { setAuthCookies, clearAuthCookies } from './cookies.ts'
+import { setAuthCookies, clearAuthCookies, setBrowserCookie } from './cookies.ts'
+import { readOrIssueBrowserId } from './browser-id.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../../app.ts'
 
@@ -36,10 +37,13 @@ export function createAuthController(app: GwcApp) {
     },
 
     signIn: async (request: FastifyRequest, reply: FastifyReply) => {
-      const { email, password, deviceId } = request.body
+      const { email, password, deviceId, deviceLabel } = request.body
       const face = faceFor(request.body)
+      // A browser gets an id of its own so each browser is one entry in the
+      // member's device list; a phone already has one.
+      const browser = face === 'web' ? readOrIssueBrowserId(request.cookies?.[COOKIES.browser]) : null
       const result = await signIn(app, {
-        email, password, deviceId, face,
+        email, password, deviceId, deviceLabel, face, browserKey: browser?.key,
         ip: request.ip,
         userAgent: request.headers['user-agent'] ?? null,
         requestId: request.id,
@@ -49,6 +53,7 @@ export function createAuthController(app: GwcApp) {
       if (result.outcome === 'authenticated') {
         if (result.face === 'web') {
           setAuthCookies(reply, { accessToken: result.token, refreshToken: result.refreshToken, secure: secureCookies })
+          if (browser?.issued) setBrowserCookie(reply, { id: browser.id, secure: secureCookies })
           return reply.send({ outcome: 'authenticated', expiresIn: result.expiresIn, principal: result.principal })
         }
         return reply.send({
@@ -64,9 +69,9 @@ export function createAuthController(app: GwcApp) {
     },
 
     verifyOtp: async (request: FastifyRequest, reply: FastifyReply) => {
-      const { challengeId, code, deviceId } = request.body
+      const { challengeId, code, deviceId, deviceLabel } = request.body
       const result = await verifyOtp(app, {
-        challengeId, code, deviceId,
+        challengeId, code, deviceId, deviceLabel,
         ip: request.ip,
         userAgent: request.headers['user-agent'] ?? null,
         requestId: request.id,

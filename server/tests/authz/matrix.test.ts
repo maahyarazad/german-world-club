@@ -181,6 +181,8 @@ const ROUTE_CLASSES = [
 
   // --- Member events (009) ---------------------------------------------------
   // Under /member, never /events: that prefix is the public, indexed page.
+  { name: 'own devices', url: '/member/devices', method: 'GET', audience: 'member' },
+  { name: 'end own device', url: '/member/devices/:id', probe: `/member/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   { name: 'member events', url: '/member/events', method: 'GET', audience: 'member' },
   { name: 'member event', url: '/member/events/:id', probe: `/member/events/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'event register', url: '/member/events/:id/registration', probe: `/member/events/${randomUUID()}/registration`, method: 'POST', audience: 'member' },

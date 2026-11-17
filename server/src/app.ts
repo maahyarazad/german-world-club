@@ -68,6 +68,7 @@ import onboardingRoutes from './modules/onboarding/routes.ts'
 import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
 import profilingRoutes from './modules/profiling/routes.ts'
 import profileRoutes from './modules/profile/routes.ts'
+import deviceRoutes from './modules/devices/routes.ts'
 import profileStaffRoutes from './modules/profile/staff-routes.ts'
 import eventRoutes from './modules/events/routes.ts'
 import offerRoutes from './modules/offers/routes.ts'
@@ -369,6 +370,7 @@ export async function buildApp({
   await app.register(onboardingStaffRoutes)
   await app.register(profilingRoutes)
   await app.register(profileRoutes)
+  await app.register(deviceRoutes)
   await app.register(profileStaffRoutes)
   await app.register(eventRoutes)
   await app.register(offerRoutes)

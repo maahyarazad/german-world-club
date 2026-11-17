@@ -7,9 +7,12 @@ import type { Pool, PoolClient } from 'pg'
  *
  * Three rules, each enforced where it cannot be forgotten:
  *
- *   1. **One active session per account** is a partial unique index, not an
- *      application check — so two concurrent sign-ins are a constraint
- *      violation handled deterministically rather than a race.
+ *   1. **One active session per device** for a member, and per account for
+ *      staff and organisations (feature 026; constitution baseline 3.0.0). Both
+ *      are partial unique indexes, not application checks — so two concurrent
+ *      sign-ins are a constraint violation handled deterministically rather
+ *      than a race. A sign-in on one device never ends a session on another,
+ *      which is what lets a member use the web and a phone at once.
  *   2. **A refresh token is single-use.** Rotation issues a successor and marks
  *      the presented token consumed, inside one transaction.
  *   3. **A replay is compromise, not a retry.** The legitimate holder and an
@@ -91,12 +94,19 @@ export function createDenylist(redis: DenylistRedis) {
 }
 
 /**
- * Sign-in as ONE transaction: revoke any active session, insert the new one,
- * issue the refresh token, update `last_login_at`.
+ * Sign-in as ONE transaction: find or create the member's device, revoke that
+ * device's active session, insert the new one, issue the refresh token, update
+ * `last_login_at`.
  *
  * The order matters. Revoking first is what lets the partial unique index
  * accept the insert; doing it the other way round makes every sign-in a
- * constraint violation.
+ * constraint violation. The device upsert comes first because it takes a row
+ * lock, so two simultaneous sign-ins on one device queue up instead of both
+ * inserting.
+ *
+ * A member with no device information (older callers) is treated as one
+ * anonymous web device, which is the previous one-session-per-account
+ * behaviour for them. Staff and organisation accounts never get a device row.
  */
 export type StartSessionInput = {
   accountId: string
@@ -106,26 +116,61 @@ export type StartSessionInput = {
   ip?: string | null
   /** Which client face opened it; a deviceId marks the mobile one. */
   face?: string
+  /** Members only: the browser's id (already hashed) when there is no `deviceId`. */
+  browserKey?: string | null
+  /** Members only: a finished display label (see device-label.ts). */
+  deviceLabel?: string | null
   now?: Date
 }
 
+/** The device a member's session belongs to: a phone by its id, else a browser. */
+export function deviceFor(
+  { deviceId, browserKey, deviceLabel }: { deviceId?: string | null; browserKey?: string | null; deviceLabel?: string | null },
+) {
+  if (deviceId) return { kind: 'mobile' as const, key: deviceId, label: deviceLabel || 'Phone' }
+  return { kind: 'web' as const, key: browserKey || 'unspecified', label: deviceLabel || 'Web browser' }
+}
+
 export async function startSession(pool: Pool, {
-  accountId, accountKind, deviceId = null, userAgent = null, ip = null, face = 'web', now = new Date(),
+  accountId, accountKind, deviceId = null, userAgent = null, ip = null, face = 'web',
+  browserKey = null, deviceLabel = null, now = new Date(),
 }: StartSessionInput) {
   return withTransaction(pool, async (client: PoolClient) => {
-    const { rows: superseded } = await client.query(
-      `UPDATE sessions
-          SET revoked_at = now(), revoked_reason = 'superseded'
-        WHERE account_id = $1 AND account_kind = $2 AND revoked_at IS NULL
-        RETURNING id`,
-      [accountId, accountKind],
-    )
+    let memberDeviceId: string | null = null
+    if (accountKind === 'member') {
+      const device = deviceFor({ deviceId, browserKey, deviceLabel })
+      const { rows: devices } = await client.query(
+        `INSERT INTO member_devices (member_id, kind, device_key, label)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (member_id, kind, device_key)
+           DO UPDATE SET last_seen_at = now(), label = EXCLUDED.label
+         RETURNING id`,
+        [accountId, device.kind, device.key, device.label],
+      )
+      memberDeviceId = devices[0].id
+    }
+
+    const { rows: superseded } = memberDeviceId
+      ? await client.query(
+        `UPDATE sessions
+            SET revoked_at = now(), revoked_reason = 'superseded'
+          WHERE member_device_id = $1 AND revoked_at IS NULL
+          RETURNING id`,
+        [memberDeviceId],
+      )
+      : await client.query(
+        `UPDATE sessions
+            SET revoked_at = now(), revoked_reason = 'superseded'
+          WHERE account_id = $1 AND account_kind = $2 AND revoked_at IS NULL
+          RETURNING id`,
+        [accountId, accountKind],
+      )
 
     const { rows } = await client.query(
-      `INSERT INTO sessions (account_id, account_kind, device_id, user_agent, ip_created)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO sessions (account_id, account_kind, device_id, user_agent, ip_created, member_device_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, created_at`,
-      [accountId, accountKind, deviceId, userAgent, ip],
+      [accountId, accountKind, deviceId, userAgent, ip, memberDeviceId],
     )
     const session = rows[0]
 
@@ -140,7 +185,10 @@ export async function startSession(pool: Pool, {
       await client.query('UPDATE members SET last_login_at = now() WHERE id = $1', [accountId])
     }
 
-    return { sessionId: session.id, refreshToken: refresh.plaintext, supersededSessionIds: superseded.map((r) => r.id) }
+    return {
+      sessionId: session.id, memberDeviceId, refreshToken: refresh.plaintext,
+      supersededSessionIds: superseded.map((r) => r.id),
+    }
   })
 }
 
@@ -247,9 +295,9 @@ export async function revokeSession(
      * also deletes its device before signing out, but it may be offline; this
      * is what makes a sign-out in airplane mode still take effect.
      *
-     * Only on sign-out — never on a superseded or expired session. The platform
-     * allows one session per account, so tying devices to a *live* session
-     * would let a sign-in on the web console silence the member's phone.
+     * Only on sign-out or when the member ends the device — never on a
+     * superseded or expired session. A re-sign-in on the same phone supersedes
+     * its old session, and silencing the phone for that would be wrong.
      */
     if (forgetPushDevices) {
       await client.query('DELETE FROM push_devices WHERE session_id = $1', [sessionId])

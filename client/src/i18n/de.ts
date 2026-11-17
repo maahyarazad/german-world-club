@@ -745,6 +745,19 @@ export const de = {
     },
   },
 
+  memberDevices: {
+    title: 'Hier sind Sie angemeldet',
+    intro: 'Diese Browser und Handys sind bei Ihrem Konto angemeldet. Melden Sie alle ab, die Sie nicht kennen.',
+    thisDevice: 'Dieses Gerät',
+    kindWeb: 'Web',
+    kindMobile: 'App',
+    lastActive: 'Zuletzt aktiv {when}',
+    signOutDevice: 'Abmelden',
+    signOutHere: 'Hier abmelden',
+    confirmEnd: 'Abmeldung bestätigen',
+    cancel: 'Abbrechen',
+    loadFailed: 'Ihre Geräte konnten nicht geladen werden. Bitte versuchen Sie es später erneut.',
+  },
   memberProfile: {
     tabLabel: 'Profil',
     title: 'Profil',
@@ -788,6 +801,7 @@ export const de = {
     unmute: 'Stummschaltung aufheben',
     blockConfirm: 'Blockieren? Sie sehen einander nicht mehr, und bestehendes Folgen endet.',
     privacy: 'Blockiert & stummgeschaltet',
+    devices: 'Geräte',
     blockedList: 'Blockierte Mitglieder',
     mutedList: 'Stummgeschaltete Mitglieder',
     noneBlocked: 'Niemand blockiert.',

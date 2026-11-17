@@ -18,6 +18,7 @@ import MyProfile from '../member/profile/MyProfile'
 import EditProfile from '../member/profile/EditProfile'
 import MemberProfile, { FollowList } from '../member/profile/MemberProfile'
 import Privacy from '../member/profile/Privacy'
+import Devices from '../member/profile/Devices'
 import OrganisationView from '../member/profile/OrganisationView'
 import OrganisationProfilePage from '../organisation/Profile'
 import ThreadsModeration from './admin/Threads'
@@ -222,6 +223,7 @@ export function ConsoleRoutes() {
         <Route path="profil" element={<MyProfile />} />
         <Route path="profil/bearbeiten" element={<EditProfile />} />
         <Route path="profil/privatsphaere" element={<Privacy />} />
+        <Route path="profil/geraete" element={<Devices />} />
         <Route path="mitglieder/:ref" element={<MemberProfile />} />
         <Route path="mitglieder/:ref/follower" element={<FollowList direction="followers" />} />
         <Route path="mitglieder/:ref/folgt" element={<FollowList direction="following" />} />

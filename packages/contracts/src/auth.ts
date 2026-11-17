@@ -19,12 +19,15 @@ export const signInRequestSchema = z.object({
   // free denial-of-service against a deliberately costly hash.
   password: z.string().min(8).max(256),
   deviceId: z.string().min(1).max(128).optional(),
+  // What the device calls itself (feature 026), shown in the member's device list.
+  deviceLabel: z.string().min(1).max(64).optional(),
 })
 
 export const verifyOtpRequestSchema = z.object({
   challengeId: z.string().uuid(),
   code: z.string().regex(/^\d{4}$/, 'must be four digits'),
   deviceId: z.string().min(1).max(128),
+  deviceLabel: z.string().min(1).max(64).optional(),
 })
 
 export const resendOtpRequestSchema = z.object({
@@ -185,7 +188,7 @@ export const OTP_RESEND_COOLDOWN_SECONDS = 60
 export const PASSWORD_RESET_TTL_SECONDS = 3600
 
 /** Cookie names, shared so a client and the server cannot disagree. */
-export const COOKIES = Object.freeze({ access: 'gwc_at', refresh: 'gwc_rt', csrf: 'gwc_csrf' })
+export const COOKIES = Object.freeze({ access: 'gwc_at', refresh: 'gwc_rt', csrf: 'gwc_csrf', browser: 'gwc_bid' })
 
 // ---------------------------------------------------------------------------
 // Types (feature 007). Derived from the schemas above so there is still exactly

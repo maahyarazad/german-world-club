@@ -6,6 +6,7 @@ import { verifyPassword, verifyAgainstDummy, credentialState, CREDENTIAL_STATE }
 import { startSession } from '../sessions.ts'
 import { issueChallenge, maskPhone } from '../otp.ts'
 import { findAccount } from './find-account.ts'
+import { labelForPhone, labelForWeb } from '../device-label.ts'
 import type { GwcApp } from '../../../app.ts'
 
 const invalidCredentials = () =>
@@ -29,6 +30,10 @@ export type SignInInput = {
   email: string
   password: string
   deviceId?: string
+  /** What the phone calls itself, shown in the member's device list (feature 026). */
+  deviceLabel?: string
+  /** The browser's id, already hashed (browser-id.ts); web only. */
+  browserKey?: string
   /** Which client is asking; a deviceId marks the mobile face. */
   face?: string
   ip?: string
@@ -39,7 +44,7 @@ export type SignInInput = {
 
 export async function signIn(
   app: GwcApp,
-  { email, password, deviceId, face, ip, userAgent, requestId, signal }: SignInInput,
+  { email, password, deviceId, deviceLabel, browserKey, face, ip, userAgent, requestId, signal }: SignInInput,
 ) {
   const account = await findAccount(app, email, signal)
 
@@ -131,19 +136,23 @@ export async function signIn(
     }
 
     if (deviceId) {
-      const { rows: approvals } = await query(
+      // Feature 026: there is no per-device staff approval any more. A phone is
+      // either KNOWN (it passed an SMS code before, or staff approved the
+      // application it applied from) and signs in with the password alone, or
+      // it is new and proves possession of the mobile number first. Known-ness
+      // is read from `member_devices`, which outlives any one session, so a
+      // plain sign-out keeps it and ending the device from the list clears it.
+      const { rows: known } = await query(
         app.pg,
-        'SELECT state FROM device_approvals WHERE member_id = $1 AND device_id = $2',
+        `SELECT 1 FROM member_devices
+          WHERE member_id = $1 AND kind = 'mobile' AND device_key = $2 AND known_at IS NOT NULL`,
         [row.id, deviceId],
         { signal },
       )
-      if (approvals[0]?.state !== 'approved') {
-        return { outcome: 'approval_pending' }
-      }
 
-      // §6.2: mobile sign-in takes a second factor. No token is issued yet —
+      // §6.2: a new phone takes a second factor. No token is issued yet —
       // the challenge is.
-      if (row.mobile_verified_at !== null) {
+      if (known.length === 0 && row.mobile_verified_at !== null) {
         const challenge = await issueChallenge(app.pg, {
           accountId: row.id, accountKind: 'member', deviceId, purpose: 'login', signal,
         })
@@ -179,6 +188,9 @@ export async function signIn(
     userAgent: userAgent ?? null,
     ip,
     face,
+    // Members only: how this device appears in their own list.
+    browserKey: browserKey ?? null,
+    deviceLabel: deviceId ? labelForPhone(deviceLabel) : labelForWeb(userAgent),
   })
 
   for (const sid of session.supersededSessionIds) await app.denylist.add(sid)

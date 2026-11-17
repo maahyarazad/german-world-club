@@ -10,6 +10,7 @@ import { authApi, onboardingApi, profilingApi, pushApi } from '@/api/endpoints';
 import {
   clearPushDeviceId, clearSession, deviceId, loadPushDeviceId, loadSession, saveSession, type StoredSession,
 } from './storage';
+import { deviceLabel } from './device-label';
 
 /**
  * Who is using the app, and therefore which part of it they may see.
@@ -141,7 +142,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     state,
     deviceId: device,
     signIn: async (email, password) => {
-      const outcome = await authApi.signIn({ email, password, deviceId: device ?? await deviceId() });
+      const outcome = await authApi.signIn({ email, password, deviceId: device ?? await deviceId(), deviceLabel: deviceLabel() });
       // A bearer client receives the pair in the body only on `authenticated`;
       // every other outcome is for the screen to route.
       if (outcome.outcome === 'authenticated' && outcome.accessToken && outcome.refreshToken && outcome.principal) {
