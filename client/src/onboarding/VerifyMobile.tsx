@@ -17,6 +17,8 @@ import MobileField from '../components/ui/MobileField'
 import { describeProblem } from '../lib/problems'
 import { useLocale, useTranslations } from '../i18n/index'
 import AsyncButton from '../components/ui/AsyncButton'
+import { checkMobile } from '@gwc/contracts/mobile'
+import { mobileErrorText } from '../lib/mobile'
 
 /**
  * Onboarding step 3 (§6.1): prove the mobile number.
@@ -140,7 +142,8 @@ export function VerifyMobile() {
     const nextMobile = mobile.replace(/[\s\-()]/g, '')
     const found: { email?: string; mobile?: string } = {}
     if (!fields.email.safeParse(nextEmail).success) found.email = copy.errors.email
-    if (!fields.mobile.safeParse(nextMobile).success) found.mobile = copy.errors.mobile
+    const mobileCheck = checkMobile('', nextMobile)
+    if (!mobileCheck.ok) found.mobile = mobileErrorText(copy.errors, mobileCheck.reason)
     setContactErrors(found)
     setRequestError(null)
     if (Object.keys(found).length > 0) return
@@ -178,6 +181,7 @@ export function VerifyMobile() {
       if (type === PROBLEMS.EMAIL_IN_USE.type) setContactErrors({ email: copy.emailInUse })
       else if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
       else if (type === PROBLEMS.SMS_DESTINATION_NOT_ALLOWED.type) setContactErrors({ mobile: copy.mobileUnavailable })
+      else if (type === PROBLEMS.INVALID_MOBILE.type) setContactErrors({ mobile: copy.errors.mobileInvalid })
       // Not "the requested entry does not exist": the verification itself is over.
       else if (type === PROBLEMS.NOT_FOUND.type) setEnded(true)
       else showRequestError(error)

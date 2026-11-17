@@ -1,4 +1,4 @@
-import { smsUnavailable, smsDestinationRefused } from '../integrations/sms.ts'
+import { smsUnavailable, smsDestinationRefused, smsDestinationInvalid } from '../integrations/sms.ts'
 import { createSmsCountryPolicy } from '../integrations/sms-country-policy.ts'
 import type { GwcApp } from '../app.ts'
 
@@ -8,9 +8,12 @@ import type { GwcApp } from '../app.ts'
  * 1. The country policy (integrations/sms-country-policy.ts). A refused number
  *    is logged masked and answered with `sms-destination-not-allowed` (422).
  * 2. SMSGlobal must be configured; if not, refuse rather than skip the code.
- * 3. Send. Any provider error is logged with SMSGlobal's own response and
- *    answered with a 503 "try again later" — never waved through, because a
- *    sign-in without its second factor would be an authentication bypass.
+ * 3. Send. A provider error is logged with SMSGlobal's own response and answered
+ *    with a 503 "try again later" — never waved through, because a sign-in without
+ *    its second factor would be an authentication bypass. ONE exception (feature
+ *    031): a 400 that names the `destination` means the number itself cannot
+ *    receive an SMS, so it is a 422 `invalid-mobile`; "try again in a few minutes"
+ *    would be a lie about a number that will never work.
  *
  * Verifying a code is not gated (modules/auth/otp.ts), so a code sent before
  * the allowlist narrowed still redeems.
@@ -62,6 +65,13 @@ export function registerSendOtp(app: GwcApp) {
       // The SDK rejects with SMSGlobal's answer, e.g. { statusCode: 400,
       // data: { errors: { origin: … } } } for an unregistered sender id.
       const failure = err as { statusCode?: number; data?: unknown; message?: string }
+      const errors = (failure?.data as { errors?: Record<string, unknown> } | undefined)?.errors
+      if (failure?.statusCode === 400 && errors && typeof errors === 'object' && 'destination' in errors) {
+        app.log.warn({
+          route, destination: maskedDestination, providerStatus: 400, providerResponse: failure.data,
+        }, 'SMS_DESTINATION_REFUSED')
+        throw smsDestinationInvalid()
+      }
       app.log.error({
         route, destination: maskedDestination,
         providerStatus: failure?.statusCode ?? null, providerResponse: failure?.data ?? failure?.message ?? String(err),

@@ -258,6 +258,12 @@ register(PROBLEMS.VALIDATION_FAILED, {
 })
 
 // Mapped so a refused number reads as a reason, not the bare server title.
+register(PROBLEMS.INVALID_MOBILE, {
+  de: { title: 'Mobilnummer ungültig', body: 'Diese Mobilnummer ist nicht gültig. Bitte prüfen Sie Land und Nummer.' },
+  en: { title: 'Invalid mobile number', body: 'This mobile number is not valid. Please check the country and the number.' },
+  retry: RETRY.NEVER,
+})
+
 register(PROBLEMS.SMS_DESTINATION_NOT_ALLOWED, {
   de: { title: 'Nummer nicht unterstützt', body: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.' },
   en: { title: 'Number not supported', body: 'We can’t send a verification code to this number. Please try another.' },

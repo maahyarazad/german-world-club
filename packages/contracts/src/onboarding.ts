@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { principalSchema } from './auth.ts'
 import { PROFILING_BRANCHES, PROFILING_OUTCOMES, citySlotSchema } from './profiling.ts'
+import { isValidMobileE164 } from './mobile.ts'
 
 /**
  * Onboarding, Phase 1 (feature 009): register → country → verify mobile →
@@ -90,7 +91,10 @@ export const registerRequestSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().toLowerCase().email().max(320),
   password: z.string().min(8).max(256),
-  mobile: z.string().regex(E164, 'must be in international format, e.g. +4915112345678'),
+  // Shape first, then existence (feature 031): the regex alone let `+49971585831595` through.
+  mobile: z.string()
+    .regex(E164, 'must be in international format, e.g. +4915112345678')
+    .refine(isValidMobileE164, 'must be a valid mobile number'),
   birthday: isoDateSchema,
   gender: z.enum(GENDERS),
   countryOfResidence: countryCodeSchema,

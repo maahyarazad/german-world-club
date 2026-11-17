@@ -140,6 +140,19 @@ export function smsDestinationRefused(): DecoratedError {
   });
 }
 
+/**
+ * SMSGlobal refused the DESTINATION itself (a 400 naming `destination`): the number
+ * does not exist or cannot receive an SMS (feature 031). A 422, because retrying the
+ * same number can never work — unlike the 503 below, which is an outage and can.
+ */
+export function smsDestinationInvalid(): DecoratedError {
+  return decorateError("The mobile number cannot receive an SMS.", {
+    problem: PROBLEMS.INVALID_MOBILE,
+    statusCode: PROBLEMS.INVALID_MOBILE.status,
+    safeDetail: "This mobile number is not valid. Please check the country and the number.",
+  });
+}
+
 /** The code could not be sent: refuse and say when to come back. */
 export function smsUnavailable(): DecoratedError {
   return decorateError("The verification code could not be sent.", {

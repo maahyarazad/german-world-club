@@ -3,7 +3,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 import { resetAuthTables, createAdmin, bearerFor, createMember } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import { BUCKETS } from '../../src/config/rate-limits.ts'
-import { buildOnboardingApp, applicant, submitApplication, emailCodeFor, register, DEVICE } from './helpers.ts'
+import { buildOnboardingApp, applicant, submitApplication, emailCodeFor, maskedTail, register, DEVICE } from './helpers.ts'
 import type { GwcApp } from '../../src/app.ts'
 
 /**
@@ -37,8 +37,8 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       const response = await register(app, details)
 
       expect(response.statusCode).toBe(202)
-      expect(response.json().sentTo).toBe('•••• 5678')
-      expect(JSON.stringify(response.json())).not.toContain('15112345678')
+      expect(response.json().sentTo).toBe(maskedTail(String(details.mobile)))
+      expect(JSON.stringify(response.json())).not.toContain(String(details.mobile).slice(1))
       expect(sms).toHaveLength(1)
       expect(sms[0]!.code).toMatch(/^\d{4}$/)
 

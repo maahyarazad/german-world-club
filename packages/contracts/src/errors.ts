@@ -40,6 +40,10 @@ export const PROBLEMS = {
   EMAIL_IN_USE: { type: `${BASE}/email-in-use`, title: 'Email address already in use', status: 409 },
   /** A mobile number belongs to one member (migration 031); registration and the step-3 change both refuse one in use. */
   MOBILE_IN_USE: { type: `${BASE}/mobile-in-use`, title: 'Mobile number already in use', status: 409 },
+  // Feature 031: the number is not a mobile number that exists, or the SMS provider refused
+  // it as a destination. Retrying the same number can never work, which is why this is a 422
+  // and not the 503 an outage gets.
+  INVALID_MOBILE: { type: `${BASE}/invalid-mobile`, title: 'Invalid mobile number', status: 422 },
   SMS_DESTINATION_NOT_ALLOWED: { type: `${BASE}/sms-destination-not-allowed`, title: 'SMS not available for this number', status: 422 },
   INVALID_REFRESH_TOKEN: { type: `${BASE}/invalid-refresh-token`, title: 'Invalid refresh token', status: 401 },
   /**

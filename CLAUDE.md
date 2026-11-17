@@ -394,6 +394,19 @@ reading the code is its whole purpose; constitution 4.0.0 records that exception
 A laptop `.env` must **not** point `DATABASE_URL` at the production database:
 sign-in there texts real members' numbers through the real account.
 
+**A mobile number is checked once, in `@gwc/contracts/mobile` (feature 031).**
+`checkMobile(country, typed)` is the rule for the web form, the app and the server
+(`registerRequestSchema.mobile` refines with `isValidMobileE164`). The old regex
+alone let `+49971585831595` through — right shape, not a number — so the SMS
+provider refused it and the server called that an outage. Now a number that does
+not exist is `422 invalid-mobile`, a number typed with its country code but no `+`
+is read as international (`corrected`, and the field says "Read as …"), and a
+landline is refused. A provider 400 naming `destination` also answers
+`invalid-mobile`; every other provider fault stays `503` (a retry can work). Test
+numbers must be real ones (`uniqueMobile()` builds a valid German mobile): do not
+loosen the rule to keep a fixture. `invalid-mobile` is shown on screen as well as
+logged, like `mobile-in-use`.
+
 **Mail goes through the outbox, except the email code.** `app.enqueueMail()`
 writes `mail_outbox`; the `mail.deliver` job sends with backoff and clears the
 row's variables once delivered (they hold reset tokens). Pass `{ client }`

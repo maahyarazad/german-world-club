@@ -16,6 +16,8 @@ import Button from '../components/ui/Button'
 import Field from '../components/ui/Field'
 import MobileField from '../components/ui/MobileField'
 import { useLocale, useTranslations } from '../i18n/index'
+import { checkMobile } from '@gwc/contracts/mobile'
+import { mobileErrorText } from '../lib/mobile'
 
 /**
  * Onboarding steps 1 and 2 (§6.1), on the web: who you are, then where you
@@ -82,7 +84,10 @@ export function Register() {
     if (!fields.fullName.safeParse(details.fullName).success) found.fullName = copy.errors.fullName
     if (!fields.email.safeParse(details.email).success) found.email = copy.errors.email
     if (!fields.password.safeParse(details.password).success) found.password = copy.errors.password
-    if (!fields.mobile.safeParse(normalisedMobile).success) found.mobile = copy.errors.mobile
+    // The same rule the server and the app use (feature 031): a number that has the right shape
+    // but does not exist is refused here, with a reason, instead of at the SMS provider.
+    const mobileCheck = checkMobile('', normalisedMobile)
+    if (!mobileCheck.ok) found.mobile = mobileErrorText(copy.errors, mobileCheck.reason)
     if (!fields.birthday.safeParse(details.birthday).success) found.birthday = copy.errors.birthday
     if (!details.gender) found.gender = copy.errors.gender
     if (!details.ageConfirmed) found.ageConfirmed = copy.errors.ageConfirmed
@@ -128,6 +133,13 @@ export function Register() {
       if (error instanceof ApiError && error.problem?.type === PROBLEMS.EMAIL_IN_USE.type) {
         setStep(1)
         setErrors({ email: copy.emailRegistered })
+        return
+      }
+      // The server's own verdict on the number (it can still refuse one the form accepted, for
+      // instance when the SMS provider says the destination does not exist): onto the number field.
+      if (error instanceof ApiError && error.problem?.type === PROBLEMS.INVALID_MOBILE.type) {
+        setStep(1)
+        setErrors({ mobile: copy.errors.mobileInvalid })
         return
       }
       if (error instanceof ApiError) {
