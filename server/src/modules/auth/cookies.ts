@@ -38,3 +38,15 @@ export function clearAuthCookies(reply: CookieReply) {
   reply.clearCookie(COOKIES.access, { path: '/' })
   reply.clearCookie(COOKIES.refresh, { path: '/auth/refresh' })
 }
+
+/**
+ * The browser's own id (feature 026), so each browser is one entry in the
+ * member's device list. Long-lived on purpose — it names a browser, it is not a
+ * credential — and scoped to /auth, where it is read at sign-in. httpOnly so
+ * a script cannot read it; losing it only makes the browser a new entry.
+ */
+export function setBrowserCookie(reply: CookieReply, { id, secure }: { id: string; secure: boolean }) {
+  reply.setCookie(COOKIES.browser, id, {
+    httpOnly: true, secure, sameSite: 'lax', path: '/auth', maxAge: 400 * 86_400,
+  })
+}

@@ -750,6 +750,22 @@ export const en = {
     },
   },
 
+  memberSettings: {
+    title: 'Settings',
+    sessionsHeading: 'Active sessions',
+    sessionsIntro: 'These are the browsers and phones signed in to your account. Terminate any you do not recognise.',
+  },
+  memberDevices: {
+    thisDevice: 'This device',
+    kindWeb: 'Web',
+    kindMobile: 'App',
+    lastActive: 'Last active {when}',
+    signOutDevice: 'Terminate this session',
+    signOutHere: 'Terminate this session',
+    confirmEnd: 'Confirm',
+    cancel: 'Cancel',
+    loadFailed: 'Your devices could not be loaded. Please try again later.',
+  },
   memberProfile: {
     tabLabel: 'Profile',
     title: 'Profile',
@@ -793,6 +809,7 @@ export const en = {
     unmute: 'Unmute',
     blockConfirm: 'Block? You will no longer see each other, and any following ends.',
     privacy: 'Blocked & muted',
+    settings: 'Settings',
     blockedList: 'Blocked members',
     mutedList: 'Muted members',
     noneBlocked: 'Nobody blocked.',

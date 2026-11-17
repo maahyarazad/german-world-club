@@ -1,4 +1,57 @@
 <!--
+SYNC IMPACT REPORT (4.0.0)
+==========================
+Version change: 3.0.0 -> 4.0.0
+Bump rationale: MAJOR. A MUST is downgraded: Principle VI's "one-time codes MUST NOT
+appear in logs" gains a development-only exception, which the versioning policy classes as
+MAJOR without qualification. Adopted for feature 027 (specs/027-settings-sessions-and-local-sms,
+US4), before the code that relies on it. Requested by the repository owner on 2026-11-17.
+
+Modified clause (one):
+  - Principle VI, credentials-in-logs clause. In development, and only there, the server may
+    print a one-time code in the terminal (a plain console line, NOT the structured logger)
+    and still sends the SMS. Replacement: partial. The exception needs NODE_ENV=development
+    AND the SMS_DEV_LOG setting (on by default in development), config/env.ts refuses to boot
+    when SMS_DEV_LOG=true in production, and tests/auth/sms-dev-sink.test.ts asserts the code
+    never reaches the structured log and that production refuses the flag. What is lost: a
+    developer's terminal now shows codes, so a laptop pointed at a real database (as
+    server/.env currently is) shows real members' codes. That is why the README and CLAUDE.md
+    say a laptop .env must not point DATABASE_URL at production.
+
+Unchanged: Principles I-V in full; the rest of VI (central redaction of the structured log
+stays); the Technology baseline; Workflow and Governance.
+
+Migration path: feature 027's plan records this as a justified departure. Features 001-026 keep
+their Constitution Checks as records of what was true then.
+-->
+
+<!--
+SYNC IMPACT REPORT (3.0.0)
+==========================
+Version change: 2.0.0 -> 3.0.0
+Bump rationale: MAJOR. A MUST is downgraded ("at most one session per account" becomes "at most
+one session per device for members"), which the versioning policy classes as MAJOR without
+qualification. Adopted for feature 026 (specs/026-device-sessions), before any code that
+relies on it, as Governance requires. Approved by the repository owner on 2026-11-17.
+
+Modified clause (one):
+  - Technology & Security Baseline, credentials clause: one active session per account -> one
+    active session per DEVICE for member accounts; staff and organisation accounts keep one per
+    account. Replacement: partial. Uniqueness is still a database constraint (a partial unique
+    index per device), so Principle IV's "session uniqueness by constraint" holds. What is lost:
+    a member's other devices are no longer ended by a new sign-in, so the member's own device
+    list (feature 026, US2/US3) is what limits exposure, together with a 30-day idle expiry.
+
+Unchanged: Principles I-VI in full; every other clause of the baseline; Workflow and Governance.
+
+Automated checks affected: server/tests/auth/sessions.test.ts and device-approval.test.ts are
+rewritten by feature 026 to assert the per-device rule AND that staff accounts still supersede.
+
+Migration path: feature 026's plan records this as a justified violation in its Complexity
+Tracking. Features 001-025 keep their Constitution Checks as records of what was true then.
+-->
+
+<!--
 SYNC IMPACT REPORT (2.0.0)
 ==========================
 Version change: 1.0.1 -> 2.0.0
@@ -208,6 +261,10 @@ Nothing leaves the server in a shape or size the server did not choose.
 - Credentials, tokens, one-time codes, and member contact details MUST NOT appear in logs, error
   bodies, or responses. Redaction MUST be configured centrally so it applies to code not yet
   written.
+  *(Amended 4.0.0: one exception. When `NODE_ENV` is `development` and `SMS_DEV_LOG` is on —
+  the default there — the server writes a one-time code to the terminal as a plain console
+  line, never to the structured logger, and still sends the SMS. Production refuses to boot with
+  the setting on. Replacement: partial — see the sync impact report.)*
 - Member-only content MUST NOT be rendered, even partially, to an unauthenticated requester for
   the purpose of search visibility.
 
@@ -230,9 +287,14 @@ stripping are stated as absolutes.
 - **Passwords** MUST use a modern, salted, memory-hard hash. The legacy system's unsalted MD5
   values MUST NOT be accepted for authentication under any migration strategy; they are treated as
   already public.
-- **Credentials** MUST be short-lived and server-revocable. At most one session per account is
-  active; a new sign-in terminates the previous one. Replay of a single-use credential MUST be
-  treated as compromise, not as a retry.
+- **Credentials** MUST be short-lived and server-revocable. At most one session per *device* is
+  active for a member; a new sign-in on a device terminates that device's previous session.
+  Staff and organisation accounts keep one session per account. Replay of a single-use
+  credential MUST be treated as compromise, not as a retry. *(Amended 3.0.0: this clause read
+  "At most one session per account is active; a new sign-in terminates the previous one."
+  Feature 026 lets a member use the web and a phone at once. Replacement: partial — uniqueness
+  per device is still a database constraint; a member can see and end every device, and an
+  unused session ends after 30 days.)*
 - **Settings that must agree with infrastructure** — trusted-proxy depth, canonical origin, and
   keep-alive versus proxy idle timeout — MUST have no silent default. Production startup MUST fail
   when they are unset.
@@ -293,4 +355,4 @@ passing automated check. Complexity that violates a principle MUST be justified 
 the specific principle, with the simpler rejected alternative named; an unjustified violation
 blocks the change.
 
-**Version**: 2.0.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-18
+**Version**: 4.0.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-11-17

@@ -1,4 +1,6 @@
+import { Link } from 'react-router'
 import { del } from '../../lib/api'
+import PageHeader from '../../components/ui/PageHeader'
 import Button from '../../components/ui/Button'
 import { useTranslations } from '../../i18n/index'
 import { AuthorList } from '../threads/PostView'
@@ -8,6 +10,7 @@ export function Privacy() {
   const t = useTranslations()
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      <PageHeader title={t.memberProfile.privacy} actions={<Link to="/konsole/mitglied/profil" className="text-[13px] text-navy">← {t.memberThreads.back}</Link>} />
       <AuthorList url="/threads/blocks" title={t.memberProfile.blockedList} empty={t.memberProfile.noneBlocked}
         action={(author, drop) => (
           <Button variant="secondary" onClick={() => void del(`/threads/blocks/${author.id}`).then(drop)}>{t.memberProfile.unblock}</Button>

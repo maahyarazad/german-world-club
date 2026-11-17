@@ -7,6 +7,7 @@ import type {
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
 } from '@gwc/contracts/profile';
 import type { Asset } from '@gwc/contracts/media';
+import type { MemberDevicesResponse } from '@gwc/contracts/devices';
 import type {
   EventDetail, EventList, EventRegistration, RegisterForEventRequest,
 } from '@gwc/contracts/events';
@@ -41,7 +42,7 @@ const q = (params: Record<string, string | undefined | null>) => {
 
 export const authApi = {
   signIn: (body: SignInRequest) => api<SignInResponse>('/auth/sign-in', { method: 'POST', body, anonymous: true }),
-  verifyOtp: (body: { challengeId: string; code: string; deviceId: string }) =>
+  verifyOtp: (body: { challengeId: string; code: string; deviceId: string; deviceLabel?: string }) =>
     api<TokenPairResponse>('/auth/verify-otp', { method: 'POST', body, anonymous: true }),
   resendOtp: (challengeId: string) =>
     api<ResendOtpResponse>('/auth/otp/resend', { method: 'POST', body: { challengeId }, anonymous: true }),
@@ -54,6 +55,12 @@ export const authApi = {
    * the server re-checks every operation.
    */
   me: () => api<MeResponse>('/auth/me'),
+};
+
+/** The member's own signed-in devices (feature 026). */
+export const devicesApi = {
+  list: () => api<MemberDevicesResponse>('/member/devices'),
+  end: (id: string) => api<void>(`/member/devices/${id}`, { method: 'DELETE' }),
 };
 
 export const onboardingApi = {

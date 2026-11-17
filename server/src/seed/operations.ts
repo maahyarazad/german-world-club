@@ -78,6 +78,16 @@ export async function seedOperations(pool: Pool, faker: Faker, options: SeedOpti
     counts.device_approvals += rowCount
   }
 
+  // Feature 026: a phone staff approved is a known phone (no SMS code on it), at
+  // the approval's own timestamp. Pending and denied approvals imply nothing.
+  await pool.query(
+    `INSERT INTO member_devices (member_id, kind, device_key, label, known_at)
+     SELECT member_id, 'mobile', device_id, 'Phone', coalesce(reviewed_at, now())
+       FROM device_approvals
+      WHERE state = 'approved' AND device_id LIKE 'demo-device-%'
+     ON CONFLICT (member_id, kind, device_key) DO NOTHING`,
+  )
+
   // ---- Test recipients -----------------------------------------------------
   for (const member of members.slice(0, 3)) {
     const { rowCount } = await pool.query(

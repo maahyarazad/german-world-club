@@ -18,6 +18,7 @@ import MyProfile from '../member/profile/MyProfile'
 import EditProfile from '../member/profile/EditProfile'
 import MemberProfile, { FollowList } from '../member/profile/MemberProfile'
 import Privacy from '../member/profile/Privacy'
+import Settings from '../member/profile/Settings'
 import OrganisationView from '../member/profile/OrganisationView'
 import OrganisationProfilePage from '../organisation/Profile'
 import ThreadsModeration from './admin/Threads'
@@ -222,6 +223,9 @@ export function ConsoleRoutes() {
         <Route path="profil" element={<MyProfile />} />
         <Route path="profil/bearbeiten" element={<EditProfile />} />
         <Route path="profil/privatsphaere" element={<Privacy />} />
+        <Route path="profil/einstellungen" element={<Settings />} />
+        {/* Feature 026 linked the session list here; keep old bookmarks working. */}
+        <Route path="profil/geraete" element={<Navigate to="/konsole/mitglied/profil/einstellungen" replace />} />
         <Route path="mitglieder/:ref" element={<MemberProfile />} />
         <Route path="mitglieder/:ref/follower" element={<FollowList direction="followers" />} />
         <Route path="mitglieder/:ref/folgt" element={<FollowList direction="following" />} />

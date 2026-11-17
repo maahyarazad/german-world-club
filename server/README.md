@@ -74,7 +74,7 @@ prevents boot; it never degrades behaviour silently.
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | always | |
+| `DATABASE_URL` | always | On a laptop this must be a local database, never the production host: sign-in then sends real SMS and mail to real members through the real accounts. Keep the production URL out of `.env` or in `PRODUCTION_DATABASE_URL` only |
 | `REDIS_ENABLED` | production (`true`) | Default `false`: no Redis client is registered, rate limits are per-process and the session denylist is in-memory — meaning N instances grant N× every limit. Production refuses `false` |
 | `REDIS_URL` | production, or whenever `REDIS_ENABLED=true` | Ignored while `REDIS_ENABLED=false` |
 | `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | production | EdDSA. `npm run keys:generate` |
@@ -84,6 +84,7 @@ prevents boot; it never degrades behaviour silently.
 | `SMS_ALLOWED_COUNTRIES` | no | ISO alpha-2, comma-separated. **Narrows** the allowlist by matching the start of zone names — best-effort: `DE` does not match "Germany" |
 | `EXPO_ACCESS_TOKEN` | **production** | Boot is refused without it. Turn on *enhanced push security* for the Expo project too, so a leaked token alone cannot push to members. Unset outside production with no FCM either, the push jobs use a logging transport that records "would send" and marks deliveries sent |
 | `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY` | all three or none | Only for devices registered with `provider: 'fcm'`; the app registers Expo tokens, and Android reaches FCM through Expo's own credentials in EAS. A partial set refuses boot in every environment. The private key is a secret: environment or secret manager, never a JSON file in the repo |
+| `SMS_DEV_LOG` | never `true` in production | Development only, **on by default** when `NODE_ENV=development` (`false` turns it off). Prints the one-time code in the server terminal **and** still sends the real SMS; a provider refusal (e.g. a seeded member's fake number) no longer fails sign-in. Ignored unless `NODE_ENV=development`; production **refuses to boot** with it set to `true` |
 | `MEDIA_*` | defaults are fine locally | Storage driver, size and pixel bounds, per-account quota |
 | `APPLE_APP_ID` | no (default `YQFY6269ZL.com.buenapublica.germanworldclub`) | Feature 018. `<Team ID>.<bundle id>` in `/.well-known/apple-app-site-association`, which lets a tapped `/r/<code>` open the iOS app. Covers `/r/*` only |
 | `ANDROID_APP_PACKAGE` | no (default `com.buenapublica.germanworldclub`) | Feature 018. The package in `/.well-known/assetlinks.json` |

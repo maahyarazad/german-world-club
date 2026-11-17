@@ -272,6 +272,35 @@ Both go through `applyDecision` like a staff decision (`reviewed_by` NULL,
 `decided_automatically` true), and only rows with an explicit language are ever
 touched — a missing one triggers neither rule.
 
+**A member is signed in per device, not per account (feature 026,
+`specs/026-device-sessions/`).** The web and any number of phones are signed in
+at once; the rule is a partial unique index — one active session per
+`member_devices` row — and a sign-in on one device never ends another.
+Staff and organisation accounts have no device row and keep one session per
+account. There is **no per-device staff approval** any more: a phone is *known*
+(`member_devices.known_at`) once an SMS code has proven it, or staff approved the
+application it applied from, and a known phone signs in with the password alone;
+a new phone gets the code. Four rules that look optional and are not:
+
+- **Ending a device from the list forgets it; signing out does not.** `DELETE
+  /member/devices/:id` clears `known_at` (and ends the session, push
+  registration and refresh tokens). A plain sign-out, ending *this* device from
+  the list, or the 30-day idle expiry leaves the phone known. A member becoming
+  `locked`, `inactive` or `ended` forgets every phone — by trigger, because
+  nothing in the application revokes sessions on a status change.
+- **A browser is an entry because it holds a `gwc_bid` cookie**, stored only as
+  its SHA-256. A cleared cookie or a private window is a new entry, honestly.
+- **The device list shows a label, never an IP, user agent, device key, token or
+  session id**, and another member's device answers the same 404 as an unknown
+  one. `tests/devices/list.test.ts` scans the body for those.
+- **A new revocation reason must be added to `sessions_revoked_reason_check` in
+  the same change** (043 and 044 both exist because it was not).
+
+`device_approvals` is still written when an application is decided, but nothing
+reads it at sign-in or per request. A member manages their sessions at
+`/konsole/mitglied/profil/einstellungen` (Settings, next to Edit profile in the
+web profile; feature 027). The 026 address `profil/geraete` redirects there.
+
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
 `device_approval`, `/onboarding/*` redeems `mobile_verification` and
@@ -290,7 +319,16 @@ a `sms-destination-not-allowed` 422. Registration asks `app.smsDestination()`
 before writing any row. The server still issues, hashes and verifies its own
 codes, and verification is deliberately **not** gated, so a code sent before
 the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
-from another project's build; do not hand-edit it.
+from another project's build; do not hand-edit it. **In development the code is also printed in the
+terminal, and the real SMS is still sent** (feature 027, `SMS_DEV_LOG`, on by
+default when `NODE_ENV=development`, `false` turns it off): a provider refusal —
+a seeded member's number is fake — is printed and no longer fails sign-in.
+`config/env.ts` refuses to boot in production with it set to true. It sits behind
+`app.sendOtp`, so the country policy still applies, and it writes a plain console
+line rather than the structured logger (which redacts codes centrally) because
+reading the code is its whole purpose; constitution 4.0.0 records that exception.
+A laptop `.env` must **not** point `DATABASE_URL` at the production database:
+sign-in there texts real members' numbers through the real account.
 
 **Mail goes through the outbox, except the email code.** `app.enqueueMail()`
 writes `mail_outbox`; the `mail.deliver` job sends with backoff and clears the

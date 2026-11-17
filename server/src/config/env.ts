@@ -86,6 +86,13 @@ const schema = z
     SMSGLOBAL_API_KEY: z.string().optional(),
     SMSGLOBAL_API_SECRET: z.string().optional(),
     SMSGLOBAL_ORIGIN: z.string().default('B P'),
+    // Development only (feature 027): print the one-time code in the terminal as
+    // well as sending the SMS, and do not fail sign-in when the provider refuses
+    // (a seeded member's number is fake). ON by default when NODE_ENV is
+    // development, off everywhere else; `SMS_DEV_LOG=false` turns it off in
+    // development. Production refuses to boot with it set (below), because a code
+    // in a terminal is a code anyone with the terminal can use.
+    SMS_DEV_LOG: bool.optional(),
     // Outbound SMS country policy (integrations/sms-country-policy.ts). Both
     // optional and read once at boot. SMS_BLOCKED_COUNTRIES is dialing codes
     // and REPLACES the shipped sanctions denylist, so a code can be removed as
@@ -158,6 +165,13 @@ const schema = z
         })
       }
     }
+    if (v.SMS_DEV_LOG) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SMS_DEV_LOG'],
+        message: 'SMS_DEV_LOG must not be set in production: it prints one-time codes in the terminal',
+      })
+    }
     // 07-rate-limit would refuse too, but only after half the app has booted;
     // saying it here names the variable. Across N instances the fallbacks grant
     // N× every rate limit and let a revoked session live out its access token.
@@ -223,6 +237,8 @@ export function loadEnv(source = process.env) {
   const env = result.data
   return Object.freeze({
     ...env,
+    // Resolved here, after validation, so "unset" can mean different things.
+    SMS_DEV_LOG: env.SMS_DEV_LOG ?? env.NODE_ENV === 'development',
     isProduction: env.NODE_ENV === 'production',
     isTest: env.NODE_ENV === 'test',
     // Development convenience only; production already failed above if unset.

@@ -123,11 +123,21 @@ export function createJobHandlers(app: GwcApp) {
       // feature 007 until then this UPDATE failed on every run in production. A new reason
       // written here must be added to sessions_revoked_reason_check in the
       // same change, or the job fails on the first matching row.
+      //
+      // Feature 026 adds the second predicate: a member's device session unused
+      // for 30 days also ends. A phone's refresh token lives 90 days and the web's
+      // 30, so without it a lost phone would stay signed in for three months.
+      // `last_seen_at` moves on every token refresh, so an app in regular use
+      // never trips it. Only member device sessions: staff and organisation
+      // sessions keep their own lifetime. The phone is NOT forgotten (that is
+      // for the member's own "end this device"), so it signs in with the
+      // password alone afterwards.
       const { rowCount } = await app.pg.query(
         `UPDATE sessions SET revoked_at = now(), revoked_reason = 'expired'
           WHERE revoked_at IS NULL
-            AND id IN (SELECT session_id FROM refresh_tokens
-                        WHERE expires_at < now() AND consumed_at IS NULL)`,
+            AND (id IN (SELECT session_id FROM refresh_tokens
+                         WHERE expires_at < now() AND consumed_at IS NULL)
+                 OR (member_device_id IS NOT NULL AND last_seen_at < now() - interval '30 days'))`,
       )
       return { itemsProcessed: rowCount }
     },

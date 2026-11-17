@@ -50,7 +50,7 @@ The same five steps in the web console, at `/konsole/registrieren` (steps 1–2)
 
 | Decision | Why |
 |---|---|
-| The web sends no `deviceId`; `membership_applications.device_id` is NULL for a web application (025) | Web sessions are never device-bound on this platform. Approving a web application approves the member, and no `device_approvals` row is written. A phone they later use still needs its own approval. |
+| The web sends no `deviceId`; `membership_applications.device_id` is NULL for a web application (025) | Web sessions are never device-bound on this platform. Approving a web application approves the member, and no `device_approvals` row is written. A phone they later use is proven by an SMS code instead (feature 026 replaced the per-device approval). |
 | verify-mobile answers the web with **httpOnly cookies** and no tokens in the body | Exactly what sign-in does per face. A token a page script can read is one an injected script can read too. |
 | Web challenges are bound to `WEB_DEVICE` (`'web'`) | `otp_challenges.device_id` stays NOT NULL, so every mobile challenge still names its phone. |
 | A web applicant resumes on the web **by password**; a mobile applicant only on their phone, by SMS | Each face resumes the way that face signs in. Either way the session reaches `/onboarding/*` only. |
