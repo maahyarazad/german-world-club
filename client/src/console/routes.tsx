@@ -19,6 +19,7 @@ import EditProfile from '../member/profile/EditProfile'
 import MemberProfile, { FollowList } from '../member/profile/MemberProfile'
 import Privacy from '../member/profile/Privacy'
 import Settings from '../member/profile/Settings'
+import Roles from './admin/Roles'
 import OrganisationView from '../member/profile/OrganisationView'
 import OrganisationProfilePage from '../organisation/Profile'
 import ThreadsModeration from './admin/Threads'
@@ -197,6 +198,8 @@ export function ConsoleRoutes() {
         <Route path="empfehlen" element={<Referrals basePath="/admin/referrals/me" />} />
         {/* Wraps itself in RequireGrant referrals/read, like Push.tsx. */}
         <Route path="empfehlungen" element={<AdminReferrals />} />
+        {/* Feature 028. Wraps itself in RequireGrant admins/read, like Push.tsx. */}
+        <Route path="rollen" element={<Roles />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}

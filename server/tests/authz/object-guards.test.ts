@@ -82,14 +82,14 @@ describe('guardSelfDemotion (§11 recoverability)', () => {
     const actor = snapshot({ isSuperadmin: true })
     const target = { id: actor.adminId, is_superadmin: true, is_active: true }
     await expect(guardSelfDemotion(stubApp(), request(), actor, target, { is_superadmin: false }))
-      .rejects.toMatchObject({ statusCode: 403 })
+      .rejects.toMatchObject({ statusCode: 403, problem: expect.objectContaining({ type: expect.stringContaining('cannot-change-self') }) })
   })
 
   it('refuses an admin deactivating their own account', async () => {
     const actor = snapshot({ isSuperadmin: true })
     const target = { id: actor.adminId, is_superadmin: true, is_active: true }
     await expect(guardSelfDemotion(stubApp(), request(), actor, target, { is_active: false }))
-      .rejects.toMatchObject({ statusCode: 403 })
+      .rejects.toMatchObject({ statusCode: 403, problem: expect.objectContaining({ type: expect.stringContaining('cannot-change-self') }) })
   })
 
   it('allows a superadmin to demote someone else', async () => {
@@ -105,7 +105,17 @@ describe('guardLastSuperadmin', () => {
   it('refuses when no other active superadmin remains', async () => {
     const target = { id: randomUUID(), is_superadmin: true, is_active: true }
     await expect(guardLastSuperadmin(client(0), target, { is_superadmin: false }))
-      .rejects.toMatchObject({ statusCode: 403 })
+      .rejects.toMatchObject({ statusCode: 409, problem: expect.objectContaining({ type: expect.stringContaining('last-superadmin') }) })
+  })
+
+  it('gives the three refusals three different types (a console branches on them)', async () => {
+    const types = new Set<string>()
+    const actor = snapshot({ isSuperadmin: true })
+    const grab = async (p: Promise<unknown>) => { try { await p } catch (e) { types.add((e as { problem: { type: string } }).problem.type) } }
+    await grab(guardAdminTarget(stubApp(), request(), snapshot(), { id: randomUUID(), is_admin: true }))
+    await grab(guardSelfDemotion(stubApp(), request(), actor, { id: actor.adminId, is_superadmin: true, is_active: true }, { is_active: false }))
+    await grab(guardLastSuperadmin(client(0), { id: randomUUID(), is_superadmin: true, is_active: true }, { is_active: false }))
+    expect(types.size).toBe(3)
   })
 
   it('allows the demotion when another remains', async () => {

@@ -55,7 +55,7 @@ export async function guardSelfDemotion(app: GwcApp, request: FastifyRequest, ac
   const deactivatingSelf = changes?.is_active === false && target.is_active
   if (removingSuperadmin || deactivatingSelf) {
     await app.auditDenial(request, { requiredPermission: 'superadmin', targetType: 'admin_user', targetId: target.id })
-    throw forbidden(PROBLEMS.CANNOT_MANAGE_ADMIN, 'An administrator cannot demote or deactivate their own account.')
+    throw forbidden(PROBLEMS.CANNOT_CHANGE_SELF, 'An administrator cannot demote or deactivate their own account.')
   }
 }
 
@@ -77,7 +77,7 @@ export async function guardLastSuperadmin(client: PoolClient, target, changes) {
   )
   if (rows[0].remaining === 0) {
     throw forbidden(
-      PROBLEMS.CANNOT_MANAGE_ADMIN,
+      PROBLEMS.LAST_SUPERADMIN,
       'At least one active superadmin must remain — a system with none cannot grant permissions to anyone.',
     )
   }

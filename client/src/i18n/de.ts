@@ -360,10 +360,45 @@ export const de = {
     yes: 'Ja',
     no: 'Nein',
     yourAreas: 'Ihre Bereiche',
+    figuresFailed: 'Die Kennzahlen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.',
+    figureUnavailable: 'Nicht verfügbar',
+    figures: {
+      activeMembers: 'Aktive Mitglieder',
+      waitingApplications: 'Wartende Anträge',
+      activeMerchants: 'Aktive Merchants',
+      activePartners: 'Aktive Partner',
+      liveListings: 'Aktive Inserate',
+      listingRequests: 'Anfragen zu Inseraten (30 Tage)',
+      openReports: 'Offene Meldungen',
+      upcomingEvents: 'Kommende Events',
+      activeStaff: 'Aktive Mitarbeitende',
+    },
     governanceTitle: 'Governance ist Produktbestandteil',
     governanceBody:
       'GWC darf nicht nur Technik bereitstellen. Der zentrale operative Layer schützt die Marke vor '
       + 'Spam, Pay-to-play, schlechten Merchants und unzuverlässigen Experten.',
+  },
+
+  adminRoles: {
+    title: 'Rollen & Berechtigungen',
+    subtitle: 'Alle Mitarbeitenden-Konten, ihre Rolle und was sie in den einzelnen Bereichen dürfen',
+    roles: { superadmin: 'Superadmin', administrator: 'Administrator', staff: 'Mitarbeitende' },
+    active: 'Aktiv',
+    inactive: 'Inaktiv',
+    you: 'Sie',
+    noGrants: 'Keine Berechtigungen in einem Bereich.',
+    empty: 'Es gibt keine Mitarbeitenden-Konten anzuzeigen.',
+    roleLabel: 'Rolle',
+    save: 'Änderungen speichern',
+    addArea: 'Bereich hinzufügen',
+    superadminBypass: 'Ein Superadmin umgeht die Berechtigungen aller Bereiche; die folgenden bleiben gespeichert, werden aber nicht angewendet.',
+    changedElsewhere: 'Dieses Konto wurde von jemand anderem geändert; der aktuelle Stand wird angezeigt.',
+    blockers: {
+      self: 'Diese Änderung können Sie an Ihrem eigenen Konto nicht vornehmen.',
+      'last-superadmin': 'Mindestens ein aktiver Superadmin muss bestehen bleiben; dieses Konto kann daher nicht herabgestuft oder deaktiviert werden.',
+      'superadmin-required': 'Diese Änderung kann nur ein Superadmin vornehmen.',
+    },
+    loadFailed: 'Die Mitarbeitenden-Konten konnten nicht geladen werden. Bitte versuchen Sie es später erneut.',
   },
 
   organisationPortal: {

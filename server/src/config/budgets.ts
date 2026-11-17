@@ -74,6 +74,8 @@ export const ROUTE_BUDGETS = Object.freeze({
   // subqueries per row — heavier than 'member-read', lighter than a report.
   threads: { deadlineMs: 3000, calls: ['redis'] },
   'admin-read': { deadlineMs: 5000, calls: ['redis'] },
+  // Administrator edits (feature 028): one transaction over two small tables.
+  'admin-write': { deadlineMs: 5000, calls: ['redis'] },
   'admin-report': { deadlineMs: 28000, calls: ['redis'] },
   // 25250 < 28000 < REQUEST_TIMEOUT_MS (30000). The margin is thin on purpose:
   // a model call is the slowest thing this server waits on, and the
