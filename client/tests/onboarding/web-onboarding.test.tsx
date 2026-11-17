@@ -5,6 +5,7 @@ import ConsoleRoutes from '../../src/console/routes'
 import { de } from '../../src/i18n/de'
 import { en } from '../../src/i18n/en'
 import { renderConsole, mockCapabilityFetch, memberSnapshot } from '../helpers/console'
+import { describeProblem } from '../../src/lib/problems'
 import type { RouteHandler } from '../helpers/console'
 
 /**
@@ -96,6 +97,46 @@ describe('steps 1 and 2: details, then country', () => {
     expect(sent).not.toHaveProperty('deviceId')
   })
 
+  it('says the email is already registered, on the email field, back at step 1', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: { '/onboarding/register': () => refusal(PROBLEMS.EMAIL_IN_USE) },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+
+    expect(await screen.findByText(t.emailRegistered)).toBeInTheDocument()
+    // Back on step 1 with what was typed, so only the address needs changing.
+    expect(screen.getByLabelText(t.email)).toHaveValue('Anna@Example.com')
+    expect(screen.queryByRole('heading', { name: t.mobileTitle })).not.toBeInTheDocument()
+    error.mockRestore()
+  })
+
+  it('shows "temporarily unavailable", not "Bad Gateway", when the proxy cannot reach the server', async () => {
+    // What the applicant saw in production at step 2 while Node was down.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCapabilityFetch(null, {
+      extraRoutes: {
+        '/onboarding/register': () => ({ status: 502, body: '<html>Bad Gateway</html>', headers: { 'content-type': 'text/html' } }),
+      },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
+    await fillDetails()
+    fireEvent.click(screen.getByRole('button', { name: t.continue }))
+    fireEvent.click(await screen.findByLabelText('Deutschland'))
+    fireEvent.click(screen.getByRole('button', { name: t.submit }))
+
+    const expected = describeProblem({ ...PROBLEMS.SERVICE_UNAVAILABLE, status: 502 }, 'de')
+    expect(await screen.findByText(`${expected.title}: ${expected.body}`)).toBeInTheDocument()
+    expect(screen.queryByText(/Bad Gateway/)).not.toBeInTheDocument()
+    // Still on step 2, so submitting again is one click.
+    expect(screen.getByRole('button', { name: t.submit })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
   it('builds the number from the picked calling code, and lets a typed + win', async () => {
     const fetchMock = mockCapabilityFetch(null, {
       extraRoutes: {
@@ -178,6 +219,7 @@ describe('step 3: the SMS code', () => {
       extraRoutes: {
         '/onboarding/register': () => json({ challengeId: '11111111-1111-4111-8111-111111111111', expiresIn: 300, sentTo: '•••• 5678' }, 202),
         '/onboarding/contact': contact,
+        '/auth/otp/resend': () => json({ resent: true, cooldownSeconds: 60, challengeId: '33333333-3333-4333-8333-333333333333' }, 202),
       },
     })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/registrieren' })
@@ -216,6 +258,52 @@ describe('step 3: the SMS code', () => {
     expect(await screen.findByText(t.mobileInUse)).toBeInTheDocument()
     // Still on the form, so another number can be entered.
     expect(screen.getByRole('button', { name: t.changeDetailsSave })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
+  it('sends a new code to the same number when save is pressed with nothing changed', async () => {
+    // Both fields filled, nothing changed: the button still means "send a new
+    // code". It used to be refused — first as "check the highlighted fields",
+    // then as "enter a new email or number" — when the applicant only wanted
+    // the SMS that never came.
+    const fetchMock = await reachStepThree(() => json({}, 202))
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.resent)).toBeInTheDocument()
+    // Back on the code screen, with a fresh code requested for the same challenge.
+    expect(screen.getByRole('heading', { name: t.mobileTitle })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.changeDetailsSave })).not.toBeInTheDocument()
+    expect(bodyOf(fetchMock, '/auth/otp/resend')).toEqual({ challengeId: '11111111-1111-4111-8111-111111111111' })
+    // Counter-assertion: nothing was "changed" on the server.
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/onboarding/contact')).toBe(false)
+    expect(screen.queryByText(/markierten Felder/)).not.toBeInTheDocument()
+  })
+
+  it('explains, on the mobile field, when the number cannot receive texts', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.SMS_DESTINATION_NOT_ALLOWED))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+1 212 555 0100' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByText(t.mobileUnavailable)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.changeDetailsSave })).toBeInTheDocument()
+    error.mockRestore()
+  })
+
+  it('says the verification has ended, and offers to continue, when the code session is gone', async () => {
+    // The server answers 404 when the pending challenge can no longer be
+    // edited — spent, replaced, already verified, or the made-up id a resend
+    // returns for a dead challenge. Not "the requested entry does not exist".
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await reachStepThree(() => refusal(PROBLEMS.NOT_FOUND))
+    fireEvent.change(screen.getByLabelText(t.mobile), { target: { value: '+971 58 583 1595' } })
+    fireEvent.click(screen.getByRole('button', { name: t.changeDetailsSave }))
+
+    expect(await screen.findByRole('heading', { name: t.challengeEndedTitle })).toBeInTheDocument()
+    expect(screen.getByText(t.challengeEndedBody)).toBeInTheDocument()
+    expect(screen.queryByText(/existiert nicht|does not exist/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: t.restart }))
+    expect(await screen.findByRole('heading', { name: t.detailsTitle })).toBeInTheDocument()
     error.mockRestore()
   })
 

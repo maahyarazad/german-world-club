@@ -3,6 +3,8 @@ import { documentsFor } from '../../seo/structured-data.ts'
 import { renderPage } from '../templates/layout.ts'
 import { legalBody } from '../templates/legal.ts'
 import { withCspNonces } from '../../../plugins/02-security-headers.ts'
+import { escape } from '../templates/layout.ts'
+import type { Viewer } from './viewer.ts'
 
 /**
  * Root-level institutional pages (§10.1 "committee / about / legal"). Adding
@@ -67,8 +69,59 @@ export const LANDING_ALTERNATES = Object.freeze([
  * the same content through the normal path — so even this fallback satisfies
  * FR-016 instead of shipping an empty shell.
  */
-export function renderLanding({ shell, record, origin, cspNonce }) {
-  if (shell) return withCspNonces(shell, cspNonce)
+/**
+ * The labels a signed-in visitor sees (feature 022). The language is in the
+ * URL — `/` is German, `/en` English — so this is the page's own copy, not a
+ * response varying with `Accept-Language` (which the server never does).
+ */
+export const LANDING_ACCOUNT_LABELS = Object.freeze({
+  de: { toConsole: 'Zur Konsole' },
+  en: { toConsole: 'Go to the console' },
+})
+
+/** Replace what sits between `<!--gwc:name-->` and `<!--/gwc:name-->`, markers kept. */
+function fillSlot(html: string, name: string, content: string): string {
+  const open = `<!--gwc:${name}-->`
+  const close = `<!--/gwc:${name}-->`
+  const start = html.indexOf(open)
+  const end = html.indexOf(close)
+  // A shell without the marker renders as it is — the marker test is what
+  // catches a lost marker, not a broken page.
+  if (start < 0 || end < start) return html
+  return html.slice(0, start + open.length) + content + html.slice(end)
+}
+
+/**
+ * The shell for a signed-in visitor: their avatar (or initials) linking to the
+ * console instead of the sign-in button, and "to the console" instead of the
+ * sign-in links further down. Every value is escaped. No script is added.
+ */
+export function withViewer(shell: string, viewer: Viewer, language: 'de' | 'en' = 'de'): string {
+  const { toConsole } = LANDING_ACCOUNT_LABELS[language] ?? LANDING_ACCOUNT_LABELS.de
+  const label = viewer.name ? `${toConsole} – ${viewer.name}` : toConsole
+  // The image is decorative: the link's own label already names the person.
+  const face = viewer.avatar
+    ? `<img src="${escape(viewer.avatar.url)}" alt="" width="40" height="40">`
+    : `<span class="initials" aria-hidden="true">${escape(viewer.initials)}</span>`
+  let html = fillSlot(shell, 'account', `<a class="account" href="/konsole" aria-label="${escape(label)}">${face}</a>`)
+  html = fillSlot(html, 'signin', `<div class="login-actions"><a class="btn btn-primary" href="/konsole">${escape(toConsole)}</a></div>`)
+  html = fillSlot(html, 'footer', `<a href="/konsole">${escape(toConsole)}</a>`)
+  return html
+}
+
+export function renderLanding({ shell, record, origin, cspNonce, viewer = null, language = 'de' }: {
+  shell: string | null
+  // Untyped before feature 022, and still: the record is a SeoRecord and the
+  // nonce the security-headers pair; typing them is not this feature's job.
+  record: any
+  origin: string
+  cspNonce: any
+  viewer?: Viewer | null
+  language?: 'de' | 'en'
+}) {
+  // Nonces last, over the final markup. Without a viewer the shell is not
+  // touched at all: an anonymous visitor gets exactly the page they always did.
+  if (shell) return withCspNonces(viewer ? withViewer(shell, viewer, language) : shell, cspNonce)
 
   const pageMeta = buildPageMeta(record, {
     origin,

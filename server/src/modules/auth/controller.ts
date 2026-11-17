@@ -88,6 +88,9 @@ export function createAuthController(app: GwcApp) {
         phoneKey: request.otpPhoneKey,
         signal: request.deadlineSignal,
       })
+      // The deadline guard may already have answered while the send ran; a
+      // second answer is the "Reply was already sent" error, not a response.
+      if (reply.sent) return reply
       if (result.outcome === 'too_soon') {
         reply.header('retry-after', String(result.retryAfter))
         throw forbidden(PROBLEMS.RATE_LIMITED, `Wait ${result.retryAfter}s before requesting another code.`)

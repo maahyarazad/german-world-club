@@ -11,8 +11,21 @@
  * EXPO_PUBLIC_LINK_HOST must equal the host of the server's CANONICAL_ORIGIN.
  * Unset is fine for development; a production build without it would ship an
  * app that cannot open referral links, so that is refused here.
+ *
+ * The value is reduced to a bare host here, because `applinks:<host>` and the
+ * Android intent filter's `host` accept nothing else: an origin such as
+ * "https://staging.german-world-club.com/" — the natural thing to copy from
+ * the server's CANONICAL_ORIGIN — would otherwise build an app whose links
+ * silently never verify.
  */
-const linkHost = process.env.EXPO_PUBLIC_LINK_HOST;
+const toHost = (value) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  const host = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`).hostname;
+  if (!host) throw new Error(`EXPO_PUBLIC_LINK_HOST is not a host name: ${value}`);
+  return host.toLowerCase();
+};
+const linkHost = toHost(process.env.EXPO_PUBLIC_LINK_HOST);
 if (!linkHost && process.env.EAS_BUILD_PROFILE === "production") {
   throw new Error(
     "EXPO_PUBLIC_LINK_HOST must be set for a production build (the host of the server's CANONICAL_ORIGIN, e.g. german-world-club.com)",

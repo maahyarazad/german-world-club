@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { resetAuthTables, createAdmin, bearerFor, createMember } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
+import { BUCKETS } from '../../src/config/rate-limits.ts'
 import { buildOnboardingApp, applicant, submitApplication, emailCodeFor, register, DEVICE } from './helpers.ts'
 import type { GwcApp } from '../../src/app.ts'
 
@@ -53,13 +54,18 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       })
     })
 
-    it('answers an address already in use with the same shape, sends no SMS, and tells the owner', async () => {
+    it('refuses an address already in use with email-in-use, sends no SMS, and still tells the owner', async () => {
+      // Said openly since step 3's contact change already answers email-in-use;
+      // the old disguise (a fake challenge) only left applicants at a dead
+      // code screen.
       const owner = await createMember(app.pg)
       const response = await register(app, applicant({ email: owner.email }))
       const fresh = await register(app, applicant())
 
-      expect(response.statusCode).toBe(fresh.statusCode)
-      expect(Object.keys(response.json()).sort()).toEqual(Object.keys(fresh.json()).sort())
+      expect(response.statusCode).toBe(409)
+      expect(response.json().type).toBe(PROBLEMS.EMAIL_IN_USE.type)
+      // Counter-assertion: a fresh address still registers.
+      expect(fresh.statusCode).toBe(202)
       // One SMS — for the fresh address only.
       expect(sms).toHaveLength(1)
       const { rows } = await app.pg.query(
@@ -87,10 +93,11 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
 
     it('limits registrations per address, and fails closed', async () => {
       const address = '198.51.100.77'
+      const max = BUCKETS.register.max
       const statuses = []
-      for (let i = 0; i < 6; i += 1) statuses.push((await register(app, applicant(), address)).statusCode)
-      expect(statuses.slice(0, 5).every((s) => s === 202)).toBe(true)
-      expect(statuses[5]).toBe(429)
+      for (let i = 0; i <= max; i += 1) statuses.push((await register(app, applicant(), address)).statusCode)
+      expect(statuses.slice(0, max).every((s) => s === 202)).toBe(true)
+      expect(statuses[max]).toBe(429)
       // The counter-assertion: the limit is per address, not a closed door.
       expect((await register(app, applicant())).statusCode).toBe(202)
     })

@@ -55,6 +55,10 @@ export function VerifyMobile() {
   const [email, setEmail] = useState(initial?.email ?? '')
   const [mobile, setMobile] = useState(initial?.mobile ?? '')
   const [contactErrors, setContactErrors] = useState<{ email?: string; mobile?: string }>({})
+  // The pending challenge can no longer be edited (spent, replaced, already
+  // verified — or the made-up id a resend answers for a dead challenge). The
+  // only way on is registering again, which resumes the application.
+  const [ended, setEnded] = useState(false)
 
   /**
    * Router state does not survive a reload, and the challenge id is kept out
@@ -62,6 +66,17 @@ export function VerifyMobile() {
    * email and password, the server resumes the application rather than
    * refusing the address.
    */
+  if (ended) {
+    return (
+      <AuthCard title={copy.challengeEndedTitle}>
+        <p className="mt-2 text-[13px] text-text-muted">{copy.challengeEndedBody}</p>
+        <Button className="mt-6 w-full" onClick={() => navigate('/konsole/registrieren', { replace: true })}>
+          {copy.restart}
+        </Button>
+      </AuthCard>
+    )
+  }
+
   if (!challengeId) {
     return (
       <AuthCard title={copy.missingChallengeTitle}>
@@ -126,16 +141,29 @@ export function VerifyMobile() {
     if (!fields.email.safeParse(nextEmail).success) found.email = copy.errors.email
     if (!fields.mobile.safeParse(nextMobile).success) found.mobile = copy.errors.mobile
     setContactErrors(found)
+    setRequestError(null)
     if (Object.keys(found).length > 0) return
+
+    // Send only what actually changed. With nothing changed, the button still
+    // means what it says — "send a new code" — so it does exactly that, to the
+    // same number, back on the code screen. (The contact endpoint refuses an
+    // empty change, and an applicant whose SMS never came presses this button
+    // precisely to get another.)
+    const emailChanged = nextEmail !== (initial?.email ?? '').trim().toLowerCase()
+    const mobileChanged = nextMobile !== (initial?.mobile ?? '').replace(/[\s\-()]/g, '')
+    if (!emailChanged && !mobileChanged) {
+      setEditing(false)
+      await resend()
+      return
+    }
 
     setBusy(true)
     setNotice(null)
-    setRequestError(null)
     try {
       const sent = (await post('/onboarding/contact', {
         challengeId,
-        ...(nextEmail !== initial?.email ? { email: nextEmail } : {}),
-        ...(nextMobile !== initial?.mobile ? { mobile: nextMobile } : {}),
+        ...(emailChanged ? { email: nextEmail } : {}),
+        ...(mobileChanged ? { mobile: nextMobile } : {}),
       })) as RegisterResponse
       // The old code is spent; the next one belongs to the new challenge.
       setChallengeId(sent.challengeId)
@@ -147,8 +175,11 @@ export function VerifyMobile() {
       console.error('VerifyMobile.changeContact', error instanceof ApiError ? error.problem : error)
       const type = error instanceof ApiError ? error.problem?.type : null
       if (type === PROBLEMS.EMAIL_IN_USE.type) setContactErrors({ email: copy.emailInUse })
-      if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
-      else if (type !== PROBLEMS.EMAIL_IN_USE.type) showRequestError(error)
+      else if (type === PROBLEMS.MOBILE_IN_USE.type) setContactErrors({ mobile: copy.mobileInUse })
+      else if (type === PROBLEMS.SMS_DESTINATION_NOT_ALLOWED.type) setContactErrors({ mobile: copy.mobileUnavailable })
+      // Not "the requested entry does not exist": the verification itself is over.
+      else if (type === PROBLEMS.NOT_FOUND.type) setEnded(true)
+      else showRequestError(error)
     } finally {
       setBusy(false)
     }

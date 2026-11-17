@@ -114,7 +114,14 @@ export const de = {
     changeEmailSave: 'Speichern und neuen Code senden',
     newEmail: 'Neue E-Mail-Adresse',
     emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
+    emailRegistered: 'Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Melden Sie sich an oder verwenden Sie eine andere Adresse.',
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
+    mobileUnavailable: 'An diese Nummer können wir keinen Bestätigungscode senden. Bitte eine andere verwenden.',
+    challengeEndedTitle: 'Diese Bestätigung ist beendet',
+    challengeEndedBody:
+      'Dieser Code ist nicht mehr gültig: Ein neuerer wurde gesendet, er wurde bereits verwendet, oder diese '
+      + 'Nummer ist bereits bestätigt. Starten Sie die Registrierung erneut mit denselben Angaben – Sie setzen '
+      + 'dort fort, wo Sie aufgehört haben.',
     missingChallengeTitle: 'Registrierung unterbrochen',
     missingChallengeBody:
       'Diese Seite wurde neu geladen, bevor der Code eingegeben war. Starten Sie die Registrierung '

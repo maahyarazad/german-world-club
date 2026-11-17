@@ -75,6 +75,7 @@ export const de: Catalogue = {
     changeDetailsCancel: 'Abbrechen',
     detailsChanged: 'Gespeichert. Ein neuer Code ist unterwegs an {target}.',
     emailInUse: 'Diese E-Mail-Adresse wird bereits verwendet.',
+    emailRegistered: 'Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Melden Sie sich an oder gehen Sie zurück und verwenden Sie eine andere Adresse.',
     mobileInUse: 'Diese Mobilnummer wird bereits verwendet.',
     emailTitle: 'E-Mail-Adresse bestätigen',
     changeEmail: 'Falsche E-Mail-Adresse? Jetzt ändern',
