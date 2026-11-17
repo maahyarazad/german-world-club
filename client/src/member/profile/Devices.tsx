@@ -8,7 +8,8 @@ import Callout from '../../components/ui/Callout'
 import { useLocale, useTranslations } from '../../i18n/index'
 
 /**
- * Where you are signed in (feature 026, US2 and US3).
+ * The member's active sessions, with a terminate action on each (feature 026,
+ * US2 and US3). Rendered inside the profile's Settings page (feature 027).
  *
  * The server owns every rule here — which devices exist, which one is this one,
  * and what ending one does to the next sign-in. This screen renders the list and
@@ -16,7 +17,7 @@ import { useLocale, useTranslations } from '../../i18n/index'
  * (CLAUDE.md): the only state kept is what changes behaviour — whether the list
  * could not load, and which row is waiting for its confirmation.
  */
-export function Devices() {
+export function ActiveSessions() {
   const t = useTranslations()
   const { locale } = useLocale()
   const { clear } = useCapabilities()
@@ -58,11 +59,7 @@ export function Devices() {
   if (!devices) return null
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-      <div>
-        <h1 className="text-[20px] font-semibold text-text">{t.memberDevices.title}</h1>
-        <p className="mt-1 text-[14px] text-text-muted">{t.memberDevices.intro}</p>
-      </div>
+    <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-3">
         {devices.map((device) => (
           <li key={device.id} className="flex items-center justify-between gap-4 rounded-card border border-hairline bg-surface p-4">
@@ -94,6 +91,11 @@ export function Devices() {
       </ul>
     </div>
   )
+}
+
+/** The 026 URL (`profil/geraete`) now redirects to Settings; this stays as the list's default export. */
+export function Devices() {
+  return <ActiveSessions />
 }
 
 export default Devices

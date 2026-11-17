@@ -45,10 +45,15 @@ export const clearSession = () => SecureStore.deleteItemAsync(KEYS.session);
 /**
  * This installation's device id, minted once and kept.
  *
- * The server binds approval to it (§6.1, §12.6): approving an application
- * approves this device, and a new device is simply one with no approval. So it
- * must be stable across launches and must not be derived from anything that
- * identifies the person — a random UUID is exactly that.
+ * The server keys a member's device on it (feature 026): each install is one
+ * entry in their device list, a phone it has proven with an SMS code is *known*,
+ * and ending it from the list forgets it. So it must be stable across launches
+ * and must not be derived from anything that identifies the person — a random
+ * UUID is exactly that.
+ *
+ * Known limit: SecureStore's default keychain class can be restored from an
+ * encrypted iOS backup, so a phone restored from another phone's backup carries
+ * the same id and the server sees one device, not two.
  */
 export async function deviceId(): Promise<string> {
   const existing = await SecureStore.getItemAsync(KEYS.deviceId);

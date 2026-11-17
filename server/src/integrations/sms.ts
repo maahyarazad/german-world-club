@@ -45,22 +45,40 @@ export function createSmsClient({
   apiSecret,
   origin,
   sdkFactory = smsglobal as unknown as SmsGlobalFactory,
+  development,
 }: {
   apiKey?: string;
   apiSecret?: string;
   origin?: string;
   /** The real SDK by default; a test passes a fake so nothing leaves the machine. */
   sdkFactory?: SmsGlobalFactory;
+  /**
+   * Development only (feature 027, `SMS_DEV_LOG`). The SMS is still SENT, and the
+   * code is also written through `write`, so sign-in never depends on the
+   * provider or on the destination being a real number (a seeded `@demo.invalid`
+   * member has a fake one, which SMSGlobal refuses): a refusal is written and
+   * swallowed, and the code printed here still works. The line goes through
+   * `write` rather than the structured logger because the logger redacts
+   * one-time codes centrally and ships to wherever logs go, and this line exists
+   * precisely so a developer can read the code. Constitution 4.0.0 records that
+   * exception; `config/env.ts` refuses the flag in production and
+   * `decorators/integrations.ts` passes this only when NODE_ENV is development.
+   * Unset everywhere else, and then a rejection propagates as it always did.
+   */
+  development?: { write: (line: string) => void };
 } = {}) {
   // Created on first use: the SDK throws when constructed without
   // credentials, and a server with no SMSGlobal account must still boot.
   let instance: SmsGlobalSdk | null = null;
   const sdk = () => (instance ??= sdkFactory(apiKey!, apiSecret!));
+  const hasCredentials = Boolean(apiKey && apiSecret);
 
   return {
     name: "sms",
     provider: "smsglobal",
-    configured: Boolean(apiKey && apiSecret),
+    // In development the gateway must reach sendCode even without credentials, so
+    // the terminal line can be printed; everywhere else `configured` means credentials.
+    configured: hasCredentials || Boolean(development),
 
     /**
      * The OTP message itself. Deliberately terse and free of anything that
@@ -77,12 +95,31 @@ export function createSmsClient({
      * 503 "try again later".
      */
     async sendCode({ mobile, code }: { mobile: string; code: string }) {
-      const response = await sdk().sms.send({
-        origin: origin || DEFAULT_ORIGIN,
-        destination: normaliseDestination(mobile),
-        message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
-      });
-      return { delivered: true, response: response?.data ?? null };
+      const destination = normaliseDestination(mobile);
+      const masked = `${"*".repeat(Math.max(0, destination.length - 4))}${destination.slice(-4)}`;
+      if (development) {
+        development.write(`SMS (development) code ${code} for ${masked}`);
+        if (!hasCredentials) {
+          development.write(`SMS (development): SMSGlobal is not configured, so only the terminal has the code for ${masked}`);
+          return { delivered: false, response: null };
+        }
+      }
+      try {
+        const response = await sdk().sms.send({
+          origin: origin || DEFAULT_ORIGIN,
+          destination,
+          message: `Your German World Club verification code is: ${code}. It expires in 5 minutes.`,
+        });
+        return { delivered: true, response: response?.data ?? null };
+      } catch (err) {
+        if (!development) throw err;
+        const failure = err as { statusCode?: number; data?: unknown; message?: string };
+        development.write(
+          `SMS (development): SMSGlobal refused ${masked} (status ${failure?.statusCode ?? "none"}): ` +
+            JSON.stringify(failure?.data ?? failure?.message ?? String(err)),
+        );
+        return { delivered: false, response: null };
+      }
     },
   };
 }

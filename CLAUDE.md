@@ -297,7 +297,9 @@ a new phone gets the code. Four rules that look optional and are not:
   the same change** (043 and 044 both exist because it was not).
 
 `device_approvals` is still written when an application is decided, but nothing
-reads it at sign-in or per request.
+reads it at sign-in or per request. A member manages their sessions at
+`/konsole/mitglied/profil/einstellungen` (Settings, next to Edit profile in the
+web profile; feature 027). The 026 address `profil/geraete` redirects there.
 
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
@@ -317,7 +319,16 @@ a `sms-destination-not-allowed` 422. Registration asks `app.smsDestination()`
 before writing any row. The server still issues, hashes and verifies its own
 codes, and verification is deliberately **not** gated, so a code sent before
 the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
-from another project's build; do not hand-edit it.
+from another project's build; do not hand-edit it. **In development the code is also printed in the
+terminal, and the real SMS is still sent** (feature 027, `SMS_DEV_LOG`, on by
+default when `NODE_ENV=development`, `false` turns it off): a provider refusal —
+a seeded member's number is fake — is printed and no longer fails sign-in.
+`config/env.ts` refuses to boot in production with it set to true. It sits behind
+`app.sendOtp`, so the country policy still applies, and it writes a plain console
+line rather than the structured logger (which redacts codes centrally) because
+reading the code is its whole purpose; constitution 4.0.0 records that exception.
+A laptop `.env` must **not** point `DATABASE_URL` at the production database:
+sign-in there texts real members' numbers through the real account.
 
 **Mail goes through the outbox, except the email code.** `app.enqueueMail()`
 writes `mail_outbox`; the `mail.deliver` job sends with backoff and clears the
