@@ -1,8 +1,6 @@
 name: Deploy GWC Server
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # Two pushes in a row must not interleave their uploads on the host.
