@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_TTL_SECONDS } from '@gwc/contracts/auth'
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -156,9 +157,12 @@ describe.skipIf(!hasDatabase)('the landing page for whoever is looking', () => {
 
     it('treats an expired token as anonymous', async () => {
       const arian = await person('Arian Geissler')
-      // Minted the app's own way, an hour in the past: well beyond its TTL.
+      // Minted the app's own way, an hour past its lifetime. Derived from the TTL
+      // rather than a fixed "an hour ago": the lifetime is 24 h now (feature 029),
+      // and a token an hour old is still valid.
       const { token: expired } = app.mintAccessToken({
-        accountId: arian.id, sessionId: arian.headers.sessionId, audience: 'member', now: Date.now() - 3_600_000,
+        accountId: arian.id, sessionId: arian.headers.sessionId, audience: 'member',
+        now: Date.now() - (ACCESS_TOKEN_TTL_SECONDS + 3600) * 1000,
       })
       await anonymous(`gwc_at=${expired}`)
     })

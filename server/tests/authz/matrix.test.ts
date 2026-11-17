@@ -181,6 +181,9 @@ const ROUTE_CLASSES = [
 
   // --- Member events (009) ---------------------------------------------------
   // Under /member, never /events: that prefix is the public, indexed page.
+  { name: 'list administrators', url: '/admin/admins', method: 'GET', audience: 'staff', module: 'admins', flag: 'read' },
+  { name: 'update administrator', url: '/admin/admins/:id', probe: `/admin/admins/${randomUUID()}`, method: 'PATCH', audience: 'staff', module: 'admins', flag: 'edit' },
+  { name: 'admin dashboard figures', url: '/admin/dashboard/figures', method: 'GET', audience: 'staff', module: 'admins', flag: 'read' },
   { name: 'own devices', url: '/member/devices', method: 'GET', audience: 'member' },
   { name: 'end own device', url: '/member/devices/:id', probe: `/member/devices/${randomUUID()}`, method: 'DELETE', audience: 'member' },
   { name: 'member events', url: '/member/events', method: 'GET', audience: 'member' },

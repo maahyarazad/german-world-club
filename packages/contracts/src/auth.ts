@@ -180,7 +180,12 @@ export const accessTokenClaimsSchema = z
   })
   .strict()
 
-export const ACCESS_TOKEN_TTL_SECONDS = 600
+/**
+ * 24 hours (was 600 s). The denylist's entry lifetime is derived from this in
+ * `modules/auth/sessions.ts`, so a revoked session's token can never outlive its
+ * denylist entry; change it here and nowhere else.
+ */
+export const ACCESS_TOKEN_TTL_SECONDS = 86_400
 export const REFRESH_TTL_DAYS = Object.freeze({ web: 30, mobile: 90 })
 export const OTP_TTL_SECONDS = 300
 export const OTP_MAX_ATTEMPTS = 5

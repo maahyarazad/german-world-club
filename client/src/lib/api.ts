@@ -1,6 +1,7 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
 import type { ServerFaultListQuery, ServerFaultListResponse, ServerFaultLookupResponse } from '@gwc/contracts/server-faults'
 import type { ProblemResponse } from '@gwc/contracts/errors'
+import type { AdminAccount, AdminListResponse, DashboardFiguresResponse, UpdateAdminRequest } from '@gwc/contracts/admin'
 import type {
   AudienceKind, CampaignRequestInput, Notification, NotificationKind, NotificationList, PushAudience,
   TestRecipientAdd, TestRecipientList,
@@ -153,11 +154,89 @@ export type RequestOptions = {
   body?: unknown
   signal?: AbortSignal
   headers?: Record<string, string>
+  /** Internal: set only by `refreshSession`, so refreshing never recurses into itself. */
+  noRefresh?: boolean
+}
+
+/**
+ * Renewing the session from the refresh cookie (feature 029).
+ *
+ * The access cookie lives for `ACCESS_TOKEN_TTL_SECONDS` and the browser then
+ * drops it, so the next request answers 401 `unauthenticated`. The refresh
+ * cookie (30 days, path `/auth/refresh`, httpOnly) is what renews it: one
+ * `POST /auth/refresh` rotates both, and the request is sent once more. The
+ * mobile app has always done this; the console never did, so every expiry was a
+ * sign-in screen.
+ *
+ * Three rules, each there because the alternative is a signed-out user:
+ *
+ *  - **One refresh at a time.** A refresh token is single-use and a replay is
+ *    treated as theft: the server revokes the whole session. A page that fires
+ *    three requests at once must therefore share ONE refresh, never three.
+ *  - **Across tabs too.** Tabs share the cookie jar, so two tabs refreshing with
+ *    the same old cookie at the same moment is a replay. The Web Locks API makes
+ *    them take turns; the second then finds the new cookie already in place. A
+ *    timestamp in localStorage lets it skip a refresh another tab did a moment
+ *    ago. Without Web Locks (old browsers) only the in-tab guard applies.
+ *  - **Only for `unauthenticated`.** A revoked session (`session-revoked`), a
+ *    wrong password, and every other 401 mean "sign in", not "renew".
+ */
+const REFRESHED_AT_KEY = 'gwc.refreshedAt'
+const RECENT_REFRESH_MS = 5_000
+let refreshInFlight: Promise<boolean> | null = null
+
+const recentlyRefreshed = (): boolean => {
+  try {
+    const at = Number(localStorage.getItem(REFRESHED_AT_KEY))
+    return Number.isFinite(at) && at > 0 && Date.now() - at < RECENT_REFRESH_MS
+  } catch {
+    return false
+  }
+}
+
+const noteRefreshed = (): void => {
+  try {
+    localStorage.setItem(REFRESHED_AT_KEY, String(Date.now()))
+  } catch {
+    // Private windows and blocked storage: the lock alone still serialises tabs.
+  }
+}
+
+async function runRefresh(): Promise<boolean> {
+  // Another tab renewed the session a moment ago; the cookies are shared, so
+  // retrying with them is enough and refreshing again would only rotate twice.
+  if (recentlyRefreshed()) return true
+  try {
+    await request('/auth/refresh', { method: 'POST', body: {}, noRefresh: true })
+    noteRefreshed()
+    return true
+  } catch (error) {
+    // Refresh cookie missing, expired, or the session ended: the caller's
+    // original 401 stands and the console asks for a sign-in.
+    if (!(error instanceof ApiError)) console.error('api.refreshSession', error)
+    return false
+  }
+}
+
+/** Renew the session once, however many callers ask. True when the cookies were renewed. */
+export function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+    refreshInFlight = (locks ? locks.request('gwc-refresh-session', runRefresh) : runRefresh())
+      .finally(() => { refreshInFlight = null })
+  }
+  return refreshInFlight
+}
+
+/** Is this the 401 an expired access token produces — the only one a refresh can fix? */
+async function isExpiredAccess(response: Response): Promise<boolean> {
+  if (response.status !== 401) return false
+  return (await readProblem(response.clone()))?.type === PROBLEMS.UNAUTHENTICATED.type
 }
 
 export async function request(
   path: string,
-  { method = 'GET', body, signal, headers = {} }: RequestOptions = {},
+  { method = 'GET', body, signal, headers = {}, noRefresh = false }: RequestOptions = {},
 ): Promise<unknown> {
   const unsafe = UNSAFE.has(method)
   // Multipart goes as-is, with no content-type of our own: the browser writes
@@ -202,6 +281,12 @@ export async function request(
       await fetchCsrfToken()
       response = await send()
     }
+  }
+
+  // One renewal and one retry, and never for a call that is itself part of
+  // signing in or out: a refusal there means exactly what it says.
+  if (!noRefresh && (await isExpiredAccess(response)) && (await refreshSession())) {
+    response = await send()
   }
 
   if (!response.ok) throw new ApiError(await readProblem(response), response)
@@ -296,6 +381,11 @@ export async function upload(path: string, form: FormData, { onProgress, signal 
     }
   }
 
+  // An upload can be the first call after the access token expired (a long form,
+  // a picture chosen after lunch). The multipart body is re-sendable, so renew
+  // the session once and send it again, as request() does.
+  if ((await isExpiredAccess(response)) && (await refreshSession())) response = await send()
+
   if (!response.ok) throw new ApiError(await readProblem(response), response)
   if (response.status === 204) return null
   const contentType = response.headers.get('content-type') ?? ''
@@ -343,4 +433,15 @@ export const serverFaultsApi = {
   },
   byRequest: (requestId: string) =>
     get(`/admin/server-faults/by-request/${encodeURIComponent(requestId)}`) as Promise<ServerFaultLookupResponse>,
+}
+
+/**
+ * The superadmin dashboard figures and the administrator list (feature 028),
+ * typed from `@gwc/contracts/admin`. Which change is allowed is decided by the
+ * server and arrives as `constraints`; nothing here re-derives it.
+ */
+export const adminApi = {
+  figures: () => get('/admin/dashboard/figures') as Promise<DashboardFiguresResponse>,
+  list: () => get('/admin/admins') as Promise<AdminListResponse>,
+  update: (id: string, body: UpdateAdminRequest) => patch(`/admin/admins/${id}`, body) as Promise<AdminAccount>,
 }

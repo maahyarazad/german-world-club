@@ -365,10 +365,45 @@ export const en = {
     yes: 'Yes',
     no: 'No',
     yourAreas: 'Your areas',
+    figuresFailed: 'The club figures could not be loaded. Please try again later.',
+    figureUnavailable: 'Unavailable',
+    figures: {
+      activeMembers: 'Active members',
+      waitingApplications: 'Applications waiting',
+      activeMerchants: 'Active merchants',
+      activePartners: 'Active partners',
+      liveListings: 'Live listings',
+      listingRequests: 'Requests about listings (30 days)',
+      openReports: 'Open reports',
+      upcomingEvents: 'Upcoming events',
+      activeStaff: 'Active staff',
+    },
     governanceTitle: 'Governance is part of the product',
     governanceBody:
       'GWC must not merely provide technology. The central operating layer protects the brand from '
       + 'spam, pay-to-play, poor merchants and unreliable experts.',
+  },
+
+  adminRoles: {
+    title: 'Roles & permissions',
+    subtitle: 'Every staff account, its role, and what it may do in each area',
+    roles: { superadmin: 'Superadmin', administrator: 'Administrator', staff: 'Staff' },
+    active: 'Active',
+    inactive: 'Inactive',
+    you: 'You',
+    noGrants: 'No permissions in any area.',
+    empty: 'There are no staff accounts to show.',
+    roleLabel: 'Role',
+    save: 'Save changes',
+    addArea: 'Add an area',
+    superadminBypass: 'A superadmin bypasses the permissions of every area; the ones below are kept but not applied.',
+    changedElsewhere: 'This account was changed by someone else; the current state is shown.',
+    blockers: {
+      self: 'You cannot make this change to your own account.',
+      'last-superadmin': 'At least one active superadmin must remain, so this account cannot be demoted or deactivated.',
+      'superadmin-required': 'Only a superadmin can make this change.',
+    },
+    loadFailed: 'The staff accounts could not be loaded. Please try again later.',
   },
 
   organisationPortal: {
