@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+import PageHeader from '../../components/ui/PageHeader'
 import { useTranslations } from '../../i18n/index'
 import { ActiveSessions } from './Devices'
 
@@ -13,7 +15,7 @@ export function Settings() {
   const t = useTranslations()
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-      <h1 className="text-[22px] font-semibold text-text">{t.memberSettings.title}</h1>
+      <PageHeader title={t.memberSettings.title} actions={<Link to="/konsole/mitglied/profil" className="text-[13px] text-navy">← {t.memberThreads.back}</Link>} />
       <section aria-labelledby="settings-sessions" className="flex flex-col gap-3">
         <div>
           <h2 id="settings-sessions" className="text-[18px] font-semibold text-text">{t.memberSettings.sessionsHeading}</h2>

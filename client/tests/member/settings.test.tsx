@@ -76,6 +76,9 @@ describe('Settings page', () => {
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied/profil/einstellungen' })
 
     expect(await screen.findByRole('heading', { name: t.memberSettings.title })).toBeInTheDocument()
+    // Same header as Edit profile: the gold-ruled PageHeader and a back link to the profile.
+    expect(document.querySelector('header.border-accent')).not.toBeNull()
+    expect(screen.getByRole('link', { name: `← ${t.memberThreads.back}` })).toHaveAttribute('href', '/konsole/mitglied/profil')
     expect(screen.getByRole('heading', { name: t.memberSettings.sessionsHeading })).toBeInTheDocument()
     expect(await screen.findByText('Chrome on macOS')).toBeInTheDocument()
     expect(screen.getByText('iPhone 15')).toBeInTheDocument()
@@ -124,5 +127,18 @@ describe('Settings page', () => {
     mockCapabilityFetch(memberSnapshot(), { extraRoutes: routes })
     renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied/profil/geraete' })
     expect(await screen.findByRole('heading', { name: t.memberSettings.title })).toBeInTheDocument()
+  })
+})
+
+describe('Blocked & muted page', () => {
+  it('has the Edit profile header, with a back link to the profile', async () => {
+    mockCapabilityFetch(memberSnapshot(), {
+      extraRoutes: { '/threads/blocks': json({ items: [] }), '/threads/mutes': json({ items: [] }) },
+    })
+    renderConsole(<ConsoleRoutes />, { route: '/konsole/mitglied/profil/privatsphaere' })
+
+    expect(await screen.findByRole('heading', { name: t.memberProfile.privacy, level: 1 })).toBeInTheDocument()
+    expect(document.querySelector('header.border-accent')).not.toBeNull()
+    expect(screen.getByRole('link', { name: `← ${t.memberThreads.back}` })).toHaveAttribute('href', '/konsole/mitglied/profil')
   })
 })
