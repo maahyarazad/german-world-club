@@ -11,6 +11,7 @@ import PageHeader from '../components/ui/PageHeader'
 import StatusPill from '../components/ui/StatusPill'
 import { KpiRow, KpiTile } from '../components/ui/KpiTile'
 import { Modal } from './threads/Modal'
+import PageLoader from '../components/ui/PageLoader'
 
 /**
  * Refer & earn (feature 018, contracts/ui-contract.md).
@@ -113,7 +114,7 @@ export function Referrals({ basePath }: { basePath: string }) {
         <p className="text-[14px] text-text-muted">{t.referrals.replaceConfirm}</p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirming(false)}>{t.referrals.cancel}</Button>
-          <Button disabled={replacing} onClick={() => void replace()}>{t.referrals.replaceAction}</Button>
+          <Button loading={replacing} onClick={() => void replace()}>{t.referrals.replaceAction}</Button>
         </div>
       </Modal>
     </div>
@@ -188,6 +189,7 @@ export function ReferralList({ url }: { url: string }) {
   const list = usePagedList<Referral>(url)
   return (
     <Card title={t.referrals.yourReferrals}>
+      {!list.loaded && !list.failed && <PageLoader size="md" className="min-h-0 py-6" />}
       {list.loaded && !list.failed && list.items.length === 0 && (
         <p className="text-[14px] text-text-muted">{t.referrals.emptyReferrals}</p>
       )}
@@ -230,6 +232,7 @@ export function XpHistory({ url, action, refreshKey = 0 }: {
 
   return (
     <Card title={t.referrals.xpHistory}>
+      {!list.loaded && !list.failed && <PageLoader size="md" className="min-h-0 py-6" />}
       {list.loaded && !list.failed && list.items.length === 0 && (
         <p className="text-[14px] text-text-muted">{t.referrals.emptyXp}</p>
       )}

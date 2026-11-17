@@ -87,7 +87,7 @@ export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
       ) : (
         <>
           <TextField label={copy.cityPlaceholder} value={city} onChangeText={setCity} autoFocus />
-          <Button label={copy.continue} disabled={busy || !city.trim()} onPress={() => onDone({ country, city: city.trim() })} />
+          <Button label={copy.continue} loading={busy} disabled={!city.trim()} onPress={() => onDone({ country, city: city.trim() })} />
         </>
       )}
       {backButton}

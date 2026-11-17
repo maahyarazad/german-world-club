@@ -1,11 +1,14 @@
 import type { ReactNode, Ref } from 'react';
 import {
-    ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+    KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
     type TextInputProps, type ViewStyle, type StyleProp
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { memo, useCallback, useMemo } from 'react';
 import { ThemedText } from '@/components/themed-text';
+import { ScreenLoader } from '@/components/screen-loader';
+import { Spinner } from '@/components/spinner';
+import { useAction } from '@/hooks/use-action';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -72,9 +75,27 @@ export function Button({
             <Text style={[styles.buttonLabel, { color: foreground }, loading && styles.hidden]}>
                 {label}
             </Text>
-            {loading && <ActivityIndicator color={foreground} style={StyleSheet.absoluteFill} />}
+            {loading && (
+                <View style={[StyleSheet.absoluteFill, styles.spinnerOverlay]}>
+                    <Spinner size="xs" color={foreground} />
+                </View>
+            )}
         </Pressable>
     );
+}
+
+/**
+ * A button whose press sends a request (feature 030): it shows the loader and
+ * ignores further presses until the request ends. Failures are logged under
+ * `name` and swallowed (`useAction`). A screen that already has a `busy` state
+ * passes `loading` to `Button` directly.
+ */
+export function AsyncButton({ name, onAction, ...props }: Omit<ButtonProps, 'onPress' | 'loading'> & {
+    name: string;
+    onAction: () => Promise<unknown>;
+}) {
+    const [run, pending] = useAction(name, onAction);
+    return <Button {...props} loading={pending} onPress={() => void run()} />;
 }
 
 // add to your StyleSheet
@@ -237,12 +258,18 @@ export function Centered({ children }: { children: ReactNode }) {
     return <View style={[styles.centered, { backgroundColor: theme.background }]}>{children}</View>;
 }
 
+/**
+ * A screen waiting for its data (feature 030): the club's loader, large and
+ * centred, after a short grace period so a fast response shows no flicker. Many
+ * screens already render this, so changing it here changes them all.
+ */
 export function Loading() {
-    return <Centered><ActivityIndicator /></Centered>;
+    return <Centered><ScreenLoader flex={false} /></Centered>;
 }
 
 export const styles = StyleSheet.create({
     hidden: { opacity: 0 },
+    spinnerOverlay: { alignItems: 'center', justifyContent: 'center' },
     form: {
         padding: Spacing.four,
         gap: Spacing.three,

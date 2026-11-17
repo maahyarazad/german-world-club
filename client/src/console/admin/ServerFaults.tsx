@@ -11,6 +11,9 @@ import Callout from '../../components/ui/Callout'
 import Field from '../../components/ui/Field'
 import RequireGrant from '../RequireGrant'
 import { useLocale, useTranslations } from '../../i18n/index'
+import PageLoader from '../../components/ui/PageLoader'
+import AsyncButton from '../../components/ui/AsyncButton'
+import { useAction } from '../../lib/useAction'
 
 /**
  * The Fehlerprotokoll (feature 012, US3, contracts/server-faults-api.md), on
@@ -49,6 +52,7 @@ function ServerFaultsPage() {
   const { locale } = useLocale()
   const [filter, setFilter] = useState<Filter>({})
   const [items, setItems] = useState<ServerFaultSummary[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
   const [suppressed, setSuppressed] = useState(0)
   const [lookup, setLookup] = useState('')
@@ -63,10 +67,12 @@ function ServerFaultsPage() {
       setSuppressed(page.suppressedLast24h)
     } catch (err) {
       console.error('ServerFaultsPage.load', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setLoaded(true)
     }
   }, [])
 
-  useEffect(() => { void load(filter, false) }, [filter, load])
+  useEffect(() => { setLoaded(false); void load(filter, false) }, [filter, load])
 
   const open = useCallback(async (requestId: string) => {
     setLookupError(null)
@@ -78,11 +84,13 @@ function ServerFaultsPage() {
     }
   }, [])
 
+  const [openNow, opening] = useAction('ServerFaultsPage.lookup', open)
+
   const onLookup = (event: FormEvent) => {
     event.preventDefault()
     const value = lookup.trim()
     setLookupError(null)
-    if (isRequestId(value)) void open(value)
+    if (isRequestId(value)) void openNow(value)
     else if (isClientRequestId(value)) { setDetail(null); setFilter({ clientRequestId: value }) }
     else setLookupError(t.serverFaults.invalidId)
   }
@@ -108,7 +116,7 @@ function ServerFaultsPage() {
               autoComplete="off"
             />
           </div>
-          <Button type="submit" disabled={!lookup.trim()}>{t.serverFaults.lookupButton}</Button>
+          <Button type="submit" loading={opening} disabled={!lookup.trim()}>{t.serverFaults.lookupButton}</Button>
         </form>
       </Card>
 
@@ -128,7 +136,9 @@ function ServerFaultsPage() {
       )}
 
       <Card>
-        {items.length === 0 ? (
+        {!loaded ? (
+          <PageLoader size="md" className="min-h-0 py-6" />
+        ) : items.length === 0 ? (
           <p className="text-sm text-text-muted">{t.serverFaults.empty}</p>
         ) : (
           <table className="w-full text-left text-sm">
@@ -153,9 +163,9 @@ function ServerFaultsPage() {
                     <div className="text-text-muted">{fault.message}</div>
                   </td>
                   <td>
-                    <Button variant="quiet" onClick={() => void open(fault.requestId)}>
+                    <AsyncButton name="ServerFaultsPage.open" variant="quiet" onAction={() => open(fault.requestId)}>
                       <code>{fault.requestId}</code>
-                    </Button>
+                    </AsyncButton>
                   </td>
                   <td>
                     <Button
@@ -174,9 +184,9 @@ function ServerFaultsPage() {
         )}
         {cursor && (
           <div className="mt-4">
-            <Button variant="secondary" onClick={() => void load({ ...filter, before: cursor }, true)}>
+            <AsyncButton name="ServerFaultsPage.older" variant="secondary" onAction={() => load({ ...filter, before: cursor }, true)}>
               {t.serverFaults.loadOlder}
-            </Button>
+            </AsyncButton>
           </div>
         )}
       </Card>

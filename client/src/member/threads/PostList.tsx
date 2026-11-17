@@ -5,6 +5,7 @@ import Callout from '../../components/ui/Callout'
 import { useTranslations } from '../../i18n/index'
 import PostCard from './PostCard'
 import Composer from './Composer'
+import PageLoader from '../../components/ui/PageLoader'
 
 type Entry = { post: ThreadPost; repostedBy?: ThreadAuthor | null; key: string }
 
@@ -37,6 +38,7 @@ export function PostList({ entries, loading, failed, hasMore, onMore, onRetry, e
         </Callout>
       )}
       {!failed && !loading && entries.length === 0 && <p className="py-8 text-center text-[13px] text-text-muted">{empty}</p>}
+      {loading && entries.length === 0 && !failed && <PageLoader size="md" className="min-h-0 py-6" />}
       {entries.map((entry) => (
         <PostCard
           key={entry.key}
@@ -51,7 +53,7 @@ export function PostList({ entries, loading, failed, hasMore, onMore, onRetry, e
       ))}
       {hasMore && (
         <div className="flex justify-center py-4">
-          <Button variant="secondary" disabled={loading} onClick={onMore}>{t.memberThreads.loadMore}</Button>
+          <Button variant="secondary" loading={loading} onClick={onMore}>{t.memberThreads.loadMore}</Button>
         </div>
       )}
       <Composer

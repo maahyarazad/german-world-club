@@ -16,6 +16,8 @@ import Field, { FormMessage } from '../components/ui/Field'
 import Profiling from './Profiling.tsx'
 import { describeProblem } from '../lib/problems'
 import { useLocale, useTranslations } from '../i18n/index'
+import PageLoader from '../components/ui/PageLoader'
+import AsyncButton from '../components/ui/AsyncButton'
 
 /**
  * An applicant with a session: steps 4 and 5 of §6.1.
@@ -86,7 +88,7 @@ export function Application() {
   if (!status) {
     return (
       <AuthCard title={copy.waitingTitle}>
-        <p className="mt-2 text-[13px] text-text-muted">{t.console.loading}</p>
+        <PageLoader size="md" className="min-h-0 py-6" />
       </AuthCard>
     )
   }
@@ -125,7 +127,7 @@ export function Application() {
       {/* No polling: approval is a human decision that takes hours, and the
           applicant is emailed when it happens. */}
       <div className="mt-6 flex flex-col gap-2">
-        <Button onClick={check} disabled={busy}>{copy.check}</Button>
+        <Button onClick={check} loading={busy}>{copy.check}</Button>
         {signOutButton}
       </div>
     </AuthCard>
@@ -242,7 +244,7 @@ function VerifyEmail({
             autoFocus
           />
           {requestError && <FormMessage>{requestError}</FormMessage>}
-          <Button type="submit" disabled={busy}>{copy.changeEmailSave}</Button>
+          <Button type="submit" loading={busy}>{copy.changeEmailSave}</Button>
           <Button variant="quiet" onClick={() => { setEditing(false); setEmailError(null); setRequestError(null) }}>{copy.changeDetailsCancel}</Button>
         </form>
       </AuthCard>
@@ -268,8 +270,8 @@ function VerifyEmail({
           autoFocus
         />
         {requestError && <FormMessage>{requestError}</FormMessage>}
-        <Button type="submit" disabled={busy || !sent}>{busy ? copy.verifying : copy.verify}</Button>
-        <Button variant="quiet" onClick={send}>{copy.resend}</Button>
+        <Button type="submit" loading={busy} disabled={!sent}>{copy.verify}</Button>
+        <AsyncButton name="Application.resend" variant="quiet" onAction={send}>{copy.resend}</AsyncButton>
         <Button variant="quiet" onClick={() => { setEditing(true); setRequestError(null) }}>{copy.changeEmail}</Button>
         {signOutButton}
       </form>

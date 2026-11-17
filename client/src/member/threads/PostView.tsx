@@ -10,6 +10,7 @@ import PostList from './PostList'
 import Avatar from './Avatar'
 import AuthorLine from './AuthorLine'
 import { usePaged } from './usePaged'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * A post in context (US2): what it answers, the post, and its direct replies,
@@ -35,7 +36,7 @@ export function PostView() {
   useEffect(() => { void load() }, [load])
 
   if (missing) return <Callout variant="neutral" title={t.memberThreads.unavailable}><Link to="/konsole/mitglied/threads" className="text-navy">{t.memberThreads.back}</Link></Callout>
-  if (!view) return null
+  if (!view) return <PageLoader />
 
   const update = (post: ThreadPost) => setView((v) => v && ({
     ...v,

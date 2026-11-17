@@ -31,6 +31,7 @@ export default function EventScreen() {
   const [kidsCharged, setKidsCharged] = useState(0);
   const [payment, setPayment] = useState<MobilePaymentMethod>('door');
   const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -68,11 +69,14 @@ export default function EventScreen() {
       text: t.events.cancelRegistration,
       style: 'destructive',
       onPress: async () => {
+        setCancelling(true);
         try {
           await eventsApi.cancel(event.id);
           await load();
         } catch (e) {
           console.error('EventScreen.cancel', e instanceof ApiError ? e.problem : e);
+        } finally {
+          setCancelling(false);
         }
       },
     },
@@ -115,7 +119,7 @@ export default function EventScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {t.events.payment}: {t.events.paymentMethods[mine.paymentMethod as MobilePaymentMethod] ?? mine.paymentMethod}
           </ThemedText>
-          {mine.paid ? null : <Button label={t.events.cancelRegistration} variant="danger" onPress={cancel} />}
+          {mine.paid ? null : <Button label={t.events.cancelRegistration} variant="danger" onPress={cancel} loading={cancelling} />}
         </Card>
       ) : open && event.seatsLeft > 0 ? (
         <View style={{ gap: Spacing.three }}>

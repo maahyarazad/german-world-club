@@ -8,6 +8,7 @@ import type { ReferralSummary } from '@gwc/contracts/referrals';
 
 import { ApiError } from '@/api/client';
 import { referralsApi } from '@/api/endpoints';
+import { ScreenLoader } from '@/components/screen-loader';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, FormScreen, Loading } from '@/components/ui';
 import { usePaged } from '@/hooks/use-paged';
@@ -133,6 +134,7 @@ export function ReferralsView({ prefix }: { prefix: string }) {
       ) : null}
 
       <ThemedText type="subtitle">{t.referrals.yourReferrals}</ThemedText>
+      {referrals.loading && referrals.items.length === 0 ? <ScreenLoader size="md" flex={false} /> : null}
       {!referrals.loading && referrals.items.length === 0 ? (
         <ThemedText themeColor="textSecondary">{t.referrals.emptyReferrals}</ThemedText>
       ) : null}
@@ -152,6 +154,7 @@ export function ReferralsView({ prefix }: { prefix: string }) {
       ) : null}
 
       <ThemedText type="subtitle">{t.referrals.xpHistory}</ThemedText>
+      {history.loading && history.items.length === 0 ? <ScreenLoader size="md" flex={false} /> : null}
       {!history.loading && history.items.length === 0 ? (
         <ThemedText themeColor="textSecondary">{t.referrals.emptyXp}</ThemedText>
       ) : null}

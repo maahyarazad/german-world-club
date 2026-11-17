@@ -38,6 +38,7 @@ import VerifyMobile from '../onboarding/VerifyMobile'
 import Application from '../onboarding/Application'
 import EmptyState from './EmptyState'
 import Button from '../components/ui/Button'
+import PageLoader from '../components/ui/PageLoader'
 
 /**
  * The console's route table, separated from the mount.
@@ -90,7 +91,7 @@ function PasswordResetRoute() {
 function Elsewhere() {
   const { status, snapshot } = useCapabilities()
 
-  if (status === STATUS.LOADING) return null
+  if (status === STATUS.LOADING) return <PageLoader className="min-h-svh bg-ground" />
   if (status === STATUS.READY && snapshot) {
     return <Navigate to={homeFor(snapshot.kind)} replace />
   }
@@ -109,7 +110,7 @@ const APPLICATION_PATH = '/konsole/bewerbung'
  */
 function ApplicantOnly({ children }: { children?: ReactNode }) {
   const { status, snapshot } = useCapabilities()
-  if (status === STATUS.LOADING) return null
+  if (status === STATUS.LOADING) return <PageLoader className="min-h-svh bg-ground" />
   if (status === STATUS.APPLICANT) return children
   if (status === STATUS.READY && snapshot) return <Navigate to={homeFor(snapshot.kind)} replace />
   return <Navigate to="/konsole/anmelden" replace />
@@ -127,11 +128,7 @@ function Authenticated({ children }: { children?: ReactNode }) {
   const { status, refresh } = useCapabilities()
 
   if (status === STATUS.LOADING) {
-    return (
-      <p className="flex min-h-svh items-center justify-center bg-ground font-sans text-[13px] text-text-muted">
-        {t.console.loading}
-      </p>
-    )
+    return <PageLoader className="min-h-svh bg-ground" />
   }
 
   if (status === STATUS.ANONYMOUS) return <Navigate to="/konsole/anmelden" replace />

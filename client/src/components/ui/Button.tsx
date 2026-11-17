@@ -11,6 +11,7 @@
  * invites the click it is warning about.
  */
 import { memo } from 'react'
+import { Spinner } from './Spinner'
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 
 const VARIANTS = {
@@ -26,6 +27,12 @@ export type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> 
   variant?: ButtonVariant
   type?: 'button' | 'submit' | 'reset'
   children?: ReactNode
+  /**
+   * A request is in flight (feature 030): the button is disabled, announces itself
+   * busy and shows the loader over its label. The label stays in the layout
+   * (invisible), so the button does not change size while it waits.
+   */
+  loading?: boolean
   /** React 19 passes `ref` as a prop; it reaches the <button> through `rest`. */
   ref?: Ref<HTMLButtonElement>
 }
@@ -34,6 +41,7 @@ export const Button = memo(({
   variant = 'primary',
   type = 'button',
   disabled = false,
+  loading = false,
   children,
   className = '',
   ...rest
@@ -41,13 +49,21 @@ export const Button = memo(({
   return (
     <button
       type={type}
-      disabled={disabled}
-      className={`inline-flex items-center justify-center rounded-card px-4 py-2.5 text-[13px] font-semibold
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={`relative inline-flex items-center justify-center rounded-card px-4 py-2.5 text-[13px] font-semibold
         transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy
         disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant] ?? VARIANTS.primary} ${className}`}
       {...rest}
     >
-      {children}
+      {loading ? (
+        <>
+          <span className="invisible inline-flex items-center justify-center">{children}</span>
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Spinner size="xs" className="text-current" />
+          </span>
+        </>
+      ) : children}
     </button>
   )
 })
