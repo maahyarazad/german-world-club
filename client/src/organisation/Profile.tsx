@@ -9,6 +9,7 @@ import Field, { FormMessage } from '../components/ui/Field'
 import Callout from '../components/ui/Callout'
 import { useTranslations } from '../i18n/index'
 import { OrganisationCard } from '../member/profile/OrganisationView'
+import PageLoader from '../components/ui/PageLoader'
 
 /**
  * A merchant's or partner's profile (US3, FR-014): the signed-in person, and
@@ -63,7 +64,7 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
     }
   }
 
-  if (!profile) return null
+  if (!profile) return <PageLoader />
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,7 +92,7 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
           <Field label={t.organisationProfile.website} type="url" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
           <Field label={t.organisationProfile.city} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           <div className="flex flex-wrap gap-2">
-            <Button disabled={busy || !form.displayName.trim()} onClick={() => save({
+            <Button loading={busy} disabled={!form.displayName.trim()} onClick={() => save({
               displayName: form.displayName.trim(),
               about: form.about.trim() || null,
               website: form.website.trim() || null,

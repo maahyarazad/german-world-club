@@ -85,7 +85,7 @@ export function ListingRequest({ listing, memberId }: { listing: Listing; member
         {notice && <FormMessage tone="danger">{t.memberRequests[notice]}</FormMessage>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setOpen(false)}>{t.memberRequests.cancel}</Button>
-          <Button disabled={busy || !body.trim()} onClick={() => void send()}>{t.memberRequests.submit}</Button>
+          <Button loading={busy} disabled={!body.trim()} onClick={() => void send()}>{t.memberRequests.submit}</Button>
         </div>
       </Modal>
     </>

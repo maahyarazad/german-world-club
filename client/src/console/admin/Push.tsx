@@ -17,6 +17,9 @@ import StatusPill from '../../components/ui/StatusPill'
 import type { StatusTone } from '../../components/ui/StatusPill'
 import RequireGrant from '../RequireGrant'
 import { useLocale, useTranslations } from '../../i18n/index'
+import PageLoader from '../../components/ui/PageLoader'
+import AsyncButton from '../../components/ui/AsyncButton'
+import { useAction } from '../../lib/useAction'
 
 /**
  * The console's Push section (feature 011, US3, research R14), on the
@@ -80,6 +83,7 @@ function TestUsers({ canEdit }: { canEdit: boolean }) {
       console.error('TestUsers.add', err instanceof ApiError ? err.problem : err)
     }
   }
+  const [addNow, adding] = useAction('TestUsers.addAction', add)
 
   const remove = async (memberId: string) => {
     try {
@@ -94,12 +98,12 @@ function TestUsers({ canEdit }: { canEdit: boolean }) {
     <Card title={t.pushAdmin.testUsers}>
       <p className="text-[13px] text-text-muted">{t.pushAdmin.testUsersHint}</p>
       {canEdit && (
-        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void add() }}>
+        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void addNow() }}>
           <Field label={t.pushAdmin.handle} value={handle} onChange={(e) => setHandle(e.target.value)} />
-          <Button type="submit" disabled={!handle.trim()}>{t.pushAdmin.add}</Button>
+          <Button type="submit" loading={adding} disabled={!handle.trim()}>{t.pushAdmin.add}</Button>
         </form>
       )}
-      {recipients === null ? null : recipients.length === 0 ? (
+      {recipients === null ? <PageLoader size="md" className="min-h-0 py-6" /> : recipients.length === 0 ? (
         <p className="text-[13px] text-text-muted">{t.pushAdmin.noTestUsers}</p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -111,7 +115,7 @@ function TestUsers({ canEdit }: { canEdit: boolean }) {
                 {' · '}
                 {fill(r.deviceCount === 1 ? t.pushAdmin.oneDevice : t.pushAdmin.devices, { count: r.deviceCount })}
               </span>
-              {canEdit && <Button variant="quiet" onClick={() => void remove(r.memberId)}>{t.pushAdmin.remove}</Button>}
+              {canEdit && <AsyncButton name="Push.removeRecipient" variant="quiet" onAction={() => remove(r.memberId)}>{t.pushAdmin.remove}</AsyncButton>}
             </li>
           ))}
         </ul>
@@ -265,13 +269,13 @@ function Compose({ onQueued }: { onQueued: () => void }) {
             })}
           </p>
           <div className="flex gap-2">
-            <Button variant="accent" disabled={busy} onClick={() => void send('broadcast')}>{t.pushAdmin.confirmSend}</Button>
+            <Button variant="accent" loading={busy} onClick={() => void send('broadcast')}>{t.pushAdmin.confirmSend}</Button>
             <Button variant="secondary" disabled={busy} onClick={() => setConfirm(null)}>{t.pushAdmin.cancel}</Button>
           </div>
         </div>
       ) : (
         <div className="flex gap-2">
-          <Button variant="secondary" disabled={!valid || busy} onClick={() => void send('rehearsal')}>{t.pushAdmin.sendRehearsal}</Button>
+          <Button variant="secondary" loading={busy && confirm === null} disabled={!valid || busy} onClick={() => void send('rehearsal')}>{t.pushAdmin.sendRehearsal}</Button>
           <Button disabled={!valid || busy} onClick={() => void askBroadcast()}>{t.pushAdmin.broadcast}</Button>
         </div>
       )}
@@ -311,7 +315,7 @@ function History({ refreshKey }: { refreshKey: number }) {
 
   return (
     <Card title={t.pushAdmin.history}>
-      {items === null ? null : items.length === 0 ? (
+      {items === null ? <PageLoader size="md" className="min-h-0 py-6" /> : items.length === 0 ? (
         <p className="text-[13px] text-text-muted">{t.pushAdmin.noHistory}</p>
       ) : (
         <ul className="flex flex-col gap-3">

@@ -18,6 +18,7 @@ import StatusPill from '../components/ui/StatusPill'
 import ListingRequest from './ListingRequest'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
+import PageLoader from '../components/ui/PageLoader'
 
 /**
  * The marketplace tab in the member web app (008 US6).
@@ -398,7 +399,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
 
       {!termsAccepted && terms && (
         <Callout variant="gold" title={t.memberMarketplace.termsRequired}>
-          <Button variant="secondary" className="mt-2" disabled={busy} onClick={acceptTerms}>
+          <Button variant="secondary" className="mt-2" loading={busy} onClick={acceptTerms}>
             {t.memberMarketplace.acceptTerms}
           </Button>
         </Callout>
@@ -407,10 +408,11 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       <div>
         <Button
           variant="accent"
-          disabled={busy || !ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
+          loading={busy}
+          disabled={!ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
           onClick={submit}
         >
-          {busy ? t.memberMarketplace.publishing : t.memberMarketplace.submit}
+          {t.memberMarketplace.submit}
         </Button>
         {attachingTo && media.some((m) => m.status === 'failed') && !busy && (
           <Button variant="secondary" className="ml-2" onClick={retryMedia}>
@@ -548,7 +550,7 @@ export function Marketplace() {
         </div>
 
 
-        {listings === null ? null : listings.length === 0 ? (
+        {listings === null ? <PageLoader size="md" className="min-h-0 py-6" /> : listings.length === 0 ? (
           <p className="py-6 text-center text-[13px] text-text-muted">{t.memberMarketplace.empty}</p>
         ) : (
           <ul className="flex flex-col gap-3">

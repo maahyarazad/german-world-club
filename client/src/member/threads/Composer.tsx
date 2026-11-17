@@ -180,7 +180,7 @@ export function Composer({ open, onClose, onPosted, replyTo, quote }: {
           />
           <div className="flex gap-2">
             <Button variant="quiet" onClick={onClose}>{t.memberThreads.cancel}</Button>
-            <Button disabled={busy || empty} onClick={submit}>{busy ? t.memberThreads.posting : t.memberThreads.post}</Button>
+            <Button loading={busy} disabled={empty} onClick={submit}>{t.memberThreads.post}</Button>
           </div>
         </div>
       </Modal>

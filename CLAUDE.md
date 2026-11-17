@@ -349,6 +349,22 @@ or a 403 are never "renewed". The denylist lifetime (`DENYLIST_TTL_SECONDS` in
 `modules/auth/sessions.ts`) is *derived* from the token lifetime, so a revoked
 session's token can never outlive its denylist entry; never make it a second number.
 
+**One loader, on both platforms (feature 030, `specs/030-main-loader/`).**
+`client/src/components/ui/Spinner.tsx` and `expo-client/.../components/spinner.tsx`
+draw the same figure as `main-loader.html` (a faint ring and one turning arc),
+sized `xs` 14 / `sm` 20 / `md` 32 / `lg` 48. The web one is `currentColor` and
+turns by a CSS animation, so `motion-reduce:animate-none` honours the OS setting
+(SMIL would not); the app one is a bordered `View` turned by `Animated` — **never
+`react-native-svg`**, which would need a new EAS build. Use `PageLoader` /
+`ScreenLoader` for a page or screen waiting for data (silent for the first
+150 ms, so a fast response never flickers), `Button loading` for a button whose
+request is running, and `AsyncButton` / `useAction` when there is no state of
+your own. A page that has not received its data must show the loader, **never
+nothing and never a false "empty" message**; `client/tests/loading-states.test.tsx`
+scans for components that call the API and `return null` while loading, with an
+allow-list that needs a reason per entry. `useAction` guards re-entry with a ref
+(two presses in one frame start one request) and logs failures the usual way.
+
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
 `device_approval`, `/onboarding/*` redeems `mobile_verification` and

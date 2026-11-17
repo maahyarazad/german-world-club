@@ -15,6 +15,8 @@ import PageHeader from '../../components/ui/PageHeader'
 import StatusPill from '../../components/ui/StatusPill'
 import { Modal } from '../../member/threads/Modal'
 import { ReferralList, XpHistory } from '../../member/Referrals'
+import PageLoader from '../../components/ui/PageLoader'
+import { useAction } from '../../lib/useAction'
 
 /**
  * Staff oversight of referrals and XP (feature 018, US4).
@@ -78,9 +80,10 @@ function Owners({ onOpen }: { onOpen: (owner: Owner) => void }) {
 
   useEffect(() => { void load({ kind: '', q: '' }) }, [load])
 
+  const [runSearch, searching] = useAction('AdminReferrals.search', load)
   const search = (event: FormEvent) => {
     event.preventDefault()
-    void load({ kind, q })
+    void runSearch({ kind, q })
   }
 
   return (
@@ -100,10 +103,11 @@ function Owners({ onOpen }: { onOpen: (owner: Owner) => void }) {
             {REFERRAL_OWNER_KINDS.map((k) => <option key={k} value={k}>{t.adminReferrals.kinds[k]}</option>)}
           </select>
         </label>
-        <Button type="submit" variant="secondary">{t.adminReferrals.find}</Button>
+        <Button type="submit" variant="secondary" loading={searching}>{t.adminReferrals.find}</Button>
       </form>
 
       {failed && <p className="text-[14px] text-text-muted">{t.adminReferrals.loadFailed}</p>}
+      {page === null && !failed && <PageLoader size="md" className="min-h-0 py-6" />}
       {page && page.items.length === 0 && <p className="text-[14px] text-text-muted">{t.adminReferrals.empty}</p>}
       {page && page.items.length > 0 && (
         <table className="w-full text-left text-[14px]">
@@ -164,7 +168,7 @@ function ReasonDialog({ title, hint, open, onClose, onConfirm }: {
           value={reason} onChange={(e) => setReason(e.target.value)} />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>{t.adminReferrals.cancel}</Button>
-          <Button type="submit" disabled={busy || !reason.trim()}>{t.adminReferrals.confirm}</Button>
+          <Button type="submit" loading={busy} disabled={!reason.trim()}>{t.adminReferrals.confirm}</Button>
         </div>
       </form>
     </Modal>
@@ -286,7 +290,7 @@ function Rate() {
     }
   }
 
-  if (!rate) return null
+  if (!rate) return <PageLoader size="md" className="min-h-0 py-6" />
   return (
     <Card
       title={t.adminReferrals.rateTitle}
@@ -317,16 +321,17 @@ function Rate() {
 function ReasonInline({ onConfirm, onCancel }: { onConfirm: (reason: string) => Promise<void>; onCancel: () => void }) {
   const t = useTranslations()
   const [reason, setReason] = useState('')
+  const [confirm, confirming] = useAction('ReasonInline.confirm', onConfirm)
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); if (reason.trim()) void onConfirm(reason.trim()) }}
+      onSubmit={(e) => { e.preventDefault(); if (reason.trim()) void confirm(reason.trim()) }}
       className="flex flex-col gap-4"
     >
       <Field label={t.adminReferrals.reason} name="reason" maxLength={500} required
         value={reason} onChange={(e) => setReason(e.target.value)} />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>{t.adminReferrals.cancel}</Button>
-        <Button type="submit" disabled={!reason.trim()}>{t.adminReferrals.confirm}</Button>
+        <Button type="submit" loading={confirming} disabled={!reason.trim()}>{t.adminReferrals.confirm}</Button>
       </div>
     </form>
   )

@@ -3,6 +3,7 @@ import { useCapabilities } from '../lib/capabilities'
 import { adminApi, ApiError } from '../lib/api'
 import type { DashboardFiguresResponse } from '@gwc/contracts/admin'
 import PageHeader from '../components/ui/PageHeader'
+import PageLoader from '../components/ui/PageLoader'
 import Card from '../components/ui/Card'
 import KpiTile, { KpiRow } from '../components/ui/KpiTile'
 import Callout from '../components/ui/Callout'
@@ -45,6 +46,7 @@ function SuperadminDashboard() {
 
       {failed && <Callout variant="gold" title={t.adminDashboard.figuresFailed}>{null}</Callout>}
 
+      {!data && !failed && <PageLoader />}
       {data && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.figures.map(({ key, value }) => (

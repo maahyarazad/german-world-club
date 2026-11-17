@@ -10,6 +10,7 @@ import { useLocale, useTranslations } from '../../i18n/index'
 import Button from '../../components/ui/Button'
 import Callout from '../../components/ui/Callout'
 import { FormMessage } from '../../components/ui/Field'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * One conversation about a listing (feature 020, US3): the messages in order,
@@ -78,7 +79,7 @@ export function Conversation() {
       </div>
     )
   }
-  if (!view) return null
+  if (!view) return <PageLoader />
 
   const other = view.conversation.counterpart?.displayName ?? ''
   const title = view.conversation.subject.title
@@ -126,7 +127,7 @@ export function Conversation() {
         </label>
         {slowDown && <FormMessage tone="danger">{t.memberRequests.slowDown}</FormMessage>}
         <div className="flex justify-end">
-          <Button type="submit" disabled={busy || !body.trim()}>{t.memberMessages.send}</Button>
+          <Button type="submit" loading={busy} disabled={!body.trim()}>{t.memberMessages.send}</Button>
         </div>
       </form>
     </div>

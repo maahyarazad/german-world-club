@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import PageHeader from '../../components/ui/PageHeader'
 import StatusPill from '../../components/ui/StatusPill'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * Messages: every conversation about a listing, newest activity first
@@ -45,6 +46,7 @@ export function Inbox() {
           <Button variant="secondary" className="mt-3" onClick={() => void load(null)}>{t.memberMessages.retry}</Button>
         </Card>
       )}
+      {items === null && !failed && <PageLoader size="md" className="min-h-0 py-6" />}
       {items && items.length === 0 && <p className="py-6 text-center text-[13px] text-text-muted">{t.memberMessages.empty}</p>}
       {items && items.length > 0 && (
         <ul className="flex flex-col gap-3">

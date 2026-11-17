@@ -295,8 +295,8 @@ export function Register() {
 
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setStep(1)}>{copy.back}</Button>
-          <Button type="submit" disabled={busy} className="flex-1">
-            {busy ? copy.submitting : copy.submit}
+          <Button type="submit" loading={busy} className="flex-1">
+            {copy.submit}
           </Button>
         </div>
       </form>

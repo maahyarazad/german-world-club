@@ -111,7 +111,7 @@ function RequestReset() {
           />
 
 
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" loading={busy}>
             {t.passwordReset.requestSubmit}
           </Button>
         </form>
@@ -219,7 +219,7 @@ function ConfirmReset({ token, onRequestNewLink }: ConfirmResetProps) {
               cannot distinguish the three without telling an attacker which
               tokens have existed, so neither does this. */}
 
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" loading={busy}>
             {t.passwordReset.confirmSubmit}
           </Button>
         </form>

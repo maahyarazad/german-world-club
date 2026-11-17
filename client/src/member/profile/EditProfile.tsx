@@ -13,6 +13,7 @@ import Card from '../../components/ui/Card'
 import { useLocale, useTranslations } from '../../i18n/index'
 import Avatar from '../threads/Avatar'
 import HandleDialog from './HandleDialog'
+import PageLoader from '../../components/ui/PageLoader'
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 
@@ -87,7 +88,7 @@ export function EditProfile() {
 
   const uploadingFraction = progress?.phase === 'uploading' ? progress.fraction : null
 
-  if (!profile) return null
+  if (!profile) return <PageLoader />
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -142,7 +143,7 @@ export function EditProfile() {
             className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text" />
         </label>
         <Field label={t.memberProfile.city} value={city} maxLength={120} onChange={(e) => setCity(e.target.value)} />
-        <Button disabled={busy} onClick={() => run(() => patch('/profile/me', { bio: bio.trim() || null, city: city.trim() || null }))}>
+        <Button loading={busy} onClick={() => run(() => patch('/profile/me', { bio: bio.trim() || null, city: city.trim() || null }))}>
           {t.memberProfile.save}
         </Button>
       </Card>
@@ -161,7 +162,7 @@ export function EditProfile() {
           <Button variant="secondary" disabled={links.length >= PROFILE_LINKS_MAX} onClick={() => setLinks([...links, { url: 'https://', label: null }])}>
             {t.memberProfile.addLink}
           </Button>
-          <Button disabled={busy} onClick={() => run(() => put('/profile/me/links', { links }))}>{t.memberProfile.save}</Button>
+          <Button loading={busy} onClick={() => run(() => put('/profile/me/links', { links }))}>{t.memberProfile.save}</Button>
         </div>
       </Card>
 

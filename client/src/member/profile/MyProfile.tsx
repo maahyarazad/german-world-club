@@ -6,6 +6,7 @@ import Callout from '../../components/ui/Callout'
 import { useTranslations } from '../../i18n/index'
 import ProfileHeader from './ProfileHeader'
 import ProfileTabs from './ProfileTabs'
+import PageLoader from '../../components/ui/PageLoader'
 
 /** Your own profile (US3). The same header others see, plus the way to edit it. */
 export function MyProfile() {
@@ -19,7 +20,7 @@ export function MyProfile() {
     })
   }, [])
   if (failed) return <Callout variant="gold" title={t.memberThreads.loadFailed}>{null}</Callout>
-  if (!profile) return null
+  if (!profile) return <PageLoader />
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <ProfileHeader
