@@ -73,8 +73,8 @@ export default fp(
 
     /**
      * The session behind a token, or null when it has ended. The denylist
-     * closes the window between a revocation and the token's own ten-minute
-     * expiry; the row is the record. Shared by `authenticate` and
+     * closes the window between a revocation and the token's own expiry
+     * (`ACCESS_TOKEN_TTL_SECONDS`); the row is the record. Shared by `authenticate` and
      * `peekViewer`, so "signed in" means one thing.
      */
     async function liveSession(sid: string, signal?: AbortSignal) {

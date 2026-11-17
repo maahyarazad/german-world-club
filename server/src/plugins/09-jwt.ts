@@ -40,7 +40,7 @@ export default fp(
       verify: {
         algorithms: ['EdDSA'],
         // A slightly-off client clock must not lock someone out of a token that
-        // only lives ten minutes.
+        // is about to expire.
         clockTolerance: 30,
       },
       cookie: { cookieName: COOKIES.access, signed: false },

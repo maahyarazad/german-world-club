@@ -100,6 +100,11 @@ export const PROBLEMS = {
    */
   CSRF_TOKEN_INVALID: { type: `${BASE}/csrf-token-invalid`, title: 'CSRF token missing or invalid', status: 403 },
   CANNOT_MANAGE_ADMIN: { type: `${BASE}/cannot-manage-admin`, title: 'Cannot manage an administrator', status: 403 },
+  // Feature 028. Three refusals about administrator accounts that a console must
+  // tell apart (it translates on `type`, never on `detail`): not yours to manage,
+  // your own account, and the last one standing.
+  CANNOT_CHANGE_SELF: { type: `${BASE}/cannot-change-self`, title: 'Cannot change your own account', status: 403 },
+  LAST_SUPERADMIN: { type: `${BASE}/last-superadmin`, title: 'Last superadmin', status: 409 },
   PERMISSION_REQUIRED: { type: `${BASE}/permission-required`, title: 'Permission required', status: 403 },
 
   // --- Resources ------------------------------------------------------------

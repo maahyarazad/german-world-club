@@ -1,4 +1,5 @@
 import { withTransaction, query } from '../../db/query.ts'
+import { ACCESS_TOKEN_TTL_SECONDS } from '@gwc/contracts/auth'
 import { generateRefreshToken, hashRefreshToken, refreshExpiry } from './tokens.ts'
 import type { Pool, PoolClient } from 'pg'
 
@@ -21,7 +22,7 @@ import type { Pool, PoolClient } from 'pg'
  */
 
 /** Access-token lifetime, so a denylist entry expires exactly when the token does. */
-const DENYLIST_TTL_SECONDS = 600
+export const DENYLIST_TTL_SECONDS = ACCESS_TOKEN_TTL_SECONDS
 
 export const denylistKey = (sid: string) => `denylist:sid:${sid}`
 

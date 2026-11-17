@@ -17,6 +17,11 @@ const SAFE_DETAIL_KEYS = new Set([
   // CODES are deliberately absent — a code is what opens someone's landing
   // page, so the audit log records link ids instead (research R17).
   'xp', 'linkId', 'previousLinkId', 'referralId', 'entryId',
+  // Feature 028: what an administrator's role, active state or per-area grants
+  // were and became — `{ before, after }`, only the fields that changed. It is a
+  // named key rather than a generic `before`/`after` so no other call site
+  // starts logging arbitrary before/after objects through the allowlist.
+  'adminChange',
 ])
 
 export function sanitizeDetail(detail) {
@@ -28,6 +33,35 @@ export function sanitizeDetail(detail) {
   return Object.keys(out).length > 0 ? out : null
 }
 
+/** The one INSERT, shared by the pool writer and the in-transaction writer. */
+async function insertAudit(db: { query(sql: string, params: unknown[]): Promise<unknown> }, event) {
+  const {
+    action, outcome = 'allowed', requestId = null,
+    actorId = null, actorKind = null,
+    targetType = null, targetId = null,
+    requiredPermission = null, detail = null,
+  } = event
+
+  await db.query(
+    `INSERT INTO audit_log
+       (request_id, actor_id, actor_kind, action, target_type, target_id,
+        required_permission, outcome, detail)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [requestId, actorId, actorKind, action, targetType, targetId,
+     requiredPermission, outcome, sanitizeDetail(detail)],
+  )
+}
+
+/**
+ * Write an audit entry INSIDE a transaction: the entry exists exactly when the
+ * change it records does (feature 028). `app.audit` uses the pool, so an audit
+ * written after a commit could be lost to a crash between the two, and one
+ * written before could describe a change that rolled back.
+ */
+export function auditInTransaction(client: { query(sql: string, params: unknown[]): Promise<unknown> }, event) {
+  return insertAudit(client, event)
+}
+
 export function createAuditWriter(pool: Pool) {
   /**
    * @param {{action: string, outcome?: 'allowed'|'denied'|'error', requestId?: string,
@@ -36,22 +70,7 @@ export function createAuditWriter(pool: Pool) {
    *          requiredPermission?: string|null, detail?: object|null}} event
    */
   return async function audit(event) {
-    const {
-      action, outcome = 'allowed', requestId = null,
-      actorId = null, actorKind = null,
-      targetType = null, targetId = null,
-      requiredPermission = null, detail = null,
-    } = event
-
-    await query(
-      pool,
-      `INSERT INTO audit_log
-         (request_id, actor_id, actor_kind, action, target_type, target_id,
-          required_permission, outcome, detail)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [requestId, actorId, actorKind, action, targetType, targetId,
-       requiredPermission, outcome, sanitizeDetail(detail)],
-    )
+    await insertAudit({ query: (sql, params) => query(pool, sql, params) }, event)
   }
 }
 

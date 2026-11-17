@@ -69,6 +69,8 @@ import onboardingStaffRoutes from './modules/onboarding/staff-routes.ts'
 import profilingRoutes from './modules/profiling/routes.ts'
 import profileRoutes from './modules/profile/routes.ts'
 import deviceRoutes from './modules/devices/routes.ts'
+import adminDashboardRoutes from './modules/admin-dashboard/routes.ts'
+import adminRoutes from './modules/admins/routes.ts'
 import profileStaffRoutes from './modules/profile/staff-routes.ts'
 import eventRoutes from './modules/events/routes.ts'
 import offerRoutes from './modules/offers/routes.ts'
@@ -380,6 +382,8 @@ export async function buildApp({
   await app.register(referralStaffRoutes)
   await app.register(seoStaffRoutes)
   await app.register(serverFaultRoutes)
+  await app.register(adminDashboardRoutes)
+  await app.register(adminRoutes)
   await app.register(organisationRoutes)
   await app.register(ragRoutes)
   // Last, because publicRoutes claims institutional slugs at the root.

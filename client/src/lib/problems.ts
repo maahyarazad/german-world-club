@@ -205,6 +205,18 @@ register(PROBLEMS.CANNOT_MANAGE_ADMIN, {
   retry: RETRY.NEVER,
 })
 
+register(PROBLEMS.CANNOT_CHANGE_SELF, {
+  de: { title: 'Nicht möglich', body: 'Sie können Ihr eigenes Konto nicht herabstufen oder deaktivieren.' },
+  en: { title: 'Not possible', body: 'You cannot demote or deactivate your own account.' },
+  retry: RETRY.NEVER,
+})
+
+register(PROBLEMS.LAST_SUPERADMIN, {
+  de: { title: 'Nicht möglich', body: 'Mindestens ein aktiver Superadmin muss bestehen bleiben.' },
+  en: { title: 'Not possible', body: 'At least one active superadmin must remain.' },
+  retry: RETRY.NEVER,
+})
+
 // --- Resources --------------------------------------------------------------
 
 register(PROBLEMS.NOT_FOUND, {

@@ -8,7 +8,7 @@ import type { Pool } from 'pg'
  * Permissions are resolved **per request from server-held state**, never from
  * token claims. §11's matrix is staff-editable at any moment, and SC-003
  * requires a revocation to bite on the target's very next request — which a
- * claim baked into a ten-minute token cannot do.
+ * claim baked into a long-lived token cannot do.
  *
  * The cache exists so that does not mean a query per request. Its **explicit
  * invalidation** is the mechanism; the 30-second TTL is only a backstop for a

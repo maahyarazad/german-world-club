@@ -136,7 +136,7 @@ own session and gate rules, run against a stand-in request, so the route stays
 signed-in page is `private, no-store` with `Vary: Cookie`; the anonymous page is
 byte-for-byte the shell with its public caching — never add `Vary: Cookie` to
 it, which would make nearly every visitor a cache miss. The refresh cookie is
-scoped to `/auth/refresh`, so after the ~10-minute access token lapses the page
+scoped to `/auth/refresh`, so after the 24-hour access token lapses the page
 shows "Anmelden" until the console is used again; that is accepted, not a bug.
 
 **Interface strings live in `client/src/i18n/`, one module per locale, read
@@ -300,6 +300,54 @@ a new phone gets the code. Four rules that look optional and are not:
 reads it at sign-in or per request. A member manages their sessions at
 `/konsole/mitglied/profil/einstellungen` (Settings, next to Edit profile in the
 web profile; feature 027). The 026 address `profil/geraete` redirects there.
+
+**Roles & permissions and the dashboard figures (feature 028,
+`specs/028-superadmin-dashboard-roles/`).** `GET /admin/admins` lists every staff
+account with its grants; `PATCH /admin/admins/:id` changes role, active state and
+per-area grants. A role is **derived** (`is_superadmin` → superadmin, `is_admin` →
+administrator, else staff) — there is no role table. Five rules that look optional
+and are not:
+
+- **The server decides what is allowed, once.** `constraintsFor` in
+  `modules/admins/application/constraints.ts` builds the `constraints` the console
+  renders (a disabled control, the reason as a tooltip) *and* refuses a PATCH, so the
+  page and the refusal cannot disagree. Reasons are codes — `self`,
+  `last-superadmin`, `superadmin-required` — with problem types `CANNOT_CHANGE_SELF`,
+  `LAST_SUPERADMIN`, `CANNOT_MANAGE_ADMIN`; the server sends no translated text.
+  `last-superadmin` outranks `self`, so the only superadmin is told why, not just "you".
+- **Promoting anyone, and a non-superadmin editing their own grants, are refused.**
+  `guardAdminTarget` alone looks at the target's *current* state, so `admins.edit`
+  would otherwise be "make yourself administrator" or "grant yourself everything".
+- **Two superadmins demoting each other is serialised by an advisory lock**, taken
+  before anything is read in `update.ts`. The 006 trigger alone is not enough under
+  READ COMMITTED: each transaction sees the other superadmin still in place and both
+  commit. The caller is re-read from the database inside the transaction too.
+- **A change must call `app.permissions.invalidate(id)` after commit.** The resolver
+  caches snapshots for 30 s and relies on explicit invalidation; without it a grant
+  or a deactivation would bite 30 s late (SC-003). Other instances still wait out the TTL.
+- **A stale edit is a 409.** The account's `version` is its `updated_at` formatted by
+  the database to the microsecond (a JS Date keeps milliseconds), and every PATCH
+  bumps it, grants-only changes included. The audit entry is written in the same
+  transaction (`auditInTransaction`) under the allowlisted key `adminChange`.
+
+The dashboard figures are `GET /admin/dashboard/figures`, **superadmin only by a
+handler check**: the posture vocabulary has no "superadmin only", so the route
+declares module `admins` + `read` and the handler refuses everyone else. "Active
+member" excludes applicants (their `members.status` stays `active` while an
+application is pending). A figure that cannot be computed is `null`, never `0`.
+
+**The web console renews its own session (feature 029).** The access token lives
+`ACCESS_TOKEN_TTL_SECONDS` (24 h, `@gwc/contracts/auth`); the browser then drops the
+cookie and the next request answers 401 `unauthenticated`. `client/src/lib/api.ts`
+answers that with ONE `POST /auth/refresh` from the 30-day refresh cookie and one
+retry of the request, as the app always did. Three rules: **one refresh at a time**
+(a refresh token is single-use and a replay revokes the whole session, so parallel
+requests share a single in-flight refresh), **across tabs too** (Web Locks make tabs
+take turns; a `gwc.refreshedAt` timestamp lets the second skip a refresh the first
+just did), and **only for `unauthenticated`** — a revoked session, a wrong password
+or a 403 are never "renewed". The denylist lifetime (`DENYLIST_TTL_SECONDS` in
+`modules/auth/sessions.ts`) is *derived* from the token lifetime, so a revoked
+session's token can never outlive its denylist entry; never make it a second number.
 
 **One-time codes carry a purpose, and endpoints redeem only their own.**
 `verifyChallenge(…, { purposes })`: `/auth/verify-otp` redeems `login` and
