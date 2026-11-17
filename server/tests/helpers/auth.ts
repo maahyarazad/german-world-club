@@ -28,7 +28,7 @@ export async function buildAuthApp() {
 /** Truncate everything these suites write, in dependency order. */
 export async function resetAuthTables(pool: Pool) {
   await pool.query(`
-    TRUNCATE refresh_tokens, sessions, otp_challenges, device_approvals,
+    TRUNCATE refresh_tokens, sessions, member_devices, otp_challenges, device_approvals,
              admin_permissions, password_reset_tokens, audit_log RESTART IDENTITY CASCADE`)
   // Members gained dependents in feature 008. owner_id and sender_id are
   // ON DELETE RESTRICT — correct, because members are never deleted in
@@ -166,9 +166,10 @@ export async function signIn(
   email: string,
   password: string = PASSWORD,
   extra: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
 ) {
   const response = await app.inject({
-    method: 'POST', url: '/auth/sign-in', payload: { email, password, ...extra },
+    method: 'POST', url: '/auth/sign-in', payload: { email, password, ...extra }, headers,
   })
   return { statusCode: response.statusCode, body: response.json(), cookies: response.cookies, response }
 }

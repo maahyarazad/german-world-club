@@ -750,6 +750,19 @@ export const en = {
     },
   },
 
+  memberDevices: {
+    title: 'Where you are signed in',
+    intro: 'These are the browsers and phones signed in to your account. Sign out any you do not recognise.',
+    thisDevice: 'This device',
+    kindWeb: 'Web',
+    kindMobile: 'App',
+    lastActive: 'Last active {when}',
+    signOutDevice: 'Sign out',
+    signOutHere: 'Sign out here',
+    confirmEnd: 'Confirm sign-out',
+    cancel: 'Cancel',
+    loadFailed: 'Your devices could not be loaded. Please try again later.',
+  },
   memberProfile: {
     tabLabel: 'Profile',
     title: 'Profile',
@@ -793,6 +806,7 @@ export const en = {
     unmute: 'Unmute',
     blockConfirm: 'Block? You will no longer see each other, and any following ends.',
     privacy: 'Blocked & muted',
+    devices: 'Devices',
     blockedList: 'Blocked members',
     mutedList: 'Muted members',
     noneBlocked: 'Nobody blocked.',

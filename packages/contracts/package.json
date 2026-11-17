@@ -8,6 +8,7 @@
     "./errors": "./src/errors.ts",
     "./permissions": "./src/permissions.ts",
     "./auth": "./src/auth.ts",
+    "./devices": "./src/devices.ts",
     "./seo": "./src/seo.ts",
     "./media": "./src/media.ts",
     "./push": "./src/push.ts",

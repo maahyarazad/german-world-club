@@ -117,8 +117,8 @@ export async function applyDecision(
   const { device_id: deviceId } = rows[0]
 
   // A web application has no device to approve: the member-level decision
-  // above is the whole of it, and any phone they sign in from later still
-  // needs its own approval.
+  // above is the whole of it, and any phone they sign in from later proves
+  // itself with an SMS code (feature 026) rather than needing an approval.
   if (deviceId) await client.query(
     `INSERT INTO device_approvals (member_id, device_id, state, denial_reason, reviewed_by, reviewed_at)
      VALUES ($1, $2, $3, $4, $5, now())
@@ -126,6 +126,16 @@ export async function applyDecision(
        SET state = EXCLUDED.state, denial_reason = EXCLUDED.denial_reason,
            reviewed_by = EXCLUDED.reviewed_by, reviewed_at = EXCLUDED.reviewed_at, updated_at = now()`,
     [memberId, deviceId, decision.state, decision.reason ?? null, adminId],
+  )
+
+  // Feature 026: the phone an applicant applied from is the one they proved
+  // with an SMS code at verification, so once they are approved it is a KNOWN
+  // phone and signs in with the password alone. A denial trusts nothing.
+  if (deviceId && decision.state === 'approved') await client.query(
+    `INSERT INTO member_devices (member_id, kind, device_key, label, known_at)
+     VALUES ($1, 'mobile', $2, 'Phone', now())
+     ON CONFLICT (member_id, kind, device_key) DO UPDATE SET known_at = coalesce(member_devices.known_at, now())`,
+    [memberId, deviceId],
   )
 
   const { rows: member } = await client.query('SELECT email, display_name FROM members WHERE id = $1', [memberId])

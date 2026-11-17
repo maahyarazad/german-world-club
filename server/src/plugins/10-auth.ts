@@ -102,19 +102,6 @@ export default fp(
       return rows[0] ?? null
     }
 
-    async function deviceApproved(memberId: string, deviceId: string | undefined, signal?: AbortSignal) {
-      if (!deviceId) return true // web has no device binding (§6.1 is mobile)
-      const { rows } = await query(
-        app.pg,
-        'SELECT state FROM device_approvals WHERE member_id = $1 AND device_id = $2',
-        [memberId, deviceId],
-        { signal },
-      )
-      // Absence is not approval. A new device simply has no row, which is how
-      // §12.6's "changing device invalidates approval" falls out of the key.
-      return rows[0]?.state === 'approved'
-    }
-
     /**
      * The authentication preHandler. Registered per route by `app.authenticate`
      * rather than globally, so a public route costs nothing.
@@ -267,9 +254,11 @@ export default fp(
         throw forbidden(PROBLEMS.APPROVAL_PENDING, 'This membership application is waiting for approval.')
       }
 
-      if (!(await deviceApproved(member.id, principal.deviceId as string | undefined, request.deadlineSignal))) {
-        throw forbidden(PROBLEMS.APPROVAL_PENDING, 'This device is waiting for approval.')
-      }
+      // Feature 026: there is no per-request device check. Whether a phone may
+      // sign in is decided at sign-in (a new phone proves the mobile number with
+      // an SMS code), and a device the member ends is refused here because its
+      // session is revoked and denylisted, which is checked above on every
+      // request. A second check would only re-ask a question already answered.
 
       /**
        * Onboarding Phase 2 (feature 013): the profiling routes are the one

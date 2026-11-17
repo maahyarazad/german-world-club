@@ -27,6 +27,7 @@ export function MyProfile() {
         actions={
           <span className="flex gap-3 text-[13px]">
             <Link to="/konsole/mitglied/profil/privatsphaere" className="text-navy hover:underline">{t.memberProfile.privacy}</Link>
+            <Link to="/konsole/mitglied/profil/geraete" className="text-navy hover:underline">{t.memberProfile.devices}</Link>
             <Link to="/konsole/mitglied/profil/bearbeiten" className="rounded-card border border-hairline px-3 py-1.5 font-semibold text-text hover:bg-ground">
               {t.memberProfile.edit}
             </Link>

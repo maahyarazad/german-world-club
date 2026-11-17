@@ -235,6 +235,20 @@ describe.skipIf(!hasDatabase)('mobile onboarding (§6.1)', () => {
       expect(device[0]?.state).toBe('approved')
       const { rows: mail } = await app.pg.query('SELECT template FROM mail_outbox WHERE to_address = $1 AND template = $2', [details.email, 'onboarding.approved'])
       expect(mail).toHaveLength(1)
+
+      // Feature 026: the phone they applied from is now a known phone, so it
+      // signs in with the password alone. Counter-assertion: no new SMS goes out,
+      // and a phone nobody approved still gets one.
+      const before = sms.length
+      const known = await app.inject({
+        method: 'POST', url: '/auth/sign-in', payload: { email: details.email, password: details.password, deviceId: DEVICE },
+      })
+      expect(known.json().outcome).toBe('authenticated')
+      expect(sms).toHaveLength(before)
+      const unknown = await app.inject({
+        method: 'POST', url: '/auth/sign-in', payload: { email: details.email, password: details.password, deviceId: 'a-new-phone' },
+      })
+      expect(unknown.json().outcome).toBe('otp_required')
     })
 
     it('denial needs a reason, shows it to the applicant, and keeps them out', async () => {

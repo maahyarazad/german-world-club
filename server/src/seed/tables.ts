@@ -33,6 +33,10 @@ export const SEEDED = Object.freeze([
   'push_test_recipients',
   'job_definitions',
   'device_approvals',
+  // Feature 026. A seeded APPROVED device_approvals row implies one known phone
+  // for that member (the same inference migration 044's backfill makes), and
+  // nothing else does — the history rule. Never a session: those stay unseeded.
+  'member_devices',
 
   // --- Messaging (018) -------------------------------------------------------
   // Content, not credentials. A seeded conversation is a demo inbox that is not

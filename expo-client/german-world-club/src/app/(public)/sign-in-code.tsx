@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { authApi } from '@/api/endpoints';
 import { Button, CodeField, FormScreen, Message } from '@/components/ui';
 import { useTranslations } from '@/i18n';
+import { deviceLabel } from '@/session/device-label';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
 
@@ -26,7 +27,7 @@ export default function SignInCode() {
   const submit = async () => {
     setBusy(true);
     try {
-      const pair = await authApi.verifyOtp({ challengeId, code, deviceId: deviceId! });
+      const pair = await authApi.verifyOtp({ challengeId, code, deviceId: deviceId!, deviceLabel: deviceLabel() });
       await adopt({ accessToken: pair.accessToken!, refreshToken: pair.refreshToken!, principal: pair.principal! });
     } catch (e) {
       console.error('SignInCode.submit', e instanceof ApiError ? e.problem : e);
