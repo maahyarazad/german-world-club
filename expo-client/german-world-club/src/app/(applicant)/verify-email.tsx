@@ -4,7 +4,7 @@ import { PROBLEMS } from '@gwc/contracts/errors';
 import { EMAIL_CODE_LENGTH, registerRequestSchema } from '@gwc/contracts/onboarding';
 
 import { onboardingApi } from '@/api/endpoints';
-import { Button, CodeField, FormScreen, Message, TextField } from '@/components/ui';
+import { AsyncButton, Button, CodeField, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
@@ -111,9 +111,9 @@ export default function VerifyEmail() {
       <CodeField label={t.register.emailTitle} length={EMAIL_CODE_LENGTH} value={code} onChangeText={setCode} />
       <Message text={requestError} />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={!challenge || code.length !== EMAIL_CODE_LENGTH} />
-      <Button label={t.common.resendCode} onPress={send} variant="secondary" />
+      <AsyncButton name="VerifyEmail.send" label={t.common.resendCode} onAction={send} variant="secondary" />
       <Button label={t.register.changeEmail} onPress={() => { setEditing(true); setRequestError(null); }} variant="secondary" />
-      <Button label={t.common.signOut} onPress={signOut} variant="secondary" />
+      <AsyncButton name="VerifyEmail.signOut" label={t.common.signOut} onAction={signOut} variant="secondary" />
     </FormScreen>
   );
 }

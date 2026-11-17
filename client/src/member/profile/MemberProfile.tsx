@@ -9,6 +9,7 @@ import { useTranslations } from '../../i18n/index'
 import ProfileHeader from './ProfileHeader'
 import ProfileTabs from './ProfileTabs'
 import { AuthorList } from '../threads/PostView'
+import PageLoader from '../../components/ui/PageLoader'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -40,32 +41,33 @@ export function MemberProfile() {
   const t = useTranslations()
   const { ref } = useParams()
   const { profile, missing, reload } = useProfile(ref)
-  const [busy, setBusy] = useState(false)
+  // Which action is running, so only that button shows the loader (feature 030).
+  const [busy, setBusy] = useState<'follow' | 'mute' | 'block' | null>(null)
 
   if (missing) return <Callout variant="neutral" title={t.memberProfile.notFound}>{null}</Callout>
-  if (!profile) return null
+  if (!profile) return <PageLoader />
 
-  const act = async (fn: () => Promise<unknown>) => {
-    setBusy(true)
-    try { await fn(); await reload() } finally { setBusy(false) }
+  const act = async (which: 'follow' | 'mute' | 'block', fn: () => Promise<unknown>) => {
+    setBusy(which)
+    try { await fn(); await reload() } finally { setBusy(null) }
   }
 
   const actions = profile.isSelf ? null : (
     <span className="flex flex-wrap gap-2">
       {!profile.isBlocked && (
-        <Button disabled={busy} variant={profile.isFollowing ? 'secondary' : 'primary'}
-          onClick={() => act(() => (profile.isFollowing ? del(`/threads/follows/${profile.id}`) : put(`/threads/follows/${profile.id}`)))}>
+        <Button disabled={busy !== null} loading={busy === 'follow'} variant={profile.isFollowing ? 'secondary' : 'primary'}
+          onClick={() => act('follow', () => (profile.isFollowing ? del(`/threads/follows/${profile.id}`) : put(`/threads/follows/${profile.id}`)))}>
           {profile.isFollowing ? t.memberProfile.unfollow : t.memberProfile.follow}
         </Button>
       )}
-      <Button disabled={busy} variant="quiet"
-        onClick={() => act(() => (profile.isMuted ? del(`/threads/mutes/${profile.id}`) : put(`/threads/mutes/${profile.id}`)))}>
+      <Button disabled={busy !== null} loading={busy === 'mute'} variant="quiet"
+        onClick={() => act('mute', () => (profile.isMuted ? del(`/threads/mutes/${profile.id}`) : put(`/threads/mutes/${profile.id}`)))}>
         {profile.isMuted ? t.memberProfile.unmute : t.memberProfile.mute}
       </Button>
-      <Button disabled={busy} variant="quiet"
+      <Button disabled={busy !== null} loading={busy === 'block'} variant="quiet"
         onClick={() => {
           if (!profile.isBlocked && !window.confirm(t.memberProfile.blockConfirm)) return
-          void act(() => (profile.isBlocked ? del(`/threads/blocks/${profile.id}`) : put(`/threads/blocks/${profile.id}`)))
+          void act('block', () => (profile.isBlocked ? del(`/threads/blocks/${profile.id}`) : put(`/threads/blocks/${profile.id}`)))
         }}>
         {profile.isBlocked ? t.memberProfile.unblock : t.memberProfile.block}
       </Button>
@@ -88,7 +90,7 @@ export function FollowList({ direction }: { direction: 'followers' | 'following'
   const { ref } = useParams()
   const { profile, missing } = useProfile(ref)
   if (missing) return <Callout variant="neutral" title={t.memberProfile.notFound}>{null}</Callout>
-  if (!profile) return null
+  if (!profile) return <PageLoader />
   const name = profile.displayName ?? `@${profile.handle ?? ''}`
   return (
     <div className="mx-auto w-full max-w-2xl">

@@ -10,6 +10,7 @@ import Button from '../components/ui/Button'
 import { useLocale, useTranslations } from '../i18n/index'
 import { StepView } from './profiling/steps'
 import { stepTitle, stepSummary } from './profiling/summary'
+import PageLoader from '../components/ui/PageLoader'
 
 type Answerable = Exclude<ProfilingStepId, 'review'>
 /** Steps that hold an answer; the information screens do not appear on the review. */
@@ -93,7 +94,7 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
   if (!snapshot) {
     return (
       <AuthCard title={copy.title}>
-        <p className="mt-2 text-[13px] text-text-muted">{t.console.loading}</p>
+        <PageLoader size="md" className="min-h-0 py-6" />
       </AuthCard>
     )
   }
@@ -132,7 +133,7 @@ export function Profiling({ onComplete }: { onComplete: () => void }) {
           ))}
         </dl>
         <div className="mt-6 flex flex-col gap-2">
-          <Button disabled={busy || missing.length > 0} onClick={submit}>{busy ? copy.submitting : copy.submit}</Button>
+          <Button loading={busy} disabled={missing.length > 0} onClick={submit}>{copy.submit}</Button>
           <Button variant="quiet" disabled={busy || answerable.length === 0} onClick={() => setStep(answerable[answerable.length - 1] ?? 'review')}>{copy.back}</Button>
         </div>
       </AuthCard>

@@ -145,7 +145,7 @@ export default function EditProfile() {
         {links.length < PROFILE_LINKS_MAX ? (
           <Button label={t.profile.addLink} variant="secondary" onPress={() => setLinks([...links, { url: 'https://', label: null }])} />
         ) : null}
-        <Button label={t.profile.saveLinks} onPress={() => run(() => profileApi.setLinks(links))} disabled={busy} />
+        <Button label={t.profile.saveLinks} onPress={() => run(() => profileApi.setLinks(links))} loading={busy} />
       </View>
 
       <Message text={error} />

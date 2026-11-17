@@ -11,6 +11,7 @@ import Button from '../../components/ui/Button'
 import Callout from '../../components/ui/Callout'
 import { useLocale, useTranslations } from '../../i18n/index'
 import { formatDateTime } from '../../lib/format'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * Staff moderation of the marketplace (US4, contracts/moderation-api.md).
@@ -157,7 +158,9 @@ function ModerationQueue() {
 
 
       <Card title={t.marketplaceModeration.queue}>
-        <DataTable columns={columns} rows={reports ?? []} empty={t.marketplaceModeration.empty} />
+        {reports === null
+          ? <PageLoader size="md" className="min-h-0 py-6" />
+          : <DataTable columns={columns} rows={reports} empty={t.marketplaceModeration.empty} />}
       </Card>
 
       {pending && (
@@ -177,7 +180,7 @@ function ModerationQueue() {
               />
             </label>
             <div className="flex gap-2">
-              <Button variant="secondary" disabled={busy || reason.trim().length < 3} onClick={confirmAction}>
+              <Button variant="secondary" loading={busy} disabled={reason.trim().length < 3} onClick={confirmAction}>
                 {t.marketplaceModeration.confirm}
               </Button>
               <Button variant="quiet" disabled={busy} onClick={cancelAction}>{t.marketplaceModeration.cancel}</Button>

@@ -150,7 +150,7 @@ export function SignIn({ onSignedIn, onResetPassword }: SignInProps) {
 
         {outcome && <OutcomeMessage outcome={outcome} onResetPassword={onResetPassword} />}
 
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" loading={busy}>
           {busy ? t.signIn.submitting : t.signIn.submit}
         </Button>
       </form>

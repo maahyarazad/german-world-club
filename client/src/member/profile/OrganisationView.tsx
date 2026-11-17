@@ -6,6 +6,7 @@ import Callout from '../../components/ui/Callout'
 import { fill } from '../../lib/format'
 import { useTranslations } from '../../i18n/index'
 import { smallestUrl } from '../threads/MediaGrid'
+import PageLoader from '../../components/ui/PageLoader'
 
 /** A merchant's or partner's public face, as a member sees it (US4, FR-015). */
 export function OrganisationView() {
@@ -21,7 +22,7 @@ export function OrganisationView() {
       })
   }, [slug])
   if (missing) return <Callout variant="neutral" title={t.memberProfile.notFound}>{null}</Callout>
-  if (!org) return null
+  if (!org) return <PageLoader />
   return <OrganisationCard org={org} />
 }
 

@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { authApi } from '@/api/endpoints';
-import { Button, CodeField, FormScreen, Message } from '@/components/ui';
+import { AsyncButton, Button, CodeField, FormScreen, Message } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { deviceLabel } from '@/session/device-label';
 import { useSession } from '@/session/session';
@@ -52,7 +52,7 @@ export default function SignInCode() {
       <CodeField label={t.signIn.otpTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />
-      <Button label={t.common.resendCode} onPress={resend} variant="secondary" />
+      <AsyncButton name="SignInCode.resend" label={t.common.resendCode} onAction={resend} variant="secondary" />
     </FormScreen>
   );
 }

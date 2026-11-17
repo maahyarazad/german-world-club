@@ -74,7 +74,7 @@ export function HandleDialog({ open, current, onClose, onSaved }: {
       />
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>{t.memberThreads.cancel}</Button>
-        <Button disabled={busy || !wellFormed || available === false} onClick={save}>{t.memberProfile.handleSave}</Button>
+        <Button loading={busy} disabled={!wellFormed || available === false} onClick={save}>{t.memberProfile.handleSave}</Button>
       </div>
     </Modal>
   )

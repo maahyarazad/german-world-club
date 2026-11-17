@@ -9,6 +9,8 @@ import Field from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import { useLocale, useTranslations } from '../../i18n/index'
 import MediaGrid from '../../member/threads/MediaGrid'
+import PageLoader from '../../components/ui/PageLoader'
+import AsyncButton from '../../components/ui/AsyncButton'
 
 type Report = { id: string; postId: string; reason: string; createdAt: string; postBody: string; postState: string }
 type StaffPost = {
@@ -31,6 +33,7 @@ export function ThreadsModeration() {
   const t = useTranslations()
   const { locale } = useLocale()
   const [reports, setReports] = useState<Report[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [open, setOpen] = useState<{ report: Report; post: StaffPost } | null>(null)
   const [pending, setPending] = useState<Action | null>(null)
   const [reason, setReason] = useState('')
@@ -39,7 +42,11 @@ export function ThreadsModeration() {
     const body = (await get('/admin/threads/reports?state=open')) as { items: Report[] }
     setReports(body.items)
   }, [])
-  useEffect(() => { void load().catch((err) => console.error('ThreadsModeration.load', err instanceof ApiError ? err.problem : err)) }, [load])
+  useEffect(() => {
+    void load()
+      .catch((err) => console.error('ThreadsModeration.load', err instanceof ApiError ? err.problem : err))
+      .finally(() => setLoaded(true))
+  }, [load])
 
   const show = async (report: Report) => {
     setOpen({ report, post: (await get(`/admin/threads/posts/${report.postId}`)) as StaffPost })
@@ -70,7 +77,7 @@ export function ThreadsModeration() {
     <div className="flex flex-col gap-6">
       <PageHeader title={t.threadsModeration.title} subtitle={t.threadsModeration.subtitle} />
       <Card title={t.threadsModeration.queue}>
-        {reports.length === 0 ? <p className="text-[13px] text-text-muted">{t.threadsModeration.empty}</p> : (
+        {!loaded ? <PageLoader size="md" className="min-h-0 py-6" /> : reports.length === 0 ? <p className="text-[13px] text-text-muted">{t.threadsModeration.empty}</p> : (
           <ul className="divide-y divide-hairline">
             {reports.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -79,7 +86,7 @@ export function ThreadsModeration() {
                   <p className="text-[12px] text-text-muted">{t.threadsModeration.reason}: {r.reason} · {formatDateTime(r.createdAt, locale)}</p>
                 </div>
                 {state(r.postState)}
-                <Button variant="secondary" onClick={() => void show(r)}>{t.threadsModeration.open}</Button>
+                <AsyncButton name="ThreadsModeration.show" variant="secondary" onAction={() => show(r)}>{t.threadsModeration.open}</AsyncButton>
               </li>
             ))}
           </ul>
@@ -109,7 +116,7 @@ export function ThreadsModeration() {
             <div className="flex flex-col gap-2 rounded-card bg-ground p-3">
               <Field label={t.threadsModeration.reasonLabel} value={reason} onChange={(e) => setReason(e.target.value)} />
               <div className="flex gap-2">
-                <Button disabled={reason.trim().length < 3} onClick={() => void confirm()}>{t.threadsModeration.confirm}</Button>
+                <AsyncButton name="ThreadsModeration.confirm" disabled={reason.trim().length < 3} onAction={confirm}>{t.threadsModeration.confirm}</AsyncButton>
                 <Button variant="quiet" onClick={() => { setPending(null); setReason('') }}>{t.threadsModeration.cancel}</Button>
               </div>
             </div>

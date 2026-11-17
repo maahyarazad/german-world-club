@@ -11,6 +11,8 @@ import { useCapabilities } from '../../lib/capabilities'
 import { hasGrant } from '@gwc/contracts/capabilities'
 import { useLocale, useTranslations } from '../../i18n/index'
 import Applications from './Applications'
+import { useAction } from '../../lib/useAction'
+import AsyncButton from '../../components/ui/AsyncButton'
 
 type Found = { id: string; displayName: string | null; handle: string; status: string }
 
@@ -45,6 +47,8 @@ export function Influencers() {
     }
   }
 
+  const [findNow, finding] = useAction('Influencers.find', find)
+
   const change = async (grant: boolean) => {
     if (!member) return
     const url = `/admin/members/${member.id}/designations/influencer`
@@ -63,9 +67,9 @@ export function Influencers() {
       {/* Applications first: an applicant waiting on staff is the time-critical part of this page. */}
       <Applications />
       <Card>
-        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void find() }}>
+        <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); void findNow() }}>
           <Field label={t.influencerAdmin.search} value={query} onChange={(e) => setQuery(e.target.value)} />
-          <Button type="submit" disabled={!query.trim()}>{t.influencerAdmin.find}</Button>
+          <Button type="submit" loading={finding} disabled={!query.trim()}>{t.influencerAdmin.find}</Button>
         </form>
       </Card>
       {member && (
@@ -85,9 +89,9 @@ export function Influencers() {
           {canWrite && (
             <div className="flex flex-col gap-2">
               <Field label={t.influencerAdmin.reason} value={reason} onChange={(e) => setReason(e.target.value)} />
-              <Button disabled={reason.trim().length < 3} onClick={() => void change(!active)}>
+              <AsyncButton name="Influencers.change" disabled={reason.trim().length < 3} onAction={() => change(!active)}>
                 {active ? t.influencerAdmin.revoke : t.influencerAdmin.grant}
-              </Button>
+              </AsyncButton>
             </div>
           )}
         </Card>

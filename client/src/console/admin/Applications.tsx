@@ -12,6 +12,7 @@ import Field from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import type { StatusTone } from '../../components/ui/StatusPill'
 import { useLocale, useTranslations } from '../../i18n/index'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * Membership applications (feature 009), on the `members` module.
@@ -34,6 +35,9 @@ export function Applications() {
 
   const [state, setState] = useState<ApplicationState>('pending')
   const [items, setItems] = useState<Application[]>([])
+  // False until the first answer for the current filter, so "nothing waiting" is never
+  // shown for a list that simply has not arrived yet (feature 030).
+  const [loaded, setLoaded] = useState(false)
   const [denying, setDenying] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -44,10 +48,12 @@ export function Applications() {
       setItems(body.items)
     } catch (err) {
       console.error('Applications.load', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setLoaded(true)
     }
   }, [state])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { setLoaded(false); void load() }, [load])
 
   const decide = async (memberId: string, decision: 'approve' | 'deny') => {
     setBusy(memberId)
@@ -88,7 +94,9 @@ export function Applications() {
         ))}
       </div>
 
-      {items.length === 0 ? (
+      {!loaded ? (
+        <PageLoader size="md" className="min-h-0 py-6" />
+      ) : items.length === 0 ? (
         <p className="mt-4 text-[13px] text-text-muted">{copy.empty}</p>
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
@@ -120,7 +128,7 @@ export function Applications() {
                   <div className="mt-3 flex flex-col gap-2">
                     <Field label={copy.denyReason} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
                     <div className="flex gap-2">
-                      <Button disabled={reason.trim().length < 3 || busy === a.memberId} onClick={() => void decide(a.memberId, 'deny')}>
+                      <Button loading={busy === a.memberId} disabled={reason.trim().length < 3} onClick={() => void decide(a.memberId, 'deny')}>
                         {copy.confirmDeny}
                       </Button>
                       <Button variant="quiet" onClick={() => { setDenying(null); setReason('') }}>{copy.cancel}</Button>
@@ -128,7 +136,7 @@ export function Applications() {
                   </div>
                 ) : (
                   <div className="mt-3 flex gap-2">
-                    <Button disabled={busy === a.memberId} onClick={() => void decide(a.memberId, 'approve')}>{copy.approve}</Button>
+                    <Button loading={busy === a.memberId} onClick={() => void decide(a.memberId, 'approve')}>{copy.approve}</Button>
                     <Button variant="secondary" disabled={busy === a.memberId} onClick={() => { setDenying(a.memberId); setReason('') }}>{copy.deny}</Button>
                   </div>
                 )

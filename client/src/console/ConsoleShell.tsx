@@ -8,6 +8,7 @@ import { post } from '../lib/api'
 import Button from '../components/ui/Button'
 import { useTranslations } from '../i18n/index'
 import LanguageSwitch from '../components/ui/LanguageSwitch'
+import AsyncButton from '../components/ui/AsyncButton'
 
 /**
  * The portal frame: dark sidebar, content on the page ground.
@@ -68,9 +69,9 @@ export function ConsoleShell({ title, items, signOutPath = '/auth/sign-out' }: C
             </div>
             <div className="flex items-center gap-3">
               <LanguageSwitch />
-              <Button variant="secondary" onClick={signOut}>
+              <AsyncButton name="ConsoleShell.signOut" variant="secondary" onAction={signOut}>
                 {t.console.signOut}
-              </Button>
+              </AsyncButton>
             </div>
           </header>
 

@@ -6,6 +6,7 @@ import { useCapabilities } from '../../lib/capabilities'
 import Button from '../../components/ui/Button'
 import Callout from '../../components/ui/Callout'
 import { useLocale, useTranslations } from '../../i18n/index'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * The member's active sessions, with a terminate action on each (feature 026,
@@ -24,6 +25,7 @@ export function ActiveSessions() {
   const [devices, setDevices] = useState<MemberDevice[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [confirming, setConfirming] = useState<string | null>(null)
+  const [ending, setEnding] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -40,10 +42,13 @@ export function ActiveSessions() {
 
   const end = async (device: MemberDevice) => {
     setConfirming(null)
+    setEnding(device.id)
     try {
       await del(`/member/devices/${device.id}`)
     } catch (err) {
       console.error('Devices.end', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setEnding(null)
     }
     // Ending the browser you are on is signing out of it: drop the local
     // capability snapshot, as the shell's own sign-out does, so the console
@@ -56,7 +61,7 @@ export function ActiveSessions() {
   }
 
   if (failed) return <Callout variant="gold" title={t.memberDevices.loadFailed}>{null}</Callout>
-  if (!devices) return null
+  if (!devices) return <PageLoader size="md" className="min-h-0 py-6" />
 
   return (
     <div className="flex flex-col gap-4">
@@ -82,7 +87,7 @@ export function ActiveSessions() {
                 <Button variant="quiet" onClick={() => setConfirming(null)}>{t.memberDevices.cancel}</Button>
               </span>
             ) : (
-              <Button variant="secondary" onClick={() => setConfirming(device.id)}>
+              <Button variant="secondary" loading={ending === device.id} onClick={() => setConfirming(device.id)}>
                 {device.current ? t.memberDevices.signOutHere : t.memberDevices.signOutDevice}
               </Button>
             )}

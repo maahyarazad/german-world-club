@@ -16,6 +16,7 @@ import Field, { FormMessage } from '../components/ui/Field'
 import MobileField from '../components/ui/MobileField'
 import { describeProblem } from '../lib/problems'
 import { useLocale, useTranslations } from '../i18n/index'
+import AsyncButton from '../components/ui/AsyncButton'
 
 /**
  * Onboarding step 3 (§6.1): prove the mobile number.
@@ -199,7 +200,7 @@ export function VerifyMobile() {
           />
           <MobileField value={mobile} onChange={setMobile} hint={copy.mobileHint} error={contactErrors.mobile} />
           {requestError && <FormMessage>{requestError}</FormMessage>}
-          <Button type="submit" disabled={busy}>{copy.changeDetailsSave}</Button>
+          <Button type="submit" loading={busy}>{copy.changeDetailsSave}</Button>
           <Button variant="quiet" onClick={() => { setEditing(false); setContactErrors({}); setRequestError(null) }}>{copy.changeDetailsCancel}</Button>
         </form>
       </AuthCard>
@@ -223,8 +224,8 @@ export function VerifyMobile() {
         />
         {notice && <FormMessage tone="info">{notice}</FormMessage>}
         {requestError && <FormMessage>{requestError}</FormMessage>}
-        <Button type="submit" disabled={busy}>{busy ? copy.verifying : copy.verify}</Button>
-        <Button variant="quiet" onClick={resend}>{copy.resend}</Button>
+        <Button type="submit" loading={busy}>{copy.verify}</Button>
+        <AsyncButton name="VerifyMobile.resend" variant="quiet" onAction={resend}>{copy.resend}</AsyncButton>
         <Button variant="quiet" onClick={() => { setEditing(true); setRequestError(null) }}>{copy.changeDetails}</Button>
       </form>
     </AuthCard>

@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from '../../i18n/index'
 import { usePaged } from './usePaged'
 import Avatar from './Avatar'
 import { profilePath } from './AuthorLine'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * Activity (US5): what happened to you, newest first — computed by the
@@ -30,6 +31,7 @@ export function Activity({ onSeen }: { onSeen?: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
       <PageHeader title={t.memberActivity.title} />
+      {list.loading && list.items.length === 0 && <PageLoader size="md" className="min-h-0 py-6" />}
       {!list.loading && list.items.length === 0 && <p className="py-8 text-center text-[13px] text-text-muted">{t.memberActivity.empty}</p>}
       <ul>
         {list.items.map((item) => {

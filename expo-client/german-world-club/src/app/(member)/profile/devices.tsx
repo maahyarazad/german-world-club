@@ -6,7 +6,7 @@ import type { MemberDevice } from '@gwc/contracts/devices';
 import { ApiError } from '@/api/client';
 import { devicesApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Button } from '@/components/ui';
+import { Button, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
@@ -25,6 +25,7 @@ export default function Devices() {
   const { t, format, formatDate } = useTranslations();
   const { signOut } = useSession();
   const [devices, setDevices] = useState<MemberDevice[] | null>(null);
+  const [ending, setEnding] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
 
@@ -47,10 +48,13 @@ export default function Devices() {
       await signOut();
       return;
     }
+    setEnding(device.id);
     try {
       await devicesApi.end(device.id);
     } catch (e) {
       console.error('Devices.end', e instanceof ApiError ? e.problem : e);
+    } finally {
+      setEnding(null);
     }
     await load();
   };
@@ -62,7 +66,7 @@ export default function Devices() {
       </ScrollView>
     );
   }
-  if (!devices) return null;
+  if (!devices) return <Loading />;
 
   return (
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ padding: Spacing.four, gap: Spacing.three }}>
@@ -86,6 +90,7 @@ export default function Devices() {
             <Button
               label={device.current ? t.devices.signOutHere : t.devices.signOutDevice}
               onPress={() => setConfirming(device.id)}
+              loading={ending === device.id}
               variant="secondary"
             />
           )}

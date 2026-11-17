@@ -6,7 +6,7 @@ import { registerRequestSchema } from '@gwc/contracts/onboarding';
 
 import { authApi, onboardingApi } from '@/api/endpoints';
 import { MobileField } from '@/components/mobile-field';
-import { Button, CodeField, FormScreen, Message, TextField } from '@/components/ui';
+import { AsyncButton, Button, CodeField, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
 import { useSession } from '@/session/session';
@@ -124,7 +124,7 @@ export default function VerifyMobile() {
       <CodeField label={t.register.mobileTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />
-      <Button label={t.common.resendCode} onPress={resend} variant="secondary" />
+      <AsyncButton name="VerifyMobile.resend" label={t.common.resendCode} onAction={resend} variant="secondary" />
       <Button label={t.register.changeDetails} onPress={() => setEditing(true)} variant="secondary" />
     </FormScreen>
   );

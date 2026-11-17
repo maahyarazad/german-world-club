@@ -12,6 +12,7 @@ import PostBody from './PostBody'
 import MediaGrid from './MediaGrid'
 import QuoteEmbed from './QuoteEmbed'
 import Modal from './Modal'
+import AsyncButton from '../../components/ui/AsyncButton'
 
 /**
  * One post in any list — feed, thread, profile tab, quotes (US1/US2).
@@ -144,7 +145,7 @@ export function PostCard({ post, repostedBy, onChange, onRemoved, onReply, onQuo
         <Field label={t.memberThreads.reportReason} value={reason} onChange={(e) => setReason(e.target.value)} />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setReporting(false)}>{t.memberThreads.cancel}</Button>
-          <Button disabled={reason.trim().length < 3} onClick={report}>{t.memberThreads.report}</Button>
+          <AsyncButton name="PostCard.report" disabled={reason.trim().length < 3} onAction={report}>{t.memberThreads.report}</AsyncButton>
         </div>
       </Modal>
     </article>

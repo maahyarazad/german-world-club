@@ -11,6 +11,7 @@ import Callout from '../../components/ui/Callout'
 import Button from '../../components/ui/Button'
 import RequireGrant from '../RequireGrant'
 import { useTranslations } from '../../i18n/index'
+import PageLoader from '../../components/ui/PageLoader'
 
 /**
  * Roles & permissions (feature 028).
@@ -70,6 +71,7 @@ function RolesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title={t.adminRoles.title} subtitle={t.adminRoles.subtitle} />
       {failed && <Callout variant="gold" title={t.adminRoles.loadFailed}>{null}</Callout>}
+      {accounts === null && !failed && <PageLoader />}
       {accounts && accounts.length === 0 && <Callout variant="neutral" title={t.adminRoles.empty}>{null}</Callout>}
       {accounts && accounts.map((account) => (
         <AccountCard
@@ -242,7 +244,7 @@ function AccountCard({ account, notice, onSaved, onConflict }: {
             </label>
           )}
         </Guarded>
-        <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()}>{t.adminRoles.save}</Button>
+        <Button variant="primary" loading={saving} disabled={!dirty} onClick={() => void save()}>{t.adminRoles.save}</Button>
       </div>
     </Card>
   )

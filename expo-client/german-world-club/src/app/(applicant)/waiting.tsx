@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, Centered } from '@/components/ui';
+import { AsyncButton, Button, Centered } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
@@ -54,7 +54,7 @@ export default function Waiting() {
       ) : null}
       <View style={{ alignSelf: 'stretch', gap: Spacing.two }}>
         {denied ? null : <Button label={t.waiting.check} onPress={check} loading={busy} />}
-        <Button label={t.common.signOut} onPress={signOut} variant="secondary" />
+        <AsyncButton name="Waiting.signOut" label={t.common.signOut} onAction={signOut} variant="secondary" />
       </View>
     </Centered>
   );
