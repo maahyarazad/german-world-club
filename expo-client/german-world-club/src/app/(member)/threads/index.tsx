@@ -1,6 +1,7 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { RefreshControl, View } from 'react-native';
 
 import type { FeedItem, FeedScope } from '@gwc/contracts/threads';
 
@@ -45,11 +46,13 @@ export default function Feed() {
         <Chip label={t.threads.all} selected={scope === 'all'} onPress={() => setScope('all')} />
       </View>
       {feed.loading ? <Loading /> : (
-        <FlatList
+        <FlashList
           data={feed.items}
           keyExtractor={(item) => `${item.post.id}:${item.repostedBy?.id ?? ''}`}
           renderItem={({ item }) => (
+            // key: a recycled cell must not keep the previous post's in-flight flag.
             <PostCard
+              key={`${item.post.id}:${item.repostedBy?.id ?? ''}`}
               post={item.post}
               repostedBy={item.repostedBy}
               onChange={(post) => feed.setItems((all) => all.map((i) => (i.post.id === post.id ? { ...i, post } : i)))}

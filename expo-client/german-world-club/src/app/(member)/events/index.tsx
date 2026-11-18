@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { RefreshControl, View } from 'react-native';
 
 import type { EventSummary } from '@gwc/contracts/events';
 
@@ -35,10 +36,12 @@ export default function Events() {
         <Chip label={t.events.past} selected={when === 'past'} onPress={() => setWhen('past')} />
       </View>
       {events.loading ? <Loading /> : (
-        <FlatList
+        <FlashList
           data={events.items}
           keyExtractor={(e) => e.id}
-          contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
+          contentContainerStyle={{ padding: Spacing.three }}
+          // Padding only in FlashList's content container; the old `gap` is a separator.
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.three }} />}
           renderItem={({ item }) => <EventCard event={item} />}
           onEndReached={events.loadMore}
           refreshControl={<RefreshControl refreshing={events.refreshing} onRefresh={() => events.reload(true)} />}

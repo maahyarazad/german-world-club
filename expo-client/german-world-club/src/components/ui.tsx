@@ -19,11 +19,20 @@ import { useTheme } from '@/hooks/use-theme';
  * app in both colour schemes.
  */
 
-/** A scrollable, keyboard-aware form screen with a title. */
+/**
+ * A scrollable, keyboard-aware form screen with a title.
+ *
+ * Both vertical edges are protected (feature 033). The profiling and applicant
+ * groups hide their navigation header, so with only the bottom edge protected the
+ * title was drawn under the clock and Wi-Fi indicators. The library's native
+ * `SafeAreaView` measures how much THIS view overlaps the status bar and cut-out,
+ * so a screen laid out below a native header gets a top inset of 0 and gains no
+ * gap, and no fixed height is guessed.
+ */
 export function FormScreen({ title, subtitle, children }: { title?: ReactNode; subtitle?: string; children: ReactNode }) {
     const theme = useTheme();
     return (
-        <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
                     {title ? <ThemedText type="title" style={styles.title}>{title}</ThemedText> : null}
@@ -255,7 +264,13 @@ export function Card({ children, onPress }: { children: ReactNode; onPress?: () 
 
 export function Centered({ children }: { children: ReactNode }) {
     const theme = useTheme();
-    return <View style={[styles.centered, { backgroundColor: theme.background }]}>{children}</View>;
+    // Top edge protected like FormScreen (feature 033): a centred message on a header-less
+    // screen (the profiling outcome, `waiting`) must not sit under the status bar.
+    return (
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.centered, { backgroundColor: theme.background }]}>
+            {children}
+        </SafeAreaView>
+    );
 }
 
 /**

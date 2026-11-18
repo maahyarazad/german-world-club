@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { RefreshControl, View } from 'react-native';
 
 import type { ThreadPost, ThreadView } from '@gwc/contracts/threads';
 
@@ -42,7 +43,7 @@ export default function Thread() {
   }));
 
   return (
-    <FlatList
+    <FlashList
       style={{ backgroundColor: theme.background }}
       data={view.replies}
       keyExtractor={(p) => p.id}
@@ -79,7 +80,7 @@ export default function Thread() {
         </View>
       }
       renderItem={({ item }) => (
-        <PostCard post={item} onChange={replace}
+        <PostCard key={item.id} post={item} onChange={replace}
           onRemoved={(removed) => setView((v) => v && ({ ...v, replies: v.replies.filter((r) => r.id !== removed) }))} />
       )}
       ListEmptyComponent={

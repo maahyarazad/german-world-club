@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import type { MediaItem } from '@gwc/contracts/media';
 
@@ -52,7 +53,8 @@ function VideoItem({ item, width, height }: { item: MediaItem; width: number; he
 }
 
 function Item({ item, width, height }: { item: MediaItem; width: number; height: number }) {
-  if (item.kind === 'video') return <VideoItem item={item} width={width} height={height} />;
+  // key: a recycled carousel cell must not keep the previous video playing.
+  if (item.kind === 'video') return <VideoItem key={item.assetId} item={item} width={width} height={height} />;
   return (
     <Image
       source={imageUrl(item, width * 2)}
@@ -77,7 +79,9 @@ export function MediaCarousel({ media, inset = Spacing.three * 2 }: { media: rea
   }
   const cell = Math.round(full * 0.72);
   return (
-    <FlatList
+    // A horizontal FlashList takes its height from the container, so it is given the tallest cell's.
+    <View style={{ height: Math.round(cell * 1.25) }}>
+    <FlashList
       horizontal
       data={media as MediaItem[]}
       keyExtractor={(m) => m.assetId}
@@ -87,6 +91,7 @@ export function MediaCarousel({ media, inset = Spacing.three * 2 }: { media: rea
       ItemSeparatorComponent={() => <View style={{ width: Spacing.one }} />}
       renderItem={({ item }) => <Item item={item} width={cell} height={Math.round(cell * 1.25)} />}
     />
+    </View>
   );
 }
 

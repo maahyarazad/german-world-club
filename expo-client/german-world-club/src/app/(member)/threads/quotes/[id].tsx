@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { View } from 'react-native';
 
 import type { ThreadPost } from '@gwc/contracts/threads';
 
@@ -24,12 +25,12 @@ export default function Quotes() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen options={{ title: t.threads.quotes }} />
       {list.loading ? <Loading /> : (
-        <FlatList
+        <FlashList
           data={list.items}
           keyExtractor={(p) => p.id}
           onEndReached={list.loadMore}
           renderItem={({ item }) => (
-            <PostCard post={item} onChange={(post) => list.setItems((all) => all.map((p) => (p.id === post.id ? post : p)))} />
+            <PostCard key={item.id} post={item} onChange={(post) => list.setItems((all) => all.map((p) => (p.id === post.id ? post : p)))} />
           )}
           ListEmptyComponent={<ThemedText themeColor="textSecondary" style={{ padding: Spacing.four }}>{t.common.empty}</ThemedText>}
         />

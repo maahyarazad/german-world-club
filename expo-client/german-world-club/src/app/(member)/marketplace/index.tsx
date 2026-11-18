@@ -1,6 +1,7 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { RefreshControl, ScrollView, View } from 'react-native';
 
 import { MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace';
 import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contracts/marketplace';
@@ -98,10 +99,12 @@ export default function Marketplace() {
         ))}
       </View>
       {listings.loading ? <Loading /> : (
-        <FlatList
+        <FlashList
           data={listings.items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.four, gap: Spacing.two }}
+          contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.four }}
+          // FlashList's content container takes padding only, so the old `gap` is a separator.
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
           renderItem={({ item }) => (
             <Card onPress={() => router.push(`/marketplace/listing/${item.id}`)}>
               <View style={[styles.row, { justifyContent: 'space-between' }]}>

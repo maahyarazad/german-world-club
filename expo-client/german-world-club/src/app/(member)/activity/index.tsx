@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, RefreshControl, View } from 'react-native';
 
 import type { ActivityItem } from '@gwc/contracts/threads';
 
@@ -41,8 +42,10 @@ export default function Activity() {
   if (list.loading) return <Loading />;
 
   return (
-    <FlatList
+    <FlashList
       style={{ backgroundColor: theme.background }}
+      // Rows differ by kind (a follow has no post excerpt), so recycle like with like.
+      getItemType={(i) => i.kind}
       data={list.items}
       keyExtractor={(i) => `${i.kind}:${i.post?.id ?? ''}:${i.actor.id}:${i.at}`}
       onEndReached={list.loadMore}
