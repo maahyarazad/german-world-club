@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 
 import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
 import { checkMobile } from '@gwc/contracts/mobile';
@@ -49,12 +49,12 @@ export default function Register() {
   const [referralCode, setReferralCode] = useState(formatReferralCode(draft.referralCode ?? ''));
   const [errors, setErrors] = useState<Errors>({});
   // Return on each text input focuses the next one, in the order they appear.
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const mobileRef = useRef<TextInput>(null);
-  const dayRef = useRef<TextInput>(null);
-  const monthRef = useRef<TextInput>(null);
-  const yearRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
+  const mobileRef = useRef<TextInputInstance>(null);
+  const dayRef = useRef<TextInputInstance>(null);
+  const monthRef = useRef<TextInputInstance>(null);
+  const yearRef = useRef<TextInputInstance>(null);
   // `submitBehavior="submit"` below keeps the keyboard up, so it does not close
   // and reopen at every field.
 

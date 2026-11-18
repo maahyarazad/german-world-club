@@ -1,5 +1,5 @@
 import { useMemo, useState, type Ref } from 'react';
-import { Modal, Pressable, View, type ReturnKeyTypeOptions, type TextInput } from 'react-native';
+import { Modal, Pressable, View, type ReturnKeyTypeOptions, type TextInputInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COUNTRIES } from '@gwc/contracts/countries';
@@ -31,7 +31,7 @@ export function MobileField({ value, onChange, error, hint, ref, returnKeyType, 
   error?: string;
   hint?: string;
   /** The number input itself, so a form can focus it in its chain. */
-  ref?: Ref<TextInput>;
+  ref?: Ref<TextInputInstance>;
   returnKeyType?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
 }) {
