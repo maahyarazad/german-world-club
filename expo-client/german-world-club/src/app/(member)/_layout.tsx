@@ -1,4 +1,5 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { Platform } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useUnread } from '@/hooks/use-unread';
@@ -17,11 +18,23 @@ export default function MemberTabs() {
   const theme = useTheme();
   const { t } = useTranslations();
   const unread = useUnread();
+  // Feature 034: on Android an inactive tab's icon and label fall back to a Material
+  // system colour that follows the phone's theme, not ours, so in the app's dark theme
+  // they were drawn nearly the colour of the bar and only the selected tab showed. Setting
+  // the inactive colours from our own tokens fixes it. Android only: iOS already renders
+  // these tabs correctly and must not change.
+  const androidColors =
+    Platform.OS === 'android'
+      ? {
+          iconColor: { default: theme.textSecondary, selected: theme.tint },
+          labelStyle: { default: { color: theme.textSecondary }, selected: { color: theme.tint } },
+        }
+      : { labelStyle: { selected: { color: theme.tint } } };
   return (
     <NativeTabs
       backgroundColor={theme.background}
       indicatorColor={theme.backgroundSelected}
-      labelStyle={{ selected: { color: theme.tint } }}>
+      {...androidColors}>
       <NativeTabs.Trigger name="threads">
         <NativeTabs.Trigger.Label>{t.tabs.threads}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }} md="forum" />
