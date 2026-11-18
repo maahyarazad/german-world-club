@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { COUNTRIES, PINNED, type Country } from '@gwc/contracts/countries';
 
@@ -41,8 +42,10 @@ export function CountryPicker({ selected, onSelect, exclude = [], label }: {
         autoCorrect={false}
         autoCapitalize="none"
       />
-      <FlatList
+      <FlashList
         data={items}
+        // Rows read `selected` and the locale, which are not in `data`; without this a pick would not repaint.
+        extraData={`${selected ?? ''}:${locale}`}
         keyExtractor={(c) => c.code}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {

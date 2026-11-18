@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { RefreshControl, View } from 'react-native';
 
 import type { Conversation } from '@gwc/contracts/messaging';
 
@@ -25,10 +26,12 @@ export default function Inbox() {
   if (inbox.loading && inbox.items.length === 0) return <Loading />;
 
   return (
-    <FlatList
+    <FlashList
       data={inbox.items}
       keyExtractor={(c) => c.id}
-      contentContainerStyle={{ padding: Spacing.three, gap: Spacing.two }}
+      contentContainerStyle={{ padding: Spacing.three }}
+      // Padding only in FlashList's content container; the old `gap` is a separator.
+      ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
       refreshControl={<RefreshControl refreshing={inbox.refreshing} onRefresh={() => void reload(true)} />}
       onEndReached={() => void inbox.loadMore()}
       ListEmptyComponent={<Centered><ThemedText themeColor="textSecondary">{t.messages.empty}</ThemedText></Centered>}

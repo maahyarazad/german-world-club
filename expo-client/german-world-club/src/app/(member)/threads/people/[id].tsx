@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Pressable, View } from 'react-native';
 
 import type { ThreadAuthor } from '@gwc/contracts/threads';
 
@@ -46,7 +47,7 @@ export function PeopleList({ people, onEnd, empty, label, trailing }: {
 }) {
   const theme = useTheme();
   return (
-    <FlatList
+    <FlashList
       data={people}
       keyExtractor={(a) => a.id}
       onEndReached={onEnd}

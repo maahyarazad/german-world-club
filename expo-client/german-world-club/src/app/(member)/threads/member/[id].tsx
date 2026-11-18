@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { Alert, View } from 'react-native';
 
 import type { PublicMemberProfile } from '@gwc/contracts/profile';
 import type { ProfileTab, ThreadPost } from '@gwc/contracts/threads';
@@ -58,7 +59,7 @@ export default function MemberProfile() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Stack.Screen options={{ title: profile.handle ? `@${profile.handle}` : profile.displayName ?? '' }} />
-      <FlatList
+      <FlashList
         data={posts.items}
         keyExtractor={(p) => p.id}
         onEndReached={posts.loadMore}
@@ -92,7 +93,8 @@ export default function MemberProfile() {
           </View>
         }
         renderItem={({ item }) => (
-          <PostCard post={item} onChange={(post) => posts.setItems((all) => all.map((p) => (p.id === post.id ? post : p)))} />
+          // key: a recycled cell must not keep the previous post's in-flight flag.
+          <PostCard key={item.id} post={item} onChange={(post) => posts.setItems((all) => all.map((p) => (p.id === post.id ? post : p)))} />
         )}
         ListEmptyComponent={posts.loading || profile.isBlocked ? null : (
           <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four }}>{t.common.empty}</ThemedText>
