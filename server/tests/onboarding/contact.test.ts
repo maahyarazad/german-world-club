@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { hasDatabase } from '../helpers/db.ts'
-import { buildOnboardingApp, register, applicant, uniqueMobile, nextAddress, DEVICE } from './helpers.ts'
+import { buildOnboardingApp, register, applicant, uniqueMobile, maskedTail, nextAddress, DEVICE } from './helpers.ts'
 import type { GwcApp } from '../../src/app.ts'
 
 /**
@@ -33,7 +33,7 @@ describe.skipIf(!hasDatabase)('POST /onboarding/contact', () => {
 
     expect(r.statusCode).toBe(202)
     expect(r.json().challengeId).not.toBe(challengeId)
-    expect(r.json().sentTo).toBe('•••• 5678')
+    expect(r.json().sentTo).toBe(maskedTail(newMobile))
     expect(sms.at(-1)!.mobile).toBe(newMobile)
     expect(await memberByEmail(String(details.email))).toMatchObject({ id: member.id, mobile: newMobile })
 

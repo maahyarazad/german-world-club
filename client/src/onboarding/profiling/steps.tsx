@@ -255,11 +255,17 @@ function CityField({ ctx, value, onChange, onValid, label }: {
 
   const listId = `cities-${label.replace(/\W+/g, '-')}`
   return (
-    <fieldset className="flex flex-col gap-1.5">
+    // `min-w-0` on the fieldset, the select and the input is what keeps this row inside
+    // the 336 px content area of the card (feature 032). A flex item will not shrink
+    // below its content: a native select sizes to its LONGEST option ("Saint Helena,
+    // Ascension and Tristan da Cunha"), an input to about 20 characters, and a
+    // fieldset defaults to `min-inline-size: min-content`. Without them the city field
+    // was pushed out past the card on desktop. Same classes as `MobileField`.
+    <fieldset className="flex min-w-0 flex-col gap-1.5">
       <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">{label}</legend>
       <div className="flex gap-2">
         <select
-          value={value.country} aria-label={`${label}: ${copy.country}`} className={inputClass}
+          value={value.country} aria-label={`${label}: ${copy.country}`} className={`w-[46%] min-w-0 shrink-0 ${inputClass}`}
           onChange={(event) => { setKnown(null); onChange({ country: event.target.value, city: '' }) }}
         >
           <option value="">{copy.country}</option>
@@ -267,7 +273,7 @@ function CityField({ ctx, value, onChange, onValid, label }: {
         </select>
         <input
           value={value.city} placeholder={copy.city} aria-label={`${label}: ${copy.city}`}
-          list={listed ? listId : undefined} className={`flex-1 ${inputClass}`}
+          list={listed ? listId : undefined} className={`min-w-0 flex-1 ${inputClass}`}
           onChange={(event) => onChange({ ...value, city: event.target.value })}
         />
         {listed && <datalist id={listId}>{(known?.cities ?? []).map((c) => <option key={c} value={c} />)}</datalist>}

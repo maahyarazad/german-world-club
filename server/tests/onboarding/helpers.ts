@@ -71,11 +71,16 @@ export const register = (app: GwcApp, payload: Record<string, unknown>, remoteAd
   app.inject({ method: 'POST', url: '/onboarding/register', payload, remoteAddress })
 
 /**
- * A distinct mobile number per applicant: members.mobile is unique (migration
- * 031), and suites share one database. The fixed 5678 ending keeps the masked
- * "•••• 5678" that several assertions read.
+ * A distinct, VALID mobile number per applicant: members.mobile is unique (migration
+ * 031) and suites share one database, so the space has to be large enough that a few
+ * thousand registrations never collide. Feature 031 validates the real thing, so the
+ * number is built to a real range: German mobiles `17x` + 8 digits (a billion numbers).
+ * Assert on `lastFour(details.mobile)`, not on a fixed ending.
  */
-export const uniqueMobile = () => `+4915${String(randomInt(0, 1_000_000)).padStart(6, '0')}5678`
+export const uniqueMobile = () => `+4917${randomInt(0, 10)}${String(randomInt(0, 100_000_000)).padStart(8, '0')}`
+
+/** The masked form the server echoes back: `•••• ` and the last four digits. */
+export const maskedTail = (mobile: string) => `•••• ${mobile.slice(-4)}`
 
 export function applicant(overrides: Record<string, unknown> = {}) {
   return {

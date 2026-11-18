@@ -22,6 +22,9 @@ const wantsHtml = (request: FastifyRequest) => {
 
 function problemFor(error) {
   if (error.problem) return error.problem
+  // A number that is not a mobile that exists is its own refusal (feature 031), so a client
+  // can show it on the number field rather than as a generic "invalid request".
+  if (error.validation?.some((v) => v.instancePath === '/mobile')) return PROBLEMS.INVALID_MOBILE
   if (error.validation) return PROBLEMS.VALIDATION_FAILED
   if (error.statusCode === 404) return PROBLEMS.NOT_FOUND
   if (error.statusCode === 429) return PROBLEMS.RATE_LIMITED

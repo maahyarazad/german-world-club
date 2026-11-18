@@ -2,7 +2,9 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { PROBLEMS } from '@gwc/contracts/errors';
+import { checkMobile } from '@gwc/contracts/mobile';
 import { registerRequestSchema } from '@gwc/contracts/onboarding';
+import { mobileErrorText } from '@/lib/mobile-text';
 
 import { authApi, onboardingApi } from '@/api/endpoints';
 import { MobileField } from '@/components/mobile-field';
@@ -78,7 +80,8 @@ export default function VerifyMobile() {
     const nextMobile = mobile.replace(/[\s\-()]/g, '');
     const found: { email?: string; mobile?: string } = {};
     if (!fields.email.safeParse(nextEmail).success) found.email = t.validation.email;
-    if (!fields.mobile.safeParse(nextMobile).success) found.mobile = t.validation.mobile;
+    const mobileCheck = checkMobile('', nextMobile);
+    if (!mobileCheck.ok) found.mobile = mobileErrorText(t.validation, mobileCheck.reason);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
@@ -102,6 +105,7 @@ export default function VerifyMobile() {
       console.error('VerifyMobile.changeContact', e instanceof ApiError ? e.problem : e);
       if (e instanceof ApiError && e.type === PROBLEMS.EMAIL_IN_USE.type) setErrors({ email: t.register.emailInUse });
       if (e instanceof ApiError && e.type === PROBLEMS.MOBILE_IN_USE.type) setErrors({ mobile: t.register.mobileInUse });
+      if (e instanceof ApiError && e.type === PROBLEMS.INVALID_MOBILE.type) setErrors({ mobile: t.validation.mobileInvalid });
     } finally {
       setBusy(false);
     }

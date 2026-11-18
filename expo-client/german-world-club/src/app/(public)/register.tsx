@@ -3,6 +3,8 @@ import { useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
+import { checkMobile } from '@gwc/contracts/mobile';
+import { mobileErrorText } from '@/lib/mobile-text';
 import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals';
 
 import { MobileField } from '@/components/mobile-field';
@@ -64,7 +66,9 @@ export default function Register() {
     if (!fields.fullName.safeParse(fullName).success) found.fullName = t.validation.fullName;
     if (!fields.email.safeParse(email).success) found.email = t.validation.email;
     if (!fields.password.safeParse(password).success) found.password = t.validation.password;
-    if (!fields.mobile.safeParse(normalisedMobile).success) found.mobile = t.validation.mobile;
+    // The same rule as the server and the web console (feature 031).
+    const mobileCheck = checkMobile('', normalisedMobile);
+    if (!mobileCheck.ok) found.mobile = mobileErrorText(t.validation, mobileCheck.reason);
     if (!fields.birthday.safeParse(birthday).success) found.birthday = t.validation.birthday;
     if (!gender) found.gender = t.validation.gender;
     if (!primaryLanguage) found.primaryLanguage = t.validation.primaryLanguage;

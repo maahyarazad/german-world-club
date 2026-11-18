@@ -48,6 +48,8 @@ export default function Country() {
       console.error('Country.submit', e instanceof ApiError ? e.problem : e);
       if (e instanceof ApiError && e.type === PROBLEMS.EMAIL_IN_USE.type) setError(t.register.emailRegistered);
       else if (e instanceof ApiError && e.type === PROBLEMS.MOBILE_IN_USE.type) setError(t.register.mobileInUse);
+      // The server's verdict on the number (feature 031); step 1 is where it is fixed.
+      else if (e instanceof ApiError && e.type === PROBLEMS.INVALID_MOBILE.type) setError(t.validation.mobileInvalid);
     } finally {
       setBusy(false);
     }

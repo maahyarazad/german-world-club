@@ -10,6 +10,7 @@
     "./auth": "./src/auth.ts",
     "./devices": "./src/devices.ts",
     "./admin": "./src/admin.ts",
+    "./mobile": "./src/mobile.ts",
     "./seo": "./src/seo.ts",
     "./media": "./src/media.ts",
     "./push": "./src/push.ts",
@@ -29,6 +30,7 @@
     "./referrals": "./src/referrals.ts"
   },
   "dependencies": {
+    "libphonenumber-js": "^1.13.16",
     "zod": "^4.6.5"
   },
   "scripts": {
