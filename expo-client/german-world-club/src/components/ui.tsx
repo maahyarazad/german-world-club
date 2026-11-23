@@ -1,6 +1,6 @@
 import type { ReactNode, Ref } from 'react';
 import {
-    KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+    KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputInstance, View,
     type TextInputProps, type ViewStyle, type StyleProp
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -116,7 +116,7 @@ type TextFieldProps = TextInputProps & {
     error?: string | null;
     hint?: string;
     /** React 19 passes `ref` through `memo` as a plain prop; it lands on the input so a form can move focus. */
-    ref?: Ref<TextInput>;
+    ref?: Ref<TextInputInstance>;
 };
 
 export const TextField = memo(function TextField({

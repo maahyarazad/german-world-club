@@ -36,7 +36,9 @@ export default {
   expo: {
     name: "German World Club",
     slug: "german-world-club",
-    version: "1.0.0",
+    // 1.1.0 = Expo SDK 58 (feature 034). runtimeVersion follows this number (policy
+    // "appVersion"), so bumping it keeps SDK 58 OTA updates away from SDK 57 builds.
+    version: "1.1.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "germanworldclub",
@@ -98,6 +100,12 @@ export default {
         },
       ],
       "expo-video",
+      // SDK 58 asks for these config plugins to be listed (expo install --fix could not
+      // write them: this config is dynamic).
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
       [
         "expo-notifications",
         {

@@ -1,6 +1,6 @@
 # German World Club — mobile app
 
-Expo SDK 57 (React Native 0.86, Expo Router, React Compiler). It is an npm workspace of the
+Expo SDK 58 (React Native 0.88, Expo Router, React Compiler). It is an npm workspace of the
 platform monorepo and imports `@gwc/contracts` directly, so a field renamed on the server is
 a type error here.
 
