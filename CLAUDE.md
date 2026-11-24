@@ -678,3 +678,13 @@ registration step-3 contact change.
   wrong. If a line looks odd and the reason is not next to it, add the reason.
 - Tests assert behaviour, not implementation, and carry a counter-assertion
   wherever a test would otherwise pass against a server that did nothing.
+- Styles in the Expo app live in `StyleSheet.create` (feature 036,
+  `specs/036-expo-stylesheet/`), never as an object literal in JSX. Colours that
+  come from the theme go through `useThemedStyles(makeStyles)`
+  (`src/hooks/use-themed-styles.ts`), because `StyleSheet.create` runs once at
+  module load and cannot see light or dark mode; a value that comes from props
+  (an avatar's size) gets a small `useMemo(() => makeSized(size), [size])` sheet.
+  An ESLint rule (`no-restricted-syntax`, an error) rejects an inline style
+  object; the only exception is an `Animated` value, with a disable comment
+  giving the reason. In a file that imports `styles` from `@/components/ui`, the
+  local sheet is `styles` and the import is `uiStyles`.
