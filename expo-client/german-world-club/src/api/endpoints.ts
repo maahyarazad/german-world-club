@@ -19,7 +19,7 @@ import type { Device, DeviceList, DevicePatch, DeviceRegistration, Preferences }
 import type {
   BrowseCategory, CreateOfferRequest, MemberOffer, MerchantOffer, OfferCategory, OfferListItem, UpdateOfferRequest,
 } from '@gwc/contracts/offers';
-import type { CreateStoreRequest, Store, UpdateStoreRequest } from '@gwc/contracts/stores';
+import type { CreateStoreRequest, Store, StoreProfile, UpdateStoreRequest } from '@gwc/contracts/stores';
 import type { Redemption, RedemptionReport } from '@gwc/contracts/redemptions';
 import type {
   CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, TermsResponse,
@@ -169,6 +169,8 @@ export const clubOffersApi = (kind: ClubOffersKind) => {
       api<{ items: OfferListItem[]; nextCursor: string | null }>(`${prefix}${q({ categoryId, cursor })}`),
     categories: () => api<{ items: BrowseCategory[] }>(`${prefix}/categories`),
     detail: (id: string) => api<MemberOffer>(`${prefix}/${id}`),
+    /** The store behind an offer, by the slug on the offer's merchant block. */
+    store: (slug: string) => api<StoreProfile>(`${prefix}/stores/${encodeURIComponent(slug)}`),
     /** `requestId` is made once per tap and reused on a retry: the server answers a repeat with the original. */
     redeem: (id: string, requestId: string) =>
       api<Redemption>(`${prefix}/${id}/redemptions`, { method: 'POST', body: { requestId } }),

@@ -15,10 +15,9 @@ import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
 
 /**
- * A marketplace listing, read-only. Rendered by two stacks — the Marketplace
- * tab (feature 017) and Activity, where a listing notification lands (feature
- * 011) — because native tabs cannot share a screen, and a second copy of this
- * would drift. No edit actions. Feature 020 adds "Send request" — not on the
+ * A marketplace listing, read-only. Opened from the Marketplace tab (feature 017),
+ * which is also where a listing notification lands (feature 011) now that Activity
+ * has no screen of its own for it. No edit actions. Feature 020 adds "Send request" — not on the
  * member's own listing, and only when the listing can be contacted; the server
  * decides regardless.
  * A listing that is gone, hidden or not the member's to see answers 404 and

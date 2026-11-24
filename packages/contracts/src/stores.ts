@@ -50,6 +50,26 @@ export const setStoreMediaRequestSchema = z.object({
   assetIds: z.array(z.string().uuid()).max(100),
 })
 
+/**
+ * A store as any other signed-in account sees it, one tap from an offer
+ * (feature 035 follow-up). The wide cover, the description, the opening hours and
+ * the gallery — and nothing that is the merchant's or the club's business: no
+ * version, no active flag (an inactive store is a 404, not a notice), no contract
+ * data. Derivatives only.
+ */
+export const storeProfileSchema = z.object({
+  displayName: z.string(),
+  /** The organisation's slug: the same one an offer's `merchant` block carries. */
+  slug: z.string(),
+  logo: mediaItemSchema.nullable(),
+  description: z.string().nullable(),
+  cover: mediaItemSchema.nullable(),
+  media: z.array(mediaItemSchema),
+  openingHours: z.string().nullable(),
+})
+
+export const storeSlugParamSchema = z.object({ slug: z.string().min(1).max(200) })
+
 /** A store as staff see it in the list. */
 export const adminStoreSchema = z.object({
   id: z.string().uuid(),
@@ -78,6 +98,7 @@ export const setStoreActiveRequestSchema = z.object({
 export const storeIdParamSchema = z.object({ id: z.string().uuid() })
 
 export type Store = z.infer<typeof storeSchema>
+export type StoreProfile = z.infer<typeof storeProfileSchema>
 export type AdminStore = z.infer<typeof adminStoreSchema>
 export type CreateStoreRequest = z.infer<typeof createStoreRequestSchema>
 export type UpdateStoreRequest = z.infer<typeof updateStoreRequestSchema>

@@ -1,4 +1,4 @@
-import { NativeTabs } from 'expo-router/native-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { Platform } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -7,7 +7,8 @@ import { useTranslations } from '@/i18n';
 
 /**
  * An approved member: the Phase 1 functions as native tabs (§ "Core Server
- * Functions and Identities"), plus Activity (010). Each tab is its own
+ * Functions and Identities"), plus Offers (035). Activity (010) is reached from
+ * Profile. Each tab is its own
  * stack, so moving between tabs keeps your place in each.
  *
  * Marketplace (008 US6, built in feature 017) sits beside Threads, as on the
@@ -43,10 +44,9 @@ export default function MemberTabs() {
         <NativeTabs.Trigger.Label>{t.tabs.marketplace}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bag', selected: 'bag.fill' }} md="storefront" />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="activity">
-        <NativeTabs.Trigger.Label>{t.tabs.activity}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} md="favorite" />
-        <NativeTabs.Trigger.Badge hidden={unread === 0}>{unread > 99 ? '99+' : String(unread)}</NativeTabs.Trigger.Badge>
+      <NativeTabs.Trigger name="offers">
+        <NativeTabs.Trigger.Label>{t.tabs.offers}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'tag', selected: 'tag.fill' }} md="sell" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="events">
         <NativeTabs.Trigger.Label>{t.tabs.events}</NativeTabs.Trigger.Label>
@@ -55,6 +55,8 @@ export default function MemberTabs() {
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>{t.tabs.profile}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} md="account_circle" />
+        {/* Activity lives under Profile now, so its unread count badges this tab. */}
+        <NativeTabs.Trigger.Badge hidden={unread === 0}>{unread > 99 ? '99+' : String(unread)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

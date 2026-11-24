@@ -7,6 +7,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 
 import type { BenefitKind, BrowseCategory, MemberOffer, OfferListItem } from '@gwc/contracts/offers';
 import type { Redemption } from '@gwc/contracts/redemptions';
+import type { StoreProfile } from '@gwc/contracts/stores';
 
 import { ApiError } from '@/api/client';
 import { clubOffersApi, type ClubOffersKind } from '@/api/endpoints';
@@ -103,7 +104,7 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
  * same one, and the server answers a repeat with the original — so this screen
  * can never turn a retry into a second redemption.
  */
-export function ClubOfferDetail({ kind, id }: { kind: ClubOffersKind; id: string }) {
+export function ClubOfferDetail({ kind, id, storePath }: { kind: ClubOffersKind; id: string; storePath: string }) {
   const { t, format, formatDate, formatMoney } = useTranslations();
   const benefit = useBenefit();
   const [api] = useState(() => clubOffersApi(kind));
@@ -171,6 +172,9 @@ export function ClubOfferDetail({ kind, id }: { kind: ClubOffersKind; id: string
           <ThemedText>{offer.conditions}</ThemedText>
         </View>
       ) : null}
+      {/* The merchant behind the offer: its cover, description and opening hours. */}
+      <Button label={t.clubOffers.viewStore} variant="secondary"
+        onPress={() => router.push({ pathname: storePath as never, params: { slug: offer.merchant.slug } })} />
       <Message text={refusal} />
       {done ? (
         <Card>
@@ -214,5 +218,50 @@ export function ClubRedemptions({ kind }: { kind: ClubOffersKind }) {
         </View>
       )}
     />
+  );
+}
+
+/**
+ * The store behind an offer (feature 035 follow-up): the wide cover across the
+ * top, the name, the description, the opening hours and the gallery. Read-only —
+ * a merchant edits it under "Your store". A store that is switched off, or a slug
+ * that does not exist, is the same "not available" state.
+ */
+export function ClubStoreProfile({ kind, slug }: { kind: ClubOffersKind; slug: string }) {
+  const { t } = useTranslations();
+  const [api] = useState(() => clubOffersApi(kind));
+  // undefined = loading, null = the server has no such store for this account.
+  const [store, setStore] = useState<StoreProfile | null | undefined>(undefined);
+
+  useEffect(() => {
+    api.store(slug).then(setStore, (e) => { console.error('ClubStoreProfile.load', e instanceof ApiError ? e.problem : e); setStore(null); });
+  }, [api, slug]);
+
+  if (store === undefined) return <Loading />;
+  if (store === null) return <FormScreen title={t.clubOffers.storeUnavailable}>{null}</FormScreen>;
+
+  return (
+    <FormScreen title={store.displayName}>
+      {store.cover ? (
+        <Image source={{ uri: imageUrl(store.cover, 1200) }} accessibilityLabel={store.cover.alt}
+          style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 8 }} contentFit="cover" />
+      ) : null}
+      {store.description ? <ThemedText>{store.description}</ThemedText> : null}
+      {store.openingHours ? (
+        <View style={{ gap: Spacing.one }}>
+          <ThemedText type="smallBold">{t.clubOffers.openingHours}</ThemedText>
+          <ThemedText>{store.openingHours}</ThemedText>
+        </View>
+      ) : null}
+      {store.media.length > 0 ? (
+        <View style={{ gap: Spacing.two }}>
+          <ThemedText type="smallBold">{t.clubOffers.storeGallery}</ThemedText>
+          <MediaCarousel media={store.media} />
+        </View>
+      ) : null}
+      {!store.cover && !store.description && !store.openingHours && store.media.length === 0 ? (
+        <ThemedText themeColor="textSecondary">{t.clubOffers.storeEmpty}</ThemedText>
+      ) : null}
+    </FormScreen>
   );
 }

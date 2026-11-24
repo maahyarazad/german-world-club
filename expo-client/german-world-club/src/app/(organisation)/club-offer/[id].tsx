@@ -8,5 +8,5 @@ export default function ClubOffer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { state } = useSession();
   if (state.status !== 'organisation') return <Redirect href="/" />;
-  return <ClubOfferDetail kind={state.principal.kind as 'merchant' | 'partner'} id={id} />;
+  return <ClubOfferDetail kind={state.principal.kind as 'merchant' | 'partner'} id={id} storePath="/club-store/[slug]" />;
 }

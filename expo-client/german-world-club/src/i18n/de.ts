@@ -241,7 +241,7 @@ export const de: Catalogue = {
     threads: 'Threads',
     events: 'Events',
     profile: 'Profil',
-    activity: 'Aktivität',
+    offers: 'Angebote',
     marketplace: 'Marktplatz',
   },
   threads: {
@@ -621,6 +621,11 @@ export const de: Catalogue = {
     noRedemptions: 'Sie haben noch nichts eingelöst.',
     redeemedOn: 'Eingelöst {date}',
     unavailable: 'Dieses Angebot ist nicht mehr verfügbar.',
+    viewStore: 'Händlerprofil ansehen',
+    openingHours: 'Öffnungszeiten',
+    storeGallery: 'Galerie',
+    storeEmpty: 'Dieser Händler hat noch nichts in seinem Store hinterlegt.',
+    storeUnavailable: 'Dieser Store ist nicht verfügbar.',
     benefits: {
       percentage: '{value} % Rabatt',
       fixed_amount: '{value} Rabatt',

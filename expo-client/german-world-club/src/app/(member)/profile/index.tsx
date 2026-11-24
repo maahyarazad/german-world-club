@@ -12,6 +12,7 @@ import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Centered, Chip, FormScreen, Loading, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useUnread } from '@/hooks/use-unread';
 import { useTranslations, type Locale } from '@/i18n';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
@@ -23,6 +24,7 @@ import { ApiError } from '@/api/client';
 export default function Profile() {
   const { t, locale, setLocale, format, formatDate } = useTranslations();
   const { signOut } = useSession();
+  const unread = useUnread();
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   // Not the problem itself (that goes to the console): whether to offer the
   // way out, since a profile that will not load leaves nothing else to do.
@@ -78,6 +80,8 @@ export default function Profile() {
         {row(t.profile.city, profile.city)}
         {row(t.profile.country, countryName(profile.countryOfResidence, locale))}
       </Card>
+      <Button label={unread > 0 ? `${t.activity.title} (${unread > 99 ? '99+' : unread})` : t.activity.title}
+        onPress={() => router.push('/profile/activity')} variant="secondary" />
       <Button label={t.profile.edit} onPress={() => router.push('/profile/edit')} variant="secondary" />
       <Button label={t.profile.privacy} onPress={() => router.push('/profile/privacy')} variant="secondary" />
       <Button label={t.devices.settingsLink} onPress={() => router.push('/profile/devices')} variant="secondary" />

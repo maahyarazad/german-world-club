@@ -12,6 +12,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="privacy" options={{ title: t.profile.privacy }} />
       <Stack.Screen name="devices" options={{ title: t.devices.title }} />
       <Stack.Screen name="notifications" options={{ title: t.notifications.title }} />
+      <Stack.Screen name="activity" options={{ title: t.activity.title }} />
       <Stack.Screen name="referrals" options={{ title: t.referrals.title }} />
     </Stack>
   );

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   memberOfferSchema, offerListSchema, offerListQuerySchema, browseCategoryListSchema,
 } from '@gwc/contracts/offers'
+import { storeProfileSchema, storeSlugParamSchema } from '@gwc/contracts/stores'
 import { redeemRequestSchema, redemptionSchema, redemptionListSchema, redemptionQuerySchema } from '@gwc/contracts/redemptions'
 import { createClubOffersController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
@@ -13,6 +14,7 @@ import type { GwcApp } from '../../app.ts'
  *   GET  <prefix>                   the offers a person may see now, by category
  *   GET  <prefix>/categories        the categories, with how many offers are visible in each
  *   GET  <prefix>/redemptions       what this account has redeemed
+ *   GET  <prefix>/stores/:slug      the store behind an offer, by the slug on its merchant block
  *   GET  <prefix>/:id               one visible offer
  *   POST <prefix>/:id/redemptions   redeem it
  *
@@ -65,6 +67,11 @@ export default fp(
       app.get(`${prefix}/redemptions`, {
         config: read, onRequest: app.guard, schema: { querystring: redemptionQuerySchema, response: { 200: redemptionListSchema } },
       }, controller.mine)
+
+      app.get(`${prefix}/stores/:slug`, {
+        config: { ...read, budget: 'member-read' }, onRequest: app.guard,
+        schema: { params: storeSlugParamSchema, response: { 200: storeProfileSchema } },
+      }, controller.store)
 
       // `GET /member/offers/:id` already exists (feature 011, so a notification
       // lands on something) and keeps its own registration; the other three

@@ -1,5 +1,6 @@
 import { redeemOffer } from './application/redeem.ts'
 import { listOwnRedemptions } from './application/mine.ts'
+import { getVisibleStore } from '../stores/application/profile.ts'
 import { getMemberOffer } from '../offers/application/offer.ts'
 import { listVisibleOffers, listBrowseCategories } from '../offers/application/browse.ts'
 import type { Redeemer } from './application/redeem.ts'
@@ -36,6 +37,10 @@ export function createClubOffersController(app: GwcApp) {
 
     detail: async (request: GwcRequest, reply: GwcReply) =>
       reply.send(await getMemberOffer(app, { id: (request.params as { id: string }).id, signal: request.deadlineSignal })),
+
+    // The store behind an offer, addressed by the slug the offer's merchant block carries.
+    store: async (request: GwcRequest, reply: GwcReply) =>
+      reply.send(await getVisibleStore(app, { slug: (request.params as { slug: string }).slug, signal: request.deadlineSignal })),
 
     redeem: async (request: GwcRequest, reply: GwcReply) => {
       const { id } = request.params as { id: string }

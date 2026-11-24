@@ -18,6 +18,7 @@ export default function OrganisationLayout() {
           merchant keeps a store, offers and a report. A partner has no store. */}
       <Stack.Screen name="club-offers" options={{ title: t.clubOffers.title }} />
       <Stack.Screen name="club-offer/[id]" options={{ title: '' }} />
+      <Stack.Screen name="club-store/[slug]" options={{ title: '' }} />
       <Stack.Screen name="club-redemptions" options={{ title: t.clubOffers.myRedemptions }} />
       <Stack.Screen name="store" options={{ title: t.merchant.storeEntry }} />
       <Stack.Screen name="my-offers" options={{ title: t.merchant.offers.title }} />

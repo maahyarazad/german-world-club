@@ -14,7 +14,7 @@ export default function OfferScreen() {
   return (
     <>
       <Stack.Screen options={{ title: '' }} />
-      <ClubOfferDetail kind="member" id={id} />
+      <ClubOfferDetail kind="member" id={id} storePath="/offers/store/[slug]" />
     </>
   );
 }

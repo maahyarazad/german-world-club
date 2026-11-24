@@ -240,7 +240,7 @@ export const en = {
     threads: 'Threads',
     events: 'Events',
     profile: 'Profile',
-    activity: 'Activity',
+    offers: 'Offers',
     marketplace: 'Marketplace',
   },
   threads: {
@@ -620,6 +620,11 @@ export const en = {
     noRedemptions: 'You have not redeemed anything yet.',
     redeemedOn: 'Redeemed {date}',
     unavailable: 'This offer is no longer available.',
+    viewStore: 'View merchant store',
+    openingHours: 'Opening hours',
+    storeGallery: 'Gallery',
+    storeEmpty: 'This merchant has not added anything to its store yet.',
+    storeUnavailable: 'This store is not available.',
     benefits: {
       percentage: '{value}% off',
       fixed_amount: '{value} off',

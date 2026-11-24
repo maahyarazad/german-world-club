@@ -16,8 +16,8 @@ const payload = (type: string, id: string, v: string = PUSH_PAYLOAD_VERSION) => 
 
 describe('resolveDestination', () => {
   it.each([
-    ['offer', 'o-1', '/(member)/activity/offer/[id]', { id: 'o-1' }],
-    ['listing', 'l-1', '/(member)/activity/listing/[id]', { id: 'l-1' }],
+    ['offer', 'o-1', '/(member)/offers/[id]', { id: 'o-1' }],
+    ['listing', 'l-1', '/(member)/marketplace/listing/[id]', { id: 'l-1' }],
     ['thread_post', 'p-1', '/(member)/threads/[id]', { id: 'p-1' }],
     ['event', 'e-1', '/(member)/events/[id]', { id: 'e-1' }],
     // A partner is addressed by organisation slug, not by uuid.
