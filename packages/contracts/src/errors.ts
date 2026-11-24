@@ -165,6 +165,22 @@ export const PROBLEMS = {
   // a later narrowing reuses it.
   MARKETPLACE_MODE_NOT_ALLOWED: { type: `${BASE}/marketplace/mode-not-allowed`, title: 'Mode not allowed for this category', status: 422 },
 
+  // --- Merchant stores and offers (feature 035) ------------------------------
+  STORE_EXISTS: { type: `${BASE}/offers/store-exists`, title: 'This organisation already has a store', status: 409 },
+  STORE_NOT_FOUND: { type: `${BASE}/offers/store-not-found`, title: 'No store yet', status: 404 },
+  // 409 like a state conflict: the request is fine, the store's state refuses it.
+  STORE_INACTIVE: { type: `${BASE}/offers/store-inactive`, title: 'The store is deactivated', status: 409 },
+  OFFER_CATEGORY_REQUIRED: { type: `${BASE}/offers/category-required`, title: 'Choose a category for the offer', status: 422 },
+  OFFER_MEDIA_LIMIT: { type: `${BASE}/offers/media-limit`, title: 'Too many media items', status: 422 },
+  // 409: retrying changes nothing until the stock changes.
+  OFFER_SOLD_OUT: { type: `${BASE}/offers/sold-out`, title: 'No units of this offer remain', status: 409 },
+  PER_PERSON_LIMIT_REACHED: { type: `${BASE}/offers/per-person-limit-reached`, title: 'Already redeemed the most this offer allows', status: 409 },
+  // A merchant redeeming its own organisation's offer would inflate its own report.
+  OWN_OFFER: { type: `${BASE}/offers/own-offer`, title: 'An organisation cannot redeem its own offer', status: 422 },
+  COVER_ASPECT_RATIO: { type: `${BASE}/offers/cover-aspect-ratio`, title: 'The cover image must be wide (16:9)', status: 422 },
+  // Deleting a file a store, offer or logo still uses.
+  MEDIA_IN_USE: { type: `${BASE}/media-in-use`, title: 'This file is still in use', status: 409 },
+
   // --- Media ----------------------------------------------------------------
   UNSUPPORTED_MEDIA_TYPE: { type: `${BASE}/unsupported-media-type`, title: 'Unsupported media type', status: 400 },
   MEDIA_DIMENSIONS_EXCEEDED: { type: `${BASE}/media-dimensions-exceeded`, title: 'Media dimensions exceeded', status: 400 },

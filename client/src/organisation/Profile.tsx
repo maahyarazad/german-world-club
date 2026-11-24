@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OrganisationProfile } from '@gwc/contracts/profile'
-import { get, patch, post, ApiError } from '../lib/api'
+import { get, patch, ApiError } from '../lib/api'
+import { useMediaUpload } from '../lib/use-media-upload'
+import { checkMerchantFile } from '../lib/media-limits'
 import { fill } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
 import Card from '../components/ui/Card'
@@ -10,6 +12,7 @@ import Callout from '../components/ui/Callout'
 import { useTranslations } from '../i18n/index'
 import { OrganisationCard } from '../member/profile/OrganisationView'
 import PageLoader from '../components/ui/PageLoader'
+import UploadProgress from '../components/ui/UploadProgress'
 
 /**
  * A merchant's or partner's profile (US3, FR-014): the signed-in person, and
@@ -26,6 +29,8 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const logoInput = useRef<HTMLInputElement>(null)
+  // Feature 035: the logo shows progress while it goes up and while the server works.
+  const logoUpload = useMediaUpload(kind)
 
   const adopt = (p: OrganisationProfile) => {
     setProfile(p)
@@ -53,15 +58,20 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
 
   const uploadLogo = async (file: File | undefined) => {
     if (!file || !profile) return
-    const form = new FormData()
-    form.append('alt', fill(t.organisationProfile.logoAlt, { name: profile.publicProfile?.displayName ?? profile.organisation.name }))
-    form.append('file', file)
-    try {
-      const asset = (await post(`/media/${kind}`, form)) as { id: string }
-      await save({ logoAssetId: asset.id })
-    } catch (err) {
-      console.error('OrganisationProfile.uploadLogo', err instanceof ApiError ? err.problem : err)
+    // A merchant's uploads are held to the smaller limits (under 1 MB for a
+    // photo); a partner's keep the platform's. Said before sending, not after.
+    if (kind === 'merchant') {
+      const check = checkMerchantFile(file)
+      if (check !== 'ok') {
+        setMessage({ tone: 'danger', text: check === 'unsupported' ? t.merchantStore.limits.unsupported : t.merchantStore.limits.imageTooLarge })
+        return
+      }
     }
+    setMessage(null)
+    // The saved logo is touched only once the new one is ready: a failed or
+    // cancelled upload leaves the previous one exactly as it was.
+    const asset = await logoUpload.start(file, fill(t.organisationProfile.logoAlt, { name: profile.publicProfile?.displayName ?? profile.organisation.name }))
+    if (asset) await save({ logoAssetId: asset.id })
   }
 
   if (!profile) return <PageLoader />
@@ -98,10 +108,11 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
               website: form.website.trim() || null,
               city: form.city.trim() || null,
             })}>{t.organisationProfile.save}</Button>
-            <Button variant="secondary" disabled={busy} onClick={() => logoInput.current?.click()}>{t.organisationProfile.logoChange}</Button>
+            <Button variant="secondary" disabled={busy || logoUpload.state.phase === 'uploading' || logoUpload.state.phase === 'processing'} onClick={() => logoInput.current?.click()}>{t.organisationProfile.logoChange}</Button>
             <input ref={logoInput} type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" tabIndex={-1}
               aria-label={t.organisationProfile.logoChange} onChange={(e) => { void uploadLogo(e.target.files?.[0]); e.target.value = '' }} />
           </div>
+          <UploadProgress state={logoUpload.state} label={t.organisationProfile.logo} onCancel={logoUpload.cancel} />
         </Card>
       ) : (
         <Callout variant="neutral" title={t.organisationProfile.readOnly}>{null}</Callout>

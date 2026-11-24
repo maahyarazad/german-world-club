@@ -20,7 +20,13 @@ export const SEEDED = Object.freeze([
   'organisations',
   'organisation_users',
   'merchant_locations',
+  // Feature 035. The categories are reference data inserted by migration 046; the
+  // seeder adds nothing to them, but the manifest must name every table.
+  'offer_categories',
+  'stores',
+  'store_media',
   'offers',
+  'offer_media',
   'redemptions',
   'redemption_feedback',
   'events',

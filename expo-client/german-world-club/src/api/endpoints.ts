@@ -16,7 +16,11 @@ import type {
   ThreadPost, ThreadView,
 } from '@gwc/contracts/threads';
 import type { Device, DeviceList, DevicePatch, DeviceRegistration, Preferences } from '@gwc/contracts/push';
-import type { MemberOffer } from '@gwc/contracts/offers';
+import type {
+  BrowseCategory, CreateOfferRequest, MemberOffer, MerchantOffer, OfferCategory, OfferListItem, UpdateOfferRequest,
+} from '@gwc/contracts/offers';
+import type { CreateStoreRequest, Store, UpdateStoreRequest } from '@gwc/contracts/stores';
+import type { Redemption, RedemptionReport } from '@gwc/contracts/redemptions';
 import type {
   CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, TermsResponse,
 } from '@gwc/contracts/marketplace';
@@ -121,6 +125,56 @@ export const mediaApi = {
     return api<Asset>(route, { method: 'POST', body: form });
   },
   get: (id: string) => api<Asset>(`/media/${id}`),
+};
+
+/**
+ * A merchant's own store and offers (feature 035). "Mine" paths: the organisation
+ * comes from the session on the server, so nothing here can name another's.
+ */
+export const merchantApi = {
+  store: () => api<Store>('/merchant/store'),
+  createStore: (body: CreateStoreRequest) => api<Store>('/merchant/store', { method: 'POST', body }),
+  updateStore: (body: UpdateStoreRequest) => api<Store>('/merchant/store', { method: 'PATCH', body }),
+  setCover: (assetId: string | null) => api<Store>('/merchant/store/cover', { method: 'PUT', body: { assetId } }),
+  setStoreMedia: (assetIds: string[]) => api<Store>('/merchant/store/media', { method: 'PUT', body: { assetIds } }),
+  offers: () => api<{ items: MerchantOffer[] }>('/merchant/offers'),
+  createOffer: (body: CreateOfferRequest) => api<MerchantOffer>('/merchant/offers', { method: 'POST', body }),
+  updateOffer: (id: string, body: UpdateOfferRequest) => api<MerchantOffer>(`/merchant/offers/${id}`, { method: 'PATCH', body }),
+  setOfferMedia: (id: string, assetIds: string[]) => api<MerchantOffer>(`/merchant/offers/${id}/media`, { method: 'PUT', body: { assetIds } }),
+  publish: (id: string) => api<MerchantOffer>(`/merchant/offers/${id}/publish`, { method: 'POST' }),
+  withdraw: (id: string) => api<MerchantOffer>(`/merchant/offers/${id}/withdraw`, { method: 'POST' }),
+  categories: () => api<{ items: OfferCategory[] }>('/merchant/categories'),
+  report: (query = '') => api<RedemptionReport>(`/merchant/reports/redemptions${query}`),
+  /** Free a file nothing uses. Best effort: a file still in use is refused (409), which is the right answer. */
+  deleteFile: (assetId: string) => api<void>(`/media/merchant/${assetId}`, { method: 'DELETE' }),
+};
+
+/**
+ * Browsing and redeeming merchant offers (feature 035): the same calls for every
+ * kind of account, behind the mount that account's audience can reach. The app
+ * is used by members and by merchant and partner users; staff have no app.
+ */
+export type ClubOffersKind = 'member' | 'merchant' | 'partner';
+const CLUB_PREFIX: Record<ClubOffersKind, string> = {
+  member: '/member/offers', merchant: '/merchant/club-offers', partner: '/partner/club-offers',
+};
+export const clubOffersApi = (kind: ClubOffersKind) => {
+  const prefix = CLUB_PREFIX[kind];
+  const q = (params: Record<string, string | null | undefined>) => {
+    const entries = Object.entries(params).filter(([, v]) => v) as [string, string][];
+    return entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
+  };
+  return {
+    list: (categoryId?: string | null, cursor?: string | null) =>
+      api<{ items: OfferListItem[]; nextCursor: string | null }>(`${prefix}${q({ categoryId, cursor })}`),
+    categories: () => api<{ items: BrowseCategory[] }>(`${prefix}/categories`),
+    detail: (id: string) => api<MemberOffer>(`${prefix}/${id}`),
+    /** `requestId` is made once per tap and reused on a retry: the server answers a repeat with the original. */
+    redeem: (id: string, requestId: string) =>
+      api<Redemption>(`${prefix}/${id}/redemptions`, { method: 'POST', body: { requestId } }),
+    mine: (cursor?: string | null) =>
+      api<{ items: Redemption[]; nextCursor: string | null }>(`${prefix}/redemptions${q({ cursor })}`),
+  };
 };
 
 export const eventsApi = {

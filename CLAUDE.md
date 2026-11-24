@@ -509,6 +509,44 @@ minute. Disabling `push.deliver` stops every send path. Five rules:
   production; FCM settings are all or none. A token is never logged, returned
   or copied into history: `tokenPreview` is all anyone sees.
 
+**Merchant stores, offers and redemptions (feature 035, `specs/035-merchant-store-offers/`).**
+A merchant organisation has one store; its offers sit under staff-managed categories;
+any active account redeems them. Seven things that look optional and are not:
+
+- **One store per organisation is the database's rule** (`stores.organisation_id
+  UNIQUE`), so two simultaneous creates cannot both win. A store is switched off by
+  staff with `PUT /admin/stores/:id/active` (`false` or `0`, a reason required to
+  switch off, `merchant_offers.status`) and never deleted.
+- **`VISIBLE_OFFER` is the one rule for "an account may see this offer"** and now
+  includes the store: browse, detail, redeem, the push dispatch and the landing strip
+  all use it, so a switched-off store's offers vanish on the next request. Anything
+  using it must use `OFFER_JOINS` too.
+- **Media is bounded in the database and by the server.** An offer holds at most ten
+  images or videos and a store gallery at most ten (`position BETWEEN 0 AND 9`); the
+  store cover is separate, one image about 16:9. What a merchant uploads is held to a
+  photo under 1 MiB and a video under 5 MiB (`MERCHANT_*` in `@gwc/contracts/media`),
+  decided after content inspection; members and partners keep 25 MB. A merchant can
+  delete a file nothing uses (`DELETE /media/merchant/:id`; in use is 409).
+- **Publishing sets the state and nothing else.** There is no approval step. The one
+  announcement to members is queued by the `offers_queue_push` trigger, keyed
+  `offer:<id>`, so withdrawing and publishing again never notifies twice. **Never
+  queue a notification from application code**: a second path would not share the key.
+- **A redemption is an append-only ledger row**, redeemed by a `(kind, id)` — member,
+  `admin`, merchant or partner — with no foreign key (an insert trigger checks the
+  account exists and is active). It is exact under an offer-row lock, idempotent by the
+  client's `requestId`, and a merchant cannot redeem its own organisation's offers.
+  `remaining` counting down does not move the offer's edit version.
+- **Reports take their scope from the route, never the request.** A merchant's report
+  ignores any `organisationId` in the query; only `/admin/reports/redemptions`
+  (`merchant_offers.read`) honours it. Who redeemed is a handle, "First L." or a display
+  name — never contact details (`tests/redemptions/report-no-pii.test.ts`).
+- **The landing strip is read live and only shows the public face.** `/` and `/en`
+  carry `<!--gwc:partners-->…<!--/gwc:partners-->`; it lists active partners and
+  merchants whose store is on, by name and logo, with no script, and is omitted when
+  empty. A partner is linked only if it has a published `seo_metadata` page; a merchant
+  never, because its store is members-only. The anonymous page keeps `PUBLIC_CACHE` and
+  gets no `Vary: Cookie`.
+
 **Profiling is the second onboarding gate (feature 013, `specs/013-onboarding-profiling/`).**
 An approved applicant is refused on every route except those declaring
 `config.auth.profiling: true` until `member_profiling.completed_at` is set. Two

@@ -155,8 +155,10 @@ export async function merchantOffer(
   {
     state = 'draft', validFrom = new Date(Date.now() - 86_400_000), validUntil = new Date(Date.now() + 30 * 86_400_000),
     title = 'Zwei Kaffee zum Preis von einem', displayName = 'Café Push', orgStatus = 'active',
+    storeActive = true,
   }: {
     state?: string; validFrom?: Date; validUntil?: Date; title?: string; displayName?: string; orgStatus?: string
+    storeActive?: boolean
   } = {},
 ) {
   const slug = `push-test-${randomUUID().slice(0, 12)}`
@@ -170,15 +172,26 @@ export async function merchantOffer(
     'INSERT INTO organisation_profiles (organisation_id, display_name) VALUES ($1, $2)',
     [organisationId, displayName],
   )
-  const { rows } = await pool.query(
-    `INSERT INTO offers (organisation_id, title, description, regular_price_cents, member_price_cents,
-                         benefit_kind, benefit_value, valid_from, valid_until, conditions, state, published_at)
-     VALUES ($1, $2, 'Beschreibung', 1000, 800, 'percentage', 20, $3, $4, 'Nur für Mitglieder',
-             $5::offer_state, CASE WHEN $5 = 'published' THEN now() END)
+  // Feature 035: an offer belongs to a store and a category. Stores refuse DELETE
+  // (like organisations they are switched off, not removed), so this one is left
+  // behind with its organisation; the unique slug keeps runs apart.
+  const { rows: store } = await pool.query(
+    `INSERT INTO stores (organisation_id, active, deactivated_at, deactivation_reason)
+     VALUES ($1, $2, CASE WHEN $2 THEN NULL ELSE now() END, CASE WHEN $2 THEN NULL ELSE 'test' END)
      RETURNING id`,
-    [organisationId, title, validFrom, validUntil, state],
+    [organisationId, storeActive],
   )
-  return { id: String(rows[0].id), organisationId, slug }
+  const { rows } = await pool.query(
+    `INSERT INTO offers (organisation_id, store_id, category_id, title, description, regular_price_cents,
+                         member_price_cents, benefit_kind, benefit_value, valid_from, valid_until, conditions,
+                         state, published_at)
+     VALUES ($1, $2, (SELECT id FROM offer_categories WHERE slug = 'other'), $3, 'Beschreibung', 1000, 800,
+             'percentage', 20, $4, $5, 'Nur für Mitglieder',
+             $6::offer_state, CASE WHEN $6 = 'published' THEN now() END)
+     RETURNING id`,
+    [organisationId, String(store[0].id), title, validFrom, validUntil, state],
+  )
+  return { id: String(rows[0].id), organisationId, storeId: String(store[0].id), slug }
 }
 
 export async function publish(pool: Pool, offerId: string) {

@@ -12,6 +12,8 @@ import type { Module, Flag } from '@gwc/contracts/permissions'
 import { FLAGS } from '@gwc/contracts/permissions'
 import { isAvailable } from '@gwc/contracts/capabilities'
 import { useLocale, useTranslations } from '../i18n/index'
+import { hasGrant } from '@gwc/contracts/capabilities'
+import RecentRedemptions from '../offers/RecentRedemptions'
 
 /**
  * The Admin Panel landing page.
@@ -45,6 +47,9 @@ function SuperadminDashboard() {
       <PageHeader title="Admin Panel" subtitle={t.adminDashboard.subtitle} />
 
       {failed && <Callout variant="gold" title={t.adminDashboard.figuresFailed}>{null}</Callout>}
+
+      {/* The platform's latest redemptions (feature 035); a superadmin holds every grant. */}
+      <RecentRedemptions path="/admin/reports/redemptions" reportTo="/konsole/admin/einloesungs-bericht" />
 
       {!data && !failed && <PageLoader />}
       {data && (
@@ -90,6 +95,10 @@ function StaffDashboard() {
           caption={t.adminDashboard.superadmin}
         />
       </KpiRow>
+
+      {hasGrant(snapshot, 'merchant_offers', 'read') && (
+        <RecentRedemptions path="/admin/reports/redemptions" reportTo="/konsole/admin/einloesungs-bericht" />
+      )}
 
       <Card title={t.adminDashboard.yourAreas}>
         <ul className="flex flex-col gap-2">

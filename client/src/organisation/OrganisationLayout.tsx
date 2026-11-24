@@ -21,7 +21,17 @@ export function OrganisationLayout({ kind }: { kind: 'merchant' | 'partner' }) {
   const items: readonly SidebarItem[] = [
     { to: home, end: true, label: t.organisationPortal.home },
     { to: `${home}/profil`, label: t.organisationProfile.tabLabel },
+    // A merchant's shop window (feature 035). A partner has neither a store nor offers.
+    ...(kind === 'merchant'
+      ? [
+        { to: `${home}/shop`, label: t.merchantStore.tabLabel },
+        { to: `${home}/angebote`, label: t.merchantOffers.tabLabel },
+        { to: `${home}/bericht`, label: t.redemptionReport.tabLabel },
+      ]
+      : []),
     { to: `${home}/empfehlen`, label: t.referrals.tabLabel },
+    // Merchant offers every account may redeem (feature 035). Not the merchant's own offers, which are `angebote`.
+    { to: `${home}/angebote-entdecken`, label: t.clubOffers.tabLabel },
   ]
   return <ConsoleShell title={t.portals[kind]} items={items} signOutPath={`/auth/${kind}/sign-out`} />
 }

@@ -37,6 +37,13 @@ export function AdminLayout() {
   const items: readonly SidebarItem[] = [
     ...ADMIN_ITEMS,
     { to: '/konsole/admin/empfehlen', label: t.referrals.tabLabel },
+    // Merchant offers (feature 035): staff browse and redeem as people, with no grant.
+    { to: '/konsole/admin/angebote', label: t.clubOffers.tabLabel },
+    // One module, three pages, each labelled for what it is: the module's own name
+    // would be too coarse to tell stores, categories and the report apart.
+    { to: '/konsole/admin/shops', module: 'merchant_offers', label: t.adminStores.title },
+    { to: '/konsole/admin/angebotskategorien', module: 'merchant_offers', label: t.adminCategories.title },
+    { to: '/konsole/admin/einloesungs-bericht', module: 'merchant_offers', label: t.redemptionReport.title },
   ]
   return <ConsoleShell title={t.portals.staff} items={items} signOutPath="/auth/staff/sign-out" />
 }

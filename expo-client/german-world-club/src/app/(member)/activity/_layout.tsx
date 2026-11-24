@@ -11,6 +11,10 @@ export default function ActivityLayout() {
           R10): "things that happened to me" is the Activity tab, and native
           tabs cannot hold screens that are not tabs. */}
       <Stack.Screen name="offer/[id]" options={{ title: '' }} />
+      {/* Merchant offers and what has been redeemed (feature 035). Not a sixth tab:
+          the Marketplace tab is the fifth and last slot native tabs allow. */}
+      <Stack.Screen name="offers" options={{ title: t.clubOffers.title }} />
+      <Stack.Screen name="redemptions" options={{ title: t.clubOffers.myRedemptions }} />
       <Stack.Screen name="listing/[id]" options={{ title: '' }} />
     </Stack>
   );

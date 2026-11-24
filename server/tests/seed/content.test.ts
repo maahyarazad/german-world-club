@@ -73,9 +73,11 @@ describe.skipIf(!hasDatabase)('offers span their lifecycle', () => {
     // form could forget.
     const { rows: org } = await db.pool.query(`SELECT id FROM organisations WHERE kind='merchant' LIMIT 1`)
     await expect(db.pool.query(
-      `INSERT INTO offers (organisation_id, title, regular_price_cents, member_price_cents,
-                           benefit_kind, valid_from, valid_until, state)
-       VALUES ($1, 'Kein Vorteil', 1000, 1000, 'percentage', now(), now() + interval '1 day', 'draft')`,
+      `INSERT INTO offers (organisation_id, store_id, category_id, title, regular_price_cents,
+                           member_price_cents, benefit_kind, valid_from, valid_until, state)
+       VALUES ($1, (SELECT id FROM stores WHERE organisation_id = $1),
+               (SELECT id FROM offer_categories WHERE slug = 'other'),
+               'Kein Vorteil', 1000, 1000, 'percentage', now(), now() + interval '1 day', 'draft')`,
       [org[0].id],
     )).rejects.toThrow(/offers_real_advantage/)
   })

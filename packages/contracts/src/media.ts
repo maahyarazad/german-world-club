@@ -21,6 +21,31 @@ export const MEDIA_MAX_BYTES = 26_214_400
 export const MEDIA_MAX_PIXELS = 50_000_000
 
 /**
+ * What a merchant may upload (feature 035, research R15). A photo at or above
+ * 1 MiB and a video at or above 5 MiB are refused. Shared so the web and the
+ * app can say so before sending; the server is still the one that decides.
+ */
+export const MERCHANT_IMAGE_MAX_BYTES = 1_048_576
+export const MERCHANT_VIDEO_MAX_BYTES = 5_242_880
+
+/** A store's gallery holds at most this many photos or videos. */
+export const MAX_STORE_MEDIA = 10
+
+/**
+ * The store cover is a wide image across the top, like a LinkedIn or Facebook
+ * cover: landscape 16:9, give or take `tolerance` (a fraction of the ratio), so
+ * 1280x720 and 1600x900 pass and a phone's 4:3 or a square does not.
+ */
+export const STORE_COVER_ASPECT = Object.freeze({ width: 16, height: 9, tolerance: 0.02 })
+
+/** Whether a width and height make a wide cover. One rule for the server and both clients. */
+export function isWideCover(width: number, height: number): boolean {
+  if (!(width > 0) || !(height > 0)) return false
+  const target = STORE_COVER_ASPECT.width / STORE_COVER_ASPECT.height
+  return Math.abs(width / height - target) <= target * STORE_COVER_ASPECT.tolerance
+}
+
+/**
  * §10.1 calls out galleries needing alt text, so `alt` is required at ingest
  * rather than nullable-and-backfilled. An image with no alt text is one that
  * cannot be published, and discovering that at publish time means going back to

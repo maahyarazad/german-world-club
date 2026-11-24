@@ -44,7 +44,10 @@ export const CONSOLE_ENTRY = '/konsole.html'
 // `/referrals` (feature 018) is called through a `basePath` prop rather than a
 // literal, so the source scan in tests/dev-server.test.ts cannot see it — it was
 // missed here exactly as /marketplace once was, and 404'd only in development.
-export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding', '/threads', '/profile', '/profiling', '/referrals', '/member']
+// `/merchant` and `/partner` (feature 035): a merchant's own store and offers, and the
+// offers every kind of account may browse. Without them `npm run dev` answers the
+// SPA fallback's HTML to an API call, which a JSON client reads as a parse failure.
+export const API_PREFIXES = ['/auth', '/admin', '/media', '/push', '/health', '/marketplace', '/messages', '/onboarding', '/threads', '/profile', '/profiling', '/referrals', '/member', '/merchant', '/partner']
 
 /**
  * Static pages Vite serves from a file whose name is not the URL.

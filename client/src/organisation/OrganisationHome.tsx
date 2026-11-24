@@ -2,6 +2,7 @@ import PageHeader from '../components/ui/PageHeader'
 import Callout from '../components/ui/Callout'
 import { useCapabilities } from '../lib/capabilities'
 import { useTranslations } from '../i18n/index'
+import RecentRedemptions from '../offers/RecentRedemptions'
 
 type Role = 'owner' | 'manager' | 'staff'
 
@@ -27,6 +28,8 @@ export function OrganisationHome() {
           {t.organisationPortal.role}: {t.organisationPortal.roles[role]}
         </p>
       ) : null}
+      {/* A merchant's latest redemptions (feature 035). A partner has no offers. */}
+      {snapshot?.kind === 'merchant' && <RecentRedemptions path="/merchant/reports/redemptions" reportTo="/konsole/merchant/bericht" />}
       <Callout variant="neutral" title={t.console.notAvailable}>
         {t.organisationPortal.notBuiltHint}
       </Callout>

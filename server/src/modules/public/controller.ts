@@ -1,5 +1,6 @@
 import { renderRecord, PUBLIC_CACHE, VARY } from './application/render-record.ts'
 import { renderLanding, LANDING_RECORD, LANDING_RECORD_EN, LANDING_ALTERNATES } from './application/landing.ts'
+import { loadCarousel } from './application/partners-carousel.ts'
 import { loadViewer } from './application/viewer.ts'
 import { renderMarketplaceDiscovery } from './application/marketplace-discovery.ts'
 import { renderReferralPage, appleAppSiteAssociation, androidAssetLinks } from './application/referral-landing.ts'
@@ -47,6 +48,15 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
       }
     }
 
+    // Feature 035: the partners and merchants strip, read live. Like the viewer,
+    // a failure on the way is the page without it — never an error on the landing.
+    let carousel: Awaited<ReturnType<typeof loadCarousel>> = []
+    try {
+      carousel = await loadCarousel(app, { signal: request.deadlineSignal })
+    } catch (err) {
+      request.log.warn({ err }, 'landing carousel could not be loaded; serving the page without it')
+    }
+
     reply.type('text/html; charset=utf-8')
     if (viewer) {
       // A page carrying a person's name and picture is never stored by a
@@ -57,7 +67,7 @@ export function createPublicController(app: GwcApp, { origin, landingShell, land
       reply.header('cache-control', PUBLIC_CACHE).header('vary', VARY)
     }
 
-    const html = renderLanding({ shell, record, origin, cspNonce: reply.cspNonce, viewer, language })
+    const html = renderLanding({ shell, record, origin, cspNonce: reply.cspNonce, viewer, language, carousel })
     return reply.send(html)
   }
 

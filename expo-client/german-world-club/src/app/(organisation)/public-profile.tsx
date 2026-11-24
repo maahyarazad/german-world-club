@@ -9,7 +9,10 @@ import { OrganisationCard } from '@/components/organisation-card';
 import { ThemedText } from '@/components/themed-text';
 import { Button, FormScreen, Loading, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
-import { pickMedia, uploadReady } from '@/lib/pick-media';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import { UploadProgress } from '@/components/upload-progress';
+import { checkPicked } from '@/lib/media-limits';
+import { pickMedia } from '@/lib/pick-media';
 import { useSession } from '@/session/session';
 
 /**
@@ -28,6 +31,8 @@ export default function OrganisationPublicProfile() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Feature 035: the logo shows progress while it goes up and while the server works.
+  const logoUpload = useMediaUpload(kind ?? 'partner');
 
   const adopt = (p: OrganisationProfile) => {
     setProfile(p);
@@ -61,14 +66,18 @@ export default function OrganisationPublicProfile() {
   };
 
   const uploadLogo = async () => {
-    const { denied, items } = await pickMedia({ limit: 1, videos: false });
+    // A merchant's photos must stay under 1 MB, so the picker is asked for a lower quality.
+    const { denied, items } = await pickMedia({ limit: 1, videos: false, quality: kind === 'merchant' ? 0.6 : 0.9 });
     if (denied) return setError(t.threads.photoPermission);
     const [item] = items;
     if (!item) return;
+    if (kind === 'merchant' && checkPicked(item) !== 'ok') return setError(t.merchant.limits.imageTooLarge);
+    setError(null);
     const name = profile?.publicProfile?.displayName ?? profile?.organisation.name ?? '';
-    await run(async () => profileApi.updateOrganisation(kind, {
-      logoAssetId: await uploadReady(item, format(t.profile.avatarAlt, { name }), `/media/${kind}`),
-    }));
+    // The saved logo is touched only once the new one is ready: a failed or
+    // cancelled upload leaves the previous one exactly as it was.
+    const asset = await logoUpload.start(item, format(t.profile.avatarAlt, { name }));
+    if (asset) await run(() => profileApi.updateOrganisation(kind, { logoAssetId: asset.id }));
   };
 
   return (
@@ -91,7 +100,9 @@ export default function OrganisationPublicProfile() {
             website: form.website.trim() || null,
             city: form.city.trim() || null,
           }))} />
-          <Button label={t.profile.logo} variant="secondary" onPress={uploadLogo} disabled={busy} />
+          <Button label={t.profile.logo} variant="secondary" onPress={uploadLogo}
+            disabled={busy || logoUpload.state.phase === 'uploading' || logoUpload.state.phase === 'processing'} />
+          <UploadProgress state={logoUpload.state} label={t.profile.logo} onCancel={logoUpload.cancel} />
         </>
       ) : profile ? <ThemedText themeColor="textSecondary">{t.profile.readOnly}</ThemedText> : null}
       <Message text={error} />

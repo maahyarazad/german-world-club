@@ -77,6 +77,8 @@ describe.skipIf(!hasDatabase)('GET /member/offers/:id', () => {
     ['not yet valid', { state: 'published', validFrom: new Date(Date.now() + DAY), validUntil: new Date(Date.now() + 10 * DAY) }],
     ['expired', { state: 'published', validFrom: new Date(Date.now() - 10 * DAY), validUntil: new Date(Date.now() - DAY) }],
     ['from a suspended merchant', { state: 'published', orgStatus: 'suspended' }],
+    // Feature 035: staff switching a store off takes its offers out of sight at once.
+    ['from a deactivated store', { state: 'published', storeActive: false }],
   ])('answers a %s offer exactly like an unknown id', async (_label, seed) => {
     const headers = await memberHeaders()
     const hidden = await merchantOffer(app.pg, seed)

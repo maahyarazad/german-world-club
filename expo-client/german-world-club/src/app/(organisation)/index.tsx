@@ -44,6 +44,15 @@ export default function OrganisationHome() {
         </Card>
       ) : null}
       <Button label={t.profile.publicProfile} onPress={() => router.push('/public-profile')} variant="secondary" />
+      {/* Merchant offers, redeemable by any account (feature 035). A merchant also has its own. */}
+      <Button label={t.clubOffers.entry} onPress={() => router.push('/club-offers' as never)} variant="secondary" />
+      {kind === 'merchant' ? (
+        <>
+          <Button label={t.merchant.storeEntry} onPress={() => router.push('/store' as never)} variant="secondary" />
+          <Button label={t.merchant.offersEntry} onPress={() => router.push('/my-offers' as never)} variant="secondary" />
+          <Button label={t.merchant.reportEntry} onPress={() => router.push('/report' as never)} variant="secondary" />
+        </>
+      ) : null}
       <Button label={t.referrals.entry} onPress={() => router.push('/referrals')} variant="secondary" />
       <Button label={t.common.signOut} onPress={signOut} variant="danger" />
     </FormScreen>

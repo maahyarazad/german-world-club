@@ -98,6 +98,12 @@ export const SURFACES = Object.freeze([
   // indexed event page surface above, and a member-only JSON answer inheriting
   // `indexed: true` from a shared prefix is exactly the leak §10.1 forbids.
   { name: 'member-api', prefixes: ['/member'], public: false, indexed: false, why: 'Member-only resources that share a name with a public page' },
+  // A merchant's own store and offers, and the offers every kind of account may
+  // browse (feature 035). Declared rather than left to the gated default: a store
+  // and its offers are members-only content, and §10.1 asks for a posture per
+  // surface, not per surface that happens to be unmatched.
+  { name: 'merchant-api', prefixes: ['/merchant'], public: false, indexed: false, why: 'A merchant\'s own store, offers and reports — gated' },
+  { name: 'partner-api', prefixes: ['/partner'], public: false, indexed: false, why: 'A partner\'s own resources, and the offers every account may browse — gated' },
   // A person's own referral link, referrals and XP (feature 018). Member API,
   // plus the merchant and partner mounts beneath it.
   { name: 'referrals', prefixes: ['/referrals'], public: false, indexed: false, why: 'A person\'s referrals and XP — gated' },

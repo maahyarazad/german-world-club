@@ -2,21 +2,35 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { mediaApi } from '@/api/endpoints';
 
-export type Picked = { uri: string; name: string; type: string; kind: 'image' | 'video' };
+export type Picked = {
+  uri: string; name: string; type: string; kind: 'image' | 'video'
+  /** Bytes, when the library reports them (feature 035: checked against a merchant's limits before sending). */
+  size?: number
+  width?: number
+  height?: number
+};
 
 /**
  * Pick photos (and, when asked, videos) from the library. Returns [] when the
  * member cancels or refuses access — `denied` says which, so the screen can
  * explain rather than silently do nothing.
  */
-export async function pickMedia({ limit, videos = true }: { limit: number; videos?: boolean }) {
+export async function pickMedia({ limit, videos = true, aspect, quality = 0.9 }: {
+  limit: number
+  videos?: boolean
+  /** Crop to this ratio in the picker's own editor, e.g. [16, 9] for a store cover (single image only). */
+  aspect?: [number, number]
+  /** Lower for merchants, whose photos must stay under 1 MB. */
+  quality?: number
+}) {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return { denied: true, items: [] as Picked[] };
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: videos ? ['images', 'videos'] : ['images'],
-    allowsMultipleSelection: limit > 1,
+    allowsMultipleSelection: limit > 1 && !aspect,
     selectionLimit: limit,
-    quality: 0.9,
+    ...(aspect ? { allowsEditing: true, aspect } : {}),
+    quality,
     // Location and device metadata are stripped by the server at ingest
     // (Principle VI) whatever arrives; asking for none is just less to send.
     exif: false,
@@ -27,7 +41,10 @@ export async function pickMedia({ limit, videos = true }: { limit: number; video
     items: result.assets.map((a, i): Picked => {
       const kind = a.type === 'video' ? 'video' : 'image';
       const type = a.mimeType ?? (kind === 'video' ? 'video/mp4' : 'image/jpeg');
-      return { uri: a.uri, name: a.fileName ?? `upload-${Date.now()}-${i}.${type.split('/')[1] ?? 'jpg'}`, type, kind };
+      return {
+        uri: a.uri, name: a.fileName ?? `upload-${Date.now()}-${i}.${type.split('/')[1] ?? 'jpg'}`, type, kind,
+        size: a.fileSize, width: a.width, height: a.height,
+      };
     }),
   };
 }
