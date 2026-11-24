@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { profilingSteps, profilingMissing } from '@gwc/contracts/profiling';
 import type { ProfilingStatus, ProfilingStepId } from '@gwc/contracts/profiling';
@@ -142,7 +142,7 @@ export default function ProfilingScreen() {
   if (onReview) {
     const missing = profilingMissing(snapshot.branch, snapshot.answers);
     return (
-      <FormScreen title={copy.reviewTitle} subtitle={copy.reviewSubtitle}>
+      <FormScreen registerForm title={copy.reviewTitle} subtitle={copy.reviewSubtitle} >
         {answerable.map((s) => (
           <View key={s} style={{ gap: 4 }}>
             <ThemedText themeColor="textSecondary">{stepTitle(s, copy)}</ThemedText>

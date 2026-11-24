@@ -9,7 +9,7 @@ import { onboardingApi } from '@/api/endpoints';
 import { CountryPicker, countryName } from '@/components/country-picker';
 import { RESIDENCE_SHORTCUTS } from '@gwc/contracts/onboarding';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, Message, styles } from '@/components/ui';
+import { Button, Chip, FormScreen, Message, styles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
@@ -56,7 +56,7 @@ export default function Country() {
   };
 
   return (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
+    <FormScreen registerForm>
       <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
         <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{t.register.countryTitle}</ThemedText>
         <ThemedText themeColor="textSecondary">{t.register.countryHint}</ThemedText>
@@ -85,6 +85,6 @@ export default function Country() {
         {error ? <Message text={error} /> : null}
         <Button label={t.register.submit} onPress={submit} loading={busy} disabled={!draft.countryOfResidence} />
       </View>
-    </SafeAreaView>
+    </FormScreen>
   );
 }
