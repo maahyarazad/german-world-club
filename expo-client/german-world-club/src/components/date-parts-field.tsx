@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInputInstance } from 'react-native';
+import { TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { TextField, styles } from '@/components/ui';
@@ -32,8 +32,8 @@ export function DatePartsField({ label, value, onChange, hint }: {
   const [dd, setDd] = useState(initialDd);
   const [mm, setMm] = useState(initialMm);
   const [yyyy, setYyyy] = useState(initialYyyy);
-  const monthRef = useRef<TextInputInstance>(null);
-  const yearRef = useRef<TextInputInstance>(null);
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
 
   const emit = (d: string, m: string, y: string) =>
     onChange(d && m && y.length === 4 ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '');

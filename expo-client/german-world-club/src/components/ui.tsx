@@ -1,6 +1,6 @@
 import type { ReactNode, Ref } from 'react';
 import {
-    KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, type TextInputInstance, View,
+    KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
     type TextInputProps, type ViewStyle, type StyleProp
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,12 +29,12 @@ import { useTheme } from '@/hooks/use-theme';
  * so a screen laid out below a native header gets a top inset of 0 and gains no
  * gap, and no fixed height is guessed.
  */
-export function FormScreen({ title, subtitle, children }: { title?: ReactNode; subtitle?: string; children: ReactNode }) {
+export function FormScreen({ title, subtitle, children, vCentered = false, registerForm = false}: { title?: ReactNode; subtitle?: string; children: ReactNode, vCentered?: Boolean, registerForm?: Boolean }) {
     const theme = useTheme();
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }} >
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+                <ScrollView contentContainerStyle={[styles.form, vCentered && styles.verticalCentered, registerForm && styles.registerForm]} keyboardShouldPersistTaps="handled">
                     {title ? <ThemedText type="title" style={styles.title}>{title}</ThemedText> : null}
                     {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
                     {children}
@@ -116,7 +116,7 @@ type TextFieldProps = TextInputProps & {
     error?: string | null;
     hint?: string;
     /** React 19 passes `ref` through `memo` as a plain prop; it lands on the input so a form can move focus. */
-    ref?: Ref<TextInputInstance>;
+    ref?: Ref<TextInput>;
 };
 
 export const TextField = memo(function TextField({
@@ -292,6 +292,9 @@ export const styles = StyleSheet.create({
         maxWidth: MaxContentWidth,
         alignSelf: 'center',
     },
+    registerForm:{
+        marginTop: 30
+    },
     title: { fontSize: 30, lineHeight: 36 },
     button: {
         minHeight: 50,
@@ -324,4 +327,8 @@ export const styles = StyleSheet.create({
     card: { borderRadius: 14, padding: Spacing.three, gap: Spacing.two },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.three },
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+    verticalCentered: {
+        flexGrow: 1,
+        justifyContent: 'center',
+    },
 });

@@ -12,7 +12,7 @@ server/              Fastify 5 API. Everything testable lives in app.js;
                      plugins/decorators/hooks).
 client/              Vite web client.
 expo-client/german-world-club/
-                     Expo SDK 58 mobile app (feature 009). An npm workspace:
+                     Expo SDK 57 mobile app (feature 009). An npm workspace:
                      it imports @gwc/contracts like every other client.
 packages/contracts/  Zod schemas, problem types and permission constants,
                      imported by the server AND every client.
