@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import type { OrganisationProfile } from '@gwc/contracts/profile';
 
@@ -33,11 +33,11 @@ export default function OrganisationHome() {
     <FormScreen title={profile?.organisation.name}>
       {profile ? (
         <Card>
-          <View style={{ gap: 2 }}>
+          <View style={styles.gap2}>
             <ThemedText type="small" themeColor="textSecondary">{t.profile.email}</ThemedText>
             <ThemedText>{profile.email}</ThemedText>
           </View>
-          <View style={{ gap: 2 }}>
+          <View style={styles.gap2}>
             <ThemedText type="small" themeColor="textSecondary">{t.profile.role}</ThemedText>
             <ThemedText>{profile.displayName ? `${profile.displayName} · ${profile.role}` : profile.role}</ThemedText>
           </View>
@@ -58,3 +58,7 @@ export default function OrganisationHome() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gap2: { gap: 2 },
+});

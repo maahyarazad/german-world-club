@@ -5,19 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 export default function Welcome() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, locale, setLocale } = useTranslations();
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.tint }]}>
+    <SafeAreaView style={[styles.screen, themed.bgTint]}>
       <View style={styles.language}>
         <ThemedText
           accessibilityRole="button"
           onPress={() => setLocale(locale === 'de' ? 'en' : 'de')}
-          style={{ color: theme.onTint, fontWeight: '600' }}>
+          style={themed.colorOnTintWeight600}>
           {locale === 'de' ? 'English' : 'Deutsch'}
         </ThemedText>
       </View>
@@ -32,12 +32,12 @@ export default function Welcome() {
             style={styles.logo}
           />
         </View>
-        <View style={[styles.rule, { backgroundColor: theme.background }]} />
-        <ThemedText style={{ color: theme.onTint, fontSize: 18, lineHeight: 26 }}>{t.welcome.tagline}</ThemedText>
+        <View style={[styles.rule, themed.bgBackground]} />
+        <ThemedText style={themed.colorOnTintFont18Line26}>{t.welcome.tagline}</ThemedText>
       </View>
       <View style={styles.actions}>
         <Button label={t.welcome.join} onPress={() => router.push('/register')} variant="secondary" />
-        <Button label={t.welcome.signIn} onPress={() => router.push('/sign-in')} style={{ borderWidth: 1, borderColor: theme.onTint }} />
+        <Button label={t.welcome.signIn} onPress={() => router.push('/sign-in')} style={themed.border1BorderColorOnTint} />
       </View>
     </SafeAreaView>
   );
@@ -53,3 +53,12 @@ const styles = StyleSheet.create({
   rule: { width: 56, height: 4, borderRadius: 2 },
   actions: { gap: Spacing.three, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
 });
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    bgTint: { backgroundColor: theme.tint },
+    colorOnTintWeight600: { color: theme.onTint, fontWeight: '600' },
+    bgBackground: { backgroundColor: theme.background },
+    colorOnTintFont18Line26: { color: theme.onTint, fontSize: 18, lineHeight: 26 },
+    border1BorderColorOnTint: { borderWidth: 1, borderColor: theme.onTint },
+  });

@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl, View, StyleSheet } from 'react-native';
 
 import type { Conversation } from '@gwc/contracts/messaging';
 
@@ -29,16 +29,16 @@ export default function Inbox() {
     <FlashList
       data={inbox.items}
       keyExtractor={(c) => c.id}
-      contentContainerStyle={{ padding: Spacing.three }}
+      contentContainerStyle={styles.paddingThree}
       // Padding only in FlashList's content container; the old `gap` is a separator.
-      ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
+      ItemSeparatorComponent={() => <View style={styles.heightTwo} />}
       refreshControl={<RefreshControl refreshing={inbox.refreshing} onRefresh={() => void reload(true)} />}
       onEndReached={() => void inbox.loadMore()}
       ListEmptyComponent={<Centered><ThemedText themeColor="textSecondary">{t.messages.empty}</ThemedText></Centered>}
       renderItem={({ item }) => (
         <Card onPress={() => router.push(`/marketplace/messages/${item.id}`)}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two }}>
-            <ThemedText type={item.unreadCount > 0 ? 'smallBold' : 'small'} style={{ flex: 1 }} numberOfLines={1}>
+          <View style={styles.rowJustifySpacebetweenGapTwo}>
+            <ThemedText type={item.unreadCount > 0 ? 'smallBold' : 'small'} style={styles.flex1} numberOfLines={1}>
               {item.subject.title ?? t.messages.listingGone}
             </ThemedText>
             {item.unreadCount > 0 ? (
@@ -55,3 +55,10 @@ export default function Inbox() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  paddingThree: { padding: Spacing.three },
+  heightTwo: { height: Spacing.two },
+  rowJustifySpacebetweenGapTwo: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
+  flex1: { flex: 1 },
+});

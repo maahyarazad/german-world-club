@@ -1,13 +1,13 @@
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { MAX_STORE_MEDIA } from '@gwc/contracts/media';
 import type { Store } from '@gwc/contracts/stores';
 
 import { ApiError } from '@/api/client';
 import { merchantApi } from '@/api/endpoints';
-import { imageUrl } from '@/components/media-carousel';
+import { imageUrl, WideImage } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, FormScreen, Loading, Message, TextField } from '@/components/ui';
 import { UploadProgress } from '@/components/upload-progress';
@@ -131,11 +131,11 @@ export default function StoreScreen() {
       ) : null}
       <Message text={message?.text} tone={message?.tone} />
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.merchant.cover}</ThemedText>
         {store.cover ? (
           <Image source={{ uri: imageUrl(store.cover, 800) }} accessibilityLabel={store.cover.alt}
-            style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 8 }} />
+            style={styles.width100pctAspectRatioRadius8} />
         ) : <ThemedText type="small" themeColor="textSecondary">{t.merchant.coverHint}</ThemedText>}
         <Button label={t.merchant.coverChoose} variant="secondary" disabled={busy || uploading(cover.state)} onPress={() => void chooseCover()} />
         {store.cover ? (
@@ -157,13 +157,12 @@ export default function StoreScreen() {
         openingHours: form.openingHours.trim() || null,
       }))} />
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.merchant.gallery}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">{format(t.merchant.galleryHint, { max: MAX_STORE_MEDIA })}</ThemedText>
         {store.media.map((item) => (
-          <View key={item.assetId} style={{ gap: Spacing.one }}>
-            <Image source={{ uri: imageUrl(item, 400) }} accessibilityLabel={item.alt}
-              style={{ width: '100%', aspectRatio: item.width / item.height, borderRadius: 8 }} />
+          <View key={item.assetId} style={styles.gapOne}>
+            <WideImage item={item} />
             <Button label={t.merchant.galleryRemove} variant="secondary" disabled={busy} onPress={() => {
               void run(() => merchantApi.setStoreMedia(store.media.filter((m) => m.assetId !== item.assetId).map((m) => m.assetId)))
                 .then(() => release(item.assetId));
@@ -177,3 +176,10 @@ export default function StoreScreen() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapTwo: { gap: Spacing.two },
+  width100pctAspectRatioRadius8: { width: '100%', aspectRatio: 16 / 9, borderRadius: 8 },
+  gapOne: { gap: Spacing.one },
+  width100pctRadius8: { width: '100%', borderRadius: 8 },
+});

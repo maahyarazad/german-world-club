@@ -1,4 +1,4 @@
-import { Platform, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Spinner, type SpinnerSize } from '@/components/spinner';
 import { useGrace } from '@/hooks/use-grace';
@@ -27,9 +27,14 @@ export function ScreenLoader({ size = 'lg', label, delayMs = 150, flex = true }:
             accessibilityRole="progressbar"
             accessibilityLabel={label ?? t.common.loading}
             accessibilityLiveRegion={Platform.OS === 'android' ? 'polite' : undefined}
-            style={flex ? { flex: 1, alignItems: 'center', justifyContent: 'center' } : { alignItems: 'center', paddingVertical: 16 }}
+            style={flex ? styles.fill : styles.inline}
         >
             <Spinner size={size} />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    fill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    inline: { alignItems: 'center', paddingVertical: 16 },
+});

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import type { Listing } from '@gwc/contracts/marketplace';
 import type { MediaItem } from '@gwc/contracts/media';
@@ -48,7 +48,7 @@ export function ListingDetail({ id }: { id: string }) {
     <FormScreen title={listing.title}>
       {media.length > 0 ? <MediaCarousel media={media} /> : null}
       {price ? (
-        <View style={{ gap: Spacing.one }}>
+        <View style={styles.gapOne}>
           <ThemedText type="smallBold">{t.listing.price}</ThemedText>
           <ThemedText type="subtitle">{price}</ThemedText>
         </View>
@@ -63,3 +63,7 @@ export function ListingDetail({ id }: { id: string }) {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+});

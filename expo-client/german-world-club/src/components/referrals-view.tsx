@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Share, View } from 'react-native';
+import { Alert, Share, View, StyleSheet } from 'react-native';
 
 import { formatReferralCode, REFERRAL_STAGES } from '@gwc/contracts/referrals';
 import type { ReferralSummary } from '@gwc/contracts/referrals';
@@ -99,22 +99,22 @@ export function ReferralsView({ prefix }: { prefix: string }) {
             <ThemedText type="small" themeColor="textSecondary">{t.referrals.yourLink}</ThemedText>
             <ThemedText selectable>{summary.link.url}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">{t.referrals.yourCode}</ThemedText>
-            <ThemedText type="subtitle" selectable style={{ letterSpacing: 2 }}>
+            <ThemedText type="subtitle" selectable style={styles.letterSpacing2}>
               {formatReferralCode(summary.link.code)}
             </ThemedText>
             <Button label={t.referrals.share} onPress={() => share(summary.link.url)} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={styles.rowGap8}>
               <Button
                 label={copied === 'link' ? t.referrals.copied : t.referrals.copyLink}
                 onPress={() => void copy('link', summary.link.url)}
                 variant="secondary"
-                style={{ flex: 1 }}
+                style={styles.flex1}
               />
               <Button
                 label={copied === 'code' ? t.referrals.copied : t.referrals.copyCode}
                 onPress={() => void copy('code', formatReferralCode(summary.link.code))}
                 variant="secondary"
-                style={{ flex: 1 }}
+                style={styles.flex1}
               />
             </View>
             <Button label={t.referrals.replace} onPress={replace} variant="secondary" loading={replacing} />
@@ -124,7 +124,7 @@ export function ReferralsView({ prefix }: { prefix: string }) {
             <ThemedText type="small" themeColor="textSecondary">{t.referrals.xpBalance}</ThemedText>
             <ThemedText type="title">{xp(summary.xpBalance)}</ThemedText>
             {REFERRAL_STAGES.map((stage) => (
-              <View key={stage} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View key={stage} style={styles.rowJustifySpacebetween}>
                 <ThemedText themeColor="textSecondary">{t.referrals.stages[stage]}</ThemedText>
                 <ThemedText>{number.format(summary.counts[stage])}</ThemedText>
               </View>
@@ -160,8 +160,8 @@ export function ReferralsView({ prefix }: { prefix: string }) {
       ) : null}
       {history.items.map((e) => (
         <Card key={e.id}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-            <ThemedText style={{ flex: 1 }}>
+          <View style={styles.rowJustifySpacebetweenGap8}>
+            <ThemedText style={styles.flex1}>
               {e.kind === 'award'
                 ? format(t.referrals.xpReferral, { name: e.refereeName })
                 : format(t.referrals.xpReversed, { reason: e.reason })}
@@ -177,3 +177,11 @@ export function ReferralsView({ prefix }: { prefix: string }) {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  letterSpacing2: { letterSpacing: 2 },
+  rowGap8: { flexDirection: 'row', gap: 8 },
+  flex1: { flex: 1 },
+  rowJustifySpacebetween: { flexDirection: 'row', justifyContent: 'space-between' },
+  rowJustifySpacebetweenGap8: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+});

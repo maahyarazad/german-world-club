@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { Alert, View } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 
 import type { PublicMemberProfile } from '@gwc/contracts/profile';
 import type { ProfileTab, ThreadPost } from '@gwc/contracts/threads';
@@ -10,12 +10,12 @@ import { profileApi, threadsApi } from '@/api/endpoints';
 import { PostCard } from '@/components/post-card';
 import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Loading, styles } from '@/components/ui';
+import { Button, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { ApiError } from '@/api/client';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * Another member as members see them — no contact details (§7) — with their
@@ -25,7 +25,7 @@ import { ApiError } from '@/api/client';
  * YOU blocked still opens, so you can unblock them, but shows no posts.
  */
 export default function MemberProfile() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<PublicMemberProfile | null>(null);
@@ -57,7 +57,7 @@ export default function MemberProfile() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={themed.flex1BgBackground}>
       <Stack.Screen options={{ title: profile.handle ? `@${profile.handle}` : profile.displayName ?? '' }} />
       <FlashList
         data={posts.items}
@@ -67,7 +67,7 @@ export default function MemberProfile() {
           <View>
             <ProfileHeader profile={profile}>
               {profile.isSelf ? null : (
-                <View style={{ gap: Spacing.two }}>
+                <View style={styles.gapTwo}>
                   {profile.isBlocked ? null : (
                     <Button
                       label={profile.isFollowing ? t.profile.unfollow : t.profile.follow}
@@ -76,11 +76,11 @@ export default function MemberProfile() {
                       onPress={() => act(() => threadsApi.setFollow(profile.id, !profile.isFollowing))}
                     />
                   )}
-                  <View style={styles.row}>
-                    <ThemedText style={{ color: theme.tint }} onPress={() => act(() => threadsApi.setMute(profile.id, !profile.isMuted))}>
+                  <View style={uiStyles.row}>
+                    <ThemedText style={themed.colorTint} onPress={() => act(() => threadsApi.setMute(profile.id, !profile.isMuted))}>
                       {profile.isMuted ? t.profile.unmute : t.profile.mute}
                     </ThemedText>
-                    <ThemedText style={{ color: theme.danger }} onPress={block}>
+                    <ThemedText style={themed.colorDanger} onPress={block}>
                       {profile.isBlocked ? t.profile.unblock : t.profile.block}
                     </ThemedText>
                   </View>
@@ -88,7 +88,7 @@ export default function MemberProfile() {
               )}
             </ProfileHeader>
             {profile.isBlocked
-              ? <ThemedText themeColor="textSecondary" style={{ paddingHorizontal: Spacing.four }}>{t.profile.blocked}</ThemedText>
+              ? <ThemedText themeColor="textSecondary" style={styles.paddingHorizontalFour}>{t.profile.blocked}</ThemedText>
               : <TabChips tab={tab} onChange={setTab} />}
           </View>
         }
@@ -97,9 +97,22 @@ export default function MemberProfile() {
           <PostCard key={item.id} post={item} onChange={(post) => posts.setItems((all) => all.map((p) => (p.id === post.id ? post : p)))} />
         )}
         ListEmptyComponent={posts.loading || profile.isBlocked ? null : (
-          <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four }}>{t.common.empty}</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.paddingFour}>{t.common.empty}</ThemedText>
         )}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  gapTwo: { gap: Spacing.two },
+  paddingHorizontalFour: { paddingHorizontal: Spacing.four },
+  paddingFour: { padding: Spacing.four },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    colorTint: { color: theme.tint },
+    colorDanger: { color: theme.danger },
+  });

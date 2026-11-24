@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Text as RNText, View } from 'react-native';
+import { Text as RNText, View, StyleSheet } from 'react-native';
 
 import {
   SETTLING_STATUSES, QUALIFICATION_LEVELS, OCCUPATIONS, DESIRED_WORK_TYPES, FUTURE_WORK_PRIORITIES,
@@ -10,8 +10,8 @@ import {
 import type { ProfilingStepId, RelationshipTag, KidAgeRange } from '@gwc/contracts/profiling';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, FormScreen, TextField, styles } from '@/components/ui';
-import { useTheme } from '@/hooks/use-theme';
+import { Button, Chip, FormScreen, TextField, styles as uiStyles } from '@/components/ui';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 import { CitiesStep, PlacePicker } from './cities';
 import { fill, splitTemplate } from './types';
 import type { StepCtx } from './types';
@@ -32,7 +32,7 @@ function Choice({ ctx, title, subtitle, options, selected, onPick }: {
 }) {
   return (
     <Frame ctx={ctx} title={title} subtitle={subtitle}>
-      <View style={styles.chips} accessibilityRole="radiogroup">
+      <View style={uiStyles.chips} accessibilityRole="radiogroup">
         {options.map((o) => (
           <Chip key={o.value} label={o.label} selected={selected === o.value} onPress={() => { if (!ctx.busy) onPick(o.value); }} />
         ))}
@@ -57,7 +57,7 @@ function Multi({ ctx, title, subtitle, options, initial, onToggle, onContinue, s
   return (
     <Frame ctx={ctx} title={title} subtitle={subtitle}>
       {search && <TextField label={search} value={query} onChangeText={setQuery} autoCorrect={false} />}
-      <View style={styles.chips} accessibilityRole="radiogroup">
+      <View style={uiStyles.chips} accessibilityRole="radiogroup">
         {shown.map((o) => (
           <Chip key={o.value} label={o.label} selected={values.includes(o.value)} onPress={() => toggle(o.value)} />
         ))}
@@ -105,9 +105,9 @@ function Kids({ ctx }: { ctx: StepCtx }) {
         keyboardType="number-pad"
       />
       {ages.map((age, index) => (
-        <View key={index} style={{ gap: 8 }}>
+        <View key={index} style={styles.gap8}>
           <ThemedText themeColor="textSecondary">{fill(copy.kidAgeTitle, { n: index + 1 })}</ThemedText>
-          <View style={styles.chips} accessibilityRole="radiogroup">
+          <View style={uiStyles.chips} accessibilityRole="radiogroup">
             {KID_AGE_RANGES.map((range) => (
               <Chip
                 key={range}
@@ -138,7 +138,7 @@ const labelled = (values: readonly string[], labels: Record<string, string>) =>
  */
 export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review'>; ctx: StepCtx }) {
   const { copy, answers } = ctx;
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const partner = step.startsWith('partner-');
   const base = partner ? step.slice('partner-'.length) : step;
   const subject = partner ? answers.partner : answers;
@@ -146,9 +146,8 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
   // mistaken for the member's own Q2–Q5. Nested RN Text inherits the title's
   // size and stays one accessible heading; ThemedText would reset the size.
   const [before, after] = splitTemplate(copy.partnerTitle, 'question');
-  const gold = { color: theme.accentText };
   const title = (own: string): ReactNode => (partner
-    ? <>{before ? <RNText style={gold}>{before}</RNText> : null}{own}{after ? <RNText style={gold}>{after}</RNText> : null}</>
+    ? <>{before ? <RNText style={themed.gold}>{before}</RNText> : null}{own}{after ? <RNText style={themed.gold}>{after}</RNText> : null}</>
     : own);
   const put = (field: string, value: unknown) => ctx.save(partner ? { partner: { [field]: value } } : { [field]: value });
 
@@ -232,3 +231,12 @@ export function StepView({ step, ctx }: { step: Exclude<ProfilingStepId, 'review
       return null;
   }
 }
+
+const styles = StyleSheet.create({
+  gap8: { gap: 8 },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    gold: { color: theme.accentText },
+  });

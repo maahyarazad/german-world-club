@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { PROBLEMS } from '@gwc/contracts/errors';
 import { CONTACT_METHODS, LISTING_MEDIA_MAX, MARKETPLACE_MODES, modesFor } from '@gwc/contracts/marketplace';
@@ -14,7 +14,7 @@ import { marketplaceApi } from '@/api/endpoints';
 import { DatePartsField } from '@/components/date-parts-field';
 import { ListingField } from '@/components/listing-field';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, FormScreen, Message, TextField, styles } from '@/components/ui';
+import { Button, Chip, FormScreen, Message, TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
 import { pickMedia, uploadReady, type Picked } from '@/lib/pick-media';
@@ -207,9 +207,9 @@ export default function NewListing() {
     <FormScreen>
       {loadFailed ? <Message tone="info" text={t.marketplace.loadFailed} /> : null}
 
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{t.marketplace.category}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {categories.map((c) => (
             <Chip key={c.category} label={t.marketplace.categories[c.category]} selected={category === c.category}
               onPress={() => !locked && chooseCategory(c.category)} />
@@ -217,9 +217,9 @@ export default function NewListing() {
         </View>
       </View>
 
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{t.marketplace.mode}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {allowedModes.map((m) => (
             <Chip key={m} label={t.marketplace.modes[m]} selected={mode === m} onPress={() => !locked && setMode(m)} />
           ))}
@@ -229,16 +229,16 @@ export default function NewListing() {
 
       <TextField label={t.marketplace.titleField} value={title} onChangeText={setTitle} editable={!locked} />
       <TextField label={t.marketplace.body} value={body} onChangeText={setBody} editable={!locked}
-        multiline style={{ minHeight: 120, textAlignVertical: 'top' }} />
+        multiline style={styles.minHeight120TextAlignVerticalTop} />
 
       {activeDef?.fields.map((def) => (
         <ListingField key={`${category}:${def.key}`} def={def} value={details[def.key]} onChange={(v) => setDetail(def.key, v)} />
       ))}
 
       {category === 'vehicle' && vehicleFeatures.length > 0 ? (
-        <View style={{ gap: Spacing.one }}>
+        <View style={styles.gapOne}>
           <ThemedText type="smallBold">{t.marketplace.features}</ThemedText>
-          <View style={styles.chips}>
+          <View style={uiStyles.chips}>
             {vehicleFeatures.map((f) => (
               <Chip key={f.key} label={f.key} selected={features.has(f.key)} onPress={() => !locked && toggleFeature(f.key)} />
             ))}
@@ -246,12 +246,12 @@ export default function NewListing() {
         </View>
       ) : null}
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.marketplace.media}</ThemedText>
         {media.map((item, index) => (
-          <View key={item.uri} style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' }}>
-            <Image source={item.uri} accessibilityLabel={item.alt} style={{ width: 72, height: 72, borderRadius: 8 }} contentFit="cover" />
-            <View style={{ flex: 1, gap: Spacing.one }}>
+          <View key={item.uri} style={styles.rowGapTwoItemsFlexstart}>
+            <Image source={item.uri} accessibilityLabel={item.alt} style={styles.width72Height72Radius8} contentFit="cover" />
+            <View style={styles.flex1GapOne}>
               <TextField
                 label={t.marketplace.mediaAlt}
                 value={item.alt}
@@ -259,7 +259,7 @@ export default function NewListing() {
                 editable={!busy}
                 onChangeText={(alt) => setMedia((all) => all.map((m, i) => (i === index ? { ...m, alt } : m)))}
               />
-              <View style={[styles.row, { justifyContent: 'space-between' }]}>
+              <View style={[uiStyles.row, styles.justifySpacebetween]}>
                 <ThemedText type="small" themeColor="textSecondary">{t.marketplace.mediaStatus[item.status]}</ThemedText>
                 {!busy ? (
                   <ThemedText type="small" themeColor="textSecondary" accessibilityRole="button"
@@ -277,9 +277,9 @@ export default function NewListing() {
         ) : null}
       </View>
 
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{t.marketplace.contactMethod}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {CONTACT_METHODS.map((m) => (
             <Chip key={m} label={t.marketplace.contactMethods[m]} selected={contactMethod === m}
               onPress={() => !locked && setContactMethod(m)} />
@@ -290,7 +290,7 @@ export default function NewListing() {
       <DatePartsField label={t.marketplace.expiresAt} hint={t.marketplace.expiresAtHint} value={expiresAt} onChange={setExpiresAt} />
 
       {terms && !termsAccepted ? (
-        <View style={{ gap: Spacing.two }}>
+        <View style={styles.gapTwo}>
           <Message tone="info" text={t.marketplace.termsRequired} />
           <Button label={t.marketplace.acceptTerms} variant="secondary" onPress={acceptTerms} disabled={busy} />
         </View>
@@ -306,3 +306,13 @@ export default function NewListing() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+  minHeight120TextAlignVerticalTop: { minHeight: 120, textAlignVertical: 'top' },
+  gapTwo: { gap: Spacing.two },
+  rowGapTwoItemsFlexstart: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
+  width72Height72Radius8: { width: 72, height: 72, borderRadius: 8 },
+  flex1GapOne: { flex: 1, gap: Spacing.one },
+  justifySpacebetween: { justifyContent: 'space-between' },
+});

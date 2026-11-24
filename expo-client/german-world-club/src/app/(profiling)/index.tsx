@@ -130,8 +130,8 @@ export default function ProfilingScreen() {
       : { title: copy.meetingTitle, body: copy.meetingBody };
     return (
       <Centered>
-        <ThemedText type="title" style={{ textAlign: 'center' }}>{outcome.title}</ThemedText>
-        <ThemedText themeColor="textSecondary" style={{ textAlign: 'center' }}>{outcome.body}</ThemedText>
+        <ThemedText type="title" style={styles.textCenter}>{outcome.title}</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.textCenter}>{outcome.body}</ThemedText>
         <Button label={copy.continueToApp} onPress={() => refreshProfiling(snapshot)} />
       </Centered>
     );
@@ -144,7 +144,7 @@ export default function ProfilingScreen() {
     return (
       <FormScreen title={copy.reviewTitle} subtitle={copy.reviewSubtitle} >
         {answerable.map((s) => (
-          <View key={s} style={{ gap: 4 }}>
+          <View key={s} style={styles.gap4}>
             <ThemedText themeColor="textSecondary">{stepTitle(s, copy)}</ThemedText>
             <ThemedText>{stepSummary(s, copy, snapshot.answers)}</ThemedText>
             <Button
@@ -179,3 +179,8 @@ export default function ProfilingScreen() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  textCenter: { textAlign: 'center' },
+  gap4: { gap: 4 },
+});

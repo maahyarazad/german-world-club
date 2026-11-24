@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, StyleSheet } from 'react-native';
 
 import type { BenefitKind, BrowseCategory, MemberOffer, OfferListItem } from '@gwc/contracts/offers';
 import type { Redemption } from '@gwc/contracts/redemptions';
@@ -11,13 +11,13 @@ import type { StoreProfile } from '@gwc/contracts/stores';
 
 import { ApiError } from '@/api/client';
 import { clubOffersApi, type ClubOffersKind } from '@/api/endpoints';
-import { imageUrl, MediaCarousel } from '@/components/media-carousel';
+import { imageUrl, MediaCarousel, WideImage } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Chip, FormScreen, Loading, Message } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * Merchant offers on the phone (feature 035), shared by every account that has
@@ -42,7 +42,7 @@ function useBenefit() {
 }
 
 export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: ClubOffersKind; detailPath: string; redemptionsPath: string }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, formatDate, locale } = useTranslations();
   const benefit = useBenefit();
   const [api] = useState(() => clubOffersApi(kind));
@@ -58,15 +58,15 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
 
   return (
     <FlashList
-      style={{ backgroundColor: theme.background }}
+      style={themed.bgBackground}
       data={list.items}
       keyExtractor={(o) => o.id}
       onEndReached={list.loadMore}
       refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={() => list.reload(true)} />}
       ListHeaderComponent={
-        <View style={{ gap: Spacing.two, padding: Spacing.three }}>
+        <View style={styles.gapTwoPaddingThree}>
           <ThemedText themeColor="textSecondary">{t.clubOffers.intro}</ThemedText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.two }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gapTwo}>
             <Chip label={t.clubOffers.allCategories} selected={categoryId === null} onPress={() => setCategoryId(null)} />
             {categories.map((c) => (
               <Chip key={c.id} label={`${locale === 'de' ? c.nameDe : c.nameEn} (${c.offerCount})`} selected={categoryId === c.id} onPress={() => setCategoryId(c.id)} />
@@ -77,14 +77,13 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
       }
       ListEmptyComponent={
         // The loader while the page has not heard back; the empty message only once it has.
-        list.loading ? <Loading /> : <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>{t.clubOffers.empty}</ThemedText>
+        list.loading ? <Loading /> : <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>{t.clubOffers.empty}</ThemedText>
       }
       renderItem={({ item }) => (
-        <View style={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.two }}>
+        <View style={styles.viewPaddingHorizontalThree2}>
           <Card onPress={() => router.push({ pathname: detailPath as never, params: { id: item.id } })}>
             {item.thumbnail ? (
-              <Image source={{ uri: imageUrl(item.thumbnail, 400) }} accessibilityLabel={item.thumbnail.alt}
-                style={{ width: '100%', aspectRatio: item.thumbnail.width / item.thumbnail.height, borderRadius: 8 }} />
+              <WideImage item={item.thumbnail} />
             ) : null}
             <ThemedText type="smallBold">{item.title}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">{item.merchant.displayName}</ThemedText>
@@ -167,7 +166,7 @@ export function ClubOfferDetail({ kind, id, storePath }: { kind: ClubOffersKind;
         <ThemedText type="small" themeColor="textSecondary">{format(t.clubOffers.perPerson, { count: offer.perPersonLimit })}</ThemedText>
       ) : null}
       {offer.conditions ? (
-        <View style={{ gap: Spacing.one }}>
+        <View style={styles.gapOne}>
           <ThemedText type="smallBold">{t.clubOffers.conditions}</ThemedText>
           <ThemedText>{offer.conditions}</ThemedText>
         </View>
@@ -192,7 +191,7 @@ export function ClubOfferDetail({ kind, id, storePath }: { kind: ClubOffersKind;
 
 /** What this account has redeemed, with the reference to show at the store. */
 export function ClubRedemptions({ kind }: { kind: ClubOffersKind }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format, formatDate } = useTranslations();
   const [api] = useState(() => clubOffersApi(kind));
   const fetchPage = useCallback((cursor: string | null) => api.mine(cursor), [api]);
@@ -201,14 +200,14 @@ export function ClubRedemptions({ kind }: { kind: ClubOffersKind }) {
   if (list.loading) return <Loading />;
   return (
     <FlashList
-      style={{ backgroundColor: theme.background }}
+      style={themed.bgBackground}
       data={list.items}
       keyExtractor={(r) => r.id}
       onEndReached={list.loadMore}
       refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={() => list.reload(true)} />}
-      ListEmptyComponent={<ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>{t.clubOffers.noRedemptions}</ThemedText>}
+      ListEmptyComponent={<ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>{t.clubOffers.noRedemptions}</ThemedText>}
       renderItem={({ item }) => (
-        <View style={{ paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
+        <View style={styles.viewPaddingHorizontalThree22}>
           <Card>
             <ThemedText type="smallBold">{item.offerTitle}</ThemedText>
             {item.merchantName ? <ThemedText type="small" themeColor="textSecondary">{item.merchantName}</ThemedText> : null}
@@ -244,17 +243,17 @@ export function ClubStoreProfile({ kind, slug }: { kind: ClubOffersKind; slug: s
     <FormScreen title={store.displayName}>
       {store.cover ? (
         <Image source={{ uri: imageUrl(store.cover, 1200) }} accessibilityLabel={store.cover.alt}
-          style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 8 }} contentFit="cover" />
+          style={styles.width100pctAspectRatioRadius8} contentFit="cover" />
       ) : null}
       {store.description ? <ThemedText>{store.description}</ThemedText> : null}
       {store.openingHours ? (
-        <View style={{ gap: Spacing.one }}>
+        <View style={styles.gapOne}>
           <ThemedText type="smallBold">{t.clubOffers.openingHours}</ThemedText>
           <ThemedText>{store.openingHours}</ThemedText>
         </View>
       ) : null}
       {store.media.length > 0 ? (
-        <View style={{ gap: Spacing.two }}>
+        <View style={styles.gapTwo}>
           <ThemedText type="smallBold">{t.clubOffers.storeGallery}</ThemedText>
           <MediaCarousel media={store.media} />
         </View>
@@ -265,3 +264,19 @@ export function ClubStoreProfile({ kind, slug }: { kind: ClubOffersKind; slug: s
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapTwoPaddingThree: { gap: Spacing.two, padding: Spacing.three },
+  gapTwo: { gap: Spacing.two },
+  paddingFourTextCenter: { padding: Spacing.four, textAlign: 'center' },
+  viewPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  width100pctRadius8: { width: '100%', borderRadius: 8 },
+  gapOne: { gap: Spacing.one },
+  viewPaddingHorizontalThree22: { paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
+  width100pctAspectRatioRadius8: { width: '100%', aspectRatio: 16 / 9, borderRadius: 8 },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    bgBackground: { backgroundColor: theme.background },
+  });

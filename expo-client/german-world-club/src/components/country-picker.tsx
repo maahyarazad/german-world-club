@@ -7,8 +7,8 @@ import { COUNTRIES, PINNED, type Country } from '@gwc/contracts/countries';
 import { ThemedText } from '@/components/themed-text';
 import { TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /** Search-as-you-type over every country, the pinned ones first. */
 export function CountryPicker({ selected, onSelect, exclude = [], label }: {
@@ -16,7 +16,7 @@ export function CountryPicker({ selected, onSelect, exclude = [], label }: {
   /** Overrides the row text (the mobile picker appends the calling code). */
   label?: (country: Country, locale: 'en' | 'de') => string;
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, locale } = useTranslations();
   const [query, setQuery] = useState('');
 
@@ -34,7 +34,7 @@ export function CountryPicker({ selected, onSelect, exclude = [], label }: {
   }, [locale, query, exclude]);
 
   return (
-    <View style={{ flex: 1, gap: Spacing.two }}>
+    <View style={styles.flex1GapTwo}>
       <TextField
         label={t.register.countrySearch}
         value={query}
@@ -55,9 +55,9 @@ export function CountryPicker({ selected, onSelect, exclude = [], label }: {
               accessibilityRole="radio"
               accessibilityState={{ selected: isSelected }}
               onPress={() => onSelect(item.code)}
-              style={[styles.row, { borderColor: theme.border, backgroundColor: isSelected ? theme.backgroundSelected : undefined }]}>
-              <ThemedText style={{ flex: 1 }}>{label ? label(item, locale) : item[locale]}</ThemedText>
-              {isSelected ? <ThemedText style={{ color: theme.tint }}>✓</ThemedText> : null}
+              style={[styles.row, themed.borderColorBorder, isSelected && themed.bgBackgroundSelected]}>
+              <ThemedText style={styles.flex1}>{label ? label(item, locale) : item[locale]}</ThemedText>
+              {isSelected ? <ThemedText style={themed.colorTint}>✓</ThemedText> : null}
             </Pressable>
           );
         }}
@@ -77,4 +77,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  flex1GapTwo: { flex: 1, gap: Spacing.two },
+  flex1: { flex: 1 },
 });
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    borderColorBorder: { borderColor: theme.border },
+    colorTint: { color: theme.tint },
+    bgBackgroundSelected: { backgroundColor: theme.backgroundSelected },
+  });

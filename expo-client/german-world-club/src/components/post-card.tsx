@@ -11,9 +11,9 @@ import { PostBody } from '@/components/post-body';
 import { QuoteEmbed } from '@/components/quote-embed';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { ApiError } from '@/api/client';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * Report reasons as sent to staff. English and fixed, because they are data
@@ -42,7 +42,7 @@ export function PostCard({
   /** False on the thread view's own subject, which is already open. */
   onOpen?: boolean
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format, formatDate } = useTranslations();
   const [pending, setPending] = useState(false);
 
@@ -119,7 +119,7 @@ export function PostCard({
     <Pressable
       disabled={!onOpen}
       onPress={openThread}
-      style={[styles.card, { borderColor: theme.border }]}>
+      style={[styles.card, themed.borderColorBorder]}>
       {repostedBy ? (
         <ThemedText type="small" themeColor="textSecondary">
           ↻ {format(t.threads.repostedBy, { name: repostedBy.displayName ?? '—' })}
@@ -128,7 +128,7 @@ export function PostCard({
       <View style={styles.header}>
         <Pressable onPress={openAuthor} accessibilityRole="link" style={styles.author}>
           <Avatar author={post.author} size={32} label={format(t.profile.avatarAlt, { name: authorName })} />
-          <View style={{ flexShrink: 1 }}>
+          <View style={styles.flexShrink1}>
             <ThemedText type="smallBold" numberOfLines={1}>
               {authorName}{post.author.isInfluencer ? `  · ${t.threads.influencer}` : ''}
             </ThemedText>
@@ -169,7 +169,7 @@ export function PostCard({
 function Action({ label, onPress, active = false, accessibilityLabel }: {
   label: string; onPress: () => void; active?: boolean; accessibilityLabel?: string
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -177,7 +177,7 @@ function Action({ label, onPress, active = false, accessibilityLabel }: {
       accessibilityState={{ selected: active }}
       hitSlop={8}
       onPress={onPress}>
-      <ThemedText type="small" style={{ color: active ? theme.tint : theme.textSecondary }}>{label}</ThemedText>
+      <ThemedText type="small" style={active ? themed.colorTint : themed.colorTextSecondary}>{label}</ThemedText>
     </Pressable>
   );
 }
@@ -192,4 +192,12 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
   author: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, flexShrink: 1 },
   actions: { flexDirection: 'row', gap: Spacing.five, paddingTop: Spacing.one },
+  flexShrink1: { flexShrink: 1 },
 });
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    borderColorBorder: { borderColor: theme.border },
+    colorTint: { color: theme.tint },
+    colorTextSecondary: { color: theme.textSecondary },
+  });

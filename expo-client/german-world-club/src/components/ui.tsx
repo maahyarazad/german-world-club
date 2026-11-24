@@ -4,13 +4,14 @@ import {
     type TextInputProps, type ViewStyle, type StyleProp
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenLoader } from '@/components/screen-loader';
 import { Spinner } from '@/components/spinner';
 import { useAction } from '@/hooks/use-action';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * The handful of primitives every screen is built from. Deliberately small:
@@ -36,10 +37,10 @@ export function FormScreen({ title, subtitle, children, vCentered = false }: {
     /** Centre the form vertically, like a sign-in page: the content sits in the middle of the space below the header. */
     vCentered?: boolean;
 }) {
-    const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <SafeAreaView edges={['top', 'bottom']} style={themed.flex1BgBackground}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex1}>
                 <ScrollView contentContainerStyle={[styles.form, vCentered && styles.formCentered]} keyboardShouldPersistTaps="handled">
                     {title ? <ThemedText type="title" style={styles.title}>{title}</ThemedText> : null}
                     {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
@@ -68,10 +69,13 @@ export function Button({
     style,
 }: ButtonProps) {
     const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
 
     const background =
-        variant === 'primary' ? theme.tint : variant === 'danger' ? theme.danger : theme.backgroundElement;
+        variant === 'primary' ? themed.bgTint : variant === 'danger' ? themed.bgDanger : themed.bgBackgroundElement;
+    // The label colour is also the loader's colour, which is a prop and not a style.
     const foreground = variant === 'secondary' ? theme.text : theme.onTint;
+    const labelColor = variant === 'secondary' ? themed.colorText : themed.colorOnTint;
     const inactive = disabled || loading;
 
     return (
@@ -83,11 +87,12 @@ export function Button({
             onPress={onPress}
             style={({ pressed }) => [
                 styles.button,
-                { backgroundColor: background, opacity: inactive ? 0.5 : pressed ? 0.85 : 1 },
+                background,
+                inactive ? styles.opacityInactive : pressed ? styles.opacityPressed : null,
                 style,
             ]}
         >
-            <Text style={[styles.buttonLabel, { color: foreground }, loading && styles.hidden]}>
+            <Text style={[styles.buttonLabel, labelColor, loading && styles.hidden]}>
                 {label}
             </Text>
             {loading && (
@@ -133,23 +138,13 @@ export const TextField = memo(function TextField({
     ref,
     ...input
 }: TextFieldProps) {
+    const themed = useThemedStyles(makeStyles);
     const theme = useTheme();
 
-    const inputStyle = useMemo(
-        () => [
-            styles.input,
-            {
-                color: theme.text,
-                borderColor: error ? theme.danger : theme.border,
-                backgroundColor: theme.backgroundElement,
-            },
-            style,
-        ],
-        [theme, error, style],
-    );
+    const inputStyle = [styles.input, themed.input, error ? themed.borderDanger : themed.borderDefault, style];
 
     const message = error ? (
-        <ThemedText type="small" style={{ color: theme.danger }}>
+        <ThemedText type="small" style={themed.colorDanger}>
             {error}
         </ThemedText>
     ) : hint ? (
@@ -209,28 +204,26 @@ export const CodeField = memo(function CodeField({
 
 /** An error or notice under a form. Announced to screen readers when it appears. */
 export function Message({ text, tone = 'danger' }: { text: string | null | undefined; tone?: 'danger' | 'info' | 'success' }) {
-    const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
     if (!text) return null;
-    const color = tone === 'danger' ? theme.danger : tone === 'success' ? theme.success : theme.text;
+    const border = tone === 'danger' ? themed.borderDanger : tone === 'success' ? themed.borderSuccess : themed.borderText;
+    const color = tone === 'danger' ? themed.colorDanger : tone === 'success' ? themed.colorSuccess : themed.colorText;
     return (
-        <View accessibilityLiveRegion="polite" style={[styles.message, { borderColor: color }]}>
-            <ThemedText style={{ color }}>{text}</ThemedText>
+        <View accessibilityLiveRegion="polite" style={[styles.message, border]}>
+            <ThemedText style={color}>{text}</ThemedText>
         </View>
     );
 }
 
 export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-    const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
     return (
         <Pressable
             accessibilityRole="radio"
             accessibilityState={{ selected }}
             onPress={onPress}
-            style={[styles.chip, {
-                backgroundColor: selected ? theme.tint : theme.backgroundElement,
-                borderColor: selected ? theme.tint : theme.border,
-            }]}>
-            <Text style={{ color: selected ? theme.onTint : theme.text, fontWeight: '500' }}>{label}</Text>
+            style={[styles.chip, selected ? themed.chipSelected : themed.chipIdle]}>
+            <Text style={[styles.weight500, selected ? themed.colorOnTint : themed.colorText]}>{label}</Text>
         </Pressable>
     );
 }
@@ -238,7 +231,7 @@ export function Chip({ label, selected, onPress }: { label: string; selected: bo
 export function Stepper({
     label, value, onChange, min = 0, max,
 }: { label: string; value: number; onChange: (v: number) => void; min?: number; max: number }) {
-    const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
     const step = (delta: number) => onChange(Math.min(max, Math.max(min, value + delta)));
     const round = (symbol: string, delta: number, disabled: boolean) => (
         <Pressable
@@ -246,13 +239,13 @@ export function Stepper({
             accessibilityLabel={`${label} ${symbol}`}
             disabled={disabled}
             onPress={() => step(delta)}
-            style={[styles.stepperButton, { backgroundColor: theme.backgroundElement, opacity: disabled ? 0.4 : 1 }]}>
-            <Text style={{ color: theme.text, fontSize: 20 }}>{symbol}</Text>
+            style={[styles.stepperButton, themed.bgBackgroundElement, disabled && styles.opacityDisabled]}>
+            <Text style={themed.colorTextFont20}>{symbol}</Text>
         </Pressable>
     );
     return (
         <View style={styles.stepper}>
-            <ThemedText style={{ flex: 1 }}>{label}</ThemedText>
+            <ThemedText style={styles.flex1}>{label}</ThemedText>
             {round('−', -1, value <= min)}
             <ThemedText type="smallBold" style={styles.stepperValue}>{value}</ThemedText>
             {round('+', 1, value >= max)}
@@ -261,19 +254,19 @@ export function Stepper({
 }
 
 export function Card({ children, onPress }: { children: ReactNode; onPress?: () => void }) {
-    const theme = useTheme();
-    const body = <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>{children}</View>;
+    const themed = useThemedStyles(makeStyles);
+    const body = <View style={[styles.card, themed.bgBackgroundElement]}>{children}</View>;
     return onPress
-        ? <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>{body}</Pressable>
+        ? <Pressable onPress={onPress} style={({ pressed }) => (pressed ? styles.opacityPressed : null)}>{body}</Pressable>
         : body;
 }
 
 export function Centered({ children }: { children: ReactNode }) {
-    const theme = useTheme();
+    const themed = useThemedStyles(makeStyles);
     // Top edge protected like FormScreen (feature 033): a centred message on a header-less
     // screen (the profiling outcome, `waiting`) must not sit under the status bar.
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={[styles.centered, { backgroundColor: theme.background }]}>
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.centered, themed.bgBackground]}>
             {children}
         </SafeAreaView>
     );
@@ -290,6 +283,9 @@ export function Loading() {
 
 export const styles = StyleSheet.create({
     hidden: { opacity: 0 },
+    opacityInactive: { opacity: 0.5 },
+    opacityPressed: { opacity: 0.85 },
+    opacityDisabled: { opacity: 0.4 },
     spinnerOverlay: { alignItems: 'center', justifyContent: 'center' },
     // The one layout every form screen shares, public onboarding included: the same side
     // and bottom padding, the same gap between fields, and a larger top padding so the
@@ -344,4 +340,27 @@ export const styles = StyleSheet.create({
         paddingTop: Spacing.four,
         paddingBottom: Spacing.six,
     },
+    flex1: { flex: 1 },
+    weight500: { fontWeight: '500' },
 });
+
+const makeStyles = (theme: AppTheme) =>
+    StyleSheet.create({
+        flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+        colorDanger: { color: theme.danger },
+        bgBackgroundElement: { backgroundColor: theme.backgroundElement },
+        colorTextFont20: { color: theme.text, fontSize: 20 },
+        bgBackground: { backgroundColor: theme.background },
+        bgTint: { backgroundColor: theme.tint },
+        bgDanger: { backgroundColor: theme.danger },
+        colorText: { color: theme.text },
+        colorOnTint: { color: theme.onTint },
+        colorSuccess: { color: theme.success },
+        borderDanger: { borderColor: theme.danger },
+        borderSuccess: { borderColor: theme.success },
+        borderText: { borderColor: theme.text },
+        borderDefault: { borderColor: theme.border },
+        input: { color: theme.text, backgroundColor: theme.backgroundElement },
+        chipSelected: { backgroundColor: theme.tint, borderColor: theme.tint },
+        chipIdle: { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+    });

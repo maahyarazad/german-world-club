@@ -1,16 +1,16 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 
 import { MAX_GUESTS, MOBILE_PAYMENT_METHODS, type EventDetail, type MobilePaymentMethod } from '@gwc/contracts/events';
 
 import { eventsApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, Chip, FormScreen, Loading, Stepper, styles } from '@/components/ui';
+import { Button, Card, Chip, FormScreen, Loading, Stepper, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { ApiError } from '@/api/client';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * One event: what, when, where, the price that applies now, and registration
@@ -22,7 +22,7 @@ import { ApiError } from '@/api/client';
  * second pricing engine that could disagree with the real one.
  */
 export default function EventScreen() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format, formatDate, formatMoney } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -87,12 +87,12 @@ export default function EventScreen() {
   return (
     <FormScreen title={event.title}>
       <Stack.Screen options={{ title: '' }} />
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{t.events.when}</ThemedText>
         <ThemedText>{formatDate(event.startsAt, true)}{event.endsAt ? ` – ${formatDate(event.endsAt, true)}` : ''}</ThemedText>
       </View>
       {event.venue || event.city ? (
-        <View style={{ gap: Spacing.one }}>
+        <View style={styles.gapOne}>
           <ThemedText type="smallBold">{t.events.where}</ThemedText>
           <ThemedText>{[event.venue, event.city].filter(Boolean).join(', ')}</ThemedText>
         </View>
@@ -104,7 +104,7 @@ export default function EventScreen() {
         {open ? (
           <>
             <ThemedText>{format(t.events.pricePerPerson, { price: money(event.currentPriceCents) })}</ThemedText>
-            <ThemedText type="small" style={{ color: event.seatsLeft === 0 ? theme.danger : theme.textSecondary }}>
+            <ThemedText type="small" style={event.seatsLeft === 0 ? themed.colorDanger : themed.colorTextSecondary}>
               {event.seatsLeft === 0 ? t.events.soldOut : format(t.events.seatsLeft, { count: event.seatsLeft })}
             </ThemedText>
           </>
@@ -122,13 +122,13 @@ export default function EventScreen() {
           {mine.paid ? null : <Button label={t.events.cancelRegistration} variant="danger" onPress={cancel} loading={cancelling} />}
         </Card>
       ) : open && event.seatsLeft > 0 ? (
-        <View style={{ gap: Spacing.three }}>
+        <View style={styles.gapThree}>
           <Stepper label={t.events.guests} value={guests} onChange={setGuests} max={MAX_GUESTS} />
           <Stepper label={t.events.kidsFree} value={kidsFree} onChange={setKidsFree} max={Math.max(0, kidsMax - kidsCharged)} />
           <Stepper label={t.events.kidsCharged} value={kidsCharged} onChange={setKidsCharged} max={Math.max(0, kidsMax - kidsFree)} />
-          <View style={{ gap: Spacing.two }}>
+          <View style={styles.gapTwo}>
             <ThemedText type="smallBold">{t.events.payment}</ThemedText>
-            <View style={styles.chips} accessibilityRole="radiogroup">
+            <View style={uiStyles.chips} accessibilityRole="radiogroup">
               {MOBILE_PAYMENT_METHODS.map((m) => (
                 <Chip key={m} label={t.events.paymentMethods[m]} selected={payment === m} onPress={() => setPayment(m)} />
               ))}
@@ -141,3 +141,15 @@ export default function EventScreen() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+  gapThree: { gap: Spacing.three },
+  gapTwo: { gap: Spacing.two },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    colorDanger: { color: theme.danger },
+    colorTextSecondary: { color: theme.textSecondary },
+  });

@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import type { MemberProfile } from '@gwc/contracts/profile';
 import type { ProfileTab, ThreadPost } from '@gwc/contracts/threads';
@@ -10,7 +10,7 @@ import { countryName } from '@/components/country-picker';
 import { PostCard } from '@/components/post-card';
 import { ProfileHeader, TabChips } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Card, Centered, Chip, FormScreen, Loading, styles } from '@/components/ui';
+import { Button, Card, Centered, Chip, FormScreen, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useUnread } from '@/hooks/use-unread';
 import { useTranslations, type Locale } from '@/i18n';
@@ -59,7 +59,7 @@ export default function Profile() {
   if (!profile) return <Loading />;
 
   const row = (label: string, value: string | null | undefined) => (value ? (
-    <View style={{ gap: 2 }}>
+    <View style={styles.gap2}>
       <ThemedText type="small" themeColor="textSecondary">{label}</ThemedText>
       <ThemedText>{value}</ThemedText>
     </View>
@@ -99,9 +99,9 @@ export default function Profile() {
           ))}
       </View>
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.common.language}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {(['de', 'en'] as Locale[]).map((l) => (
             <Chip key={l} label={l === 'de' ? 'Deutsch' : 'English'} selected={locale === l} onPress={() => setLocale(l)} />
           ))}
@@ -112,3 +112,8 @@ export default function Profile() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gap2: { gap: 2 },
+  gapTwo: { gap: Spacing.two },
+});

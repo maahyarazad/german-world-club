@@ -1,22 +1,22 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl, View, StyleSheet } from 'react-native';
 
 import type { FeedItem, FeedScope } from '@gwc/contracts/threads';
 
 import { threadsApi } from '@/api/endpoints';
 import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
-import { Chip, Loading, styles } from '@/components/ui';
+import { Chip, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /** The feed (§7): people you follow, or everybody. */
 export default function Feed() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t } = useTranslations();
   const [scope, setScope] = useState<FeedScope>('following');
   const fetchPage = useCallback((cursor: string | null) => threadsApi.feed(scope, cursor), [scope]);
@@ -32,16 +32,16 @@ export default function Feed() {
   }, [feed.reload]));
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={themed.flex1BgBackground}>
       <Stack.Screen options={{
         headerRight: () => (
-          <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
+          <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
             onPress={() => router.push('/threads/compose')}>
             {t.threads.compose}
           </ThemedText>
         ),
       }} />
-      <View style={[styles.row, { padding: Spacing.three }]} accessibilityRole="radiogroup">
+      <View style={[uiStyles.row, styles.paddingThree]} accessibilityRole="radiogroup">
         <Chip label={t.threads.following} selected={scope === 'following'} onPress={() => setScope('following')} />
         <Chip label={t.threads.all} selected={scope === 'all'} onPress={() => setScope('all')} />
       </View>
@@ -64,7 +64,7 @@ export default function Feed() {
           onEndReachedThreshold={0.5}
           refreshControl={<RefreshControl refreshing={feed.refreshing} onRefresh={() => feed.reload(true)} />}
           ListEmptyComponent={
-            <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>
+            <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>
               {scope === 'following' ? t.threads.emptyFollowing : t.common.empty}
             </ThemedText>
           }
@@ -73,3 +73,14 @@ export default function Feed() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  paddingThree: { padding: Spacing.three },
+  paddingFourTextCenter: { padding: Spacing.four, textAlign: 'center' },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    colorTintWeight600: { color: theme.tint, fontWeight: '600' },
+  });

@@ -1,7 +1,8 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 import { useUnread } from '@/hooks/use-unread';
 import { useTranslations } from '@/i18n';
 
@@ -19,6 +20,7 @@ export default function MemberTabs() {
   const theme = useTheme();
   const { t } = useTranslations();
   const unread = useUnread();
+  const themed = useThemedStyles(makeStyles);
   // Feature 034: on Android an inactive tab's icon and label fall back to a Material
   // system colour that follows the phone's theme, not ours, so in the app's dark theme
   // they were drawn nearly the colour of the bar and only the selected tab showed. Setting
@@ -28,9 +30,9 @@ export default function MemberTabs() {
     Platform.OS === 'android'
       ? {
           iconColor: { default: theme.textSecondary, selected: theme.tint },
-          labelStyle: { default: { color: theme.textSecondary }, selected: { color: theme.tint } },
+          labelStyle: { default: themed.labelInactive, selected: themed.labelSelected },
         }
-      : { labelStyle: { selected: { color: theme.tint } } };
+      : { labelStyle: { selected: themed.labelSelected } };
   return (
     <NativeTabs
       backgroundColor={theme.background}
@@ -61,3 +63,9 @@ export default function MemberTabs() {
     </NativeTabs>
   );
 }
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    labelInactive: { color: theme.textSecondary },
+    labelSelected: { color: theme.tint },
+  });

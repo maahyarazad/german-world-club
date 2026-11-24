@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Switch, View } from 'react-native';
+import { Linking, Switch, View, StyleSheet } from 'react-native';
 
 import type { Device, Preferences } from '@gwc/contracts/push';
 
@@ -91,8 +91,8 @@ export default function NotificationSettings() {
   };
 
   const row = (label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void, disabled = false) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.three }}>
-      <View style={{ flex: 1, gap: 2 }}>
+    <View style={styles.rowItemsCenterGapThree}>
+      <View style={styles.flex1Gap2}>
         <ThemedText>{label}</ThemedText>
         {hint ? <ThemedText type="small" themeColor="textSecondary">{hint}</ThemedText> : null}
       </View>
@@ -106,7 +106,7 @@ export default function NotificationSettings() {
         <Card>
           {row(t.notifications.thisDevice, null, granted && (device?.enabled ?? false), setThisPhone)}
           {blocked ? (
-            <View style={{ gap: Spacing.two }}>
+            <View style={styles.gapTwo}>
               <ThemedText type="small" themeColor="textSecondary">{t.notifications.systemDenied}</ThemedText>
               <Button label={t.notifications.openSettings} onPress={() => void Linking.openSettings()} variant="secondary" />
             </View>
@@ -122,3 +122,9 @@ export default function NotificationSettings() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  rowItemsCenterGapThree: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  flex1Gap2: { flex: 1, gap: 2 },
+  gapTwo: { gap: Spacing.two },
+});

@@ -1,7 +1,7 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 export type ThemedTextProps = TextProps & {
   type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
@@ -9,12 +9,12 @@ export type ThemedTextProps = TextProps & {
 };
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
-  const theme = useTheme();
+  const colors = useThemedStyles(makeColors);
 
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'text'] },
+        colors[themeColor ?? 'text'],
         type === 'default' && styles.default,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
@@ -71,3 +71,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+/** One text colour per theme token, so `themeColor` picks a style instead of building one. */
+const makeColors = (theme: AppTheme) =>
+  StyleSheet.create({
+    text: { color: theme.text },
+    background: { color: theme.background },
+    backgroundElement: { color: theme.backgroundElement },
+    backgroundSelected: { color: theme.backgroundSelected },
+    textSecondary: { color: theme.textSecondary },
+    tint: { color: theme.tint },
+    onTint: { color: theme.onTint },
+    accent: { color: theme.accent },
+    accentText: { color: theme.accentText },
+    border: { color: theme.border },
+    danger: { color: theme.danger },
+    success: { color: theme.success },
+  });

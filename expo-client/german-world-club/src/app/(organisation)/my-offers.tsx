@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import type { MerchantOffer } from '@gwc/contracts/offers';
 
@@ -57,7 +57,7 @@ export default function MyOffers() {
             {t.merchant.offers.kinds[offer.benefit.kind]} · {formatDate(offer.validFrom)} – {formatDate(offer.validUntil)}
           </ThemedText>
           <ThemedText type="small">{t.merchant.offers.states[offer.state]}</ThemedText>
-          <View style={{ gap: Spacing.two }}>
+          <View style={styles.gapTwo}>
             <Button label={t.merchant.offers.edit} variant="secondary" onPress={() => router.push({ pathname: '/my-offer/[id]' as never, params: { id: offer.id } })} />
             {(offer.state === 'draft' || offer.state === 'withdrawn') ? (
               <Button label={t.merchant.offers.publish} loading={busyId === offer.id} onPress={() => void act(offer, 'publish')} />
@@ -71,3 +71,7 @@ export default function MyOffers() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapTwo: { gap: Spacing.two },
+});

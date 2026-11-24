@@ -1,7 +1,6 @@
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { MAX_OFFER_MEDIA, NEW_OFFER_KINDS } from '@gwc/contracts/offers';
 import type { CreateOfferRequest, MerchantOffer, OfferCategory } from '@gwc/contracts/offers';
@@ -9,7 +8,7 @@ import type { CreateOfferRequest, MerchantOffer, OfferCategory } from '@gwc/cont
 import { ApiError } from '@/api/client';
 import { merchantApi } from '@/api/endpoints';
 import { DatePartsField } from '@/components/date-parts-field';
-import { imageUrl } from '@/components/media-carousel';
+import { WideImage } from '@/components/media-carousel';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, Loading, Message, TextField } from '@/components/ui';
 import { UploadProgress } from '@/components/upload-progress';
@@ -146,14 +145,14 @@ export default function OfferEditor() {
       <TextField label={t.merchant.offers.fieldDescription} value={form.description} multiline maxLength={4000} onChangeText={(v) => set('description', v)} />
 
       <ThemedText type="smallBold">{t.merchant.offers.category}</ThemedText>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+      <View style={styles.rowFlexWrapWrapGapTwo}>
         {categories.map((c) => (
           <Chip key={c.id} label={locale === 'de' ? c.nameDe : c.nameEn} selected={form.categoryId === c.id} onPress={() => set('categoryId', c.id)} />
         ))}
       </View>
 
       <ThemedText type="smallBold">{t.merchant.offers.kind}</ThemedText>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two }}>
+      <View style={styles.rowFlexWrapWrapGapTwo}>
         {NEW_OFFER_KINDS.map((k) => (
           <Chip key={k} label={t.merchant.offers.kinds[k]} selected={form.benefitKind === k} onPress={() => set('benefitKind', k)} />
         ))}
@@ -176,12 +175,11 @@ export default function OfferEditor() {
 
       <ThemedText type="smallBold">{t.merchant.offers.media}</ThemedText>
       {!offer ? <ThemedText themeColor="textSecondary">{t.merchant.offers.saveFirst}</ThemedText> : (
-        <View style={{ gap: Spacing.two }}>
+        <View style={styles.gapTwo}>
           <ThemedText type="small" themeColor="textSecondary">{format(t.merchant.offers.mediaHint, { max: MAX_OFFER_MEDIA })}</ThemedText>
           {offer.media.map((item) => (
-            <View key={item.assetId} style={{ gap: Spacing.one }}>
-              <Image source={{ uri: imageUrl(item, 400) }} accessibilityLabel={item.alt}
-                style={{ width: '100%', aspectRatio: item.width / item.height, borderRadius: 8 }} />
+            <View key={item.assetId} style={styles.gapOne}>
+              <WideImage item={item} />
               <Button label={t.merchant.galleryRemove} variant="secondary" disabled={busy} onPress={() => {
                 void setMedia(offer.media.filter((m) => m.assetId !== item.assetId).map((m) => m.assetId))
                   .then(() => merchantApi.deleteFile(item.assetId).catch(() => undefined));
@@ -195,3 +193,10 @@ export default function OfferEditor() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  rowFlexWrapWrapGapTwo: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  gapTwo: { gap: Spacing.two },
+  gapOne: { gap: Spacing.one },
+  width100pctRadius8: { width: '100%', borderRadius: 8 },
+});

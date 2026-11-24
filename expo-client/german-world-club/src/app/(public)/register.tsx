@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { TextInput, View, StyleSheet } from 'react-native';
 
 import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
 import { checkMobile } from '@gwc/contracts/mobile';
@@ -9,11 +9,11 @@ import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referr
 
 import { MobileField } from '@/components/mobile-field';
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, FormScreen, TextField, styles } from '@/components/ui';
+import { Button, Chip, FormScreen, TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * Onboarding step 1 (§6.1): full name, mobile, birthday, gender — plus the
@@ -28,8 +28,8 @@ const fields = registerRequestSchema.shape;
 type Errors = Partial<Record<'fullName' | 'email' | 'password' | 'mobile' | 'birthday' | 'gender' | 'primaryLanguage' | 'ageConfirmed', string>>;
 
 export default function Register() {
+  const themed = useThemedStyles(makeStyles);
   const { t } = useTranslations();
-  const theme = useTheme();
   const { draft, update } = useRegistrationDraft();
   const [fullName, setFullName] = useState(draft.fullName ?? '');
   const [email, setEmail] = useState(draft.email ?? '');
@@ -98,54 +98,54 @@ export default function Register() {
       <MobileField ref={mobileRef} value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile}
         returnKeyType="next" onSubmitEditing={() => dayRef.current?.focus()} />
 
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{t.register.birthday}</ThemedText>
-        <View style={[styles.row, { alignItems: 'flex-start' }]}>
-          <View style={{ flex: 1 }}>
+        <View style={[uiStyles.row, styles.itemsFlexstart]}>
+          <View style={styles.flex1}>
             {/* The iOS number pad has no return key, so a full day or month moves on by itself.
                 Only a typed change does: a value restored from the draft never moves focus. */}
             <TextField ref={dayRef} label={t.register.day} value={dd} keyboardType="number-pad" maxLength={2}
               onChangeText={(v) => { const digits = v.replace(/\D/g, ''); setDd(digits); if (digits.length === 2) monthRef.current?.focus(); }}
               returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => monthRef.current?.focus()} />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.flex1}>
             <TextField ref={monthRef} label={t.register.month} value={mm} keyboardType="number-pad" maxLength={2}
               onChangeText={(v) => { const digits = v.replace(/\D/g, ''); setMm(digits); if (digits.length === 2) yearRef.current?.focus(); }}
               returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => yearRef.current?.focus()} />
           </View>
-          <View style={{ flex: 2 }}>
+          <View style={styles.flex2}>
             {/* The last text input only closes the keyboard: gender, language and the age
                 confirmation below are still unanswered, so submitting here would just flash errors. */}
             <TextField ref={yearRef} label={t.register.year} value={yyyy} onChangeText={(v) => setYyyy(v.replace(/\D/g, ''))}
               keyboardType="number-pad" maxLength={4} returnKeyType="done" submitBehavior="blurAndSubmit" />
           </View>
         </View>
-        {errors.birthday ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.birthday}</ThemedText> : null}
+        {errors.birthday ? <ThemedText type="small" style={themed.colorDanger}>{errors.birthday}</ThemedText> : null}
       </View>
 
-      <View style={{ gap: Spacing.two }} accessibilityRole="radiogroup">
+      <View style={styles.gapTwo} accessibilityRole="radiogroup">
         <ThemedText type="smallBold">{t.register.gender}</ThemedText>
-        <View style={styles.chips}>
+        <View style={uiStyles.chips}>
           {GENDERS.map((g) => (
             <Chip key={g} label={t.register.genders[g]} selected={gender === g} onPress={() => setGender(g)} />
           ))}
         </View>
-        {errors.gender ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.gender}</ThemedText> : null}
+        {errors.gender ? <ThemedText type="small" style={themed.colorDanger}>{errors.gender}</ThemedText> : null}
       </View>
 
-      <View style={{ gap: Spacing.two }} accessibilityRole="radiogroup">
+      <View style={styles.gapTwo} accessibilityRole="radiogroup">
         <ThemedText type="smallBold">{t.register.primaryLanguage}</ThemedText>
-        <View style={styles.chips}>
+        <View style={uiStyles.chips}>
           {PRIMARY_LANGUAGES.map((l) => (
             <Chip key={l} label={t.register.primaryLanguages[l]} selected={primaryLanguage === l} onPress={() => setPrimaryLanguage(l)} />
           ))}
         </View>
-        {errors.primaryLanguage ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.primaryLanguage}</ThemedText> : null}
+        {errors.primaryLanguage ? <ThemedText type="small" style={themed.colorDanger}>{errors.primaryLanguage}</ThemedText> : null}
       </View>
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <Chip label={t.register.ageConfirm} selected={ageConfirmed} onPress={() => setAgeConfirmed((v) => !v)} />
-        {errors.ageConfirmed ? <ThemedText type="small" style={{ color: theme.danger }}>{errors.ageConfirmed}</ThemedText> : null}
+        {errors.ageConfirmed ? <ThemedText type="small" style={themed.colorDanger}>{errors.ageConfirmed}</ThemedText> : null}
       </View>
 
       <TextField label={t.referrals.codeField} hint={t.referrals.codeFieldHint} value={referralCode}
@@ -156,3 +156,16 @@ export default function Register() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+  itemsFlexstart: { alignItems: 'flex-start' },
+  flex1: { flex: 1 },
+  flex2: { flex: 2 },
+  gapTwo: { gap: Spacing.two },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    colorDanger: { color: theme.danger },
+  });

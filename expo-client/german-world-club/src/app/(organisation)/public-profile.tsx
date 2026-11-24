@@ -14,6 +14,7 @@ import { UploadProgress } from '@/components/upload-progress';
 import { checkPicked } from '@/lib/media-limits';
 import { pickMedia } from '@/lib/pick-media';
 import { useSession } from '@/session/session';
+import { StyleSheet } from 'react-native';
 
 /**
  * The organisation's public profile (010 US3, FR-014): what members see.
@@ -90,7 +91,7 @@ export default function OrganisationPublicProfile() {
           <TextField label={t.profile.displayName} value={form.displayName} maxLength={120}
             onChangeText={(displayName) => setForm({ ...form, displayName })} />
           <TextField label={t.profile.about} value={form.about} maxLength={1000} multiline
-            style={{ minHeight: 100, textAlignVertical: 'top' }} onChangeText={(about) => setForm({ ...form, about })} />
+            style={styles.minHeight100TextAlignVerticalTop} onChangeText={(about) => setForm({ ...form, about })} />
           <TextField label={t.profile.website} value={form.website} autoCapitalize="none" keyboardType="url"
             onChangeText={(website) => setForm({ ...form, website })} />
           <TextField label={t.profile.city} value={form.city} onChangeText={(city) => setForm({ ...form, city })} />
@@ -110,3 +111,7 @@ export default function OrganisationPublicProfile() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  minHeight100TextAlignVerticalTop: { minHeight: 100, textAlignVertical: 'top' },
+});
