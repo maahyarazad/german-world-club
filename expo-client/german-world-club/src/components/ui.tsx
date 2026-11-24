@@ -29,12 +29,18 @@ import { useTheme } from '@/hooks/use-theme';
  * so a screen laid out below a native header gets a top inset of 0 and gains no
  * gap, and no fixed height is guessed.
  */
-export function FormScreen({ title, subtitle, children, vCentered = false, registerForm = false}: { title?: ReactNode; subtitle?: string; children: ReactNode, vCentered?: Boolean, registerForm?: Boolean }) {
+export function FormScreen({ title, subtitle, children, vCentered = false }: {
+    title?: ReactNode;
+    subtitle?: string;
+    children: ReactNode;
+    /** Centre the form vertically, like a sign-in page: the content sits in the middle of the space below the header. */
+    vCentered?: boolean;
+}) {
     const theme = useTheme();
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }} >
+        <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={[styles.form, vCentered && styles.verticalCentered, registerForm && styles.registerForm]} keyboardShouldPersistTaps="handled">
+                <ScrollView contentContainerStyle={[styles.form, vCentered && styles.formCentered]} keyboardShouldPersistTaps="handled">
                     {title ? <ThemedText type="title" style={styles.title}>{title}</ThemedText> : null}
                     {subtitle ? <ThemedText themeColor="textSecondary">{subtitle}</ThemedText> : null}
                     {children}
@@ -285,15 +291,17 @@ export function Loading() {
 export const styles = StyleSheet.create({
     hidden: { opacity: 0 },
     spinnerOverlay: { alignItems: 'center', justifyContent: 'center' },
+    // The one layout every form screen shares, public onboarding included: the same side
+    // and bottom padding, the same gap between fields, and a larger top padding so the
+    // first element never sits tight under the native header (Stepper) or the status bar.
     form: {
-        padding: Spacing.four,
+        paddingHorizontal: Spacing.four,
+        paddingTop: Spacing.five,
+        paddingBottom: Spacing.four,
         gap: Spacing.three,
         width: '100%',
         maxWidth: MaxContentWidth,
         alignSelf: 'center',
-    },
-    registerForm:{
-        marginTop: 30
     },
     title: { fontSize: 30, lineHeight: 36 },
     button: {
@@ -327,8 +335,13 @@ export const styles = StyleSheet.create({
     card: { borderRadius: 14, padding: Spacing.three, gap: Spacing.two },
     centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.three },
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-    verticalCentered: {
+    // Fills the screen and centres the content in the space below the header. The bottom
+    // padding is a little larger than the top so the form sits where the eye expects the
+    // middle (just above the geometric centre, as on Google's sign-in) — no magic margin.
+    formCentered: {
         flexGrow: 1,
         justifyContent: 'center',
+        paddingTop: Spacing.four,
+        paddingBottom: Spacing.six,
     },
 });

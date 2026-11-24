@@ -85,7 +85,7 @@ export default function Register() {
   };
 
   return (
-    <FormScreen title={t.register.detailsTitle} registerForm>
+    <FormScreen title={t.register.detailsTitle}>
       <TextField label={t.register.fullName} value={fullName} onChangeText={setFullName}
         autoComplete="name" textContentType="name" error={errors.fullName}
         returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => emailRef.current?.focus()} />

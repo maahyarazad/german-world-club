@@ -1,17 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RegisterRequest } from '@gwc/contracts/onboarding';
 
 import { onboardingApi } from '@/api/endpoints';
 import { CountryPicker, countryName } from '@/components/country-picker';
 import { RESIDENCE_SHORTCUTS } from '@gwc/contracts/onboarding';
-import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, Message, styles } from '@/components/ui';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { useRegistrationDraft } from '@/session/registration-draft';
 import { useSession } from '@/session/session';
@@ -24,7 +20,6 @@ import { PROBLEMS } from '@gwc/contracts/errors';
  * server texts the verification code.
  */
 export default function Country() {
-  const theme = useTheme();
   const { t, locale } = useTranslations();
   const { draft, update } = useRegistrationDraft();
   // Germany, Austria and Switzerland are one tap; "Others" opens the full list.
@@ -56,35 +51,31 @@ export default function Country() {
   };
 
   return (
-    <FormScreen registerForm>
-      <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
-        <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{t.register.countryTitle}</ThemedText>
-        <ThemedText themeColor="textSecondary">{t.register.countryHint}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
-          {RESIDENCE_SHORTCUTS.map((code) => (
-            <Chip
-              key={code}
-              label={countryName(code, locale)}
-              selected={!others && draft.countryOfResidence === code}
-              onPress={() => { setOthers(false); update({ countryOfResidence: code }); }}
-            />
-          ))}
+    <FormScreen title={t.register.countryTitle} subtitle={t.register.countryHint}>
+      <View style={styles.chips} accessibilityRole="radiogroup">
+        {RESIDENCE_SHORTCUTS.map((code) => (
           <Chip
-            label={t.register.countryOthers}
-            selected={others}
-            onPress={() => { setOthers(true); if (shortcut) update({ countryOfResidence: undefined }); }}
+            key={code}
+            label={countryName(code, locale)}
+            selected={!others && draft.countryOfResidence === code}
+            onPress={() => { setOthers(false); update({ countryOfResidence: code }); }}
           />
-        </View>
-        {others ? (
-          <CountryPicker
-            selected={draft.countryOfResidence}
-            exclude={RESIDENCE_SHORTCUTS}
-            onSelect={(code) => update({ countryOfResidence: code })}
-          />
-        ) : null}
-        {error ? <Message text={error} /> : null}
-        <Button label={t.register.submit} onPress={submit} loading={busy} disabled={!draft.countryOfResidence} />
+        ))}
+        <Chip
+          label={t.register.countryOthers}
+          selected={others}
+          onPress={() => { setOthers(true); if (shortcut) update({ countryOfResidence: undefined }); }}
+        />
       </View>
+      {others ? (
+        <CountryPicker
+          selected={draft.countryOfResidence}
+          exclude={RESIDENCE_SHORTCUTS}
+          onSelect={(code) => update({ countryOfResidence: code })}
+        />
+      ) : null}
+      {error ? <Message text={error} /> : null}
+      <Button label={t.register.submit} onPress={submit} loading={busy} disabled={!draft.countryOfResidence} />
     </FormScreen>
   );
 }

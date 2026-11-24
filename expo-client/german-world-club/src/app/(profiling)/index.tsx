@@ -142,7 +142,7 @@ export default function ProfilingScreen() {
   if (onReview) {
     const missing = profilingMissing(snapshot.branch, snapshot.answers);
     return (
-      <FormScreen registerForm title={copy.reviewTitle} subtitle={copy.reviewSubtitle} >
+      <FormScreen title={copy.reviewTitle} subtitle={copy.reviewSubtitle} >
         {answerable.map((s) => (
           <View key={s} style={{ gap: 4 }}>
             <ThemedText themeColor="textSecondary">{stepTitle(s, copy)}</ThemedText>

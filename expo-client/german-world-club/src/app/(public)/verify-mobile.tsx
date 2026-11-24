@@ -113,7 +113,7 @@ export default function VerifyMobile() {
 
   if (editing) {
     return (
-      <FormScreen title={t.register.mobileTitle} registerForm>
+      <FormScreen title={t.register.mobileTitle}>
         <TextField label={t.register.email} value={email} onChangeText={setEmail}
           keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" error={errors.email} />
         <MobileField value={mobile} onChange={setMobile} hint={t.register.mobileHint} error={errors.mobile} />
@@ -124,7 +124,7 @@ export default function VerifyMobile() {
   }
 
   return (
-    <FormScreen registerForm  title={t.register.mobileTitle} subtitle={`${t.register.mobileHint2} ${format(t.common.codeSentTo, { target: sentTo })}`}>
+    <FormScreen title={t.register.mobileTitle} subtitle={`${t.register.mobileHint2} ${format(t.common.codeSentTo, { target: sentTo })}`}>
       <CodeField label={t.register.mobileTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />
