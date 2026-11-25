@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { TextInput, View, StyleSheet } from 'react-native';
 
-import { GENDERS, PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
+import { PRIMARY_LANGUAGES, registerRequestSchema, type Gender, type PrimaryLanguage } from '@gwc/contracts/onboarding';
 import { checkMobile } from '@gwc/contracts/mobile';
 import { mobileErrorText } from '@/lib/mobile-text';
 import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals';
@@ -24,6 +24,13 @@ import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
  * something it would accept. The server validates again regardless.
  */
 const fields = registerRequestSchema.shape;
+
+/**
+ * Registration offers two genders. The contract's `GENDERS` still holds all four
+ * (a member's stored value and the profile editor are unchanged, and the server still
+ * accepts them), so this is the sign-up form's choice alone, not a rule of the data.
+ */
+const REGISTER_GENDERS: readonly Gender[] = ['female', 'male'];
 
 type Errors = Partial<Record<'fullName' | 'email' | 'password' | 'mobile' | 'birthday' | 'gender' | 'primaryLanguage' | 'ageConfirmed', string>>;
 
@@ -126,7 +133,7 @@ export default function Register() {
       <View style={styles.gapTwo} accessibilityRole="radiogroup">
         <ThemedText type="smallBold">{t.register.gender}</ThemedText>
         <View style={uiStyles.chips}>
-          {GENDERS.map((g) => (
+          {REGISTER_GENDERS.map((g) => (
             <Chip key={g} label={t.register.genders[g]} selected={gender === g} onPress={() => setGender(g)} />
           ))}
         </View>
