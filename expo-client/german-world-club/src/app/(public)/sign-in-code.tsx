@@ -48,7 +48,7 @@ export default function SignInCode() {
   };
 
   return (
-    <FormScreen subtitle={`${t.signIn.otpHint} ${sentTo ? format(t.common.codeSentTo, { target: sentTo }) : ''}`}>
+    <FormScreen subtitle={`${t.signIn.otpHint} ${sentTo ? format(t.common.codeSentTo, { target: sentTo }) : ''}`} vCentered>
       <CodeField label={t.signIn.otpTitle} length={4} value={code} onChangeText={setCode} />
       <Message text={notice} tone="info" />
       <Button label={t.common.continue} onPress={submit} loading={busy} disabled={code.length !== 4} />

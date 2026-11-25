@@ -1,5 +1,5 @@
 import { useMemo, useState, type Ref } from 'react';
-import { Modal, Pressable, View, type ReturnKeyTypeOptions, type TextInputInstance } from 'react-native';
+import { Modal, Pressable, View, type ReturnKeyTypeOptions, type TextInput, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COUNTRIES } from '@gwc/contracts/countries';
@@ -10,9 +10,9 @@ import { ThemedText } from '@/components/themed-text';
 import { Button, TextField } from '@/components/ui';
 import { CountryPicker } from '@/components/country-picker';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { mobileErrorText } from '@/lib/mobile-text';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * A mobile number as a country (its calling code) plus the number itself, so
@@ -31,11 +31,11 @@ export function MobileField({ value, onChange, error, hint, ref, returnKeyType, 
   error?: string;
   hint?: string;
   /** The number input itself, so a form can focus it in its chain. */
-  ref?: Ref<TextInputInstance>;
+  ref?: Ref<TextInput>;
   returnKeyType?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format } = useTranslations();
   const initial = useMemo(() => splitE164(value), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [country, setCountry] = useState(initial?.country ?? 'DE');
@@ -64,19 +64,16 @@ export function MobileField({ value, onChange, error, hint, ref, returnKeyType, 
   const shownHint = readAs && !shownError ? format(t.register.mobileCorrected, { number: formatMobile(readAs) }) : hint;
 
   return (
-    <View style={{ gap: Spacing.one }}>
-      <View style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' }}>
+    <View style={styles.gapOne}>
+      <View style={styles.rowGapTwoItemsFlexstart}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.register.mobileCountry}
           onPress={() => setPicking(true)}
-          style={{
-            marginTop: Spacing.four, minHeight: 48, paddingHorizontal: Spacing.three, justifyContent: 'center',
-            borderWidth: 1, borderRadius: 10, borderColor: theme.border, backgroundColor: theme.backgroundElement,
-          }}>
+          style={themed.pressableMarginTopFour8}>
           <ThemedText>{`${country} +${DIAL_CODES[country]}`}</ThemedText>
         </Pressable>
-        <View style={{ flex: 1 }}>
+        <View style={styles.flex1}>
           <TextField
             label={t.register.mobile}
             value={national}
@@ -92,9 +89,9 @@ export function MobileField({ value, onChange, error, hint, ref, returnKeyType, 
         </View>
       </View>
       <Modal visible={picking} animationType="slide" onRequestClose={() => setPicking(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-          <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
-            <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{t.register.mobileCountry}</ThemedText>
+        <SafeAreaView style={themed.flex1BgBackground}>
+          <View style={styles.flex1PaddingFourGapThree}>
+            <ThemedText type="title" style={styles.font30Line36}>{t.register.mobileCountry}</ThemedText>
             <CountryPicker
               selected={country}
               exclude={withoutCode}
@@ -108,3 +105,17 @@ export function MobileField({ value, onChange, error, hint, ref, returnKeyType, 
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+  rowGapTwoItemsFlexstart: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
+  flex1: { flex: 1 },
+  flex1PaddingFourGapThree: { flex: 1, padding: Spacing.four, gap: Spacing.three },
+  font30Line36: { fontSize: 30, lineHeight: 36 },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    pressableMarginTopFour8: { marginTop: Spacing.four, minHeight: 48, paddingHorizontal: Spacing.three, justifyContent: 'center', borderWidth: 1, borderRadius: 10, borderColor: theme.border, backgroundColor: theme.backgroundElement },
+    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+  });

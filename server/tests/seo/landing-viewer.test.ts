@@ -12,7 +12,8 @@ import { join } from 'node:path'
  */
 
 const SHELLS = ['index.html', 'en.html']
-const MARKERS = ['account', 'signin', 'footer']
+// `partners` is feature 035's strip of partners and merchants.
+const MARKERS = ['account', 'signin', 'footer', 'partners']
 
 describe('the landing shells carry the signed-in markers', () => {
   for (const file of SHELLS) {

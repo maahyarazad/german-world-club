@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { PROBLEMS } from '@gwc/contracts/errors';
 import { MESSAGE_MAX } from '@gwc/contracts/messaging';
@@ -71,8 +71,8 @@ export default function ConversationScreen() {
       {messages.map((m) => {
         const mine = m.senderId === me;
         return (
-          <View key={m.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-            <View style={{ maxWidth: '85%' }}>
+          <View key={m.id} style={mine ? styles.alignEnd : styles.alignStart}>
+            <View style={styles.maxWidth85pct}>
               <Card>
                 <ThemedText>{m.body}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -83,12 +83,20 @@ export default function ConversationScreen() {
           </View>
         );
       })}
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <TextField label={t.messages.replyPlaceholder} value={body} onChangeText={setBody}
-          multiline maxLength={MESSAGE_MAX} style={{ minHeight: 80, textAlignVertical: 'top' }} />
+          multiline maxLength={MESSAGE_MAX} style={styles.minHeight80TextAlignVerticalTop} />
         <Message text={slowDown ? t.requests.slowDown : null} />
         <Button label={t.messages.send} onPress={() => void send()} loading={busy} disabled={!body.trim()} />
       </View>
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  maxWidth85pct: { maxWidth: '85%' },
+  gapTwo: { gap: Spacing.two },
+  minHeight80TextAlignVerticalTop: { minHeight: 80, textAlignVertical: 'top' },
+  alignEnd: { alignItems: 'flex-end' },
+  alignStart: { alignItems: 'flex-start' },
+});

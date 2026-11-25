@@ -61,7 +61,7 @@ export default function SignIn() {
   };
 
   return (
-    <FormScreen>
+    <FormScreen vCentered>
       <TextField
         label={t.signIn.email}
         value={email}

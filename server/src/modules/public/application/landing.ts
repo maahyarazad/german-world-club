@@ -5,6 +5,8 @@ import { legalBody } from '../templates/legal.ts'
 import { withCspNonces } from '../../../plugins/02-security-headers.ts'
 import { escape } from '../templates/layout.ts'
 import type { Viewer } from './viewer.ts'
+import { renderCarousel } from './partners-carousel.ts'
+import type { CarouselEntry } from './partners-carousel.ts'
 
 /**
  * Root-level institutional pages (§10.1 "committee / about / legal"). Adding
@@ -109,7 +111,16 @@ export function withViewer(shell: string, viewer: Viewer, language: 'de' | 'en' 
   return html
 }
 
-export function renderLanding({ shell, record, origin, cspNonce, viewer = null, language = 'de' }: {
+/**
+ * The partners and merchants strip (feature 035). The slot is left empty when
+ * there is nobody to show, so a shell with no eligible organisations renders
+ * without the section rather than with an empty heading.
+ */
+export function withCarousel(shell: string, entries: readonly CarouselEntry[], language: 'de' | 'en' = 'de'): string {
+  return fillSlot(shell, 'partners', renderCarousel(entries, language))
+}
+
+export function renderLanding({ shell, record, origin, cspNonce, viewer = null, language = 'de', carousel = [] }: {
   shell: string | null
   // Untyped before feature 022, and still: the record is a SeoRecord and the
   // nonce the security-headers pair; typing them is not this feature's job.
@@ -118,10 +129,15 @@ export function renderLanding({ shell, record, origin, cspNonce, viewer = null, 
   cspNonce: any
   viewer?: Viewer | null
   language?: 'de' | 'en'
+  carousel?: readonly CarouselEntry[]
 }) {
-  // Nonces last, over the final markup. Without a viewer the shell is not
-  // touched at all: an anonymous visitor gets exactly the page they always did.
-  if (shell) return withCspNonces(viewer ? withViewer(shell, viewer, language) : shell, cspNonce)
+  // Nonces last, over the final markup. Without a viewer and without a carousel
+  // the shell is not touched at all: an anonymous visitor gets exactly the page
+  // they always did.
+  if (shell) {
+    const withPeople = viewer ? withViewer(shell, viewer, language) : shell
+    return withCspNonces(carousel.length > 0 ? withCarousel(withPeople, carousel, language) : withPeople, cspNonce)
+  }
 
   const pageMeta = buildPageMeta(record, {
     origin,

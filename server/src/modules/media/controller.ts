@@ -1,8 +1,11 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
-import { altSchema, DELIVERY_CACHE_CONTROL } from '@gwc/contracts/media'
+import {
+  altSchema, DELIVERY_CACHE_CONTROL, MERCHANT_IMAGE_MAX_BYTES, MERCHANT_VIDEO_MAX_BYTES,
+} from '@gwc/contracts/media'
 import { MediaRejected, extensionAgrees, validateUpload } from './validate.ts'
 import { ingestImage, ingestVideo } from './application/upload.ts'
 import { getAsset, deleteAsset, getVariant } from './application/deliver.ts'
+import { forbidden } from '../../authz/require-permission.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../../app.ts'
 
@@ -16,10 +19,21 @@ import type { GwcApp } from '../../app.ts'
 export function createMediaController(app: GwcApp, { storage, queue, maxBytes, maxPixels, storedByteQuota }) {
   return {
     upload: async (request: FastifyRequest, reply: FastifyReply) => {
-      const uploaded = await request.file().catch((err) => {
-        if (err.code === 'FST_REQ_FILE_TOO_LARGE') {
-          throw new MediaRejected(PROBLEMS.MEDIA_TOO_LARGE, `The upload exceeds the ${Math.floor(maxBytes / 1048576)} MB limit.`)
-        }
+      // Feature 035: a merchant's uploads are held to smaller limits than the
+      // platform's 25 MB: a photo under 1 MiB and a video under 5 MiB. The
+      // stream is cut at the larger of the two, so a 25 MB file is never
+      // buffered to find out it was too big; the kind-specific limit is applied
+      // below, once content inspection (not the declared type) has decided
+      // which kind it is. Members and partners keep `maxBytes`.
+      const merchant = request.principal?.kind === 'merchant'
+      const streamLimit = merchant ? MERCHANT_VIDEO_MAX_BYTES : maxBytes
+      const tooLarge = (limit: number) => new MediaRejected(
+        PROBLEMS.MEDIA_TOO_LARGE,
+        limit >= 1048576 ? `The upload must be under ${(limit / 1048576).toString()} MB.` : `The upload exceeds the limit.`,
+      )
+
+      const uploaded = await request.file(merchant ? { limits: { fileSize: streamLimit } } : undefined).catch((err) => {
+        if (err.code === 'FST_REQ_FILE_TOO_LARGE') throw tooLarge(streamLimit)
         throw err
       })
       if (!uploaded) {
@@ -35,12 +49,16 @@ export function createMediaController(app: GwcApp, { storage, queue, maxBytes, m
       }
 
       const buffer = await uploaded.toBuffer()
-      if (uploaded.file.truncated) {
-        throw new MediaRejected(PROBLEMS.MEDIA_TOO_LARGE, `The upload exceeds the ${Math.floor(maxBytes / 1048576)} MB limit.`)
-      }
+      if (uploaded.file.truncated) throw tooLarge(streamLimit)
 
       // Steps 2-4: magic bytes, allowlist, pre-decode dimension bound.
       const validated = await validateUpload(buffer, { maxBytes, maxPixels })
+
+      if (merchant) {
+        // At or above the limit is refused: "under 1 MB" and "under 5 MB".
+        const limit = validated.kind === 'image' ? MERCHANT_IMAGE_MAX_BYTES : MERCHANT_VIDEO_MAX_BYTES
+        if (buffer.length >= limit) throw tooLarge(limit)
+      }
 
       if (uploaded.filename && !extensionAgrees(uploaded.filename, validated.mime)) {
         // Not a refusal — the bytes already decided. Logged so a batch of
@@ -64,7 +82,38 @@ export function createMediaController(app: GwcApp, { storage, queue, maxBytes, m
       return reply.send(body)
     },
 
+    /**
+     * The processing state of one of the caller's own organisation's uploads
+     * (feature 035). `GET /media/:id` is member-only, so without this a merchant
+     * or partner client could not see an upload go from `processing` to `ready`
+     * or `failed` — the server's half of showing progress. Someone else's asset
+     * and an unknown id answer the same 404.
+     */
+    getOrganisationAsset: async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string }
+      const principal = request.principal!
+      const { rows } = await app.pg.query(
+        `SELECT 1 FROM assets a
+          WHERE a.id = $1 AND a.uploader_kind = $2::account_kind
+            AND a.uploaded_by IN (SELECT u.id FROM organisation_users u WHERE u.organisation_id = $3)`,
+        [id, principal.kind, principal.organisationId],
+      )
+      if (rows.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such asset.')
+      return reply.send(await getAsset(app, { id, signal: request.deadlineSignal }))
+    },
+
     deleteAsset: async (request: FastifyRequest, reply: FastifyReply) => {
+      // A merchant deleting someone else's file must not learn that the id
+      // exists (feature 035): the shared rule answers 403 for a file that
+      // exists and is not yours, so for organisations it is turned into the 404
+      // an unknown id gets, before the shared rule runs.
+      if (request.principal?.kind === 'merchant') {
+        const { rows } = await app.pg.query(
+          `SELECT 1 FROM assets WHERE id = $1 AND uploaded_by = $2 AND uploader_kind = 'merchant'`,
+          [request.params.id, request.principal.id],
+        )
+        if (rows.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such asset.')
+      }
       const body = await deleteAsset(app, {
         storage,
         id: request.params.id,

@@ -1,7 +1,7 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, StyleSheet } from 'react-native';
 
 import { MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace';
 import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contracts/marketplace';
@@ -9,11 +9,11 @@ import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contrac
 import { ApiError } from '@/api/client';
 import { authApi, marketplaceApi, messagingApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
-import { Card, Chip, Loading, styles } from '@/components/ui';
+import { Card, Chip, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * The marketplace tab (008 US6, delivered by feature 017): the same listings,
@@ -21,7 +21,7 @@ import { useTranslations } from '@/i18n';
  * are the contract's enums; which listings match is the server's answer.
  */
 export default function Marketplace() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, formatDate } = useTranslations();
   const [category, setCategory] = useState<MarketplaceCategory | ''>('');
   const [mode, setMode] = useState<MarketplaceMode | ''>('');
@@ -63,19 +63,19 @@ export default function Marketplace() {
   }, [listings.reload]));
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{
         // Messages always (feature 020 — the five bottom-bar slots are full),
         // New listing only for a member who may post.
         headerRight: () => (
-          <View style={{ flexDirection: 'row', gap: Spacing.three }}>
-            <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
+          <View style={styles.rowGapThree}>
+            <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
               accessibilityLabel={unread ? `${t.messages.open} •` : t.messages.open}
               onPress={() => router.push('/marketplace/messages')}>
               {unread ? `${t.messages.open} •` : t.messages.open}
             </ThemedText>
             {canPost ? (
-              <ThemedText accessibilityRole="button" style={{ color: theme.tint, fontWeight: '600' }}
+              <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
                 onPress={() => router.push('/marketplace/new')}>
                 {t.marketplace.newListing}
               </ThemedText>
@@ -84,15 +84,15 @@ export default function Marketplace() {
         ),
       }} />
       {/* Horizontal: five category chips do not fit a phone's width. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}
-        contentContainerStyle={[styles.row, { paddingHorizontal: Spacing.three, paddingTop: Spacing.three }]}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.flexGrow0}
+        contentContainerStyle={[uiStyles.row, styles.scrollViewContentContainerPaddingHorizontalThree2]}
         accessibilityRole="radiogroup">
         <Chip label={t.marketplace.allCategories} selected={category === ''} onPress={() => setCategory('')} />
         {MARKETPLACE_CATEGORIES.map((c) => (
           <Chip key={c} label={t.marketplace.categories[c]} selected={category === c} onPress={() => setCategory(c)} />
         ))}
       </ScrollView>
-      <View style={[styles.row, { padding: Spacing.three }]} accessibilityRole="radiogroup">
+      <View style={[uiStyles.row, styles.paddingThree]} accessibilityRole="radiogroup">
         <Chip label={t.marketplace.allModes} selected={mode === ''} onPress={() => setMode('')} />
         {MARKETPLACE_MODES.map((m) => (
           <Chip key={m} label={t.marketplace.modes[m]} selected={mode === m} onPress={() => setMode(m)} />
@@ -102,13 +102,13 @@ export default function Marketplace() {
         <FlashList
           data={listings.items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: Spacing.three, paddingBottom: Spacing.four }}
+          contentContainerStyle={styles.flashListContentContainerPaddingHorizontalThree2}
           // FlashList's content container takes padding only, so the old `gap` is a separator.
-          ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
+          ItemSeparatorComponent={() => <View style={styles.heightTwo} />}
           renderItem={({ item }) => (
             <Card onPress={() => router.push(`/marketplace/listing/${item.id}`)}>
-              <View style={[styles.row, { justifyContent: 'space-between' }]}>
-                <ThemedText type="smallBold" style={{ flex: 1 }} numberOfLines={1}>{item.title}</ThemedText>
+              <View style={[uiStyles.row, styles.justifySpacebetween]}>
+                <ThemedText type="smallBold" style={styles.flex1} numberOfLines={1}>{item.title}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{t.marketplace.modes[item.mode]}</ThemedText>
               </View>
               <ThemedText type="small" numberOfLines={2}>{item.body}</ThemedText>
@@ -122,7 +122,7 @@ export default function Marketplace() {
           onEndReachedThreshold={0.5}
           refreshControl={<RefreshControl refreshing={listings.refreshing} onRefresh={() => listings.reload(true)} />}
           ListEmptyComponent={
-            <ThemedText themeColor="textSecondary" style={{ padding: Spacing.four, textAlign: 'center' }}>
+            <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>
               {t.marketplace.empty}
             </ThemedText>
           }
@@ -131,3 +131,21 @@ export default function Marketplace() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  rowGapThree: { flexDirection: 'row', gap: Spacing.three },
+  flexGrow0: { flexGrow: 0 },
+  scrollViewContentContainerPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
+  paddingThree: { padding: Spacing.three },
+  flashListContentContainerPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },
+  heightTwo: { height: Spacing.two },
+  justifySpacebetween: { justifyContent: 'space-between' },
+  flex1: { flex: 1 },
+  paddingFourTextCenter: { padding: Spacing.four, textAlign: 'center' },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
+    colorTintWeight600: { color: theme.tint, fontWeight: '600' },
+  });

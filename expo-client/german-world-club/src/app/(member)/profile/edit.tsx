@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { GENDERS, type Gender } from '@gwc/contracts/onboarding';
 import { PROFILE_BIO_MAX, PROFILE_LINKS_MAX } from '@gwc/contracts/profile';
@@ -10,7 +10,7 @@ import { profileApi } from '@/api/endpoints';
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { pickMedia, uploadReady } from '@/lib/pick-media';
-import { Button, Chip, FormScreen, Loading, Message, TextField, styles } from '@/components/ui';
+import { Button, Chip, FormScreen, Loading, Message, TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
 import { ApiError } from '@/api/client';
@@ -94,9 +94,9 @@ export default function EditProfile() {
   return (
     <FormScreen>
       {profile ? (
-        <View style={{ gap: Spacing.two }}>
+        <View style={styles.gapTwo}>
           <ThemedText type="smallBold">{t.profile.avatar}</ThemedText>
-          <View style={[styles.row, { alignItems: 'center' }]}>
+          <View style={[uiStyles.row, styles.itemsCenter]}>
             <Avatar author={profile} size={64} label={format(t.profile.avatarAlt, { name: profile.displayName ?? '' })} />
             <Button label={t.profile.avatarChange} variant="secondary" onPress={changeAvatar} disabled={busy} />
           </View>
@@ -118,11 +118,11 @@ export default function EditProfile() {
       ) : null}
 
       <TextField label={t.profile.bio} value={bio} onChangeText={setBio} multiline maxLength={PROFILE_BIO_MAX}
-        style={{ minHeight: 110, textAlignVertical: 'top' }} hint={`${bio.length}/${PROFILE_BIO_MAX}`} />
+        style={styles.minHeight110TextAlignVerticalTop} hint={`${bio.length}/${PROFILE_BIO_MAX}`} />
       <TextField label={t.profile.city} value={city} onChangeText={setCity} maxLength={120} autoComplete="postal-address-locality" />
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.register.gender}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {GENDERS.map((g) => (
             <Chip key={g} label={t.register.genders[g]} selected={gender === g} onPress={() => setGender(g)} />
           ))}
@@ -130,10 +130,10 @@ export default function EditProfile() {
       </View>
       <Button label={t.common.save} onPress={save} loading={busy} />
 
-      <View style={{ gap: Spacing.two }}>
+      <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.profile.links}</ThemedText>
         {links.map((link, i) => (
-          <View key={i} style={{ gap: Spacing.one }}>
+          <View key={i} style={styles.gapOne}>
             <TextField label={t.profile.linkUrl} value={link.url} autoCapitalize="none" keyboardType="url"
               onChangeText={(url) => setLinks(links.map((l, j) => (j === i ? { ...l, url } : l)))} />
             <TextField label={t.profile.linkLabel} value={link.label ?? ''}
@@ -153,3 +153,10 @@ export default function EditProfile() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gapTwo: { gap: Spacing.two },
+  itemsCenter: { alignItems: 'center' },
+  minHeight110TextAlignVerticalTop: { minHeight: 110, textAlignVertical: 'top' },
+  gapOne: { gap: Spacing.one },
+});

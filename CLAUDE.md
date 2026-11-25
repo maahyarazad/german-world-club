@@ -12,7 +12,7 @@ server/              Fastify 5 API. Everything testable lives in app.js;
                      plugins/decorators/hooks).
 client/              Vite web client.
 expo-client/german-world-club/
-                     Expo SDK 58 mobile app (feature 009). An npm workspace:
+                     Expo SDK 57 mobile app (feature 009). An npm workspace:
                      it imports @gwc/contracts like every other client.
 packages/contracts/  Zod schemas, problem types and permission constants,
                      imported by the server AND every client.
@@ -384,7 +384,8 @@ before writing any row. The server still issues, hashes and verifies its own
 codes, and verification is deliberately **not** gated, so a code sent before
 the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
 from another project's build; do not hand-edit it. **In development the code is also printed in the
-terminal, and the real SMS is still sent** (feature 027, `SMS_DEV_LOG`, on by
+terminal, and the real SMS is still sent** (the email verification code too, from
+`sendMailInstantly`, as `Email (development) code … for …`) (feature 027, `SMS_DEV_LOG`, on by
 default when `NODE_ENV=development`, `false` turns it off): a provider refusal —
 a seeded member's number is fake — is printed and no longer fails sign-in.
 `config/env.ts` refuses to boot in production with it set to true. It sits behind
@@ -508,6 +509,44 @@ minute. Disabling `push.deliver` stops every send path. Five rules:
   never in the repo, the app or `server/`. `EXPO_ACCESS_TOKEN` is required in
   production; FCM settings are all or none. A token is never logged, returned
   or copied into history: `tokenPreview` is all anyone sees.
+
+**Merchant stores, offers and redemptions (feature 035, `specs/035-merchant-store-offers/`).**
+A merchant organisation has one store; its offers sit under staff-managed categories;
+any active account redeems them. Seven things that look optional and are not:
+
+- **One store per organisation is the database's rule** (`stores.organisation_id
+  UNIQUE`), so two simultaneous creates cannot both win. A store is switched off by
+  staff with `PUT /admin/stores/:id/active` (`false` or `0`, a reason required to
+  switch off, `merchant_offers.status`) and never deleted.
+- **`VISIBLE_OFFER` is the one rule for "an account may see this offer"** and now
+  includes the store: browse, detail, redeem, the push dispatch and the landing strip
+  all use it, so a switched-off store's offers vanish on the next request. Anything
+  using it must use `OFFER_JOINS` too.
+- **Media is bounded in the database and by the server.** An offer holds at most ten
+  images or videos and a store gallery at most ten (`position BETWEEN 0 AND 9`); the
+  store cover is separate, one image about 16:9. What a merchant uploads is held to a
+  photo under 1 MiB and a video under 5 MiB (`MERCHANT_*` in `@gwc/contracts/media`),
+  decided after content inspection; members and partners keep 25 MB. A merchant can
+  delete a file nothing uses (`DELETE /media/merchant/:id`; in use is 409).
+- **Publishing sets the state and nothing else.** There is no approval step. The one
+  announcement to members is queued by the `offers_queue_push` trigger, keyed
+  `offer:<id>`, so withdrawing and publishing again never notifies twice. **Never
+  queue a notification from application code**: a second path would not share the key.
+- **A redemption is an append-only ledger row**, redeemed by a `(kind, id)` — member,
+  `admin`, merchant or partner — with no foreign key (an insert trigger checks the
+  account exists and is active). It is exact under an offer-row lock, idempotent by the
+  client's `requestId`, and a merchant cannot redeem its own organisation's offers.
+  `remaining` counting down does not move the offer's edit version.
+- **Reports take their scope from the route, never the request.** A merchant's report
+  ignores any `organisationId` in the query; only `/admin/reports/redemptions`
+  (`merchant_offers.read`) honours it. Who redeemed is a handle, "First L." or a display
+  name — never contact details (`tests/redemptions/report-no-pii.test.ts`).
+- **The landing strip is read live and only shows the public face.** `/` and `/en`
+  carry `<!--gwc:partners-->…<!--/gwc:partners-->`; it lists active partners and
+  merchants whose store is on, by name and logo, with no script, and is omitted when
+  empty. A partner is linked only if it has a published `seo_metadata` page; a merchant
+  never, because its store is members-only. The anonymous page keeps `PUBLIC_CACHE` and
+  gets no `Vary: Cookie`.
 
 **Profiling is the second onboarding gate (feature 013, `specs/013-onboarding-profiling/`).**
 An approved applicant is refused on every route except those declaring
@@ -640,3 +679,13 @@ registration step-3 contact change.
   wrong. If a line looks odd and the reason is not next to it, add the reason.
 - Tests assert behaviour, not implementation, and carry a counter-assertion
   wherever a test would otherwise pass against a server that did nothing.
+- Styles in the Expo app live in `StyleSheet.create` (feature 036,
+  `specs/036-expo-stylesheet/`), never as an object literal in JSX. Colours that
+  come from the theme go through `useThemedStyles(makeStyles)`
+  (`src/hooks/use-themed-styles.ts`), because `StyleSheet.create` runs once at
+  module load and cannot see light or dark mode; a value that comes from props
+  (an avatar's size) gets a small `useMemo(() => makeSized(size), [size])` sheet.
+  An ESLint rule (`no-restricted-syntax`, an error) rejects an inline style
+  object; the only exception is an `Animated` value, with a disable comment
+  giving the reason. In a file that imports `styles` from `@/components/ui`, the
+  local sheet is `styles` and the import is `uiStyles`.

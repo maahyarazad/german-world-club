@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { View, type TextInputInstance } from 'react-native';
+import { TextInput, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { TextField, styles } from '@/components/ui';
+import { TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
 
@@ -32,28 +32,28 @@ export function DatePartsField({ label, value, onChange, hint }: {
   const [dd, setDd] = useState(initialDd);
   const [mm, setMm] = useState(initialMm);
   const [yyyy, setYyyy] = useState(initialYyyy);
-  const monthRef = useRef<TextInputInstance>(null);
-  const yearRef = useRef<TextInputInstance>(null);
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
 
   const emit = (d: string, m: string, y: string) =>
     onChange(d && m && y.length === 4 ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '');
 
   return (
-    <View style={{ gap: Spacing.one }}>
+    <View style={styles.gapOne}>
       <ThemedText type="smallBold">{label}</ThemedText>
-      <View style={[styles.row, { alignItems: 'flex-start' }]}>
-        <View style={{ flex: 1 }}>
+      <View style={[uiStyles.row, styles.itemsFlexstart]}>
+        <View style={styles.flex1}>
           {/* The iOS number pad has no return key, so a full day or month moves on by itself. */}
           <TextField label={t.marketplace.day} value={dd} keyboardType="number-pad" maxLength={2}
             onChangeText={(v) => { const d = digits(v); setDd(d); emit(d, mm, yyyy); if (d.length === 2) monthRef.current?.focus(); }}
             returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => monthRef.current?.focus()} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={styles.flex1}>
           <TextField ref={monthRef} label={t.marketplace.month} value={mm} keyboardType="number-pad" maxLength={2}
             onChangeText={(v) => { const m = digits(v); setMm(m); emit(dd, m, yyyy); if (m.length === 2) yearRef.current?.focus(); }}
             returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => yearRef.current?.focus()} />
         </View>
-        <View style={{ flex: 2 }}>
+        <View style={styles.flex2}>
           <TextField ref={yearRef} label={t.marketplace.year} value={yyyy} keyboardType="number-pad" maxLength={4}
             onChangeText={(v) => { const y = digits(v); setYyyy(y); emit(dd, mm, y); }}
             returnKeyType="done" submitBehavior="blurAndSubmit" />
@@ -63,3 +63,10 @@ export function DatePartsField({ label, value, onChange, hint }: {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  gapOne: { gap: Spacing.one },
+  itemsFlexstart: { alignItems: 'flex-start' },
+  flex1: { flex: 1 },
+  flex2: { flex: 2 },
+});

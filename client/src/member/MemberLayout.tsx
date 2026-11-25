@@ -80,6 +80,8 @@ export function MemberLayout() {
       ),
     },
     { to: '/konsole/mitglied', end: true, label: t.memberMarketplace.tabLabel },
+    // Merchant offers (feature 035).
+    { to: '/konsole/mitglied/angebote', label: t.clubOffers.tabLabel },
     {
       to: '/konsole/mitglied/nachrichten',
       label: (

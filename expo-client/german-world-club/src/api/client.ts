@@ -145,3 +145,67 @@ function safeJson(text: string): unknown {
     return null;
   }
 }
+
+/**
+ * Where an upload has got to (feature 035, research R10).
+ *
+ * `uploading` is the share of the body the server has received, or null when the
+ * size is not computable; `processing` follows once the whole body has gone and
+ * lasts until the server answers. The same two phases the web console shows.
+ */
+export type UploadProgress =
+  | { phase: 'uploading'; fraction: number | null }
+  | { phase: 'processing' };
+
+/**
+ * A multipart POST that reports its progress.
+ *
+ * On `XMLHttpRequest` because React Native's `fetch` reports no upload progress,
+ * and the alternative — a native file-upload module — would need a new EAS build
+ * for something the JavaScript runtime already has. Everything else is `api()`'s
+ * rules: the bearer, one refresh and one retry on 401, refusals as `ApiError`,
+ * and one log line per request with the method, path, status, timing and the
+ * server's request id — never headers or bodies, which carry tokens.
+ */
+export async function uploadWithProgress<T>(
+  path: string,
+  form: FormData,
+  { onProgress, signal }: { onProgress?: (progress: UploadProgress) => void; signal?: AbortSignal } = {},
+): Promise<T> {
+  const send = () =>
+    new Promise<{ status: number; text: string; requestId: string | null }>((resolve, reject) => {
+      if (signal?.aborted) return reject(new Error('aborted'));
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_URL}${path}`);
+      xhr.setRequestHeader('accept', 'application/json');
+      const tokens = auth?.current();
+      if (tokens) xhr.setRequestHeader('authorization', `Bearer ${tokens.accessToken}`);
+      // No content-type of our own: the runtime writes the multipart header, boundary included.
+      xhr.upload.onprogress = (event) => {
+        onProgress?.({ phase: 'uploading', fraction: event.lengthComputable && event.total > 0 ? event.loaded / event.total : null });
+      };
+      xhr.upload.onload = () => onProgress?.({ phase: 'processing' });
+      const onAbort = () => xhr.abort();
+      signal?.addEventListener('abort', onAbort, { once: true });
+      const done = () => signal?.removeEventListener('abort', onAbort);
+      xhr.onload = () => {
+        done();
+        resolve({ status: xhr.status, text: xhr.responseText, requestId: xhr.getResponseHeader('x-request-id') });
+      };
+      xhr.onerror = () => { done(); reject(new Error('Network request failed')); };
+      xhr.onabort = () => { done(); reject(new Error('aborted')); };
+      xhr.send(form);
+    });
+
+  const started = Date.now();
+  let response = await send();
+  if (response.status === 401 && auth?.current()) {
+    if (await refresh()) response = await send();
+  }
+  console.log(`api POST ${path}`, response.status, `${Date.now() - started}ms`, response.requestId);
+  const parsed = response.text ? safeJson(response.text) : null;
+  if (response.status < 200 || response.status >= 300) {
+    throw new ApiError(response.status, (parsed as ProblemResponse | null) ?? null);
+  }
+  return parsed as T;
+}

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import type { OrganisationProfile } from '@gwc/contracts/profile';
 
@@ -33,19 +33,32 @@ export default function OrganisationHome() {
     <FormScreen title={profile?.organisation.name}>
       {profile ? (
         <Card>
-          <View style={{ gap: 2 }}>
+          <View style={styles.gap2}>
             <ThemedText type="small" themeColor="textSecondary">{t.profile.email}</ThemedText>
             <ThemedText>{profile.email}</ThemedText>
           </View>
-          <View style={{ gap: 2 }}>
+          <View style={styles.gap2}>
             <ThemedText type="small" themeColor="textSecondary">{t.profile.role}</ThemedText>
             <ThemedText>{profile.displayName ? `${profile.displayName} · ${profile.role}` : profile.role}</ThemedText>
           </View>
         </Card>
       ) : null}
       <Button label={t.profile.publicProfile} onPress={() => router.push('/public-profile')} variant="secondary" />
+      {/* Merchant offers, redeemable by any account (feature 035). A merchant also has its own. */}
+      <Button label={t.clubOffers.entry} onPress={() => router.push('/club-offers' as never)} variant="secondary" />
+      {kind === 'merchant' ? (
+        <>
+          <Button label={t.merchant.storeEntry} onPress={() => router.push('/store' as never)} variant="secondary" />
+          <Button label={t.merchant.offersEntry} onPress={() => router.push('/my-offers' as never)} variant="secondary" />
+          <Button label={t.merchant.reportEntry} onPress={() => router.push('/report' as never)} variant="secondary" />
+        </>
+      ) : null}
       <Button label={t.referrals.entry} onPress={() => router.push('/referrals')} variant="secondary" />
       <Button label={t.common.signOut} onPress={signOut} variant="danger" />
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  gap2: { gap: 2 },
+});

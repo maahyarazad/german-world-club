@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { CitySlot, CitiesResponse } from '@gwc/contracts/profiling';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, Chip, FormScreen, Loading, TextField, styles } from '@/components/ui';
+import { Button, Chip, FormScreen, Loading, TextField, styles as uiStyles } from '@/components/ui';
 import { CountryPicker, countryName } from '@/components/country-picker';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { profilingApi } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 import type { StepCtx } from './types';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * One (country, city) pair, in two screens: the country from the full picker,
@@ -25,8 +25,8 @@ export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
   /** Leaves the picker; null when there is nowhere to go back to. */
   onBack: (() => void) | null
 }) {
+  const themed = useThemedStyles(makeStyles);
   const { copy, locale, busy } = ctx;
-  const theme = useTheme();
   const [country, setCountry] = useState(initial?.country ?? '');
   const [city, setCity] = useState(initial?.city ?? '');
   const [stage, setStage] = useState<'country' | 'city'>(initial?.country ? 'city' : 'country');
@@ -52,9 +52,9 @@ export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
     // A full-flex picker, not `Centered` (which shrinks children and would
     // collapse the list) — the same wrapper (public)/country.tsx uses.
     return (
-      <SafeAreaView edges={['bottom']} style={{ flex: 1, backgroundColor: theme.background }}>
-        <View style={{ flex: 1, padding: Spacing.four, gap: Spacing.three }}>
-          <ThemedText type="title" style={{ fontSize: 30, lineHeight: 36 }}>{title}</ThemedText>
+      <SafeAreaView edges={['bottom']} style={themed.flex1Clear}>
+        <View style={styles.flex1PaddingFourGapThree}>
+          <ThemedText type="title" style={styles.font30Line36}>{title}</ThemedText>
           <CountryPicker
             selected={country}
             onSelect={(code) => {
@@ -78,7 +78,7 @@ export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
       {known.listed ? (
         <>
           <TextField label={copy.cityPlaceholder} value={query} onChangeText={setQuery} autoCorrect={false} />
-          <View style={styles.chips} accessibilityRole="radiogroup">
+          <View style={uiStyles.chips} accessibilityRole="radiogroup">
             {known.cities.filter((c) => !needle || c.toLowerCase().includes(needle)).map((c) => (
               <Chip key={c} label={c} selected={city.toLowerCase() === c.toLowerCase()} onPress={() => { if (!busy) onDone({ country, city: c }); }} />
             ))}
@@ -145,3 +145,13 @@ export function CitiesStep({ ctx }: { ctx: StepCtx }) {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  flex1PaddingFourGapThree: { flex: 1, padding: Spacing.four, gap: Spacing.three },
+  font30Line36: { fontSize: 30, lineHeight: 36 },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
+  });

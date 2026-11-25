@@ -452,6 +452,64 @@
         display: block;
         color: #d7dce2;
       }
+
+      /* --- Partners and merchants (feature 035) ----------------------------
+         A strip of logos and names that scrolls sideways and snaps to each
+         one. No script: it is the page's own scroll, so it works for search
+         engines, link previews and anyone with scripts off. */
+      .partners {
+        background: var(--surface);
+        border-top: 1px solid var(--hairline);
+        border-bottom: 1px solid var(--hairline);
+      }
+      .partners-track {
+        display: flex;
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0 0 0.75rem;
+        list-style: none;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+      }
+      .partners-track li {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+      }
+      .partner-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-width: 11rem;
+        height: 4.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text);
+        text-decoration: none;
+      }
+      a.partner-card:hover,
+      a.partner-card:focus-visible {
+        border-color: var(--navy);
+      }
+      .partner-card img {
+        width: auto;
+        height: 2.5rem;
+        max-width: 5rem;
+        object-fit: contain;
+      }
+      .partner-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .partners-track {
+          scroll-behavior: auto;
+        }
+      }
     </style>
   </head>
 
@@ -583,6 +641,11 @@
           </div>
         </div>
       </section>
+
+      <!-- Filled by the server with the club's active partners and merchants (feature 035). Keep the markers: tests/seo/landing-viewer.test.ts fails if a shell loses them. -->
+
+      <!--gwc:partners--><!--/gwc:partners-->
+
 
       <section id="anmeldung">
         <div class="wrap">

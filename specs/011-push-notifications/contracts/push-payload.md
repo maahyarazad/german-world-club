@@ -13,8 +13,8 @@ export type DestinationType = typeof DESTINATION_TYPES[number]
 
 | type | `id` is | Mobile route |
 |---|---|---|
-| offer | offer uuid | `/(member)/activity/offer/[id]` |
-| listing | listing uuid | `/(member)/activity/listing/[id]` |
+| offer | offer uuid | `/(member)/offers/[id]` |
+| listing | listing uuid | `/(member)/marketplace/listing/[id]` |
 | thread_post | post uuid | `/(member)/threads/[id]` |
 | event | event uuid | `/(member)/events/[id]` |
 | partner | organisation **slug** | `/(member)/threads/organisation/[slug]` |

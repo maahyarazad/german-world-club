@@ -307,8 +307,9 @@ export function renderOfferPush(values: { merchant: string; title: string }) {
 export const DESTINATION_ROUTES: Readonly<
   Record<DestinationType, { pathname: string; param: 'id' | 'slug' } | null>
 > = Object.freeze({
-  offer: { pathname: '/(member)/activity/offer/[id]', param: 'id' },
-  listing: { pathname: '/(member)/activity/listing/[id]', param: 'id' },
+  offer: { pathname: '/(member)/offers/[id]', param: 'id' },
+  // The Marketplace tab's own listing screen: Activity no longer has one.
+  listing: { pathname: '/(member)/marketplace/listing/[id]', param: 'id' },
   thread_post: { pathname: '/(member)/threads/[id]', param: 'id' },
   event: { pathname: '/(member)/events/[id]', param: 'id' },
   // The partner profile is addressed by organisation slug, not uuid.

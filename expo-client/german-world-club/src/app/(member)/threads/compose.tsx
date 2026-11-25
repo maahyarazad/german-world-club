@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { PROBLEMS } from '@gwc/contracts/errors';
 import { THREAD_MEDIA_MAX, THREAD_POST_MAX } from '@gwc/contracts/threads';
@@ -13,9 +13,9 @@ import { QuoteEmbed } from '@/components/quote-embed';
 import { ThemedText } from '@/components/themed-text';
 import { Button, FormScreen, Message, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { pickMedia, uploadReady, type Picked } from '@/lib/pick-media';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 type Pending = Picked & { alt: string; assetId?: string };
 
@@ -29,7 +29,7 @@ type Pending = Picked & { alt: string; assetId?: string };
  * re-checks all of them.
  */
 export default function Compose() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format } = useTranslations();
   const { replyToId, replyToName, quoteOfId } =
     useLocalSearchParams<{ replyToId?: string; replyToName?: string; quoteOfId?: string }>();
@@ -100,20 +100,20 @@ export default function Compose() {
         multiline
         autoFocus
         maxLength={THREAD_POST_MAX}
-        style={{ minHeight: 120, textAlignVertical: 'top' }}
+        style={styles.minHeight120TextAlignVerticalTop}
       />
-      <View style={{ alignItems: 'flex-end' }}>
-        <ThemedText type="small" style={{ color: THREAD_POST_MAX - body.length < 20 ? theme.danger : theme.textSecondary }}>
+      <View style={styles.itemsFlexend}>
+        <ThemedText type="small" style={THREAD_POST_MAX - body.length < 20 ? themed.colorDanger : themed.colorTextSecondary}>
           {format(t.threads.counter, { count: body.length, max: THREAD_POST_MAX })}
         </ThemedText>
       </View>
 
       {media.length > 0 ? (
-        <View style={{ gap: Spacing.three }}>
+        <View style={styles.gapThree}>
           {media.map((item, index) => (
-            <View key={item.uri} style={{ flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' }}>
-              <Image source={item.uri} accessibilityLabel={item.alt} style={{ width: 72, height: 72, borderRadius: 8 }} contentFit="cover" />
-              <View style={{ flex: 1, gap: Spacing.one }}>
+            <View key={item.uri} style={styles.rowGapTwoItemsFlexstart}>
+              <Image source={item.uri} accessibilityLabel={item.alt} style={styles.width72Height72Radius8} contentFit="cover" />
+              <View style={styles.flex1GapOne}>
                 <TextField
                   label={t.threads.mediaAlt}
                   value={item.alt}
@@ -139,3 +139,18 @@ export default function Compose() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  minHeight120TextAlignVerticalTop: { minHeight: 120, textAlignVertical: 'top' },
+  itemsFlexend: { alignItems: 'flex-end' },
+  gapThree: { gap: Spacing.three },
+  rowGapTwoItemsFlexstart: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start' },
+  width72Height72Radius8: { width: 72, height: 72, borderRadius: 8 },
+  flex1GapOne: { flex: 1, gap: Spacing.one },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    colorDanger: { color: theme.danger },
+    colorTextSecondary: { color: theme.textSecondary },
+  });

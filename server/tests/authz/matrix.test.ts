@@ -263,6 +263,55 @@ const ROUTE_CLASSES = [
   // branch inside. The `:id` pair carries the object guard — see
   // tests/seed/audiences.test.js for the scoping half, which a route table
   // cannot express.
+  // Feature 035: a merchant's own store and offers. Merchant-only by audience; no
+  // path takes an organisation id, so "mine" cannot be pointed at another.
+  { name: 'merchant store', url: '/merchant/store', method: 'GET', audience: 'merchant' },
+  { name: 'merchant store create', url: '/merchant/store', method: 'POST', audience: 'merchant' },
+  { name: 'merchant store edit', url: '/merchant/store', method: 'PATCH', audience: 'merchant' },
+  { name: 'merchant store cover', url: '/merchant/store/cover', method: 'PUT', audience: 'merchant' },
+  { name: 'merchant store gallery', url: '/merchant/store/media', method: 'PUT', audience: 'merchant' },
+  { name: 'merchant offers', url: '/merchant/offers', method: 'GET', audience: 'merchant' },
+  { name: 'merchant offer create', url: '/merchant/offers', method: 'POST', audience: 'merchant' },
+  { name: 'merchant offer order', url: '/merchant/offers/order', method: 'PUT', audience: 'merchant' },
+  { name: 'merchant offer edit', url: '/merchant/offers/:id', probe: `/merchant/offers/${randomUUID()}`, method: 'PATCH', audience: 'merchant' },
+  { name: 'merchant offer media', url: '/merchant/offers/:id/media', probe: `/merchant/offers/${randomUUID()}/media`, method: 'PUT', audience: 'merchant' },
+  { name: 'merchant offer publish', url: '/merchant/offers/:id/publish', probe: `/merchant/offers/${randomUUID()}/publish`, method: 'POST', audience: 'merchant' },
+  { name: 'merchant offer withdraw', url: '/merchant/offers/:id/withdraw', probe: `/merchant/offers/${randomUUID()}/withdraw`, method: 'POST', audience: 'merchant' },
+  { name: 'merchant offer categories', url: '/merchant/categories', method: 'GET', audience: 'merchant' },
+  { name: 'merchant upload status', url: '/media/merchant/:id', probe: `/media/merchant/${randomUUID()}`, method: 'GET', audience: 'merchant' },
+  { name: 'partner upload status', url: '/media/partner/:id', probe: `/media/partner/${randomUUID()}`, method: 'GET', audience: 'partner' },
+  { name: 'merchant file delete', url: '/media/merchant/:id', probe: `/media/merchant/${randomUUID()}`, method: 'DELETE', audience: 'merchant' },
+  // Feature 035: browsing and redeeming merchant offers, one mount per audience.
+  { name: 'club offers (member)', url: '/member/offers', method: 'GET', audience: 'member' },
+  { name: 'club offer categories (member)', url: '/member/offers/categories', method: 'GET', audience: 'member' },
+  { name: 'my redemptions (member)', url: '/member/offers/redemptions', method: 'GET', audience: 'member' },
+  { name: 'club store (member)', url: '/member/offers/stores/:slug', probe: '/member/offers/stores/some-store', method: 'GET', audience: 'member' },
+  { name: 'redeem (member)', url: '/member/offers/:id/redemptions', probe: `/member/offers/${randomUUID()}/redemptions`, method: 'POST', audience: 'member' },
+  { name: 'club offers (staff)', url: '/admin/club-offers', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'club offer categories (staff)', url: '/admin/club-offers/categories', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'my redemptions (staff)', url: '/admin/club-offers/redemptions', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'club store (staff)', url: '/admin/club-offers/stores/:slug', probe: '/admin/club-offers/stores/some-store', method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'club offer (staff)', url: '/admin/club-offers/:id', probe: `/admin/club-offers/${randomUUID()}`, method: 'GET', audience: 'staff', anyStaff: true },
+  { name: 'redeem (staff)', url: '/admin/club-offers/:id/redemptions', probe: `/admin/club-offers/${randomUUID()}/redemptions`, method: 'POST', audience: 'staff', anyStaff: true },
+  { name: 'club offers (merchant)', url: '/merchant/club-offers', method: 'GET', audience: 'merchant' },
+  { name: 'club offer categories (merchant)', url: '/merchant/club-offers/categories', method: 'GET', audience: 'merchant' },
+  { name: 'my redemptions (merchant)', url: '/merchant/club-offers/redemptions', method: 'GET', audience: 'merchant' },
+  { name: 'club store (merchant)', url: '/merchant/club-offers/stores/:slug', probe: '/merchant/club-offers/stores/some-store', method: 'GET', audience: 'merchant' },
+  { name: 'club offer (merchant)', url: '/merchant/club-offers/:id', probe: `/merchant/club-offers/${randomUUID()}`, method: 'GET', audience: 'merchant' },
+  { name: 'redeem (merchant)', url: '/merchant/club-offers/:id/redemptions', probe: `/merchant/club-offers/${randomUUID()}/redemptions`, method: 'POST', audience: 'merchant' },
+  { name: 'club offers (partner)', url: '/partner/club-offers', method: 'GET', audience: 'partner' },
+  { name: 'club offer categories (partner)', url: '/partner/club-offers/categories', method: 'GET', audience: 'partner' },
+  { name: 'my redemptions (partner)', url: '/partner/club-offers/redemptions', method: 'GET', audience: 'partner' },
+  { name: 'club store (partner)', url: '/partner/club-offers/stores/:slug', probe: '/partner/club-offers/stores/some-store', method: 'GET', audience: 'partner' },
+  { name: 'club offer (partner)', url: '/partner/club-offers/:id', probe: `/partner/club-offers/${randomUUID()}`, method: 'GET', audience: 'partner' },
+  { name: 'redeem (partner)', url: '/partner/club-offers/:id/redemptions', probe: `/partner/club-offers/${randomUUID()}/redemptions`, method: 'POST', audience: 'partner' },
+  { name: 'merchant redemption report', url: '/merchant/reports/redemptions', method: 'GET', audience: 'merchant' },
+  { name: 'platform redemption report', url: '/admin/reports/redemptions', method: 'GET', audience: 'staff', module: 'merchant_offers', flag: 'read' },
+  { name: 'stores (staff)', url: '/admin/stores', method: 'GET', audience: 'staff', module: 'merchant_offers', flag: 'read' },
+  { name: 'store active (staff)', url: '/admin/stores/:id/active', probe: `/admin/stores/${randomUUID()}/active`, method: 'PUT', audience: 'staff', module: 'merchant_offers', flag: 'status' },
+  { name: 'offer categories (staff)', url: '/admin/offer-categories', method: 'GET', audience: 'staff', module: 'merchant_offers', flag: 'read' },
+  { name: 'offer category add (staff)', url: '/admin/offer-categories', method: 'POST', audience: 'staff', module: 'merchant_offers', flag: 'write' },
+  { name: 'offer category edit (staff)', url: '/admin/offer-categories/:id', probe: `/admin/offer-categories/${randomUUID()}`, method: 'PATCH', audience: 'staff', module: 'merchant_offers', flag: 'edit' },
   { name: 'merchant organisation', url: '/merchant/organisation', method: 'GET', audience: 'merchant' },
   { name: 'merchant organisation by id', url: '/merchant/organisations/:id', probe: `/merchant/organisations/${randomUUID()}`, method: 'GET', audience: 'merchant' },
   { name: 'partner organisation', url: '/partner/organisation', method: 'GET', audience: 'partner' },
@@ -413,6 +462,14 @@ describe('the declared matrix', () => {
    * decided (Q2) that every staff member earns XP, so making it a module grant
    * would let somebody else's grant decide whether a staff member may refer at
    * all. Overseeing OTHER people's referrals stays on the `referrals` module.
+   *
+   * Grown deliberately by feature 035: a staff member browsing and redeeming
+   * merchant offers (`/admin/club-offers`). The owner decided that any active
+   * account may redeem, staff included, and what they do there is act as a person
+   * — browse, redeem, list their OWN redemptions — so no module describes it and
+   * a module grant would let somebody else's decide whether a staff member may
+   * use the club's offers. Nothing on these routes reads or changes another
+   * account's data; the staff reports are on `merchant_offers`.
    */
   it('uses the anyStaff exemption only on routes about the caller\'s own session or own referral link', () => {
     const exempt = app
@@ -423,8 +480,18 @@ describe('the declared matrix', () => {
       .sort()
 
     expect(exempt).toEqual([
-      'GET /admin/referrals/me', 'GET /admin/referrals/me/referrals', 'GET /admin/referrals/me/xp',
-      'GET /auth/session', 'POST /admin/referrals/me/link/replace', 'POST /auth/staff/sign-out',
+      'GET /admin/club-offers',
+      'GET /admin/club-offers/:id',
+      'GET /admin/club-offers/categories',
+      'GET /admin/club-offers/redemptions',
+      'GET /admin/club-offers/stores/:slug',
+      'GET /admin/referrals/me',
+      'GET /admin/referrals/me/referrals',
+      'GET /admin/referrals/me/xp',
+      'GET /auth/session',
+      'POST /admin/club-offers/:id/redemptions',
+      'POST /admin/referrals/me/link/replace',
+      'POST /auth/staff/sign-out',
     ])
   })
 })

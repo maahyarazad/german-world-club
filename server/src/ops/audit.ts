@@ -22,6 +22,11 @@ const SAFE_DETAIL_KEYS = new Set([
   // named key rather than a generic `before`/`after` so no other call site
   // starts logging arbitrary before/after objects through the allowlist.
   'adminChange',
+  // Feature 035: what a merchant store, an offer category or a merchant offer was
+  // and became. Named keys, like `adminChange`, so no other call site starts
+  // logging arbitrary before/after objects. They hold ids, flags, names and
+  // states — never a reason typed by staff beyond what the entry itself records.
+  'storeChange', 'categoryChange', 'offerChange',
 ])
 
 export function sanitizeDetail(detail) {

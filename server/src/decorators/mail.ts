@@ -31,6 +31,22 @@ type MailMessage = {
 /** How long a failed delivery waits, by attempt. Capped: mail is patient, not abandoned. */
 export const retryDelaySeconds = (attempts: number) => Math.min(3600, 30 * 2 ** Math.max(0, attempts - 1))
 
+/**
+ * Development only: print an email one-time code in the terminal, the way
+ * `integrations/sms.ts` prints an SMS code (feature 027, constitution 4.0.0).
+ *
+ * It is a plain console line and not `app.log`, because the structured logger
+ * redacts `*.code` centrally — the line the mail path already logs shows
+ * `"code":"[redacted]"` — and reading the code is the whole purpose here. It needs
+ * both `NODE_ENV=development` and `SMS_DEV_LOG` (on by default there, refused in
+ * production by `config/env.ts`), so no other environment can ever print one.
+ */
+function printDevCode(app: GwcApp, message: MailMessage) {
+  const code = message.variables?.code
+  if (app.env.NODE_ENV !== 'development' || !app.env.SMS_DEV_LOG || typeof code !== 'string') return
+  console.warn(`Email (development) code ${code} for ${message.to}`)
+}
+
 export function registerMail(app: GwcApp) {
   app.decorate('enqueueMail', async (message: MailMessage, { client, signal }: { client?: PoolClient; signal?: AbortSignal } = {}) => {
     const id = messageId(message)
@@ -70,6 +86,7 @@ export function registerMail(app: GwcApp) {
     // code is logged instead of sent, so onboarding can still be finished.
     if (app.env.NODE_ENV === 'development') {
       app.log.info({ to: message.to, template: message.template, variables: message.variables }, 'mail sent instantly (development: contents logged)')
+      printDevCode(app, message)
       if (mail.configured === false) return
     }
 

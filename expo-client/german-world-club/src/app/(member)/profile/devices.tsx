@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, StyleSheet } from 'react-native';
 
 import type { MemberDevice } from '@gwc/contracts/devices';
 
@@ -8,9 +8,9 @@ import { devicesApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * Where you are signed in (feature 026, US2 and US3).
@@ -21,7 +21,7 @@ import { useSession } from '@/session/session';
  * list could not load, and which row is waiting for its confirmation.
  */
 export default function Devices() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format, formatDate } = useTranslations();
   const { signOut } = useSession();
   const [devices, setDevices] = useState<MemberDevice[] | null>(null);
@@ -61,7 +61,7 @@ export default function Devices() {
 
   if (failed) {
     return (
-      <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ padding: Spacing.four }}>
+      <ScrollView style={themed.clear} contentContainerStyle={styles.paddingFour}>
         <ThemedText themeColor="textSecondary">{t.devices.loadFailed}</ThemedText>
       </ScrollView>
     );
@@ -69,10 +69,10 @@ export default function Devices() {
   if (!devices) return <Loading />;
 
   return (
-    <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ padding: Spacing.four, gap: Spacing.three }}>
+    <ScrollView style={themed.clear} contentContainerStyle={styles.paddingFourGapThree}>
       <ThemedText themeColor="textSecondary">{t.devices.intro}</ThemedText>
       {devices.map((device) => (
-        <View key={device.id} style={{ gap: Spacing.two }}>
+        <View key={device.id} style={styles.gapTwo}>
           <ThemedText type="smallBold">
             {device.label}{device.current ? ` · ${t.devices.thisDevice}` : ''}
           </ThemedText>
@@ -82,7 +82,7 @@ export default function Devices() {
             {format(t.devices.lastActive, { when: formatDate(device.lastSeenAt, true) })}
           </ThemedText>
           {confirming === device.id ? (
-            <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+            <View style={styles.rowGapTwo}>
               <Button label={t.devices.confirmEnd} onPress={() => void end(device)} variant="secondary" />
               <Button label={t.devices.cancel} onPress={() => setConfirming(null)} variant="secondary" />
             </View>
@@ -99,3 +99,15 @@ export default function Devices() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  paddingFour: { padding: Spacing.four },
+  paddingFourGapThree: { padding: Spacing.four, gap: Spacing.three },
+  gapTwo: { gap: Spacing.two },
+  rowGapTwo: { flexDirection: 'row', gap: Spacing.two },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    clear: { backgroundColor: 'transparent' },
+  });

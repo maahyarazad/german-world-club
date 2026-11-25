@@ -4,8 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /**
  * The explanation shown before the OS permission prompt (feature 011, FR-002).
@@ -20,15 +20,15 @@ export function NotificationPrompt({ visible, onAllow, onNotNow }: {
   onAllow: () => void
   onNotNow: () => void
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t } = useTranslations();
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onNotNow}>
       <View style={[local.backdrop]}>
-        <SafeAreaView edges={['bottom']} style={[local.sheet, { backgroundColor: theme.background }]}>
+        <SafeAreaView edges={['bottom']} style={[local.sheet, themed.bgBackground]}>
           <ThemedText type="subtitle">{t.notifications.promptTitle}</ThemedText>
           <ThemedText themeColor="textSecondary">{t.notifications.promptBody}</ThemedText>
-          <View style={{ gap: Spacing.two }}>
+          <View style={local.gapTwo}>
             <Button label={t.notifications.allow} onPress={onAllow} />
             <Button label={t.notifications.notNow} onPress={onNotNow} variant="secondary" />
           </View>
@@ -41,4 +41,10 @@ export function NotificationPrompt({ visible, onAllow, onNotNow }: {
 const local = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { padding: Spacing.four, gap: Spacing.three, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  gapTwo: { gap: Spacing.two },
 });
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    bgBackground: { backgroundColor: theme.background },
+  });

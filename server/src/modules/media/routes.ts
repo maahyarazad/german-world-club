@@ -66,6 +66,35 @@ export default fp(
       )
     }
 
+    // ---- GET /media/{merchant,partner}/:id, DELETE /media/merchant/:id ------------
+    //
+    // An organisation's own uploads (feature 035): their processing state, so a
+    // client can show it after the bytes are sent, and — for a merchant — the
+    // deletion of a file nothing uses, which frees its storage. A file a store,
+    // offer or logo still uses is 409 `media-in-use`.
+
+    for (const audience of ['merchant', 'partner'] as const) {
+      app.get(
+        `/media/${audience}/:id`,
+        {
+          config: { auth: { audience }, budget: 'member-read', rateLimit: app.bucket('member-api') },
+          onRequest: app.guard,
+          schema: { params: assetIdParamSchema, response: { 200: assetSchema } },
+        },
+        controller.getOrganisationAsset,
+      )
+    }
+
+    app.delete(
+      '/media/merchant/:id',
+      {
+        config: { auth: { audience: 'merchant' }, budget: 'member-write', rateLimit: app.bucket('write-heavy') },
+        onRequest: app.guard,
+        schema: { params: assetIdParamSchema, response: { 200: deleteResultSchema } },
+      },
+      controller.deleteAsset,
+    )
+
     // ---- GET /media/:id -----------------------------------------------------
 
     app.get(

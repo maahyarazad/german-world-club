@@ -15,22 +15,31 @@ import type { GwcApp } from '../../../app.ts'
  * screen would have hidden.
  *
  * Visible means: published, inside its validity window right now, from an
- * organisation that is active and has a public face. The last two are the same
- * conditions the organisation's own public profile applies — a member should
- * not be sent to an offer from a merchant whose page answers 404.
+ * organisation that is active and has a public face, and from a store that is
+ * switched on (feature 035). The organisation conditions are the same ones the
+ * organisation's own public profile applies — a member should not be sent to an
+ * offer from a merchant whose page answers 404. The store condition is how
+ * staff deactivating a store takes every one of its offers out of sight at once,
+ * on the next request, in browse, detail, redeem, push and the landing page.
  *
- * **Scope contract.** Refers to `o` (offers), `org` (organisations) and `op`
- * (organisation_profiles), joined on the organisation id.
+ * **Scope contract.** Refers to `o` (offers), `org` (organisations), `op`
+ * (organisation_profiles) and `st` (stores), joined on the organisation id and
+ * the offer's store. Anything using `VISIBLE_OFFER` must use `OFFER_JOINS`.
+ *
+ * "Sold out" is deliberately NOT part of it: a sold-out offer still shows, as
+ * sold out, and only redeeming it is refused.
  */
 export const VISIBLE_OFFER = `
       o.state = 'published'
   AND now() >= o.valid_from AND now() < o.valid_until
   AND org.status = 'active'
-  AND op.display_name IS NOT NULL`
+  AND op.display_name IS NOT NULL
+  AND st.active`
 
 export const OFFER_JOINS = `
   JOIN organisations org ON org.id = o.organisation_id
-  JOIN organisation_profiles op ON op.organisation_id = o.organisation_id`
+  JOIN organisation_profiles op ON op.organisation_id = o.organisation_id
+  JOIN stores st ON st.id = o.store_id`
 
 /**
  * One offer as a member sees it, or the standard 404.
@@ -47,10 +56,12 @@ export async function getMemberOffer(
     app.pg,
     `SELECT o.id, o.title, o.description, o.benefit_kind, o.benefit_value,
             o.regular_price_cents, o.member_price_cents, o.currency,
-            o.valid_from, o.valid_until, o.conditions,
+            o.valid_from, o.valid_until, o.conditions, o.per_person_limit,
+            c.id AS category_id, c.slug AS category_slug, c.name_de, c.name_en,
             op.display_name, org.slug, op.logo_asset_id
        FROM offers o
        ${OFFER_JOINS}
+       JOIN offer_categories c ON c.id = o.category_id
       WHERE o.id = $1 AND ${VISIBLE_OFFER}`,
     [id],
     { signal },
@@ -58,9 +69,19 @@ export async function getMemberOffer(
   const row = rows[0]
   if (!row) throw refuse(PROBLEMS.NOT_FOUND, 'No such offer.')
 
-  const logo = row.logo_asset_id
-    ? (await loadMediaItems(app.pg, [String(row.logo_asset_id)])).get(String(row.logo_asset_id)) ?? null
-    : null
+  // The offer's own images and videos, in order, derivatives only. An item that
+  // is not `ready` yet is not returned by the loader and simply does not appear.
+  const { rows: links } = await query(
+    app.pg,
+    'SELECT asset_id FROM offer_media WHERE offer_id = $1 ORDER BY position',
+    [id],
+    { signal },
+  )
+  const assetIds = links.map((l) => String(l.asset_id))
+  if (row.logo_asset_id) assetIds.push(String(row.logo_asset_id))
+  const items = await loadMediaItems(app.pg, assetIds)
+  const logo = row.logo_asset_id ? items.get(String(row.logo_asset_id)) ?? null : null
+  const media = links.flatMap((l) => items.get(String(l.asset_id)) ?? [])
 
   return {
     id: String(row.id),
@@ -77,6 +98,9 @@ export async function getMemberOffer(
     validFrom: new Date(row.valid_from).toISOString(),
     validUntil: new Date(row.valid_until).toISOString(),
     conditions: row.conditions ?? null,
+    perPersonLimit: row.per_person_limit ?? null,
+    category: { id: String(row.category_id), slug: String(row.category_slug), nameDe: String(row.name_de), nameEn: String(row.name_en) },
+    media,
     merchant: { displayName: String(row.display_name), slug: String(row.slug), logo },
   }
 }

@@ -87,7 +87,8 @@ const schema = z
     SMSGLOBAL_API_SECRET: z.string().optional(),
     SMSGLOBAL_ORIGIN: z.string().default('B P'),
     // Development only (feature 027): print the one-time code in the terminal as
-    // well as sending the SMS, and do not fail sign-in when the provider refuses
+    // well as sending the SMS (the email verification code is printed the same way,
+    // decorators/mail.ts), and do not fail sign-in when the provider refuses
     // (a seeded member's number is fake). ON by default when NODE_ENV is
     // development, off everywhere else; `SMS_DEV_LOG=false` turns it off in
     // development. Production refuses to boot with it set (below), because a code

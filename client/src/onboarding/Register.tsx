@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
-import { GENDERS, PRIMARY_LANGUAGES, RESIDENCE_SHORTCUTS, registerRequestSchema } from '@gwc/contracts/onboarding'
+import { PRIMARY_LANGUAGES, RESIDENCE_SHORTCUTS, registerRequestSchema } from '@gwc/contracts/onboarding'
 import type { Gender, PrimaryLanguage, RegisterRequest, RegisterResponse } from '@gwc/contracts/onboarding'
 import { COUNTRIES } from '@gwc/contracts/countries'
 import { formatReferralCode, normaliseReferralCode } from '@gwc/contracts/referrals'
@@ -18,6 +18,13 @@ import MobileField from '../components/ui/MobileField'
 import { useLocale, useTranslations } from '../i18n/index'
 import { checkMobile } from '@gwc/contracts/mobile'
 import { mobileErrorText } from '../lib/mobile'
+
+/**
+ * Registration offers two genders. The contract's `GENDERS` still holds all four (stored
+ * values, the profile editor and the server's check are unchanged), so this is the sign-up
+ * form's choice alone, not a rule of the data. The Expo app's register screen does the same.
+ */
+const REGISTER_GENDERS: readonly Gender[] = ['female', 'male']
 
 /**
  * Onboarding steps 1 and 2 (§6.1), on the web: who you are, then where you
@@ -195,7 +202,7 @@ export function Register() {
               {copy.gender}
             </legend>
             <div className="flex flex-wrap gap-2">
-              {GENDERS.map((gender) => (
+              {REGISTER_GENDERS.map((gender) => (
                 <label
                   key={gender}
                   className={`cursor-pointer rounded-card border px-3 py-1.5 text-[13px]

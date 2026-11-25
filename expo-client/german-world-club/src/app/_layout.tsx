@@ -1,8 +1,9 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { StyleSheet, View, useColorScheme } from 'react-native';
 
+import { AppBackground } from '@/components/app-background';
 import { NotificationPrompt } from '@/components/notification-prompt';
 import { I18nProvider } from '@/i18n';
 import { NotificationRouter } from '@/notifications/notification-router';
@@ -28,14 +29,25 @@ if (typeof ErrorUtils !== 'undefined') {
   });
 }
 
+/**
+ * The navigation themes with a clear screen background: each screen paints
+ * `colors.background` behind itself, and it would hide the club's backdrop
+ * (`AppBackground`). Headers and tab bars keep `card`, so they stay solid.
+ */
+const LightNav = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent' } };
+const DarkNav = { ...DarkTheme, colors: { ...DarkTheme.colors, background: 'transparent' } };
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkNav : LightNav}>
       <I18nProvider>
         <SessionProvider>
           <RegistrationDraftProvider>
-            <RootStack />
+            <View style={styles.root}>
+              <AppBackground />
+              <RootStack />
+            </View>
             {/* Beside the stack, not inside a group, so a tap is followed
                 across the switch from signed-out to member (FR-011). */}
             <NotificationRouter />
@@ -46,6 +58,12 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  screen: { backgroundColor: 'transparent' },
+});
+const screenOptions = { headerShown: false, contentStyle: styles.screen };
 
 /** Asks an approved member once, then keeps this phone's registration fresh (feature 011). */
 function PushRegistration() {
@@ -74,7 +92,7 @@ function RootStack() {
   if (state.status === 'loading') return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={screenOptions}>
       <Stack.Protected guard={state.status === 'signedOut'}>
         <Stack.Screen name="(public)" />
       </Stack.Protected>

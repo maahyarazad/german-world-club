@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -53,18 +53,33 @@ export function Spinner({ size = 'md', color }: { size?: SpinnerSize; color?: st
     }, [reduce, turn]);
 
     const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-    const ring = { width: px, height: px, borderRadius: px / 2, borderWidth: width };
+    // Size and colour are props, so the sheet is made per (size, colour) and only when they change.
+    const sized = useMemo(() => makeSized(px, width, tint), [px, width, tint]);
 
     return (
         <View
-            style={{ width: px, height: px }}
+            style={sized.box}
             accessibilityElementsHidden
             importantForAccessibility="no-hide-descendants"
         >
-            <View style={[StyleSheet.absoluteFill, ring, { borderColor: tint, opacity: 0.25 }]} />
+            <View style={[StyleSheet.absoluteFill, sized.ring, styles.opacity0_25, sized.trackColor]} />
             <Animated.View
-                style={[StyleSheet.absoluteFill, ring, { borderColor: 'transparent', borderTopColor: tint, transform: [{ rotate }] }]}
+                // eslint-disable-next-line no-restricted-syntax -- `rotate` is an Animated value, a runtime object that cannot be part of a StyleSheet.
+                style={[StyleSheet.absoluteFill, sized.ring, styles.borderColorTransparent, sized.arcColor, { transform: [{ rotate }] }]}
             />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+  opacity0_25: { opacity: 0.25 },
+  borderColorTransparent: { borderColor: 'transparent' },
+});
+
+const makeSized = (px: number, borderWidth: number, tint: string) =>
+  StyleSheet.create({
+    box: { width: px, height: px },
+    ring: { width: px, height: px, borderRadius: px / 2, borderWidth },
+    trackColor: { borderColor: tint },
+    arcColor: { borderTopColor: tint },
+  });

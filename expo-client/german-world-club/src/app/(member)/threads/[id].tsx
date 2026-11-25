@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl, View, StyleSheet } from 'react-native';
 
 import type { ThreadPost, ThreadView } from '@gwc/contracts/threads';
 
@@ -10,13 +10,13 @@ import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
 import { Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
 import { ApiError } from '@/api/client';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 /** A post in context: what it answers, the post, and its direct replies. */
 export default function Thread() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t } = useTranslations();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [view, setView] = useState<ThreadView | null>(null);
@@ -44,7 +44,7 @@ export default function Thread() {
 
   return (
     <FlashList
-      style={{ backgroundColor: theme.background }}
+      style={themed.clear}
       data={view.replies}
       keyExtractor={(p) => p.id}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
@@ -55,28 +55,28 @@ export default function Thread() {
       ListHeaderComponent={
         <View>
           {view.parent ? <PostCard post={view.parent} onChange={replace} /> : null}
-          <View style={{ backgroundColor: theme.backgroundElement }}>
+          <View style={themed.bgBackgroundElement}>
             <PostCard post={view.post} onChange={replace} onOpen={false}
               onRemoved={() => router.back()} />
           </View>
-          <View style={{ flexDirection: 'row', gap: Spacing.four, paddingHorizontal: Spacing.three, paddingTop: Spacing.two }}>
+          <View style={styles.viewRow4}>
             {view.post.likeCount > 0 ? (
-              <ThemedText type="small" style={{ color: theme.tint }}
+              <ThemedText type="small" style={themed.colorTint}
                 onPress={() => router.push({ pathname: '/threads/people/[id]', params: { id: view.post.id, kind: 'likes' } })}>
                 {t.threads.likes} {view.post.likeCount}
               </ThemedText>
             ) : null}
             {view.post.quoteCount > 0 ? (
-              <ThemedText type="small" style={{ color: theme.tint }}
+              <ThemedText type="small" style={themed.colorTint}
                 onPress={() => router.push({ pathname: '/threads/quotes/[id]', params: { id: view.post.id } })}>
                 {t.threads.quotes} {view.post.quoteCount}
               </ThemedText>
             ) : null}
           </View>
           {view.post.replyToId && !view.parent
-            ? <ThemedText type="small" themeColor="textSecondary" style={{ padding: Spacing.three }}>{t.threads.unavailable}</ThemedText>
+            ? <ThemedText type="small" themeColor="textSecondary" style={styles.paddingThree}>{t.threads.unavailable}</ThemedText>
             : null}
-          <ThemedText type="smallBold" style={{ padding: Spacing.three }}>{t.threads.replies}</ThemedText>
+          <ThemedText type="smallBold" style={styles.paddingThree}>{t.threads.replies}</ThemedText>
         </View>
       }
       renderItem={({ item }) => (
@@ -84,8 +84,21 @@ export default function Thread() {
           onRemoved={(removed) => setView((v) => v && ({ ...v, replies: v.replies.filter((r) => r.id !== removed) }))} />
       )}
       ListEmptyComponent={
-        <ThemedText themeColor="textSecondary" style={{ paddingHorizontal: Spacing.three }}>{t.common.empty}</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.paddingHorizontalThree}>{t.common.empty}</ThemedText>
       }
     />
   );
 }
+
+const styles = StyleSheet.create({
+  viewRow4: { flexDirection: 'row', gap: Spacing.four, paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
+  paddingThree: { padding: Spacing.three },
+  paddingHorizontalThree: { paddingHorizontal: Spacing.three },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    clear: { backgroundColor: 'transparent' },
+    bgBackgroundElement: { backgroundColor: theme.backgroundElement },
+    colorTint: { color: theme.tint },
+  });

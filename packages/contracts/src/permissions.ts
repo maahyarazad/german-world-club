@@ -67,6 +67,13 @@ export const MODULES = Object.freeze([
   // nothing in the ledger is ever deleted. A module of its own because XP is to
   // become money, and granting `members` must not quietly grant control of it.
   'referrals',
+  // Merchant stores, offer categories and the platform redemption report
+  // (feature 035, research R2/R11). `read` lists stores and categories and opens
+  // the platform report; `write` adds a category; `edit` renames, reorders and
+  // hides one; `status` switches a store on or off. `delete` is unused on
+  // purpose: a store is deactivated, never deleted, and a category in use cannot
+  // go. Staff moderate the shop window, they do not rewrite a merchant's offers.
+  'merchant_offers',
 ] as const)
 
 /**

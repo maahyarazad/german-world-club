@@ -34,7 +34,17 @@ export async function deleteAsset(app: GwcApp, { storage, id, principal, permiss
       'SELECT storage_key FROM asset_variants WHERE asset_id = $1', [asset.id],
     )
 
-    await client.query('DELETE FROM assets WHERE id = $1', [asset.id])
+    try {
+      await client.query('DELETE FROM assets WHERE id = $1', [asset.id])
+    } catch (error) {
+      // Stores, offers, listings, avatars and logos reference assets with
+      // ON DELETE RESTRICT, so a file in use cannot be deleted. That is a
+      // refusal with a reason (feature 035), not a server fault.
+      if ((error as { code?: string }).code === '23503') {
+        throw forbidden(PROBLEMS.MEDIA_IN_USE, 'This file is still used by a store, an offer or a profile.')
+      }
+      throw error
+    }
 
     // Content-addressed storage means bytes may be shared. Removing them
     // while another asset points at the same checksum would break that

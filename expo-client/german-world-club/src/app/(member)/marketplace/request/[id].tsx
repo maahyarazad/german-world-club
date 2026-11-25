@@ -10,6 +10,7 @@ import { marketplaceApi, messagingApi } from '@/api/endpoints';
 import { ThemedText } from '@/components/themed-text';
 import { Button, FormScreen, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
+import { StyleSheet } from 'react-native';
 
 /**
  * Write a request about a listing (feature 020, US1). On success the screen is
@@ -57,7 +58,7 @@ export default function SendRequest() {
         onChangeText={setBody}
         multiline
         maxLength={MESSAGE_MAX}
-        style={{ minHeight: 140, textAlignVertical: 'top' }}
+        style={styles.minHeight140TextAlignVerticalTop}
       />
       <ThemedText type="small" themeColor="textSecondary">
         {format(t.requests.counter, { n: body.length, max: MESSAGE_MAX })}
@@ -67,3 +68,7 @@ export default function SendRequest() {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  minHeight140TextAlignVerticalTop: { minHeight: 140, textAlignVertical: 'top' },
+});

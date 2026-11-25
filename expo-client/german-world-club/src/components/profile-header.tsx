@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Linking, View } from 'react-native';
+import { Linking, View, StyleSheet } from 'react-native';
 
 import type { ProfileLink } from '@gwc/contracts/profile';
 import type { MediaItem } from '@gwc/contracts/media';
@@ -9,10 +9,10 @@ import type { ProfileTab } from '@gwc/contracts/threads';
 import { Avatar } from '@/components/avatar';
 import { countryName } from '@/components/country-picker';
 import { ThemedText } from '@/components/themed-text';
-import { Chip, styles } from '@/components/ui';
+import { Chip, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 export type HeaderProfile = {
   id: string
@@ -30,16 +30,16 @@ export type HeaderProfile = {
 
 /** A member's header, the same for your own profile and anybody else's (010 US3/US4). */
 export function ProfileHeader({ profile, children }: { profile: HeaderProfile; children?: React.ReactNode }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, locale, format } = useTranslations();
   const name = profile.displayName ?? '';
   const people = (kind: 'followers' | 'following') =>
     router.push({ pathname: '/threads/people/[id]', params: { id: profile.id, kind } });
   return (
-    <View style={{ padding: Spacing.four, gap: Spacing.two }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.three }}>
-        <View style={{ flexShrink: 1, gap: 2 }}>
-          <ThemedText type="title" style={{ fontSize: 26, lineHeight: 32 }}>{name}</ThemedText>
+    <View style={styles.paddingFourGapTwo}>
+      <View style={styles.viewRow4}>
+        <View style={styles.flexShrink1Gap2}>
+          <ThemedText type="title" style={styles.font26Line32}>{name}</ThemedText>
           <ThemedText themeColor="textSecondary">
             {profile.handle ? `@${profile.handle}` : t.profile.noHandle}
             {profile.isInfluencer ? `  · ${t.threads.influencer}` : ''}
@@ -55,11 +55,11 @@ export function ProfileHeader({ profile, children }: { profile: HeaderProfile; c
       ) : null}
       {profile.links.map((link) => (
         // https only, enforced by the server; opened in the system browser.
-        <ThemedText key={link.url} style={{ color: theme.tint }} accessibilityRole="link" onPress={() => void Linking.openURL(link.url)}>
+        <ThemedText key={link.url} style={themed.colorTint} accessibilityRole="link" onPress={() => void Linking.openURL(link.url)}>
           {link.label ?? link.url.replace(/^https:\/\//, '')}
         </ThemedText>
       ))}
-      <View style={styles.row}>
+      <View style={uiStyles.row}>
         <ThemedText type="smallBold" onPress={() => people('followers')}>{profile.followers}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" onPress={() => people('followers')}>{t.profile.followers}</ThemedText>
         <ThemedText type="smallBold" onPress={() => people('following')}>{profile.following}</ThemedText>
@@ -74,10 +74,23 @@ export function ProfileHeader({ profile, children }: { profile: HeaderProfile; c
 export function TabChips({ tab, onChange }: { tab: ProfileTab; onChange: (tab: ProfileTab) => void }) {
   const { t } = useTranslations();
   return (
-    <View style={[styles.chips, { paddingHorizontal: Spacing.four }]} accessibilityRole="tablist">
+    <View style={[uiStyles.chips, styles.paddingHorizontalFour]} accessibilityRole="tablist">
       {PROFILE_TABS.map((value) => (
         <Chip key={value} label={t.profile.tabs[value]} selected={tab === value} onPress={() => onChange(value)} />
       ))}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  paddingFourGapTwo: { padding: Spacing.four, gap: Spacing.two },
+  viewRow4: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.three },
+  flexShrink1Gap2: { flexShrink: 1, gap: 2 },
+  font26Line32: { fontSize: 26, lineHeight: 32 },
+  paddingHorizontalFour: { paddingHorizontal: Spacing.four },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    colorTint: { color: theme.tint },
+  });

@@ -89,7 +89,7 @@ try {
   const { seedMembers } = await import('../seed/members.ts')
   const { seedStaff } = await import('../seed/staff.ts')
   const { seedOrganisations } = await import('../seed/organisations.ts')
-  const { seedOffers } = await import('../seed/offers.ts')
+  const { seedOffers, seedMerchantMedia } = await import('../seed/offers.ts')
   const { seedEvents } = await import('../seed/events.ts')
   const { seedContent } = await import('../seed/content.ts')
   const { seedOperations } = await import('../seed/operations.ts')
@@ -108,6 +108,8 @@ try {
   counts.offers = await seedOffers(pool, faker, options)
   counts.events = await seedEvents(pool, faker, options)
   counts.content = await seedContent(pool, faker, options)
+  // After content: that step stops as soon as any asset exists, so merchant photos go second.
+  counts.merchantMedia = await seedMerchantMedia(pool, faker, options)
   counts.operations = await seedOperations(pool, faker, options)
   // The vehicle feature catalogue is reference data, not a population: it does
   // not scale with --members and it is the same in every environment.

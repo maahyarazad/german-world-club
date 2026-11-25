@@ -1,7 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { FlashList } from '@shopify/flash-list';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 
 import type { ThreadAuthor } from '@gwc/contracts/threads';
 
@@ -11,14 +11,14 @@ import { ThemedText } from '@/components/themed-text';
 import { Loading } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslations } from '@/i18n';
+import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 type Kind = 'followers' | 'following' | 'likes';
 
 /** A list of members: a member's followers or following, or a post's likers (010 US2/US4). */
 export default function People() {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   const { t, format } = useTranslations();
   const { id, kind = 'followers' } = useLocalSearchParams<{ id: string; kind?: Kind }>();
   const fetchPage = useCallback((cursor: string | null) => (
@@ -29,7 +29,7 @@ export default function People() {
   const title = kind === 'likes' ? t.threads.likes : kind === 'following' ? t.profile.followingTitle : t.profile.followersTitle;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{ title }} />
       {list.loading ? <Loading /> : (
         <PeopleList people={list.items} onEnd={list.loadMore} empty={t.common.empty} label={(n) => format(t.profile.avatarAlt, { name: n })} />
@@ -45,19 +45,19 @@ export function PeopleList({ people, onEnd, empty, label, trailing }: {
   label: (name: string) => string
   trailing?: (author: ThreadAuthor) => React.ReactNode
 }) {
-  const theme = useTheme();
+  const themed = useThemedStyles(makeStyles);
   return (
     <FlashList
       data={people}
       keyExtractor={(a) => a.id}
       onEndReached={onEnd}
-      ListEmptyComponent={<ThemedText themeColor="textSecondary" style={{ padding: Spacing.four }}>{empty}</ThemedText>}
+      ListEmptyComponent={<ThemedText themeColor="textSecondary" style={styles.paddingFour}>{empty}</ThemedText>}
       renderItem={({ item }) => (
         <Pressable
           onPress={() => router.push({ pathname: '/threads/member/[id]', params: { id: item.id } })}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderBottomWidth: 0.5, borderColor: theme.border }}>
+          style={themed.pressableRow6}>
           <Avatar author={item} label={label(item.displayName ?? '')} />
-          <View style={{ flex: 1 }}>
+          <View style={styles.flex1}>
             <ThemedText type="smallBold">{item.displayName ?? '—'}</ThemedText>
             {item.handle ? <ThemedText type="small" themeColor="textSecondary">@{item.handle}</ThemedText> : null}
           </View>
@@ -67,3 +67,14 @@ export function PeopleList({ people, onEnd, empty, label, trailing }: {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  paddingFour: { padding: Spacing.four },
+  flex1: { flex: 1 },
+});
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
+    pressableRow6: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderBottomWidth: 0.5, borderColor: theme.border },
+  });

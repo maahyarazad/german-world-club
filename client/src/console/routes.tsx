@@ -28,6 +28,17 @@ import Push from './admin/Push'
 import ServerFaults from './admin/ServerFaults'
 import OrganisationLayout from '../organisation/OrganisationLayout'
 import OrganisationHome from '../organisation/OrganisationHome'
+import StorePage from '../organisation/Store'
+import MerchantReport from '../organisation/Report'
+import AdminStores from './admin/Stores'
+import AdminOfferCategories from './admin/OfferCategories'
+import AdminRedemptionReport from './admin/RedemptionReport'
+import ClubOffers from '../offers/Offers'
+import ClubOfferDetail from '../offers/OfferDetail'
+import ClubRedemptions from '../offers/Redemptions'
+import type { OffersKind } from '../offers/api'
+import OffersPage from '../organisation/Offers'
+import OfferEditor from '../organisation/OfferEditor'
 import Inbox from '../member/messages/Inbox'
 import Conversation from '../member/messages/Conversation'
 import Referrals from '../member/Referrals'
@@ -193,10 +204,19 @@ export function ConsoleRoutes() {
         {/* A staff member's OWN link needs no grant (every staff member earns,
             spec Q2); overseeing everybody's is the `referrals` module. */}
         <Route path="empfehlen" element={<Referrals basePath="/admin/referrals/me" />} />
+        {/* Merchant offers (feature 035): staff browse and redeem as people, needing no grant. */}
+        <Route path="angebote" element={<ClubOffers kind="staff" />} />
+        <Route path="angebote/:id" element={<ClubOfferDetail kind="staff" />} />
+        <Route path="einloesungen" element={<ClubRedemptions kind="staff" />} />
         {/* Wraps itself in RequireGrant referrals/read, like Push.tsx. */}
         <Route path="empfehlungen" element={<AdminReferrals />} />
         {/* Feature 028. Wraps itself in RequireGrant admins/read, like Push.tsx. */}
         <Route path="rollen" element={<Roles />} />
+        {/* Merchant stores, categories and the platform report (feature 035). Each
+            wraps itself in RequireGrant merchant_offers/read, like Push.tsx. */}
+        <Route path="shops" element={<AdminStores />} />
+        <Route path="angebotskategorien" element={<AdminOfferCategories />} />
+        <Route path="einloesungs-bericht" element={<AdminRedemptionReport />} />
         {/* Keeps an admin area with no page yet inside the shell. Without this
             it fell through to the `*` below and redirected to sign-in, which
             reads as a logout on a session that is still perfectly valid. */}
@@ -220,6 +240,10 @@ export function ConsoleRoutes() {
         <Route path="threads/:id/zitate" element={<QuotesView />} />
         <Route path="threads/:id/likes" element={<LikesView />} />
         <Route path="aktivitaet" element={<Activity />} />
+        {/* Merchant offers (feature 035): any account may redeem; here, a member's. */}
+        <Route path="angebote" element={<ClubOffers kind="member" />} />
+        <Route path="angebote/:id" element={<ClubOfferDetail kind="member" />} />
+        <Route path="einloesungen" element={<ClubRedemptions kind="member" />} />
         <Route path="profil" element={<MyProfile />} />
         <Route path="profil/bearbeiten" element={<EditProfile />} />
         <Route path="profil/privatsphaere" element={<Privacy />} />
@@ -259,6 +283,21 @@ export function ConsoleRoutes() {
           <Route index element={<OrganisationHome />} />
           <Route path="profil" element={<OrganisationProfilePage kind={kind} />} />
           <Route path="empfehlen" element={<Referrals basePath={`/referrals/${kind}`} />} />
+          {/* Feature 035: a merchant's store and offers. A partner has neither, so
+              for a partner these paths are as unbuilt as any other. */}
+          {/* Any account may redeem merchant offers, a merchant's or partner's included. */}
+          <Route path="angebote-entdecken" element={<ClubOffers kind={kind} />} />
+          <Route path="angebote-entdecken/:id" element={<ClubOfferDetail kind={kind} />} />
+          <Route path="einloesungen" element={<ClubRedemptions kind={kind} />} />
+          {kind === 'merchant' && (
+            <>
+              <Route path="shop" element={<StorePage />} />
+              <Route path="bericht" element={<MerchantReport />} />
+              <Route path="angebote" element={<OffersPage />} />
+              <Route path="angebote/neu" element={<OfferEditor />} />
+              <Route path="angebote/:id" element={<OfferEditor />} />
+            </>
+          )}
           <Route path="*" element={<NotBuilt />} />
         </Route>
       ))}

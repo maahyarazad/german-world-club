@@ -1,10 +1,10 @@
-import { Switch, View } from 'react-native';
+import { Switch, View, StyleSheet } from 'react-native';
 
 import type { FieldDef } from '@gwc/contracts/marketplace';
 
 import { DatePartsField } from '@/components/date-parts-field';
 import { ThemedText } from '@/components/themed-text';
-import { Chip, TextField, styles } from '@/components/ui';
+import { Chip, TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 
 /**
@@ -25,7 +25,7 @@ export function ListingField({ def, value, onChange }: {
 
   if (def.kind === 'boolean') {
     return (
-      <View style={[styles.row, { justifyContent: 'space-between' }]}>
+      <View style={[uiStyles.row, styles.justifySpacebetween]}>
         <ThemedText>{label}</ThemedText>
         <Switch accessibilityLabel={label} value={Boolean(value)} onValueChange={onChange} />
       </View>
@@ -34,9 +34,9 @@ export function ListingField({ def, value, onChange }: {
 
   if (def.kind === 'enum') {
     return (
-      <View style={{ gap: Spacing.one }}>
+      <View style={styles.gapOne}>
         <ThemedText type="smallBold">{label}</ThemedText>
-        <View style={styles.chips} accessibilityRole="radiogroup">
+        <View style={uiStyles.chips} accessibilityRole="radiogroup">
           {(def.options ?? []).map((option) => (
             // Tapping the chosen option again clears it — the app's "please select".
             <Chip key={option} label={option} selected={value === option}
@@ -62,3 +62,8 @@ export function ListingField({ def, value, onChange }: {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  justifySpacebetween: { justifyContent: 'space-between' },
+  gapOne: { gap: Spacing.one },
+});
