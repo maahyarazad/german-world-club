@@ -384,7 +384,8 @@ before writing any row. The server still issues, hashes and verifies its own
 codes, and verification is deliberately **not** gated, so a code sent before
 the allowlist narrowed still redeems. `sms-countries.generated.ts` is converted
 from another project's build; do not hand-edit it. **In development the code is also printed in the
-terminal, and the real SMS is still sent** (feature 027, `SMS_DEV_LOG`, on by
+terminal, and the real SMS is still sent** (the email verification code too, from
+`sendMailInstantly`, as `Email (development) code … for …`) (feature 027, `SMS_DEV_LOG`, on by
 default when `NODE_ENV=development`, `false` turns it off): a provider refusal —
 a seeded member's number is fake — is printed and no longer fails sign-in.
 `config/env.ts` refuses to boot in production with it set to true. It sits behind
