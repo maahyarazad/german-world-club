@@ -30,7 +30,7 @@ export default function Events() {
   }, [events.reload]));
 
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <View style={[uiStyles.row, styles.paddingThree]} accessibilityRole="radiogroup">
         <Chip label={t.events.upcoming} selected={when === 'upcoming'} onPress={() => setWhen('upcoming')} />
         <Chip label={t.events.past} selected={when === 'past'} onPress={() => setWhen('past')} />
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
     colorTintWeight600: { color: theme.tint, fontWeight: '600' },
     colorSuccess: { color: theme.success },
     colorDanger: { color: theme.danger },

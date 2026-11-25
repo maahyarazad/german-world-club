@@ -39,7 +39,7 @@ export default function Privacy() {
   );
 
   return (
-    <ScrollView style={themed.bgBackground} contentContainerStyle={styles.paddingFourGapFive}>
+    <ScrollView style={themed.clear} contentContainerStyle={styles.paddingFourGapFive}>
       {section(t.profile.blockedList, blocked, loaded.blocks, t.profile.unblock, (id) => threadsApi.setBlock(id, false))}
       {section(t.profile.mutedList, muted, loaded.mutes, t.profile.unmute, (id) => threadsApi.setMute(id, false))}
     </ScrollView>
@@ -56,5 +56,5 @@ const styles = StyleSheet.create({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     colorTint: { color: theme.tint },
-    bgBackground: { backgroundColor: theme.background },
+    clear: { backgroundColor: 'transparent' },
   });

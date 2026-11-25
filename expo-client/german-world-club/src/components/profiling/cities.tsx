@@ -52,7 +52,7 @@ export function PlacePicker({ ctx, title, initial, onDone, onBack }: {
     // A full-flex picker, not `Centered` (which shrinks children and would
     // collapse the list) — the same wrapper (public)/country.tsx uses.
     return (
-      <SafeAreaView edges={['bottom']} style={themed.flex1BgBackground}>
+      <SafeAreaView edges={['bottom']} style={themed.flex1Clear}>
         <View style={styles.flex1PaddingFourGapThree}>
           <ThemedText type="title" style={styles.font30Line36}>{title}</ThemedText>
           <CountryPicker
@@ -153,5 +153,5 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
   });

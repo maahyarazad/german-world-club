@@ -61,7 +61,7 @@ export default function Devices() {
 
   if (failed) {
     return (
-      <ScrollView style={themed.bgBackground} contentContainerStyle={styles.paddingFour}>
+      <ScrollView style={themed.clear} contentContainerStyle={styles.paddingFour}>
         <ThemedText themeColor="textSecondary">{t.devices.loadFailed}</ThemedText>
       </ScrollView>
     );
@@ -69,7 +69,7 @@ export default function Devices() {
   if (!devices) return <Loading />;
 
   return (
-    <ScrollView style={themed.bgBackground} contentContainerStyle={styles.paddingFourGapThree}>
+    <ScrollView style={themed.clear} contentContainerStyle={styles.paddingFourGapThree}>
       <ThemedText themeColor="textSecondary">{t.devices.intro}</ThemedText>
       {devices.map((device) => (
         <View key={device.id} style={styles.gapTwo}>
@@ -109,5 +109,5 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    bgBackground: { backgroundColor: theme.background },
+    clear: { backgroundColor: 'transparent' },
   });

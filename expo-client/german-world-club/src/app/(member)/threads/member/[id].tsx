@@ -57,7 +57,7 @@ export default function MemberProfile() {
   };
 
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{ title: profile.handle ? `@${profile.handle}` : profile.displayName ?? '' }} />
       <FlashList
         data={posts.items}
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
     colorTint: { color: theme.tint },
     colorDanger: { color: theme.danger },
   });

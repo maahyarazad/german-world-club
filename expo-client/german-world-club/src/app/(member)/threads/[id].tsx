@@ -44,7 +44,7 @@ export default function Thread() {
 
   return (
     <FlashList
-      style={themed.bgBackground}
+      style={themed.clear}
       data={view.replies}
       keyExtractor={(p) => p.id}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    bgBackground: { backgroundColor: theme.background },
+    clear: { backgroundColor: 'transparent' },
     bgBackgroundElement: { backgroundColor: theme.backgroundElement },
     colorTint: { color: theme.tint },
   });

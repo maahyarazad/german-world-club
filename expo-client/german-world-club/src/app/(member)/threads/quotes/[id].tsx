@@ -22,7 +22,7 @@ export default function Quotes() {
   const fetchPage = useCallback((cursor: string | null) => threadsApi.quotes(id, cursor), [id]);
   const list = usePaged<ThreadPost>(fetchPage, [id]);
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{ title: t.threads.quotes }} />
       {list.loading ? <Loading /> : (
         <FlashList
@@ -45,5 +45,5 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
   });

@@ -58,7 +58,7 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
 
   return (
     <FlashList
-      style={themed.bgBackground}
+      style={themed.clear}
       data={list.items}
       keyExtractor={(o) => o.id}
       onEndReached={list.loadMore}
@@ -200,7 +200,7 @@ export function ClubRedemptions({ kind }: { kind: ClubOffersKind }) {
   if (list.loading) return <Loading />;
   return (
     <FlashList
-      style={themed.bgBackground}
+      style={themed.clear}
       data={list.items}
       keyExtractor={(r) => r.id}
       onEndReached={list.loadMore}
@@ -278,5 +278,5 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    bgBackground: { backgroundColor: theme.background },
+    clear: { backgroundColor: 'transparent' },
   });

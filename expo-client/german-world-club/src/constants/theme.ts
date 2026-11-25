@@ -14,6 +14,8 @@ export const Colors = {
     // The club's deep navy, with a warm gold for emphasis.
     tint: '#0B2545',
     onTint: '#ffffff',
+    // The confirm buttons (Sign in, Continue, …): the club's navy by day.
+    primary: '#0B2545',
     accent: '#C9A227',
     // Gold that may carry text. `accent` is 2.42:1 on white, below even the 3:1
     // large-text floor; this is the smallest darkening of the same hue that
@@ -31,6 +33,9 @@ export const Colors = {
     textSecondary: '#A0A5AB',
     tint: '#8FB3E8',
     onTint: '#0B0D10',
+    // …and its gold at night, where the pale-blue `tint` read as washed out on the backdrop.
+    // `onTint` (near black) on it is about 10:1.
+    primary: '#E0BD4A',
     accent: '#E0BD4A',
     // Already 10.7:1 on `background`, so the dark scheme reuses `accent`.
     accentText: '#E0BD4A',
@@ -38,6 +43,16 @@ export const Colors = {
     danger: '#EF7B7B',
     success: '#7BC47F',
   },
+} as const;
+
+/**
+ * The wash laid over the backdrop image (`AppBackground`). The art is one mid-grey in
+ * both schemes, so without it the theme's dark text (light scheme) would sit at about
+ * 3:1 on it. Lower the alpha to show more of the image.
+ */
+export const BackdropScrim = {
+  light: 'rgba(255, 255, 255, 0.72)',
+  dark: 'rgba(0, 0, 0, 0.5)',
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;

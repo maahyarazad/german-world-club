@@ -32,7 +32,7 @@ export default function Feed() {
   }, [feed.reload]));
 
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{
         headerRight: () => (
           <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
@@ -81,6 +81,6 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
     colorTintWeight600: { color: theme.tint, fontWeight: '600' },
   });

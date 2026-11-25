@@ -39,7 +39,7 @@ export function FormScreen({ title, subtitle, children, vCentered = false }: {
 }) {
     const themed = useThemedStyles(makeStyles);
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={themed.flex1BgBackground}>
+        <SafeAreaView edges={['top', 'bottom']} style={themed.flex1Clear}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex1}>
                 <ScrollView contentContainerStyle={[styles.form, vCentered && styles.formCentered]} keyboardShouldPersistTaps="handled">
                     {title ? <ThemedText type="title" style={styles.title}>{title}</ThemedText> : null}
@@ -72,7 +72,7 @@ export function Button({
     const themed = useThemedStyles(makeStyles);
 
     const background =
-        variant === 'primary' ? themed.bgTint : variant === 'danger' ? themed.bgDanger : themed.bgBackgroundElement;
+        variant === 'primary' ? themed.bgPrimary : variant === 'danger' ? themed.bgDanger : themed.bgBackgroundElement;
     // The label colour is also the loader's colour, which is a prop and not a style.
     const foreground = variant === 'secondary' ? theme.text : theme.onTint;
     const labelColor = variant === 'secondary' ? themed.colorText : themed.colorOnTint;
@@ -266,7 +266,7 @@ export function Centered({ children }: { children: ReactNode }) {
     // Top edge protected like FormScreen (feature 033): a centred message on a header-less
     // screen (the profiling outcome, `waiting`) must not sit under the status bar.
     return (
-        <SafeAreaView edges={['top', 'bottom']} style={[styles.centered, themed.bgBackground]}>
+        <SafeAreaView edges={['top', 'bottom']} style={[styles.centered, themed.clear]}>
             {children}
         </SafeAreaView>
     );
@@ -346,12 +346,12 @@ export const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
     StyleSheet.create({
-        flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+        flex1Clear: { flex: 1, backgroundColor: 'transparent' },
         colorDanger: { color: theme.danger },
         bgBackgroundElement: { backgroundColor: theme.backgroundElement },
         colorTextFont20: { color: theme.text, fontSize: 20 },
-        bgBackground: { backgroundColor: theme.background },
-        bgTint: { backgroundColor: theme.tint },
+        clear: { backgroundColor: 'transparent' },
+        bgPrimary: { backgroundColor: theme.primary },
         bgDanger: { backgroundColor: theme.danger },
         colorText: { color: theme.text },
         colorOnTint: { color: theme.onTint },

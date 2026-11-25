@@ -81,6 +81,7 @@ const makeColors = (theme: AppTheme) =>
     backgroundSelected: { color: theme.backgroundSelected },
     textSecondary: { color: theme.textSecondary },
     tint: { color: theme.tint },
+    primary: { color: theme.primary },
     onTint: { color: theme.onTint },
     accent: { color: theme.accent },
     accentText: { color: theme.accentText },

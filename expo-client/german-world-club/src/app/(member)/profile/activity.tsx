@@ -44,7 +44,7 @@ export default function Activity() {
 
   return (
     <FlashList
-      style={themed.bgBackground}
+      style={themed.clear}
       // Rows differ by kind (a follow has no post excerpt), so recycle like with like.
       getItemType={(i) => i.kind}
       data={list.items}
@@ -79,6 +79,6 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    bgBackground: { backgroundColor: theme.background },
+    clear: { backgroundColor: 'transparent' },
     pressableRow5: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.three, borderBottomWidth: 0.5, borderColor: theme.border },
   });

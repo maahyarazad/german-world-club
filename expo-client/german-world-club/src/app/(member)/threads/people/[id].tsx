@@ -29,7 +29,7 @@ export default function People() {
   const title = kind === 'likes' ? t.threads.likes : kind === 'following' ? t.profile.followingTitle : t.profile.followersTitle;
 
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{ title }} />
       {list.loading ? <Loading /> : (
         <PeopleList people={list.items} onEnd={list.loadMore} empty={t.common.empty} label={(n) => format(t.profile.avatarAlt, { name: n })} />
@@ -75,6 +75,6 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
     pressableRow6: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderBottomWidth: 0.5, borderColor: theme.border },
   });

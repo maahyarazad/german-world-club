@@ -63,7 +63,7 @@ export default function Marketplace() {
   }, [listings.reload]));
 
   return (
-    <View style={themed.flex1BgBackground}>
+    <View style={themed.flex1Clear}>
       <Stack.Screen options={{
         // Messages always (feature 020 — the five bottom-bar slots are full),
         // New listing only for a member who may post.
@@ -146,6 +146,6 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    flex1BgBackground: { flex: 1, backgroundColor: theme.background },
+    flex1Clear: { flex: 1, backgroundColor: 'transparent' },
     colorTintWeight600: { color: theme.tint, fontWeight: '600' },
   });

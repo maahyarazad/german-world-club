@@ -12,18 +12,18 @@ export default function Welcome() {
   const themed = useThemedStyles(makeStyles);
   const { t, locale, setLocale } = useTranslations();
   return (
-    <SafeAreaView style={[styles.screen, themed.bgTint]}>
+    <SafeAreaView style={styles.screen}>
       <View style={styles.language}>
         <ThemedText
           accessibilityRole="button"
           onPress={() => setLocale(locale === 'de' ? 'en' : 'de')}
-          style={themed.colorOnTintWeight600}>
+          style={styles.weight600}>
           {locale === 'de' ? 'English' : 'Deutsch'}
         </ThemedText>
       </View>
       <View style={styles.hero}>
         {/* The logo already carries the club's name, so no title text beside it.
-            It is an opaque white image, hence the white card on the tinted screen. */}
+            The screen shows the club's backdrop (AppBackground), like every other. */}
         <View style={styles.logoCard}>
           <Image
             source={require('../../../assets/splash-icon.png')}
@@ -32,18 +32,20 @@ export default function Welcome() {
             style={styles.logo}
           />
         </View>
-        <View style={[styles.rule, themed.bgBackground]} />
-        <ThemedText style={themed.colorOnTintFont18Line26}>{t.welcome.tagline}</ThemedText>
+        <View style={[styles.rule, themed.bgAccent]} />
+        <ThemedText style={styles.tagline}>{t.welcome.tagline}</ThemedText>
       </View>
       <View style={styles.actions}>
         <Button label={t.welcome.join} onPress={() => router.push('/register')} variant="secondary" />
-        <Button label={t.welcome.signIn} onPress={() => router.push('/sign-in')} style={themed.border1BorderColorOnTint} />
+        <Button label={t.welcome.signIn} onPress={() => router.push('/sign-in')} />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  weight600: { fontWeight: '600' },
+  tagline: { fontSize: 18, lineHeight: 26 },
   screen: { flex: 1, padding: Spacing.four, justifyContent: 'space-between' },
   language: { alignItems: 'flex-end' },
   hero: { gap: Spacing.three, maxWidth: MaxContentWidth },
@@ -56,9 +58,5 @@ const styles = StyleSheet.create({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    bgTint: { backgroundColor: theme.tint },
-    colorOnTintWeight600: { color: theme.onTint, fontWeight: '600' },
-    bgBackground: { backgroundColor: theme.background },
-    colorOnTintFont18Line26: { color: theme.onTint, fontSize: 18, lineHeight: 26 },
-    border1BorderColorOnTint: { borderWidth: 1, borderColor: theme.onTint },
+    bgAccent: { backgroundColor: theme.accent },
   });
