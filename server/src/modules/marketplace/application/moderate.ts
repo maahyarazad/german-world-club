@@ -1,4 +1,5 @@
 import { PROBLEMS } from '@gwc/contracts/errors'
+import { DISABLEABLE_STATES } from '@gwc/contracts/marketplace'
 import { withTransaction, query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import type { PoolClient } from 'pg'
@@ -64,7 +65,9 @@ export async function loadForModeration(
     app.pg,
     `SELECT l.id, l.owner_id, l.category, l.mode, l.title, l.body, l.state,
             l.contact_method, l.created_at, l.published_at, l.expires_at,
-            l.state_changed_at, m.display_name AS owner_display_name
+            l.state_changed_at, l.hidden_from_state, m.display_name AS owner_display_name,
+            (SELECT count(*)::int FROM marketplace_reports r
+              WHERE r.listing_id = l.id AND r.state = 'open') AS open_reports
        FROM marketplace_listings l
        JOIN members m ON m.id = l.owner_id
       WHERE l.id = $1::uuid`,
@@ -91,13 +94,22 @@ export async function hideListing(
     )
     const row = rows[0]
     if (!row) throw new ListingNotFoundError()
-    if (row.state !== 'active') throw forbidden(PROBLEMS.VALIDATION_FAILED, `Cannot hide a "${row.state}" listing.`)
+    // A draft can be disabled too (feature 037): a listing nobody can see yet
+    // can still be the record that is wrong, and disabling it stops its owner
+    // publishing it. Every other state is already off display.
+    if (!(DISABLEABLE_STATES as readonly string[]).includes(String(row.state))) {
+      throw forbidden(PROBLEMS.VALIDATION_FAILED, `Cannot hide a "${row.state}" listing.`)
+    }
     previousState = String(row.state)
 
+    // `hidden_from_state` remembers where it came from, so enabling puts it
+    // back there — and never publishes a draft.
     const { rows: updated } = await client.query(
-      `UPDATE marketplace_listings SET state = 'hidden', state_changed_at = now(), updated_at = now()
+      `UPDATE marketplace_listings
+          SET state = 'hidden', hidden_from_state = $2::marketplace_state,
+              state_changed_at = now(), updated_at = now()
         WHERE id = $1::uuid RETURNING id, state, state_changed_at`,
-      [listingId],
+      [listingId, previousState],
     )
     return updated[0]!
   }, { signal })
@@ -121,19 +133,26 @@ export async function restoreListing(
 ) {
   const safeReason = requireReason(reason)
 
+  let restoredTo = 'active'
   const changed = await withTransaction(app.pg, async (client: PoolClient) => {
     const { rows } = await client.query(
-      `SELECT id, state FROM marketplace_listings WHERE id = $1::uuid FOR UPDATE`,
+      `SELECT id, state, hidden_from_state FROM marketplace_listings WHERE id = $1::uuid FOR UPDATE`,
       [listingId],
     )
     const row = rows[0]
     if (!row) throw new ListingNotFoundError()
     if (row.state !== 'hidden') throw forbidden(PROBLEMS.VALIDATION_FAILED, `Cannot restore a "${row.state}" listing.`)
 
+    // Back to where the owner left it. NULL is a listing hidden before the
+    // column existed, which always came back as `active`.
+    restoredTo = String(row.hidden_from_state ?? 'active')
+
     const { rows: updated } = await client.query(
-      `UPDATE marketplace_listings SET state = 'active', state_changed_at = now(), updated_at = now()
+      `UPDATE marketplace_listings
+          SET state = $2::marketplace_state, hidden_from_state = NULL,
+              state_changed_at = now(), updated_at = now()
         WHERE id = $1::uuid RETURNING id, state, state_changed_at`,
-      [listingId],
+      [listingId, restoredTo],
     )
     return updated[0]!
   }, { signal })
@@ -143,7 +162,7 @@ export async function restoreListing(
     actorId, actorKind: 'admin',
     targetType: 'marketplace_listing', targetId: listingId,
     requiredPermission: 'marketplace_moderation.status',
-    detail: { reason: safeReason, statusFrom: 'hidden', statusTo: 'active' },
+    detail: { reason: safeReason, statusFrom: 'hidden', statusTo: restoredTo },
   })
 
   return changed
@@ -269,4 +288,70 @@ export async function resolveReport(
   })
 
   return resolved
+}
+
+// ---------------------------------------------------------------------------
+// The staff listing browser (feature 037)
+// ---------------------------------------------------------------------------
+
+export type StaffListingFilters = {
+  state?: string
+  category?: string
+  ownerId?: string
+  q?: string
+  /** Already decoded and bounded by the controller. */
+  cursor?: { createdAt: string; id: string } | null
+  limit: number
+  signal?: AbortSignal
+}
+
+/**
+ * Every member listing in every state, newest first — keyset paged on
+ * (created_at, id), never OFFSET, so page 400 costs what page 1 does.
+ *
+ * Reads `marketplace_listings` only, so a merchant offer cannot appear: those
+ * live in their own tables. Columns are named, and the member's contact
+ * details are not among them — the owner is `id` and display name, nothing
+ * else. This is a list, not a place to read what was written: the body text is
+ * left out, and the one-listing read stays the way to open it.
+ */
+export async function browseForModeration(app: GwcApp, f: StaffListingFilters) {
+  const where: string[] = []
+  const params: unknown[] = []
+  const add = (sql: string, value: unknown) => { params.push(value); where.push(sql.replace('?', `$${params.length}`)) }
+
+  if (f.state) add('l.state = ?::marketplace_state', f.state)
+  if (f.category) add('l.category = ?::marketplace_category', f.category)
+  if (f.ownerId) add('l.owner_id = ?::uuid', f.ownerId)
+  if (f.q) {
+    // `%` and `_` are wildcards in LIKE. A search for "50%" must find "50%",
+    // not everything starting with 50, so they are escaped before use.
+    add(`l.title ILIKE ? ESCAPE '\\'`, `%${f.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+  }
+  if (f.cursor) {
+    params.push(f.cursor.createdAt, f.cursor.id)
+    where.push(`(l.created_at, l.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`)
+  }
+  params.push(f.limit + 1)
+
+  const { rows } = await query(
+    app.pg,
+    `SELECT l.id, l.title, l.category, l.mode, l.state, l.hidden_from_state,
+            l.created_at, l.published_at, l.expires_at, l.state_changed_at,
+            -- The paging key at full microsecond precision. A JavaScript Date
+            -- keeps milliseconds, so two rows created within one would be
+            -- skipped or repeated at a page boundary.
+            to_char(l.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_at,
+            m.id AS owner_id, m.display_name AS owner_display_name,
+            (SELECT count(*)::int FROM marketplace_reports r
+              WHERE r.listing_id = l.id AND r.state = 'open') AS open_reports
+       FROM marketplace_listings l
+       JOIN members m ON m.id = l.owner_id
+      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+      ORDER BY l.created_at DESC, l.id DESC
+      LIMIT $${params.length}`,
+    params,
+    { signal: f.signal },
+  )
+  return rows
 }

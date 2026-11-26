@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, resetAuthTables, createAdmin, bearerFor } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
-import { poster, seedListing, resetMarketplace, expireInThePast, TERMS } from './helpers.ts'
+import { patchListing, poster, seedListing, resetMarketplace, expireInThePast, TERMS } from './helpers.ts'
 import { createJobHandlers } from '../../src/ops/jobs.ts'
 import { SCOPE } from '../../src/db/counters.ts'
 import type { GwcApp } from '../../src/app.ts'
@@ -48,7 +48,7 @@ describe.skipIf(!hasDatabase)('no job offers from members', () => {
   const create = (payload: Record<string, unknown>) =>
     app.inject({ method: 'POST', url: '/marketplace/listings', headers: owner.headers, payload })
   const edit = (id: string, payload: Record<string, unknown>) =>
-    app.inject({ method: 'PATCH', url: `/marketplace/listings/${id}`, headers: owner.headers, payload })
+    patchListing(app, owner.headers, id, payload)
   const listingCount = async () =>
     (await app.pg.query('SELECT count(*)::int AS n FROM marketplace_listings')).rows[0].n as number
   const quotaUsed = async () =>

@@ -234,6 +234,70 @@ last — bottom-bar slot. Five rules that look optional and are not:
   no listing id, title, photo, price or owner. They are separate rows in
   `seo/surfaces.ts` so adding the public one cannot relax the gated one.
 
+**Editing, publishing and disabling listings (feature 037,
+`specs/037-marketplace-listing-management/`).** "Published" is `active`,
+"unpublished" is `draft`, "disabled by staff" is `hidden` — no new state, so
+every read that filters `state = 'active'` already hides a draft and a disabled
+listing everywhere (browse, detail, `/marktplatz` counts, new requests). Six
+rules that look optional and are not:
+
+- **Every member may edit their own listings, with no permission flag.** The
+  gate is ownership, checked on the loaded row inside the transaction (404 for
+  anyone else, identical to an absent id). Editable states are `draft`,
+  `active`, `expired` (`EDITABLE_STATES`); sold, filled, withdrawn and hidden
+  answer 409 `marketplace/not-editable`, and photos follow the same rule.
+- **One PATCH carries the fields, the expiry and Publish** (`published`), in one
+  transaction. `version` (`updated_at` to the microsecond) is required, and a
+  stale one is 409 `conflict`. Attaching or removing a photo does **not** move it.
+  A new listing's `publish` defaults to `true`, so older app builds still go live.
+- **The server serialises responses through Zod, and drops any key the schema
+  does not declare.** `version`, `canEdit`, `canPublish`, `moderated`,
+  `hiddenFromState` and `openReports` exist on the wire only because the route
+  schemas list them; the tests read the HTTP body, not the handler's return.
+- **Disable is hide, from `draft` or `active` only, and Enable returns the
+  listing to where it was.** `hidden_from_state` remembers it; NULL (a row hidden
+  before the column existed) means `active`. A disabled draft comes back a draft
+  and is never published. The owner is told only `moderated: true` — never the
+  reason, who, or `hiddenFromState`; those stay in the audit log.
+- **The staff page (`GET /admin/marketplace/listings`) is read-only on `read`.**
+  Member listings only (merchant offers are other tables), no contact detail, no
+  body text, keyset paged on a microsecond cursor. It reverses the old "no
+  separate listing browser" stance, but staff still cannot change what a member
+  wrote: `write` and `edit` stay unused.
+- **A draft counts toward the 20-listing limit**, the same as a live one.
+
+**The app uploads through one path, and the server's upload budget includes the
+time the file takes to arrive.** The handler deadline starts when the request's
+headers arrive and a multipart body is read inside the handler, so
+`media-upload`'s deadline (25 s, under the 30 s `requestTimeout`) covers the whole
+upload. At 8 s a phone photo on a mobile uplink got a 503 before it finished
+arriving, and listing photos, avatars and Threads media "did not save"
+(`specs/037-marketplace-listing-management/research.md` R11;
+`tests/media/app-upload-shape.test.ts` sends one over a real socket). Merchants
+only escaped it because their photos are held to 1 MiB. In the app every upload
+is `useMediaUpload('member' | 'merchant' | 'partner')` over `uploadWithProgress`,
+shown with `UploadProgress` (`variant="spinner"` for the club loader and a
+percentage, covering a whole batch); never plain `fetch`, which reports no
+progress.
+
+**An iPhone's photo is HEIC, and the server will not decode it.** `sharp`'s
+bundled libheif has no HEVC decoder (it reads a HEIC's header and fails on the
+pixels), so a HEIC upload is refused `400 unsupported-media-type`. The fix is at
+the source: `pickMedia` asks the picker for `preferredAssetRepresentationMode:
+Compatible`, so iOS converts to JPEG on the phone. The native default is
+`current` (the type docs say `automatic`), which returns raw HEIC and ignores
+`quality`; every pick that is not a cropped one goes through that path. Do not
+remove the setting. A file still labelled HEIC is checked against its own bytes
+(`sniffImageType`, `@gwc/contracts/media`) before it is refused, because a
+converted photo can keep a `.heic` name. What the club accepts is one list,
+`ACCEPTED_MEDIA_TYPES`, shared by the server's validator and both clients; never
+copy it. The refusal carries `detectedType` and `acceptedTypes` as problem
+extension members (`error.extensions`, which cannot override a standard
+member), and the app turns it into `reason: 'unsupported-format'`: its own
+message, no Retry. Decoding HEIC on the server is a deliberate non-goal
+(patent and licence exposure, CPU on untrusted input); see
+`specs/037-marketplace-listing-management/research.md` R12 for when to revisit.
+
 **A message is persisted before anyone is told about it.** `converse.ts`
 commits first and notifies after, never inside the transaction, so a failed
 push cannot roll back a message the sender was told was accepted
@@ -351,11 +415,19 @@ session's token can never outlive its denylist entry; never make it a second num
 
 **One loader, on both platforms (feature 030, `specs/030-main-loader/`).**
 `client/src/components/ui/Spinner.tsx` and `expo-client/.../components/spinner.tsx`
-draw the same figure as `main-loader.html` (a faint ring and one turning arc),
-sized `xs` 14 / `sm` 20 / `md` 32 / `lg` 48. The web one is `currentColor` and
-turns by a CSS animation, so `motion-reduce:animate-none` honours the OS setting
-(SMIL would not); the app one is a bordered `View` turned by `Animated` — **never
-`react-native-svg`**, which would need a new EAS build. Use `PageLoader` /
+draw the same figure (feature 038, `specs/038-themed-spinner/`): a faint ring and an
+arc that grows and shrinks while it turns, 1.5 s a turn and a 3 s cycle, sized
+`xs` 14 / `sm` 20 / `md` 32 / `lg` 48, ring 1/12 of the size and never under 2 px.
+The web one is a `<span class="gwc-spinner">` drawn by `client/src/styles/spinner.css`
+(a conic gradient whose two ends are registered `<angle>` properties). Its colours
+are `currentColor` and a 25% `color-mix` of it, and **that file may not contain a
+colour literal** (`check-tokens` and `tests/components/spinner.test.tsx`, which reads
+the file, enforce it). The app one has no conic gradient to use, so the arc is built
+from two clipped half-rings and transforms on the native driver, with the left
+half-ring at opacity 0 while it has nothing to draw (its edges would leak hairlines);
+its geometry was checked against the keyframes — **never `react-native-svg`**, which
+would need a new EAS build. Under reduced motion both **slow to 6 s a turn with a
+fixed 158° arc and never stop**, which replaces feature 030's "nothing rotates". Use `PageLoader` /
 `ScreenLoader` for a page or screen waiting for data (silent for the first
 150 ms, so a fast response never flickers), `Button loading` for a button whose
 request is running, and `AsyncButton` / `useAction` when there is no state of
@@ -466,7 +538,33 @@ Five things that look optional and are not:
 - **Activity is computed on read** from likes, posts, reposts, mentions and
   follows; only `member_activity_cursor` is stored, and it only moves forward.
   Push notifications are persisted (below); Activity is not, and the two are
-  not the same record.
+  not the same record. In the app, Activity (`profile/activity.tsx`) is the one
+  screen for your Threads: **Interactions** (this feed, opened first) and your own
+  posts in the four tabs Threads, Replies, Media and Reposts, which used to be on
+  Profile (feature 039). Another member's profile keeps its own four tabs.
+  Every tab's stack draws its own header (`components/app-header.tsx`, via the stack's
+  `header` option, `renderAppHeader`): the title on the left, the club's emblem in the
+  middle, the screen's `headerRight` on the right. It has to, because iOS cannot
+  left-align a native title (`headerTitleAlign` is "not supported on iOS"); a new tab's
+  `_layout.tsx` must set it too, or that tab quietly keeps the native header. A screen's
+  actions are not text buttons in the header but rows of `HeaderMenu`
+  (`components/header-menu*.tsx`), the three dots and the platform's own drop-down through
+  `@expo/ui`: SwiftUI's `Menu` on iOS (`.ios.tsx`) and the drop-in `MenuView` on Android
+  (`.android.tsx`), with `header-menu.tsx` the fallback that draws nothing — Marketplace has
+  Messages, My listings and New listing, Threads has New post. Rows are data
+  (`HeaderMenuItem`). The dots are one drawing on both platforms, `MenuIcon` (Entypo's
+  `dots-three-vertical` from `@expo/vector-icons`). On iOS it is laid *over* the menu, never put
+  in its label with `RNHostView`: the `Menu`'s label is an invisible native `Image` at
+  `opacity(0)` (never `hidden()`, which cannot be tapped) framed to the whole 40 x 44 box, and the
+  icon is a `pointerEvents: 'none'` sibling above it. Hosted, the menu opened over the dots and the
+  dots moved when tapped; this way the system anchors the menu to the dots' own box, which is
+  as much control of "below" as `@expo/ui` gives. On Android the trigger is `MenuDots`, the
+  same icon in a plain view with no `onPress`, because `MenuView` wraps it in its own
+  `Pressable`. Draw no pop-up of our own.
+  The Marketplace stack opens every pushed screen with the platform's own transition
+  (`PUSH_ANIMATION` in its `_layout.tsx`: `default`, which on Android 13 and later is a short
+  slide with a fade; only Android 12 and earlier gets `slide_from_right`, because their
+  `default` is a zoom), so a screen there sets no `animation` of its own.
 - **`organisation_profiles` is the only member-visible projection of an
   organisation.** `organisations` holds contract data (`legal_name`,
   `fee_tier`); no member route reads it. Organisation users upload logos at
@@ -673,7 +771,7 @@ registration step-3 contact change.
 
 ## Conventions
 
-- ES modules, Node 22, no TypeScript in the server.
+- ES modules, Node 22. The server is TypeScript (`.ts`, run by Node's type stripping, checked by `tsc --noEmit`).
 - Errors are RFC 9457 problem+json. Clients branch on `type`, never on `detail`.
 - Comments explain **why**, especially where the obvious implementation is
   wrong. If a line looks odd and the reason is not next to it, add the reason.

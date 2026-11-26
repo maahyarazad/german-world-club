@@ -45,6 +45,9 @@ export default fp(
       // Null or absent means unlimited — a first-class choice (FR-028).
       expiresAt: z.union([z.string(), z.null()]).optional(),
       termsVersion: z.string().min(1),
+      // Feature 037. Absent means live — what every client did before this
+      // field existed. `false` saves a private draft.
+      publish: z.boolean().default(true),
     })
 
     const mediaItemSchema = z.object({
@@ -83,6 +86,19 @@ export default fp(
       publishedAt: z.union([z.string(), z.date(), z.null()]),
       expiresAt: z.union([z.string(), z.date(), z.null()]),
       media: z.array(mediaItemSchema).default([]),
+    })
+
+    // What the OWNER gets back (feature 037): the listing plus the version to
+    // send on the next edit and the flags that say what to offer. The response
+    // serializer is Zod's own `parse`, which drops any key an object schema does
+    // not declare — so a field missing from here is silently never sent, which
+    // is exactly how `contact` once disappeared (see above). Declared, not assumed.
+    const ownerListingSchema = listingResponseSchema.extend({
+      version: z.string(),
+      stateChangedAt: z.union([z.string(), z.date()]),
+      canEdit: z.boolean(),
+      canPublish: z.boolean(),
+      moderated: z.boolean(),
     })
 
     // ---- Posting ------------------------------------------------------------
@@ -173,6 +189,12 @@ export default fp(
           // replacement. `details`/`category` are validated together against
           // the FINAL category in application/manage.ts.
           body: z.object({
+            // Required (feature 037): an edit says which version it was made
+            // from, so a second device's older form cannot overwrite a newer
+            // save. A stale one is 409 `conflict`.
+            version: z.string().min(1),
+            // `true` publishes, `false` unpublishes, absent leaves it alone.
+            published: z.boolean().optional(),
             title: z.string().trim().min(3).max(140).optional(),
             body: z.string().trim().min(10).max(8000).optional(),
             category: z.enum(MARKETPLACE_CATEGORIES).optional(),
@@ -185,7 +207,7 @@ export default fp(
             // which is exactly the distinction FR-030 needs.
             expiresAt: z.union([z.string(), z.null()]).optional(),
           }),
-          response: { 200: listingResponseSchema },
+          response: { 200: ownerListingSchema },
         },
       },
       controller.edit,
@@ -224,10 +246,34 @@ export default fp(
           // No `details`/`media` here: this is the owner's management list,
           // not the public-facing card the index renders. A dedicated GET
           // /marketplace/listings/:id already carries those for one listing.
-          response: { 200: z.object({ items: z.array(listingResponseSchema) }) },
+          response: { 200: z.object({ items: z.array(ownerListingSchema) }) },
         },
       },
       controller.mine,
+    )
+
+    // The owner's whole listing in ANY state — what the edit form prefills from.
+    // Its own route because `GET /marketplace/listings/:id` is the visibility
+    // rule (active only) and gaining an owner branch there would put a second
+    // way to read a hidden listing in the one place that must stay simple.
+    // Ownership is checked against the loaded row; not yours is 404.
+    app.get(
+      '/marketplace/mine/:id',
+      {
+        config: { auth: { audience: 'member' }, budget: 'marketplace' },
+        onRequest: app.guard,
+        schema: {
+          params: z.object({ id: z.string().uuid() }),
+          response: {
+            200: ownerListingSchema.extend({
+              owner: z.object({ id: z.string(), displayName: z.union([z.string(), z.null()]) }),
+              details: z.record(z.string(), z.unknown()),
+              features: z.array(z.string()),
+            }),
+          },
+        },
+      },
+      controller.mineOne,
     )
 
     // ---- Terms --------------------------------------------------------------

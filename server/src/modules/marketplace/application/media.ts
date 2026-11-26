@@ -2,6 +2,7 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 import { LISTING_MEDIA_MAX } from '@gwc/contracts/marketplace'
 import { query, withTransaction } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
+import { assertEditable } from './editable.ts'
 import { urlForVariant } from '../../media/application/format.ts'
 import { hexOf } from '../../media/storage.ts'
 import type { PoolClient } from 'pg'
@@ -29,12 +30,16 @@ export async function attachMedia(
     // Ownership against the loaded row, inside the transaction — a route-level
     // declaration cannot express "yours" (Principle II).
     const { rows: owned } = await client.query(
-      'SELECT id FROM marketplace_listings WHERE id = $1::uuid AND owner_id = $2::uuid FOR UPDATE',
+      'SELECT id, state FROM marketplace_listings WHERE id = $1::uuid AND owner_id = $2::uuid FOR UPDATE',
       [listingId, ownerId],
     )
     // 404, not 403: a 403 would confirm the listing exists to someone guessing
     // uuids, which is the `guardOrganisationScope` precedent.
     if (owned.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such listing.')
+    // After the ownership check, so only the owner ever learns the state.
+    // Photos are part of what the member said: a sold, withdrawn or staff-
+    // disabled listing is as closed to a new photo as to a new title.
+    assertEditable(String(owned[0]!.state))
 
     // The asset must be one THIS member uploaded, and must be ready. Without
     // the first check a member could attach a stranger's asset id to their own
@@ -88,6 +93,16 @@ export async function detachMedia(
   { listingId, ownerId, assetId, signal }:
     { listingId: string; ownerId: string; assetId: string; signal?: AbortSignal },
 ) {
+  // Same gate as attaching. Ownership first (404), then the state (409).
+  const { rows: current } = await query(
+    app.pg,
+    'SELECT state FROM marketplace_listings WHERE id = $1::uuid AND owner_id = $2::uuid',
+    [listingId, ownerId],
+    { signal },
+  )
+  if (current.length === 0) throw forbidden(PROBLEMS.NOT_FOUND, 'No such media on that listing.')
+  assertEditable(String(current[0]!.state))
+
   const { rows } = await query(
     app.pg,
     `DELETE FROM marketplace_listing_media

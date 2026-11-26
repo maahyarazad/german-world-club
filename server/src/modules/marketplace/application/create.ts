@@ -80,6 +80,9 @@ export async function createListing(app: GwcApp, input: CreateInput) {
   const {
     memberId, category, mode, title, body, details = {}, features = [],
     contactMethod = 'platform_message', expiresAt = null, termsVersion, signal,
+    // Feature 037: omitted means live, which is what every client did before
+    // the field existed. `false` stores a private draft with no publication time.
+    publish = true,
   } = input
 
   // First, before terms and quota: a combination no member may create is
@@ -116,10 +119,11 @@ export async function createListing(app: GwcApp, input: CreateInput) {
       `INSERT INTO marketplace_listings
          (owner_id, category, mode, title, body, state, contact_method,
           terms_version, published_at, expires_at, state_changed_at)
-       VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, now(), $8, now())
+       VALUES ($1, $2, $3, $4, $5, CASE WHEN $9::boolean THEN 'active'::marketplace_state ELSE 'draft'::marketplace_state END,
+               $6, $7, CASE WHEN $9::boolean THEN now() END, $8, now())
        RETURNING id, category, mode, title, body, state, contact_method,
                  created_at, published_at, expires_at`,
-      [memberId, category, mode, title, body, contactMethod, current, expiresAt],
+      [memberId, category, mode, title, body, contactMethod, current, expiresAt, publish],
     )
     const listing = rows[0]!
 

@@ -23,7 +23,7 @@ describe('loader accessibility', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent(t.console.loading)
     // The drawing itself is hidden, so the label is heard once.
-    expect(status.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(status.querySelector('[data-spinner]')).toHaveAttribute('aria-hidden', 'true')
     await expectNoA11yViolations(container)
   })
 

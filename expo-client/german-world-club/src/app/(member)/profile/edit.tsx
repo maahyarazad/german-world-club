@@ -9,7 +9,9 @@ import type { MemberProfile, ProfileLink } from '@gwc/contracts/profile';
 import { profileApi } from '@/api/endpoints';
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
-import { pickMedia, uploadReady } from '@/lib/pick-media';
+import { UploadProgress } from '@/components/upload-progress';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import { pickMedia } from '@/lib/pick-media';
 import { Button, Chip, FormScreen, Loading, Message, TextField, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
@@ -33,6 +35,9 @@ export default function EditProfile() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The picture goes up through the same path as every member upload, so the
+  // member sees the club's loader with a percentage (feature 037, FR-020).
+  const avatarUpload = useMediaUpload('member');
 
   useEffect(() => {
     profileApi.me().then((p) => {
@@ -46,6 +51,8 @@ export default function EditProfile() {
   }, []);
 
   if (!loaded && !error) return <Loading />;
+
+  const avatarBusy = avatarUpload.state.phase === 'uploading' || avatarUpload.state.phase === 'processing';
 
   const run = async (fn: () => Promise<MemberProfile>) => {
     setBusy(true);
@@ -64,13 +71,20 @@ export default function EditProfile() {
   };
 
   const changeAvatar = async () => {
-    const { denied, items } = await pickMedia({ limit: 1, videos: false });
+    const { denied, items, unsupported } = await pickMedia({ limit: 1, videos: false });
     if (denied) return setError(t.threads.photoPermission);
     const [item] = items;
-    if (!item) return;
-    await run(async () => profileApi.setAvatar(
-      await uploadReady(item, format(t.profile.avatarAlt, { name: profile?.displayName ?? '' })),
-    ));
+    if (!item) {
+      // Nothing picked, or the one picked cannot be uploaded: only the second needs saying.
+      if (unsupported.length > 0) setError(t.upload.unsupportedFormat);
+      return;
+    }
+    setError(null);
+    const asset = await avatarUpload.start(item, format(t.profile.avatarAlt, { name: profile?.displayName ?? '' }));
+    // A failure or a cancel returns null and nothing is saved: the current
+    // picture stays exactly as it was (FR-021).
+    if (!asset) return;
+    await run(() => profileApi.setAvatar(asset.id));
   };
 
   const save = async () => {
@@ -98,11 +112,13 @@ export default function EditProfile() {
           <ThemedText type="smallBold">{t.profile.avatar}</ThemedText>
           <View style={[uiStyles.row, styles.itemsCenter]}>
             <Avatar author={profile} size={64} label={format(t.profile.avatarAlt, { name: profile.displayName ?? '' })} />
-            <Button label={t.profile.avatarChange} variant="secondary" onPress={changeAvatar} disabled={busy} />
+            <Button label={t.profile.avatarChange} variant="secondary" onPress={changeAvatar} disabled={busy || avatarBusy} />
           </View>
+          <UploadProgress variant="spinner" state={avatarUpload.state} label={t.profile.avatar}
+            onCancel={avatarUpload.cancel} onRetry={changeAvatar} />
           {profile.avatar ? (
             <ThemedText type="small" themeColor="textSecondary" accessibilityRole="button"
-              onPress={() => run(() => profileApi.setAvatar(null))}>{t.profile.avatarRemove}</ThemedText>
+              onPress={() => !avatarBusy && run(() => profileApi.setAvatar(null))}>{t.profile.avatarRemove}</ThemedText>
           ) : null}
 
           <ThemedText type="smallBold">{t.profile.handle}</ThemedText>

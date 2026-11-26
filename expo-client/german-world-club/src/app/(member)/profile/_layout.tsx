@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
 
+import { renderAppHeader } from '@/components/app-header';
 import { useTranslations } from '@/i18n';
 
 export default function ProfileLayout() {
   const { t } = useTranslations();
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={{ header: renderAppHeader }}>
       <Stack.Screen name="index" options={{ title: t.profile.title }} />
       <Stack.Screen name="edit" options={{ presentation: 'modal', title: t.profile.edit }} />
       <Stack.Screen name="handle" options={{ presentation: 'modal', title: t.profile.handleTitle }} />

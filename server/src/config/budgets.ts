@@ -59,7 +59,20 @@ export const ROUTE_BUDGETS = Object.freeze({
   'email-send': { deadlineMs: 15000, calls: ['mail', 'redis'] },
   'member-read': { deadlineMs: 2000, calls: ['redis'] },
   'member-write': { deadlineMs: 5000, calls: ['geocoding', 'redis'] },
-  'media-upload': { deadlineMs: 8000, calls: ['mediaImage', 'redis'] },
+  // The deadline starts when the request's headers arrive, and a multipart body
+  // is read INSIDE the handler (plugins/12-deadline.ts), so this covers the whole
+  // upload — the time a phone takes to send the file — and not only the work
+  // after it. At 8 s a member's photo (up to 25 MB, a few MB from a phone) on a
+  // mobile uplink was answered 503 before it finished arriving, and the app's
+  // listing photos, avatar and Threads media all "did not save". Merchants'
+  // uploads only worked because they are held to 1 MiB.
+  //
+  // 25 s sits under the 30 s `requestTimeout` the rule above requires, which is
+  // still the ceiling on a stalled client. 6 MB takes ~19 s at 2.5 Mbps and
+  // ~10 s at 5 Mbps. Larger files on a slower link are refused by the same
+  // timeout, on purpose: a bound that lets a connection sit open for minutes is
+  // not a bound. Σ outbound (mediaImage 6000 + redis 250) is still far below it.
+  'media-upload': { deadlineMs: 25000, calls: ['mediaImage', 'redis'] },
   checkout: { deadlineMs: 12000, calls: ['payments', 'redis'] },
   // The marketplace index joins the owner's status live rather than reading a
   // denormalised flag (008 research.md R7), so it is a read with one more join

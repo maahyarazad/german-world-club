@@ -15,6 +15,9 @@ export const en = {
     codeSentTo: 'We sent a code to {target}.',
     empty: 'Nothing here yet.',
     language: 'Language',
+    back: 'Back',
+    // The header's three-dots button, on every tab: the screen's actions drop down from it.
+    menu: 'More',
   },
   welcome: {
     title: 'German World Club',
@@ -276,7 +279,7 @@ export const en = {
     mediaAltTitle: 'Description',
     mediaAltHint: 'A short description for people using a screen reader. Required.',
     mediaRemove: 'Remove',
-    uploading: 'Uploading media …',
+    mediaLabel: 'Photos and video',
     uploadFailed: 'A photo or video could not be uploaded.',
     photoPermission: 'Allow access to your photos in Settings to attach them.',
     counter: '{count} / {max}',
@@ -396,6 +399,8 @@ export const en = {
   },
   activity: {
     title: 'Activity',
+    // The feed of what happened to you; the other four choices on this screen are your own posts.
+    tabInteractions: 'Interactions',
     empty: 'No activity yet.',
     kinds: {
       like: '{name} liked your post',
@@ -492,6 +497,35 @@ export const en = {
     day: 'DD',
     month: 'MM',
     year: 'YYYY',
+    // Feature 037: editing your own listings and the Publish switch.
+    myListings: 'My listings',
+    myListingsEmpty: 'You have not posted any listings yet.',
+    myListingsLoadFailed: 'Your listings could not be loaded. Please try again.',
+    edit: 'Edit',
+    editTitle: 'Edit listing',
+    mediaFailedEdit: 'Your changes were saved, but some media could not be attached. You can retry them now.',
+    saveChanges: 'Save changes',
+    saveDraft: 'Save as draft',
+    saving: 'Saving …',
+    publish: 'Publish',
+    publishHint: 'Visible to other members. Switch off to keep it as a private draft.',
+    publishDisabledByStaff: 'This listing was disabled by staff. It cannot be changed or published.',
+    notEditable: 'This listing can no longer be edited.',
+    conflict: 'This listing was changed elsewhere. Reload it to see the latest version before saving.',
+    reload: 'Reload',
+    editLoadFailed: 'The listing could not be loaded. Please try again.',
+    modeLocked: 'The mode of an existing listing cannot be changed.',
+    expiryMustBeFuture: 'Choose an expiry date in the future to publish.',
+    mediaCurrent: 'Current photos and videos',
+    states: {
+      draft: 'Draft',
+      active: 'Published',
+      sold: 'Sold',
+      filled: 'Filled',
+      withdrawn: 'Withdrawn',
+      expired: 'Expired',
+      hidden: 'Disabled by staff',
+    },
   },
   referrals: {
     entry: 'Refer & earn',
@@ -600,6 +634,8 @@ export const en = {
     failed: 'The upload failed. The previous content was not changed.',
     retry: 'Try again',
     cancel: 'Cancel',
+    unsupportedFormat: 'That kind of file cannot be uploaded. Photos must be JPEG, PNG, WebP or AVIF, and videos MP4, WebM or MOV. On an iPhone, choose Settings > Camera > Formats > Most Compatible, or pick the photo again.',
+    fileOf: 'File {n} of {total}',
   },
   // Merchant offers (feature 035): browsing and redeeming, the same for every account.
   clubOffers: {

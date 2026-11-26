@@ -4,7 +4,8 @@ import { applyFormat } from './strip-metadata.ts'
 /**
  * Image derivatives (FR-056, FR-057, FR-061; media-pipeline.md §5).
  *
- * Runs synchronously inside the 8 s `media-upload` budget. A 2 MB photograph
+ * Runs synchronously inside the `media-upload` budget (25 s, which also has to
+ * cover the upload itself — see config/budgets.ts). A 2 MB photograph
  * through `sharp` is roughly 200–600 ms for the whole set, so it fits, and the
  * upload response can carry every variant URL rather than making the client
  * poll for them.

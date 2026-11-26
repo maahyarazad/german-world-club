@@ -80,10 +80,13 @@ export default function StoreScreen() {
   const chooseCover = async () => {
     if (!store) return;
     // The picker's own editor crops to 16:9, and a lower quality keeps a photo under 1 MB.
-    const { denied, items } = await pickMedia({ limit: 1, videos: false, aspect: [16, 9], quality: 0.6 });
+    const { denied, items, unsupported } = await pickMedia({ limit: 1, videos: false, aspect: [16, 9], quality: 0.6 });
     if (denied) return setMessage({ text: t.merchant.limits.permission, tone: 'danger' });
     const [item] = items;
-    if (!item) return;
+    if (!item) {
+      if (unsupported.length > 0) setMessage({ text: t.upload.unsupportedFormat, tone: 'danger' });
+      return;
+    }
     const text = limitText(checkPicked(item, { cover: true }));
     if (text) return setMessage({ text, tone: 'danger' });
     setMessage(null);
@@ -96,10 +99,13 @@ export default function StoreScreen() {
 
   const addToGallery = async () => {
     if (!store) return;
-    const { denied, items } = await pickMedia({ limit: 1, videos: true, quality: 0.6 });
+    const { denied, items, unsupported } = await pickMedia({ limit: 1, videos: true, quality: 0.6 });
     if (denied) return setMessage({ text: t.merchant.limits.permission, tone: 'danger' });
     const [item] = items;
-    if (!item) return;
+    if (!item) {
+      if (unsupported.length > 0) setMessage({ text: t.upload.unsupportedFormat, tone: 'danger' });
+      return;
+    }
     const text = limitText(checkPicked(item));
     if (text) return setMessage({ text, tone: 'danger' });
     setMessage(null);

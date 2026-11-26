@@ -136,7 +136,7 @@ describe('a button whose request is running', () => {
       return b!
     })
     expect(busy).toBeDisabled()
-    expect(busy.querySelector('svg[data-spinner="xs"]')).not.toBeNull()
+    expect(busy.querySelector('[data-spinner="xs"]')).not.toBeNull()
     expect(busy.textContent).toBe(t.memberDevices.signOutDevice) // the label keeps its place: no size change
     expect(deletes).toEqual([PHONE])
 
@@ -152,7 +152,7 @@ describe('a button whose request is running', () => {
     fireEvent.click(screen.getAllByRole('button', { name: t.memberDevices.signOutDevice })[1]!) // only asks
     fireEvent.click(await screen.findByRole('button', { name: t.memberDevices.cancel }))
     expect(document.querySelectorAll('[aria-busy="true"]')).toHaveLength(0)
-    expect(document.querySelectorAll('button svg[data-spinner]')).toHaveLength(0)
+    expect(document.querySelectorAll('button [data-spinner]')).toHaveLength(0)
   })
 
   it('shows the loader on Roles → Save while it saves', async () => {

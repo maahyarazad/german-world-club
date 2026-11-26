@@ -13,6 +13,68 @@ export const ASSET_STATES = Object.freeze(['processing', 'ready', 'failed'])
 export const VARIANTS = Object.freeze(['thumb', 'small', 'medium', 'large', 'poster', 'video'])
 export const FORMATS = Object.freeze(['webp', 'png', 'jpeg', 'webm'])
 
+/**
+ * What the upload pipeline accepts, by the type its BYTES have — one definition
+ * for the server's validation and every client's picker (Principle I).
+ *
+ * It used to be written out twice, once in the server's validator and once in
+ * the web picker, and the app had none: it sent whatever the phone handed it,
+ * so an iPhone's HEIC reached the server and was refused. A client that offers a
+ * type the server refuses is the divergence the shared package exists to
+ * prevent. HEIC/HEIF are absent on purpose: decoding them needs an HEVC decoder
+ * the server's image library does not have, so an iPhone's photo is converted
+ * to JPEG on the phone instead (specs/037-marketplace-listing-management,
+ * research R12). Do not add them here without a server that can decode them.
+ */
+export const ACCEPTED_MEDIA_TYPES = Object.freeze({
+  'image/jpeg': 'image',
+  'image/png': 'image',
+  'image/webp': 'image',
+  'image/avif': 'image',
+  'video/mp4': 'video',
+  'video/webm': 'video',
+  'video/quicktime': 'video',
+} as const)
+
+export type AcceptedMediaType = keyof typeof ACCEPTED_MEDIA_TYPES
+
+/** Whether a media type (as detected from bytes, or as a client reports it) is one the club accepts. */
+export function isAcceptedMediaType(mime: string | null | undefined): mime is AcceptedMediaType {
+  return typeof mime === 'string' && Object.hasOwn(ACCEPTED_MEDIA_TYPES, mime.toLowerCase())
+}
+
+/**
+ * What an image file is, read from its first bytes — never from its name.
+ *
+ * The server decides this way (`file-type` on the upload's bytes, Principle VI),
+ * and a client that wants to tell a person about a bad file BEFORE sending it
+ * should judge the same way: a label can be wrong in both directions (a JPEG
+ * the phone's picker called `.heic`, a HEIC renamed `.jpg`). Only the still-image
+ * families a phone produces are recognised; anything else is `null`, which means
+ * "do not know", never "unsupported".
+ *
+ * `image/heic` is every HEVC-coded HEIF (an iPhone photo), `image/heif` the
+ * generic still-image brands; neither is accepted (see ACCEPTED_MEDIA_TYPES).
+ *
+ * @param head at least the first 12 bytes of the file
+ */
+export function sniffImageType(head: Uint8Array): string | null {
+  const at = (offset: number, text: string) =>
+    head.length >= offset + text.length && [...text].every((c, i) => head[offset + i] === c.charCodeAt(0))
+
+  if (head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'image/jpeg'
+  if (head.length >= 8 && head[0] === 0x89 && at(1, 'PNG') && head[4] === 0x0d && head[5] === 0x0a && head[6] === 0x1a && head[7] === 0x0a) return 'image/png'
+  if (at(0, 'RIFF') && at(8, 'WEBP')) return 'image/webp'
+  // ISO base media (HEIF, AVIF, MP4, MOV): a size, then `ftyp`, then the major brand.
+  if (at(4, 'ftyp')) {
+    const brand = String.fromCharCode(...head.subarray(8, 12))
+    if (brand === 'avif' || brand === 'avis') return 'image/avif'
+    if (['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis'].includes(brand)) return 'image/heic'
+    if (brand === 'mif1' || brand === 'msf1') return 'image/heif'
+  }
+  return null
+}
+
 /** Width caps, mirrored from derive-image.js so clients can build a srcset. */
 export const BREAKPOINT_WIDTHS = Object.freeze({ thumb: 160, small: 400, medium: 800, large: 1600 })
 

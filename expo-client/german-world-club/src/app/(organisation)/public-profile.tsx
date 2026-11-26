@@ -68,10 +68,13 @@ export default function OrganisationPublicProfile() {
 
   const uploadLogo = async () => {
     // A merchant's photos must stay under 1 MB, so the picker is asked for a lower quality.
-    const { denied, items } = await pickMedia({ limit: 1, videos: false, quality: kind === 'merchant' ? 0.6 : 0.9 });
+    const { denied, items, unsupported } = await pickMedia({ limit: 1, videos: false, quality: kind === 'merchant' ? 0.6 : 0.9 });
     if (denied) return setError(t.threads.photoPermission);
     const [item] = items;
-    if (!item) return;
+    if (!item) {
+      if (unsupported.length > 0) setError(t.upload.unsupportedFormat);
+      return;
+    }
     if (kind === 'merchant' && checkPicked(item) !== 'ok') return setError(t.merchant.limits.imageTooLarge);
     setError(null);
     const name = profile?.publicProfile?.displayName ?? profile?.organisation.name ?? '';

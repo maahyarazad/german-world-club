@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { z } from 'zod'
+import { MARKETPLACE_CATEGORIES, MARKETPLACE_MODES, MARKETPLACE_STATES } from '@gwc/contracts/marketplace'
 import { createMarketplaceStaffController } from './staff-controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -37,6 +38,25 @@ export default fp(
       publishedAt: z.union([z.string(), z.date(), z.null()]),
       expiresAt: z.union([z.string(), z.date(), z.null()]),
       stateChangedAt: z.union([z.string(), z.date()]),
+      // Feature 037. Declared, because Zod's serializer drops any key an object
+      // schema does not list — a field added to the handler alone is never sent.
+      hiddenFromState: z.union([z.enum(['draft', 'active']), z.null()]),
+      openReports: z.number(),
+    })
+
+    const staffRowSchema = z.object({
+      id: z.string(),
+      title: z.string(),
+      category: z.enum(MARKETPLACE_CATEGORIES),
+      mode: z.enum(MARKETPLACE_MODES),
+      state: z.enum(MARKETPLACE_STATES),
+      hiddenFromState: z.union([z.enum(['draft', 'active']), z.null()]),
+      owner: z.object({ id: z.string(), displayName: z.union([z.string(), z.null()]) }),
+      createdAt: z.union([z.string(), z.date()]),
+      publishedAt: z.union([z.string(), z.date(), z.null()]),
+      expiresAt: z.union([z.string(), z.date(), z.null()]),
+      stateChangedAt: z.union([z.string(), z.date()]),
+      openReports: z.number(),
     })
 
     const stateChangeResponseSchema = z.object({
@@ -74,6 +94,36 @@ export default fp(
         },
       },
       controller.reports,
+    )
+
+    // Every member listing in every state (feature 037). Read-only, on the
+    // existing `read` flag: staff can find a record, not rewrite it. Merchant
+    // offers are other tables and cannot appear.
+    app.get(
+      '/admin/marketplace/listings',
+      {
+        config: {
+          auth: { audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
+          budget: 'admin-read', rateLimit: app.bucket('admin-api'),
+        },
+        onRequest: app.guard,
+        schema: {
+          // `limit` is unbounded here and bounded in the handler, like browse:
+          // a `.max()` would answer 400 today and 200 once the schema goes.
+          querystring: z.object({
+            state: z.enum(MARKETPLACE_STATES).optional(),
+            category: z.enum(MARKETPLACE_CATEGORIES).optional(),
+            ownerId: z.string().uuid().optional(),
+            q: z.string().max(100).optional(),
+            cursor: z.string().optional(),
+            limit: z.unknown().optional(),
+          }),
+          response: {
+            200: z.object({ items: z.array(staffRowSchema), nextCursor: z.union([z.string(), z.null()]) }),
+          },
+        },
+      },
+      controller.listings,
     )
 
     app.get(
