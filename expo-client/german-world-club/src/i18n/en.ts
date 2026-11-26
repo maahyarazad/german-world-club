@@ -396,6 +396,8 @@ export const en = {
   },
   activity: {
     title: 'Activity',
+    // The feed of what happened to you; the other four choices on this screen are your own posts.
+    tabInteractions: 'Interactions',
     empty: 'No activity yet.',
     kinds: {
       like: '{name} liked your post',

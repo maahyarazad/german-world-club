@@ -397,6 +397,8 @@ export const de: Catalogue = {
   },
   activity: {
     title: 'Aktivität',
+    // Was Ihnen widerfahren ist; die anderen vier Auswahlen auf diesem Bildschirm sind Ihre eigenen Beiträge.
+    tabInteractions: 'Interaktionen',
     empty: 'Noch keine Aktivität.',
     kinds: {
       like: '{name} gefällt Ihr Beitrag',
