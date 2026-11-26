@@ -1,4 +1,4 @@
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import { RefreshControl, View, StyleSheet } from 'react-native';
@@ -6,13 +6,14 @@ import { RefreshControl, View, StyleSheet } from 'react-native';
 import type { FeedItem, FeedScope } from '@gwc/contracts/threads';
 
 import { threadsApi } from '@/api/endpoints';
+import { HeaderMenu, type HeaderMenuItem } from '@/components/header-menu';
 import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
 import { Chip, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { usePaged } from '@/hooks/use-paged';
 import { useTranslations } from '@/i18n';
-import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
 
 /** The feed (§7): people you follow, or everybody. */
 export default function Feed() {
@@ -31,16 +32,12 @@ export default function Feed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feed.reload]));
 
+  const menuItems: HeaderMenuItem[] = [{ key: 'compose', label: t.threads.compose, href: '/threads/compose' }];
+
   return (
     <View style={themed.flex1Clear}>
-      <Stack.Screen options={{
-        headerRight: () => (
-          <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
-            onPress={() => router.push('/threads/compose')}>
-            {t.threads.compose}
-          </ThemedText>
-        ),
-      }} />
+      {/* New post is a row of the header's three dots (feature 039), like every tab's actions. */}
+      <Stack.Screen options={{ headerRight: () => <HeaderMenu items={menuItems} /> }} />
       <View style={[uiStyles.row, styles.paddingThree]} accessibilityRole="radiogroup">
         <Chip label={t.threads.following} selected={scope === 'following'} onPress={() => setScope('following')} />
         <Chip label={t.threads.all} selected={scope === 'all'} onPress={() => setScope('all')} />
@@ -79,8 +76,7 @@ const styles = StyleSheet.create({
   paddingFourTextCenter: { padding: Spacing.four, textAlign: 'center' },
 });
 
-const makeStyles = (theme: AppTheme) =>
+const makeStyles = () =>
   StyleSheet.create({
     flex1Clear: { flex: 1, backgroundColor: 'transparent' },
-    colorTintWeight600: { color: theme.tint, fontWeight: '600' },
   });

@@ -15,6 +15,9 @@ export const en = {
     codeSentTo: 'We sent a code to {target}.',
     empty: 'Nothing here yet.',
     language: 'Language',
+    back: 'Back',
+    // The header's three-dots button, on every tab: the screen's actions drop down from it.
+    menu: 'More',
   },
   welcome: {
     title: 'German World Club',

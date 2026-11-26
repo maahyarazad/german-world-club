@@ -542,6 +542,22 @@ Five things that look optional and are not:
   screen for your Threads: **Interactions** (this feed, opened first) and your own
   posts in the four tabs Threads, Replies, Media and Reposts, which used to be on
   Profile (feature 039). Another member's profile keeps its own four tabs.
+  Every tab's stack draws its own header (`components/app-header.tsx`, via the stack's
+  `header` option, `renderAppHeader`): the title on the left, the club's emblem in the
+  middle, the screen's `headerRight` on the right. It has to, because iOS cannot
+  left-align a native title (`headerTitleAlign` is "not supported on iOS"); a new tab's
+  `_layout.tsx` must set it too, or that tab quietly keeps the native header. A screen's
+  actions are not text buttons in the header but rows of `HeaderMenu`
+  (`components/header-menu*.tsx`), the three dots and the platform's own drop-down through
+  `@expo/ui`: SwiftUI's `Menu` on iOS (`.ios.tsx`) and the drop-in `MenuView` on Android
+  (`.android.tsx`), with `header-menu.tsx` the fallback that draws nothing — Marketplace has
+  Messages, My listings and New listing, Threads has New post. Rows are data
+  (`HeaderMenuItem`); `MenuDots` is a plain view with no `onPress`, because both menus bring
+  their own tap handling and a second one would fight it. Draw no pop-up of our own.
+  The Marketplace stack opens every pushed screen with the platform's own transition
+  (`PUSH_ANIMATION` in its `_layout.tsx`: `default`, which on Android 13 and later is a short
+  slide with a fade; only Android 12 and earlier gets `slide_from_right`, because their
+  `default` is a zoom), so a screen there sets no `animation` of its own.
 - **`organisation_profiles` is the only member-visible projection of an
   organisation.** `organisations` holds contract data (`legal_name`,
   `fee_tier`); no member route reads it. Organisation users upload logos at

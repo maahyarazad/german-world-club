@@ -16,6 +16,9 @@ export const de: Catalogue = {
     codeSentTo: 'Wir haben einen Code an {target} gesendet.',
     empty: 'Hier ist noch nichts.',
     language: 'Sprache',
+    back: 'Zurück',
+    // The header's three-dots button, on every tab: the screen's actions drop down from it.
+    menu: 'Mehr',
   },
   welcome: {
     title: 'German World Club',

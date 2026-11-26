@@ -1,50 +1,45 @@
 import { Stack } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { renderAppHeader } from '@/components/app-header';
 import { useTranslations } from '@/i18n';
 
 /**
- * A header title 20% smaller than the platform default, for the Requests,
- * Messages and My listings screens. The default is 17 pt on iOS and 20 sp on
- * Android, so the sizes are written out (13.6 and 16).
- *
- * Drawn by us through `headerTitle`, the documented way to customise a header
- * title, instead of `headerTitleStyle.fontSize`: the native header applies that
- * option itself and it did not take effect here. The text is still the screen's
- * own `title` option, passed in as `children`, so translating a title stays in
- * one place.
+ * How a screen opens in this stack (feature 039): the platform's own "open a screen"
+ * transition, which is what Settings does on each.
+ *   - iOS: `default` is the navigation controller's push, the new screen sliding in from
+ *     the right while the old one shifts a little left.
+ *   - Android 13 and later: `default` is the system's transition, react-native-screens'
+ *     `rns_default_enter_in` for API 33: a 10% slide in from the right with a short fade,
+ *     the old screen shifting 10% left (Material's shared axis, X).
+ *   - Android 12 and earlier: `default` is a zoom (0.85 to 1), which is not a horizontal
+ *     move, so those get `slide_from_right`, the nearest horizontal one. It slides the
+ *     whole width and does not fade, which is why it is not used where `default` is right.
+ * No screen sets its own: a screen that did would open differently from the rest.
  */
-function SmallTitle({ children }: { children: string }) {
-  return <ThemedText style={styles.smallTitle} numberOfLines={1}>{children}</ThemedText>;
-}
-// Defined once at module level so React sees the same component on every render.
-const renderSmallTitle = (props: { children: string }) => <SmallTitle {...props} />;
-const smallTitle = { headerTitle: renderSmallTitle };
-
-const styles = StyleSheet.create({
-  smallTitle: { fontSize: Platform.select({ ios: 13.6, default: 16 }), fontWeight: '600' },
-});
+const PUSH_ANIMATION = Platform.OS === 'android' && Number(Platform.Version) < 33 ? 'slide_from_right' : 'default';
 
 export default function MarketplaceLayout() {
   const { t } = useTranslations();
+  // Every screen in every tab's stack gets the same header (feature 039): its title on the
+  // left and the club's emblem in the middle, with whatever the screen puts in
+  // `headerRight` on the right. The titles below are what it shows.
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={{ header: renderAppHeader, animation: PUSH_ANIMATION }}>
       <Stack.Screen name="index" options={{ title: t.marketplace.title }} />
       <Stack.Screen name="listing/[id]" options={{ title: '' }} />
-      {/* "Slides in from the right" (feature 017): a pushed card, not a modal,
-          which would rise from the bottom. On iOS `slide_from_right` falls back
-          to the default push — which already enters from the right; the value
-          is there for Android. Back, the edge swipe and hardware back close it. */}
+      {/* Feature 017: pushed cards that enter from the right, not modals, which would rise
+          from the bottom (`PUSH_ANIMATION`, above). Back, the edge swipe and hardware
+          back close them. */}
       {/* Feature 020: a request about a listing, and the conversations they start.
           Inside the marketplace stack because the five bottom-bar slots are full. */}
-      <Stack.Screen name="request/[id]" options={{ title: t.requests.title, ...smallTitle }} />
-      <Stack.Screen name="messages/index" options={{ title: t.messages.title, ...smallTitle }} />
+      <Stack.Screen name="request/[id]" options={{ title: t.requests.title }} />
+      <Stack.Screen name="messages/index" options={{ title: t.messages.title }} />
       <Stack.Screen name="messages/[id]" options={{ title: '' }} />
-      {/* Feature 037: your own listings, and editing one. Same slide-in as a new listing. */}
-      <Stack.Screen name="mine" options={{ title: t.marketplace.myListings, ...smallTitle }} />
-      <Stack.Screen name="edit/[id]" options={{ title: t.marketplace.editTitle, presentation: 'card', animation: 'slide_from_right' }} />
-      <Stack.Screen name="new" options={{ title: t.marketplace.composeTitle, presentation: 'card', animation: 'slide_from_right' }} />
+      {/* Feature 037: your own listings, and editing one. Opens like every other screen here. */}
+      <Stack.Screen name="mine" options={{ title: t.marketplace.myListings }} />
+      <Stack.Screen name="edit/[id]" options={{ title: t.marketplace.editTitle, presentation: 'card' }} />
+      <Stack.Screen name="new" options={{ title: t.marketplace.composeTitle, presentation: 'card' }} />
     </Stack>
   );
 }

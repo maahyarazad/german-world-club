@@ -1,11 +1,12 @@
 import { Stack } from 'expo-router';
 
+import { renderAppHeader } from '@/components/app-header';
 import { useTranslations } from '@/i18n';
 
 export default function ThreadsLayout() {
   const { t } = useTranslations();
   return (
-    <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack screenOptions={{ header: renderAppHeader }}>
       <Stack.Screen name="index" options={{ title: t.tabs.threads }} />
       <Stack.Screen name="[id]" options={{ title: t.threads.thread }} />
       <Stack.Screen name="member/[id]" options={{ title: '' }} />

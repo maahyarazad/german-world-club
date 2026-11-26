@@ -8,6 +8,7 @@ import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contrac
 
 import { ApiError } from '@/api/client';
 import { authApi, marketplaceApi, messagingApi } from '@/api/endpoints';
+import { HeaderMenu, type HeaderMenuItem } from '@/components/header-menu';
 import { ThemedText } from '@/components/themed-text';
 import { Card, Chip, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -62,33 +63,24 @@ export default function Marketplace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings.reload]));
 
+  // What the header's three dots open. Display only (Principle I): the server refuses
+  // anyone else whatever this shows.
+  const menuItems: HeaderMenuItem[] = [
+    { key: 'messages', label: t.messages.open, href: '/marketplace/messages', dot: unread },
+    ...(canPost
+      ? ([
+          { key: 'mine', label: t.marketplace.myListings, href: '/marketplace/mine' },
+          { key: 'new', label: t.marketplace.newListing, href: '/marketplace/new' },
+        ] satisfies HeaderMenuItem[])
+      : []),
+  ];
+
   return (
     <View style={themed.flex1Clear}>
-      <Stack.Screen options={{
-        // Messages always (feature 020 — the five bottom-bar slots are full),
-        // New listing only for a member who may post.
-        headerRight: () => (
-          <View style={styles.rowGapThree}>
-            <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
-              accessibilityLabel={unread ? `${t.messages.open} •` : t.messages.open}
-              onPress={() => router.push('/marketplace/messages')}>
-              {unread ? `${t.messages.open} •` : t.messages.open}
-            </ThemedText>
-            {canPost ? (
-              <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
-                onPress={() => router.push('/marketplace/mine')}>
-                {t.marketplace.myListings}
-              </ThemedText>
-            ) : null}
-            {canPost ? (
-              <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
-                onPress={() => router.push('/marketplace/new')}>
-                {t.marketplace.newListing}
-              </ThemedText>
-            ) : null}
-          </View>
-        ),
-      }} />
+      {/* The three dots in the header (feature 039): Messages always (feature 020 — the five
+          bottom-bar slots are full), My listings and New listing only for a member who may
+          post. They are rows of a small menu now, not three text buttons. */}
+      <Stack.Screen options={{ headerRight: () => <HeaderMenu items={menuItems} /> }} />
       {/* Horizontal: five category chips do not fit a phone's width. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.flexGrow0}
         contentContainerStyle={[uiStyles.row, styles.scrollViewContentContainerPaddingHorizontalThree2]}
@@ -139,7 +131,6 @@ export default function Marketplace() {
 }
 
 const styles = StyleSheet.create({
-  rowGapThree: { flexDirection: 'row', gap: Spacing.three },
   flexGrow0: { flexGrow: 0 },
   scrollViewContentContainerPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
   paddingThree: { padding: Spacing.three },
@@ -153,5 +144,4 @@ const styles = StyleSheet.create({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     flex1Clear: { flex: 1, backgroundColor: 'transparent' },
-    colorTintWeight600: { color: theme.tint, fontWeight: '600' },
   });

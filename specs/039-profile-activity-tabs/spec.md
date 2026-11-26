@@ -110,3 +110,118 @@ Everything Activity does today still works. The feed of likes, replies, quotes, 
 - The interactions feed stays the first and default view of Activity, so nothing about how Activity opened before changes. The new first choice is called "Interactions" because that is what the feed is (likes, replies, quotes, reposts, mentions, follows); "Activity" would be the screen's own title repeated, and "Notifications" would blur it with push notifications, which are a different record.
 - The four post tabs use the member's own id from the session, as other screens already do, so no extra request is needed to find it.
 - The tabs sit in one row that wraps, as the four did on Profile; five labels fit on a phone in German and English.
+
+## Addendum: the same header on every tab (added to this branch on request)
+
+**Input**: "in the Marketplace stack in Expo application; move the buttons from the header (Messages, My listings, and New listing) to a drop down (like WhatsApp) and replace it with three dots (like WhatsApp). move all the Header title to the left side and add the gwc-logo in the middle (and make it small so it does not change the height of the header) ... Do this for all the tabs."
+
+Today the Marketplace list's header carries three text buttons on the right (Messages, My listings, New listing) and the Threads feed's carries one (New post). On iOS every title is centred. This addendum is a separate change from the Activity move above; it is on this branch because it was asked for here. The first pass did the Marketplace stack only, with a dimmed pop-up; this one makes the pop-up a WhatsApp-style drop-down and applies the header to every tab.
+
+### User Story 4 - The header actions are in a drop-down behind three dots (Priority: P1)
+
+Where a screen's header had action buttons, it has one three-dots button instead. Tapping it opens a small drop-down under the dots, as WhatsApp's does; choosing a row closes it and opens that screen.
+
+**Independent Test**: open Marketplace: the header has three dots and no text buttons; tap them, choose Messages: the drop-down closes and Messages opens. Open Threads: the same, with New post.
+
+**Acceptance Scenarios**:
+
+1. **Given** the Marketplace list, **Then** the header shows three dots on the right and none of the three text buttons.
+2. **Given** the drop-down is open, **When** the member taps Messages, My listings or New listing, **Then** it closes and that screen opens.
+3. **Given** the drop-down is open, **When** the member taps outside it or uses the system back, **Then** it closes and nothing opens.
+4. **Given** a member who may not post, **Then** the Marketplace drop-down shows Messages only.
+5. **Given** unread messages, **Then** the three dots carry a small dot and the Messages row carries one, so the news is not hidden by moving the button.
+6. **Given** the Threads feed, **Then** its header shows three dots, and its drop-down has one row, New post, which opens the composer.
+7. **Given** the drop-down is open, **Then** the page behind it is not dimmed.
+8. **Given** any screen with the three dots, on iOS or on Android, **Then** the dots are a vertical column (turned 90 degrees from the first version's iOS row), as in WhatsApp.
+
+### User Story 5 - Titles on the left, the club's emblem in the middle (Priority: P1)
+
+Every screen shows its title on the left, the club's emblem small in the middle, and its own button (the three dots, where it has actions) on the right. The header is the same height as before.
+
+**Independent Test**: open a screen with a short title, one with a long German title, one with no title and a back button: on each the title is at the left, the emblem is in the middle, and the header is not taller than before.
+
+**Acceptance Scenarios**:
+
+1. **Given** any screen, **Then** its title is at the left, after the back button if there is one.
+2. **Given** any screen, **Then** the emblem is exactly in the middle of the header, whatever the title or the right-hand button is.
+3. **Given** a long title (German), **Then** it is cut with an ellipsis and the emblem does not move.
+4. **Given** a screen whose title arrives late (a conversation, a member's profile), **Then** the title appears when it arrives.
+5. **Given** the light and the dark theme, **Then** the emblem is readable on both and the header uses the navigation theme's own colours.
+6. **Given** the edge swipe or the back button, **Then** going back works as before.
+
+### User Story 6 - Every tab has the same header (Priority: P1)
+
+Threads, Marketplace, Offers, Events and Profile, and every screen inside each, show the same header, so the app does not change character from tab to tab.
+
+**Independent Test**: open each of the five tabs and one screen inside it: each has its title at the left and the emblem in the middle.
+
+**Acceptance Scenarios**:
+
+1. **Given** any of the five tabs or a screen in one, **Then** it shows the header of US5.
+2. **Given** a tab with no actions (Offers, Events, Profile), **Then** it shows no three dots.
+3. **Given** the screens that open as a sheet (Threads: new post and handle; Profile: edit and handle), **Then** they show the header too, with no gap above it.
+4. **Given** a screen with an empty title (an offer, an event, a store), **Then** it shows the back button and the emblem only.
+
+### User Story 7 - A screen the drop-down opens opens like the platform's own (Priority: P2)
+
+Choosing Messages, My listings or New listing opens that screen with the transition the phone itself uses to open a screen, which is how Settings opens: on Android a slide in from the right with a short fade, on iPhone the standard push (the new screen slides in from the right and the old one shifts a little left). Going back reverses it.
+
+**Independent Test**: open Marketplace, tap the dots, choose each of the three rows, then go back: the screen enters from the right and leaves to the right, and looks the same as opening a screen inside the phone's Settings.
+
+**Acceptance Scenarios**:
+
+1. **Given** an iPhone, **When** a row is chosen, **Then** the screen opens with the standard push, and the edge swipe goes back.
+2. **Given** Android 13 or later, **When** a row is chosen, **Then** the screen opens with the system's own transition: a short slide in from the right with a fade, the old screen shifting a little left (Material's shared axis, X).
+3. **Given** Android 12 or earlier, **When** a row is chosen, **Then** the screen slides in from the right (the system's own transition there is a zoom, which is not the horizontal move wanted).
+4. **Given** Messages, My listings, New listing and Edit listing, **Then** all four open the same way, and so does every other screen pushed in the Marketplace stack.
+5. **Given** back (the header's button, the edge swipe or the hardware button), **Then** the same transition plays in reverse.
+
+### User Story 8 - The drop-down is the platform's own menu (Priority: P1)
+
+The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, on Android a Material drop-down, both through `@expo/ui`. The app draws no pop-up of its own, so each menu looks and moves like the rest of that phone.
+
+**Independent Test**: on an iPhone and an Android phone open Marketplace, tap the dots and choose Messages.
+
+**Acceptance Scenarios**:
+
+1. **Given** an iPhone, **When** the dots are tapped, **Then** the system's menu opens at the dots, with the system's look and animation, and choosing a row opens that screen.
+2. **Given** an Android phone, **When** the dots are tapped, **Then** a Material drop-down opens anchored to the dots and stays on screen although they are at the right edge, and choosing a row opens that screen.
+3. **Given** a row with news, **Then** on iPhone it carries a small red dot beside its label, and on Android its label ends with a dot ("Messages •").
+4. **Given** the menu is open, **When** the member taps outside it (or uses the system back on Android), **Then** it closes and nothing opens.
+5. **Given** a screen reader, **Then** the dots are announced as a button named "More" (and with a dot when there is news) and each row by its label.
+
+### Additional Requirements
+
+- **FR-011**: A screen whose header carried action buttons (the Marketplace list; the Threads feed) MUST show a three-dots button in their place, opening a drop-down with those actions; the rows that need permission to post MUST still be shown only to a member who may post (display only; the server decides).
+- **FR-012**: The drop-down MUST open under the dots, MUST NOT dim the page, MUST close when a row is chosen, when the member taps outside it and on the system back, and MUST have accessible labels.
+- **FR-013**: Every screen in the stacks of the five member tabs MUST show its title at the left of the header and the club's emblem in the middle, with the same bar height as the platform's own (44 on iOS, 56 on Android below the status bar).
+- **FR-014**: The emblem MUST stay centred however long the title is or whatever is on the right, and MUST NOT make the header taller.
+- **FR-015**: The header MUST take its colours from the navigation theme and the app theme, and MUST work in light and dark.
+- **FR-016**: The emblem MUST be the club's own logo (`assets/gwc-logo.png`), cropped to the mark: the lettering under it is not legible at this size.
+- **FR-017**: No server, contract or web change, and no new native module (no new build).
+- **FR-018**: There MUST be one header and one drop-down, shared by every tab; a tab MUST NOT carry its own copy, because a copy is how one tab comes to differ.
+- **FR-019**: A tab with no header actions MUST show no three dots.
+- **FR-020**: The three dots MUST be a vertical column on both platforms.
+- **FR-021**: Every screen pushed in the Marketplace stack MUST open with the platform's own push transition: the system default on iOS and on Android 13 and later, and a slide in from the right on Android 12 and earlier. No screen in the stack MAY choose its own.
+- **FR-022**: The drop-down MUST be the platform's own menu: SwiftUI's `Menu` on iOS and a Material drop-down on Android, both from `@expo/ui` (on Android its drop-in `MenuView`). The app MUST NOT draw a pop-up of its own for it.
+- **FR-023**: A screen MUST still hand the menu its rows as data (a key, a label, where it goes, whether it has news) and the menu MUST know nothing about the screen; there is one `HeaderMenu`, with one file per platform.
+
+### Success Criteria
+
+- **SC-006**: No screen has more than one button in its header, and every action that was a button is reachable in two taps.
+- **SC-007**: On every screen of the five tabs the emblem's centre is within 1 px of the header's centre.
+- **SC-008**: The header's height equals the platform's own native header height, on every screen of the five tabs.
+- **SC-009**: Opening Messages, My listings and New listing looks like opening a screen in the phone's own Settings: a move in from the right on both platforms.
+
+### Assumptions
+
+- "A drop-down like WhatsApp" means a small menu anchored under the three dots, with the page behind left as it is; a full-screen page, a bottom sheet and a dimmed pop-up were all heavier than a few short rows need. A tap outside it closes it. Since US8 it is the platform's own menu, so the iPhone's and the Android phone's differ from each other the way their systems do, which is intended.
+- The request names two Expo pages (the SwiftUI `Menu` and the drop-in `Menu`) from the latest docs, which are SDK 58; the app is on SDK 57 with `@expo/ui` 57.0.20. The installed package's source was read, and both exist there with the props used.
+- `@expo/ui` has been a dependency since the app began and is already autolinked, so this adds no dependency. A development build made from an older patch of it may not have `Menu` or `RNHostView`: the symptom is a missing native view, and a rebuild is the fix. Which version is on a phone cannot be seen from here.
+- Threads' drop-down has one row. It is a drop-down all the same, so a second action added later has somewhere to go and every tab's header is one pattern.
+- "All the tabs" is the five bottom-bar tabs: Threads, Marketplace, Offers, Events and Profile. The merchant and partner screens (`(organisation)`), onboarding, applicant and public screens are not tabs and keep their own headers.
+- The titles are one size for all screens (16). This replaces the earlier, separate request to make three of the titles 20% smaller, which could not be done with the native header.
+- The three dots are vertical on both platforms. "Rotate 90 degrees" is read as turning iOS's horizontal row into a column, as WhatsApp draws it, and not as an animation of the dots turning when the menu opens.
+- "The rule for the opening animation" is read as the transition of the screens the menu opens (the way Settings opens from WhatsApp's menu), not of the drop-down itself, which fades in.
+- Nothing is built for the transition: it is the platform's own through the stack's `animation` option, because a shared-axis transition of our own would need native code, and so a new build.
+- This replaces feature 017's choice of `slide_from_right` for New listing (a slide of the whole width with no fade), which matches neither platform's rule.
