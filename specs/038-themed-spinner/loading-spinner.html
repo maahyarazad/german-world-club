@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loading spinner</title>
+  <style>
+    /* ---------- Page ---------- */
+    :root {
+      color-scheme: light dark;
+      --page-bg: #ffffff;
+      --page-text: #1f2937;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page-bg: #111827;
+        --page-text: #e5e7eb;
+      }
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      background: var(--page-bg);
+      color: var(--page-text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .demo {
+      display: grid;
+      justify-items: center;
+      gap: 1rem;
+    }
+
+    /* ---------- Spinner: hide native indeterminate bar ---------- */
+    progress.loading-spinner:indeterminate::-webkit-progress-bar {
+      display: none;
+      background: none;
+    }
+    progress.loading-spinner:indeterminate::-webkit-progress-value {
+      display: none;
+      background: none;
+    }
+    progress.loading-spinner:indeterminate::-moz-progress-bar {
+      display: none;
+      background: none;
+    }
+    progress.loading-spinner:indeterminate::slider-fill {
+      display: none;
+      background: none;
+    }
+
+    /* ---------- Spinner: ring and trail ---------- */
+    @property --arc-start {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+    @property --arc-end {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+    /* Conditionally includes the dash animation (only when @property is supported) */
+    @property --progress-dash-animation {
+      syntax: "*";
+      inherits: false;
+      initial-value: , progress-dash 3s ease-in-out infinite;
+    }
+
+    progress.loading-spinner:indeterminate {
+      --_from: calc(90deg + var(--arc-start, 0deg));
+      --_to: calc(90deg + var(--arc-end, 158deg));
+      --size: 48px;
+      --thickness: 4px;
+      --spinner-color: #2563eb;
+      --track-color: #e2e5e7;
+      --spinner-duration: 1.5s;
+      --_used-spinner-duration: var(--spinner-duration);
+      --spinner-timing: linear;
+
+      position: relative;
+      width: var(--size);
+      height: var(--size);
+      border-radius: 50%;
+      appearance: none;
+
+      /* Fading trail with dynamic angles */
+      background: conic-gradient(
+          from var(--_from),
+          var(--spinner-color) calc(var(--_to) - var(--_from)),
+          transparent 0
+        )
+        var(--track-color);
+
+      @supports (background-clip: border-area) {
+        background-clip: border-area;
+        border: var(--thickness) solid transparent;
+        background-origin: border-box;
+      }
+
+      /* Fallback: use mask-image to hollow out the center */
+      @supports not (background-clip: border-area) {
+        --clip-boundary: calc(100% - var(--thickness));
+        mask-image: radial-gradient(
+          farthest-side,
+          transparent var(--clip-boundary),
+          black var(--clip-boundary)
+        );
+        border: 0;
+      }
+
+      /* Forced colors mode strips gradients, so opt out and use system colors */
+      @media (forced-colors: active) {
+        forced-color-adjust: none;
+        --spinner-color: CanvasText;
+        --track-color: Canvas;
+      }
+
+      animation:
+        progress-spin var(--_used-spinner-duration) linear infinite
+        var(--progress-dash-animation, );
+    }
+
+    @media (prefers-color-scheme: dark) {
+      progress.loading-spinner:indeterminate {
+        --spinner-color: #60a5fa;
+        --track-color: #374151;
+      }
+    }
+
+    @keyframes progress-spin {
+      to {
+        rotate: 1turn;
+      }
+    }
+
+    @keyframes progress-dash {
+      from {
+        --arc-start: 0deg;
+        --arc-end: 3deg;
+      }
+      50% {
+        --arc-start: 100deg;
+        --arc-end: 358deg;
+      }
+      to {
+        --arc-start: 360deg;
+        --arc-end: 363deg;
+      }
+    }
+
+    /* ---------- Respect reduced-motion preference ---------- */
+    @media (prefers-reduced-motion: reduce) {
+      progress.loading-spinner:indeterminate {
+        /* Slow down rather than stop, so users still know work is in progress */
+        --_used-spinner-duration: 6s;
+        /* Drop the dash animation so the arc keeps a fixed length */
+        --progress-dash-animation: ;
+        --arc-end: 158deg;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <!-- No value attribute = indeterminate; announced correctly by assistive tech -->
+    <progress aria-label="Loading" class="loading-spinner"></progress>
+    <p>Loading…</p>
+  </div>
+</body>
+</html>

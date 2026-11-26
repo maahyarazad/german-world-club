@@ -415,11 +415,19 @@ session's token can never outlive its denylist entry; never make it a second num
 
 **One loader, on both platforms (feature 030, `specs/030-main-loader/`).**
 `client/src/components/ui/Spinner.tsx` and `expo-client/.../components/spinner.tsx`
-draw the same figure as `main-loader.html` (a faint ring and one turning arc),
-sized `xs` 14 / `sm` 20 / `md` 32 / `lg` 48. The web one is `currentColor` and
-turns by a CSS animation, so `motion-reduce:animate-none` honours the OS setting
-(SMIL would not); the app one is a bordered `View` turned by `Animated` — **never
-`react-native-svg`**, which would need a new EAS build. Use `PageLoader` /
+draw the same figure (feature 038, `specs/038-themed-spinner/`): a faint ring and an
+arc that grows and shrinks while it turns, 1.5 s a turn and a 3 s cycle, sized
+`xs` 14 / `sm` 20 / `md` 32 / `lg` 48, ring 1/12 of the size and never under 2 px.
+The web one is a `<span class="gwc-spinner">` drawn by `client/src/styles/spinner.css`
+(a conic gradient whose two ends are registered `<angle>` properties). Its colours
+are `currentColor` and a 25% `color-mix` of it, and **that file may not contain a
+colour literal** (`check-tokens` and `tests/components/spinner.test.tsx`, which reads
+the file, enforce it). The app one has no conic gradient to use, so the arc is built
+from two clipped half-rings and transforms on the native driver, with the left
+half-ring at opacity 0 while it has nothing to draw (its edges would leak hairlines);
+its geometry was checked against the keyframes — **never `react-native-svg`**, which
+would need a new EAS build. Under reduced motion both **slow to 6 s a turn with a
+fixed 158° arc and never stop**, which replaces feature 030's "nothing rotates". Use `PageLoader` /
 `ScreenLoader` for a page or screen waiting for data (silent for the first
 150 ms, so a fast response never flickers), `Button loading` for a button whose
 request is running, and `AsyncButton` / `useAction` when there is no state of

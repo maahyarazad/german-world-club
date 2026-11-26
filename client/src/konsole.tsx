@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 
 import './styles/theme.css'
+import './styles/spinner.css'
 import { CapabilityProvider } from './lib/capabilities'
 import { LocaleProvider } from './i18n/index'
 import ConsoleRoutes from './console/routes'
