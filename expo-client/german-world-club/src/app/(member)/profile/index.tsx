@@ -3,12 +3,10 @@ import { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import type { MemberProfile } from '@gwc/contracts/profile';
-import type { ProfileTab, ThreadPost } from '@gwc/contracts/threads';
 
-import { profileApi, threadsApi } from '@/api/endpoints';
+import { profileApi } from '@/api/endpoints';
 import { countryName } from '@/components/country-picker';
-import { PostCard } from '@/components/post-card';
-import { ProfileHeader, TabChips } from '@/components/profile-header';
+import { ProfileHeader } from '@/components/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Centered, Chip, FormScreen, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
@@ -19,7 +17,8 @@ import { ApiError } from '@/api/client';
 
 /**
  * Your own profile: the header others see (010), the contact details only you
- * see, and your posts in the four tabs.
+ * see, and your settings. Your own posts, in the four tabs this screen used to
+ * show, are in Activity now (feature 039): the button below opens it.
  */
 export default function Profile() {
   const { t, locale, setLocale, format, formatDate } = useTranslations();
@@ -29,17 +28,6 @@ export default function Profile() {
   // Not the problem itself (that goes to the console): whether to offer the
   // way out, since a profile that will not load leaves nothing else to do.
   const [loadFailed, setLoadFailed] = useState(false);
-  const [tab, setTab] = useState<ProfileTab>('threads');
-  const [posts, setPosts] = useState<ThreadPost[]>([]);
-  const profileId = profile?.id;
-
-  useFocusEffect(useCallback(() => {
-    if (!profileId) return;
-    threadsApi.memberPosts(profileId, null, tab).then((p) => setPosts(p.items)).catch((e) => {
-      console.error('Profile.loadPosts', e instanceof ApiError ? e.problem : e);
-      setPosts([]);
-    });
-  }, [profileId, tab]));
 
   // On focus, so returning from the edit modal shows the saved values.
   useFocusEffect(useCallback(() => {
@@ -87,17 +75,6 @@ export default function Profile() {
       <Button label={t.devices.settingsLink} onPress={() => router.push('/profile/devices')} variant="secondary" />
       <Button label={t.notifications.settingsLink} onPress={() => router.push('/profile/notifications')} variant="secondary" />
       <Button label={t.referrals.entry} onPress={() => router.push('/profile/referrals')} variant="secondary" />
-
-      <TabChips tab={tab} onChange={setTab} />
-      <View>
-        {posts.length === 0
-          ? <ThemedText themeColor="textSecondary">{t.common.empty}</ThemedText>
-          : posts.map((post) => (
-            <PostCard key={post.id} post={post}
-              onChange={(next) => setPosts((all) => all.map((p) => (p.id === next.id ? next : p)))}
-              onRemoved={(id) => setPosts((all) => all.filter((p) => p.id !== id))} />
-          ))}
-      </View>
 
       <View style={styles.gapTwo}>
         <ThemedText type="smallBold">{t.common.language}</ThemedText>

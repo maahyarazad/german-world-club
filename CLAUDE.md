@@ -538,7 +538,10 @@ Five things that look optional and are not:
 - **Activity is computed on read** from likes, posts, reposts, mentions and
   follows; only `member_activity_cursor` is stored, and it only moves forward.
   Push notifications are persisted (below); Activity is not, and the two are
-  not the same record.
+  not the same record. In the app, Activity (`profile/activity.tsx`) is the one
+  screen for your Threads: **Interactions** (this feed, opened first) and your own
+  posts in the four tabs Threads, Replies, Media and Reposts, which used to be on
+  Profile (feature 039). Another member's profile keeps its own four tabs.
 - **`organisation_profiles` is the only member-visible projection of an
   organisation.** `organisations` holds contract data (`legal_name`,
   `fee_tier`); no member route reads it. Organisation users upload logos at
