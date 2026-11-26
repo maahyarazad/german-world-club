@@ -1,0 +1,124 @@
+/* ---------------------------------------------------------------------------
+   The club's loader (feature 038), drawn from specs/038-themed-spinner/
+   loading-spinner.html: a ring with an arc that grows and shrinks while it
+   turns. It replaces feature 030's fixed arc; the sizes, the places it is used
+   and its accessibility are unchanged.
+
+   What was taken from the supplied sample, and what was not:
+     - kept: the conic-gradient arc whose two ends are animated registered
+       angles, the 1.5 s turn and 3 s grow-and-shrink, the border-area clip with
+       a mask fallback, the forced-colours block, and slowing (not stopping)
+       under reduced motion;
+     - changed: the colours. The sample's blue, greys and its own dark mode are
+       gone. The arc is `currentColor`, so it is navy by default and white inside
+       a primary button, and the ring is a quarter-strength tint of the same, as
+       before. This file defines no colour, which is what lets
+       client/scripts/check-tokens.mjs keep passing;
+     - changed: the element. The sample is a <progress>; here it is a decorative
+       <span aria-hidden>, because the label belongs to whatever wraps it
+       (PageLoader, Button), so a screen reader hears it once;
+     - changed: flat rules instead of CSS nesting, so no build step has to
+       lower it.
+--------------------------------------------------------------------------- */
+
+@property --gwc-arc-start {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --gwc-arc-end {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+/* Where the grow-and-shrink animation is attached. A browser that cannot
+   register properties ignores this rule, so `var(--gwc-dash-animation, )` below
+   is empty there and the arc keeps a fixed length instead of jumping. */
+@property --gwc-dash-animation {
+  syntax: "*";
+  inherits: false;
+  initial-value: , gwc-spinner-dash 3s ease-in-out infinite;
+}
+
+.gwc-spinner {
+  /* Size and ring thickness, per `data-spinner`. Must match SPINNER_SIZES and
+     SPINNER_THICKNESS in components/ui/Spinner.tsx; tests/components/spinner.test.tsx
+     reads this file to keep them from drifting. */
+  --gwc-size: 32px;
+  --gwc-thickness: 3px;
+
+  --gwc-arc-from: calc(90deg + var(--gwc-arc-start, 0deg));
+  --gwc-arc-to: calc(90deg + var(--gwc-arc-end, 158deg));
+  --gwc-spinner-color: currentColor;
+  --gwc-track-color: color-mix(in srgb, currentColor 25%, transparent);
+  --gwc-turn: 1.5s;
+
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: var(--gwc-size);
+  height: var(--gwc-size);
+  border-radius: 50%;
+  background: conic-gradient(
+      from var(--gwc-arc-from),
+      var(--gwc-spinner-color) calc(var(--gwc-arc-to) - var(--gwc-arc-from)),
+      transparent 0
+    )
+    var(--gwc-track-color);
+  animation: gwc-spinner-turn var(--gwc-turn) linear infinite var(--gwc-dash-animation, );
+}
+
+.gwc-spinner[data-spinner="xs"] { --gwc-size: 14px; --gwc-thickness: 2px; }
+.gwc-spinner[data-spinner="sm"] { --gwc-size: 20px; --gwc-thickness: 2px; }
+.gwc-spinner[data-spinner="md"] { --gwc-size: 32px; --gwc-thickness: 3px; }
+.gwc-spinner[data-spinner="lg"] { --gwc-size: 48px; --gwc-thickness: 4px; }
+
+/* Hollow the middle: clip the gradient to the border area where the browser can... */
+@supports (background-clip: border-area) {
+  .gwc-spinner {
+    background-clip: border-area;
+    background-origin: border-box;
+    border: var(--gwc-thickness) solid transparent;
+  }
+}
+/* ...and mask the middle out where it cannot. */
+@supports not (background-clip: border-area) {
+  .gwc-spinner {
+    --gwc-clip-boundary: calc(100% - var(--gwc-thickness));
+    mask-image: radial-gradient(
+      farthest-side,
+      transparent var(--gwc-clip-boundary),
+      black var(--gwc-clip-boundary)
+    );
+    border: 0;
+  }
+}
+
+/* Forced colours strip gradients, so opt out and use the system's colours. */
+@media (forced-colors: active) {
+  .gwc-spinner {
+    forced-color-adjust: none;
+    --gwc-spinner-color: CanvasText;
+    --gwc-track-color: Canvas;
+  }
+}
+
+@keyframes gwc-spinner-turn {
+  to { rotate: 1turn; }
+}
+
+@keyframes gwc-spinner-dash {
+  from { --gwc-arc-start: 0deg;   --gwc-arc-end: 3deg; }
+  50%  { --gwc-arc-start: 100deg; --gwc-arc-end: 358deg; }
+  to   { --gwc-arc-start: 360deg; --gwc-arc-end: 363deg; }
+}
+
+/* Slow down rather than stop, so a person who asked for less motion can still
+   tell that work is in progress; and keep the arc a fixed length. */
+@media (prefers-reduced-motion: reduce) {
+  .gwc-spinner {
+    --gwc-turn: 6s;
+    --gwc-dash-animation: ;
+    --gwc-arc-end: 158deg;
+  }
+}

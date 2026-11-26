@@ -10,7 +10,7 @@ describe('Button loading', () => {
     const button = screen.getByRole('button')
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('aria-busy', 'true')
-    expect(button.querySelector('svg[data-spinner="xs"]')).not.toBeNull()
+    expect(button.querySelector('[data-spinner="xs"]')).not.toBeNull()
     fireEvent.click(button)
     expect(onClick).not.toHaveBeenCalled()
   })
@@ -25,7 +25,7 @@ describe('Button loading', () => {
     expect(busy.textContent).toBe('Speichern')
     expect(busy.querySelector('.invisible')?.textContent).toBe('Speichern')
     // The loader is overlaid, not added to the flow.
-    expect(busy.querySelector('.absolute svg')).not.toBeNull()
+    expect(busy.querySelector('.absolute [data-spinner]')).not.toBeNull()
   })
 
   it('is a normal enabled button with no loader when not loading (counter-assertion)', () => {
@@ -34,7 +34,7 @@ describe('Button loading', () => {
     const button = screen.getByRole('button')
     expect(button).toBeEnabled()
     expect(button).not.toHaveAttribute('aria-busy')
-    expect(button.querySelector('svg')).toBeNull()
+    expect(button.querySelector('[data-spinner]')).toBeNull()
     fireEvent.click(button)
     expect(onClick).toHaveBeenCalledTimes(1)
   })

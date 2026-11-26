@@ -26,7 +26,7 @@ describe('PageLoader', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveAttribute('aria-live', 'polite')
     expect(status).toHaveTextContent(t.console.loading)
-    expect(status.querySelector('svg[data-spinner="lg"]')).not.toBeNull()
+    expect(status.querySelector('[data-spinner="lg"]')).not.toBeNull()
   })
 
   it('takes a custom delay, size and label', () => {
@@ -36,7 +36,7 @@ describe('PageLoader', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(1) })
     expect(screen.getByRole('status')).toHaveTextContent('Wird gesendet')
-    expect(screen.getByRole('status').querySelector('svg[data-spinner="md"]')).not.toBeNull()
+    expect(screen.getByRole('status').querySelector('[data-spinner="md"]')).not.toBeNull()
   })
 
   it('never shows if it is gone before the grace period ends', () => {

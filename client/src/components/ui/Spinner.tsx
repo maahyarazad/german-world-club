@@ -1,52 +1,37 @@
 /**
- * The club's loader (feature 030), drawn from `main-loader.html`: a faint full
- * ring with one arc turning on it.
+ * The club's loader (features 030 and 038): a ring with an arc that grows and
+ * shrinks while it turns. The figure and its motion are CSS, in
+ * `styles/spinner.css`, drawn from `specs/038-themed-spinner/loading-spinner.html`.
  *
- * Differences from the supplied file, each on purpose:
- *   - `fill="currentColor"`, so it takes the colour of the text it sits in
- *     (navy by default, white inside a primary button) instead of a fixed blue;
+ * Decisions kept from feature 030, each on purpose:
+ *   - the arc is `currentColor`, so it takes the colour of the text it sits in
+ *     (navy by default, white inside a primary button) instead of a fixed blue,
+ *     and the ring is a faint tint of the same. The colours come from the club's
+ *     theme and none are written here or in the stylesheet;
  *   - the size comes from the caller;
- *   - the arc turns by a CSS animation, not SMIL `animateTransform`. SMIL ignores
- *     `prefers-reduced-motion`; a class does not, so `motion-reduce:animate-none`
- *     can stop it. The ring and the still arc still read as a loader.
+ *   - it is decorative and carries no text: the label belongs to whatever wraps
+ *     it (`PageLoader`, `Button`), so a screen reader hears it once.
  *
- * It carries no text: the label belongs to whatever wraps it (`PageLoader`,
- * `Button`), so a screen reader hears it once.
+ * What changed in 038: it is a `<span>` styled by CSS instead of an SVG turned by
+ * a utility class, so the arc can change length, and under reduced motion it
+ * slows down instead of stopping (see spinner.css for why).
  */
 import { memo } from 'react'
 
 export const SPINNER_SIZES = Object.freeze({ xs: 14, sm: 20, md: 32, lg: 48 } as const)
 export type SpinnerSize = keyof typeof SPINNER_SIZES
 
+/**
+ * The ring's thickness in px for each size: 1/12 of the size, never under 2 px so
+ * the smallest, inside a button, stays legible. Mirrors `spinner.css`; a test
+ * reads that file and fails if the two disagree.
+ */
+export const SPINNER_THICKNESS = Object.freeze({ xs: 2, sm: 2, md: 3, lg: 4 } as const)
+
 export type SpinnerProps = { size?: SpinnerSize; className?: string }
 
-export const Spinner = memo(({ size = 'md', className = 'text-navy' }: SpinnerProps) => {
-  const px = SPINNER_SIZES[size]
-  return (
-    <svg
-      width={px}
-      height={px}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-      focusable="false"
-      data-spinner={size}
-      className={`shrink-0 ${className}`}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z"
-        opacity=".25"
-      />
-      <g
-        data-spinner-arc=""
-        className="animate-spin motion-reduce:animate-none"
-        style={{ transformOrigin: '12px 12px', animationDuration: '750ms' }}
-      >
-        <path d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z" />
-      </g>
-    </svg>
-  )
-})
+export const Spinner = memo(({ size = 'md', className = 'text-navy' }: SpinnerProps) => (
+  <span aria-hidden="true" data-spinner={size} className={`gwc-spinner ${className}`} />
+))
 
 export default Spinner
