@@ -551,16 +551,26 @@ Five things that look optional and are not:
   (`components/header-menu*.tsx`), the three dots and the platform's own drop-down through
   `@expo/ui`: SwiftUI's `Menu` on iOS (`.ios.tsx`) and the drop-in `MenuView` on Android
   (`.android.tsx`), with `header-menu.tsx` the fallback that draws nothing — Marketplace has
-  Messages, My listings and New listing, Threads has New post. Rows are data
+  Messages, My listings and New listing. A screen with only **one** action does not use the dots:
+  Threads' New post is a plain `HeaderIconButton` (`components/header-icon-button.tsx`, AntDesign
+  `plus`, the dots' 40 x 44 tap area and tint), because a one-row drop-down is a tap more than the
+  action needs; give a screen a second action and it moves behind `HeaderMenu`. Rows are data
   (`HeaderMenuItem`). The dots are one drawing on both platforms, `MenuIcon` (Entypo's
   `dots-three-vertical` from `@expo/vector-icons`). On iOS it is laid *over* the menu, never put
   in its label with `RNHostView`: the `Menu`'s label is an invisible native `Image` at
-  `opacity(0)` (never `hidden()`, which cannot be tapped) framed to the whole 40 x 44 box, and the
+  `opacity(0)` (never `hidden()`, which cannot be tapped) framed to the dots' 40 x 44 box, and the
   icon is a `pointerEvents: 'none'` sibling above it. Hosted, the menu opened over the dots and the
-  dots moved when tapped; this way the system anchors the menu to the dots' own box, which is
-  as much control of "below" as `@expo/ui` gives. On Android the trigger is `MenuDots`, the
-  same icon in a plain view with no `onPress`, because `MenuView` wraps it in its own
-  `Pressable`. Draw no pop-up of our own.
+  dots moved when tapped. With the label exactly their box the system still opened its menu over
+  the dots, and `@expo/ui` has no placement option and no way to open an iOS menu by code, so
+  feature 040 makes one native-only attempt (`ANCHOR_EXTENSION` in `header-menu.ios.tsx`, 12
+  points): the invisible label reaches that far below the header so the system may anchor its
+  menu lower. **Untested on a phone** (task T007 of `specs/040-menu-below-header/`); `0` is
+  exactly the behaviour before it, and if it does not help set it to 0 and do not draw a menu of
+  our own. On Android the dots are a button (`MenuDots`) that calls `ref.show()` on a `MenuView`
+  whose child is a `MENU_BUTTON.width` x 1 strip along the bottom edge of a slot as tall as the
+  bar, so the Material menu opens at the header's bottom edge: Compose opens a `DropdownMenu` at
+  the bottom edge of its anchor, and the anchor is `MenuView`'s child at its own size, so it needs
+  a width as well as a height. Draw no pop-up of our own.
   The Marketplace stack opens every pushed screen with the platform's own transition
   (`PUSH_ANIMATION` in its `_layout.tsx`: `default`, which on Android 13 and later is a short
   slide with a fade; only Android 12 and earlier gets `slide_from_right`, because their

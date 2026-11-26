@@ -192,6 +192,27 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 6. **Given** the dots are tapped, **Then** they stay exactly where they are, with no shift, jump or resize while the menu opens, and the menu opens under them, not over them.
 7. **Given** an iPhone, **Then** the dots are Entypo's `dots-three-vertical`, the same drawing as on Android, in the theme's tint; a tap anywhere in their 40 x 44 box, not only on the glyph, opens the menu; and the menu opens below them.
 
+### User Story 9 - The menu opens below the whole header (Priority: P1)
+
+> **Superseded by [feature 040](../040-menu-below-header/spec.md).** The iPhone half (an app-drawn card, FR-027) was declined: *do not change the native menu*. The requirement that the menu open below the header (FR-026) is carried into 040, with the phone's own menu kept on both phones. Nothing in this story was implemented.
+
+The menu that the three dots open sits **below the header**, on both phones: nothing of the header (the dots, the emblem, the title, the back button) is covered while it is open. On Android it is still the platform's own Material drop-down. On iPhone it is a drop-down the app draws, because the system's menu cannot be placed (`research.md` R2); this reverses US8's "the app draws no pop-up of its own" for the iPhone only.
+
+**Why this priority**: the first phone test of the sixth pass found the iPhone's menu opening over the dots, with the icon behind it. It is the request.
+
+**Independent Test**: on an iPhone and an Android phone open Marketplace, tap the dots: the menu's top edge is under the header's bottom edge and the dots are still visible.
+
+**Acceptance Scenarios**:
+
+1. **Given** an iPhone, **When** the dots are tapped, **Then** a drop-down opens whose top edge is below the header's bottom edge (a small gap), right-aligned with the dots' side of the screen, with the header, including the dots and the emblem, fully visible above it and the page behind it not dimmed.
+2. **Given** an Android phone, **When** the dots are tapped, **Then** the Material drop-down opens with its top edge at the header's bottom edge and the dots and the emblem uncovered.
+3. **Given** the menu is open, **When** a row is chosen, **Then** the menu closes and that row's screen opens (on iPhone after the menu has finished closing).
+4. **Given** the menu is open, **When** the member taps outside it, or on Android uses the system back (or on iPhone the hardware-equivalent close), **Then** it closes and nothing opens. A tap on the header while it is open closes it and does not also press what is under the finger.
+5. **Given** a row with news, **Then** on iPhone it carries a small red dot beside its label and on Android its label ends with " •", as before.
+6. **Given** a screen reader, **Then** the dots are a button called "More" (with a dot when there is news); on iPhone each row is a button with its label, the card is announced as a modal surface and the area outside it as "Close".
+7. **Given** a screen shown as an iOS sheet that has this header (a modal presentation), **Then** the drop-down still starts below that header, not below the top of the window.
+8. **Given** a long German row label, **Then** it wraps inside the card; the card never runs off the screen's edge.
+
 ### Additional Requirements
 
 - **FR-011**: A screen whose header carried action buttons (the Marketplace list; the Threads feed) MUST show a three-dots button in their place, opening a drop-down with those actions; the rows that need permission to post MUST still be shown only to a member who may post (display only; the server decides).
@@ -199,7 +220,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - **FR-013**: Every screen in the stacks of the five member tabs MUST show its title at the left of the header and the club's emblem in the middle, with the same bar height as the platform's own (44 on iOS, 56 on Android below the status bar).
 - **FR-014**: The emblem MUST stay centred however long the title is or whatever is on the right, and MUST NOT make the header taller.
 - **FR-015**: The header MUST take its colours from the navigation theme and the app theme, and MUST work in light and dark.
-- **FR-016**: The emblem MUST be the club's own logo (`assets/gwc-logo.png`), cropped to the mark: the lettering under it is not legible at this size.
+- **FR-016**: The emblem MUST be the club's own logo as one lockup: the mark, the golden line and "GERMAN WORLD CLUB" under it (`assets/gwc-logo-header.png`, 296 x 194, transparent background, cropped from `assets/react-logo@3x.png`, which holds the club's logo under a template file name). *(Amended 2026-11-26: it was the mark alone, cropped from `assets/gwc-logo.png`, because the lettering is small at this size; the line and the lettering are part of the logo and are now in.)*
 - **FR-017**: No server, contract or web change, and no new native module (no new build).
 - **FR-018**: There MUST be one header and one drop-down, shared by every tab; a tab MUST NOT carry its own copy, because a copy is how one tab comes to differ.
 - **FR-019**: A tab with no header actions MUST show no three dots.
@@ -208,7 +229,11 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - **FR-022**: The drop-down MUST be the platform's own menu: SwiftUI's `Menu` on iOS and a Material drop-down on Android, both from `@expo/ui` (on Android its drop-in `MenuView`). The app MUST NOT draw a pop-up of its own for it.
 - **FR-023**: A screen MUST still hand the menu its rows as data (a key, a label, where it goes, whether it has news) and the menu MUST know nothing about the screen; there is one `HeaderMenu`, with one file per platform.
 - **FR-024**: The three dots MUST be static: they MUST NOT move, resize or change shape when tapped or while the menu opens, and the menu MUST open under them and MUST NOT cover them.
-- **FR-025**: The dots MUST be the same Entypo `dots-three-vertical` icon on both platforms (one `MenuIcon`). On iPhone it MUST be a React Native view laid over the native menu's label, and MUST NOT be inside it: the label is an invisible native view (`opacity(0)`, never `hidden()`, which would stop it taking taps) framed to the whole 40 x 44 box, so the system anchors the menu to the dots' own box. The icon and the unread badge MUST take no touches, and the icon MUST be hidden from the screen reader so the dots are read once.
+- **FR-025**: The dots MUST be the same Entypo `dots-three-vertical` icon on both platforms (one `MenuIcon`). *(Amended by the seventh pass: the rest of the original FR-025, on iPhone an icon laid over an invisible native `Menu` label, is withdrawn, because the system menu opened over it (FR-026, FR-027). The icon stays one drawing.)*
+- **FR-026**: On both platforms the menu MUST open below the header: its top edge MUST NOT be above the header's bottom edge, and no part of the header (dots, emblem, title, back button) MAY be covered by it.
+- **FR-027**: On iPhone the menu MUST be a drop-down drawn by the app, in a transparent `Modal`, positioned from the header's measured bottom edge and not from the status bar's height, because SwiftUI's `Menu` cannot be placed or opened by code (`research.md` R2). This **supersedes FR-022 for iPhone**; FR-022 still holds for Android. On Android the menu MUST remain `MenuView`'s Material drop-down, opened by `ref.show()` and anchored to a thin invisible strip along the header's bottom edge, so that the dots can stay where they are while the menu opens below the header.
+- **FR-028**: The dots MUST be an ordinary pressable on both platforms (a button called "More", with a dot when a row has news). On iPhone a row's navigation MUST wait for the drop-down to finish closing before it pushes.
+- **FR-029**: No new native module and no new build: nothing is added to `package.json`, and the iPhone no longer needs `@expo/ui`'s `Menu` at all.
 
 ### Success Criteria
 
@@ -216,13 +241,14 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - **SC-007**: On every screen of the five tabs the emblem's centre is within 1 px of the header's centre.
 - **SC-008**: The header's height equals the platform's own native header height, on every screen of the five tabs.
 - **SC-009**: Opening Messages, My listings and New listing looks like opening a screen in the phone's own Settings: a move in from the right on both platforms.
+- **SC-010**: With the menu open, the overlap between the menu and the header is 0 px on both phones, with the iPhone's card at most `Spacing.one` + the hairline below the header's bottom edge.
 
 ### Assumptions
 
 - "A drop-down like WhatsApp" means a small menu anchored under the three dots, with the page behind left as it is; a full-screen page, a bottom sheet and a dimmed pop-up were all heavier than a few short rows need. A tap outside it closes it. Since US8 it is the platform's own menu, so the iPhone's and the Android phone's differ from each other the way their systems do, which is intended.
 - The request names two Expo pages (the SwiftUI `Menu` and the drop-in `Menu`) from the latest docs, which are SDK 58; the app is on SDK 57 with `@expo/ui` 57.0.20. The installed package's source was read, and both exist there with the props used.
 - `@expo/ui` has been a dependency since the app began and is already autolinked, so this adds no dependency. A development build made from an older patch of it may not have `Menu` or `RNHostView`: the symptom is a missing native view, and a rebuild is the fix. Which version is on a phone cannot be seen from here.
-- Threads' drop-down has one row. It is a drop-down all the same, so a second action added later has somewhere to go and every tab's header is one pattern.
+- *(Superseded 2026-11-26: Threads' New post is now a plain icon button, not a drop-down, because a drop-down for one row is a tap more than it needs; see `header-icon-button.tsx`.)* Threads' drop-down has one row. It is a drop-down all the same, so a second action added later has somewhere to go and every tab's header is one pattern.
 - "All the tabs" is the five bottom-bar tabs: Threads, Marketplace, Offers, Events and Profile. The merchant and partner screens (`(organisation)`), onboarding, applicant and public screens are not tabs and keep their own headers.
 - The titles are one size for all screens (16). This replaces the earlier, separate request to make three of the titles 20% smaller, which could not be done with the native header.
 - The three dots are vertical on both platforms. "Rotate 90 degrees" is read as turning iOS's horizontal row into a column, as WhatsApp draws it, and not as an animation of the dots turning when the menu opens.
@@ -232,4 +258,8 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - Nothing in `@expo/ui` chooses which side of its label the iPhone's menu opens on. "Open below the dots" is therefore met by making the native label exactly the dots' box, with nothing hosted inside it, so that the system, which opens a menu on the side with room (below, for a header at the top), anchors to the right place. Whether it does is for a phone to show.
 - `@expo/vector-icons` is a new dependency of the app. It is JavaScript and a font file, and it loads the font through `expo-font`, which the app already has natively, so it adds no native module and needs no new build of its own.
 - The first phone test of the native menu found two faults on the iPhone build the author was using: the menu opened over the dots and the dots moved when tapped. Android was not reported and its menu is unchanged; if it shows the same, that is a separate fault with its own cause (see the plan). The request after that asked for Entypo on the iPhone too and for the menu to open below the dots. What is built for it is the option the plan had named and not tried, a transparent native `Menu` under the icon; whether an invisible label takes taps on a real phone, and whether the menu then opens below it, is untested until T045.
+- **T045's result** (the seventh pass's input): the invisible label took the tap and the system menu opened, but it opened **over** the dots, with the icon behind it. `@expo/ui` 57.0.20 gives no way to place that menu or to open it by code on iOS (`research.md` R2), so the iPhone's drop-down is drawn by the app (FR-027). That is a reversal of US8's premise for the iPhone, made because the placement was asked for and nothing native gives it. Android was not reported as faulty; it is changed too, as the request says both, by moving the menu's anchor and not by replacing the menu.
+- The iPhone's drop-down is drawn in the system's style (rounded card, hairline, soft shadow, 17 pt rows, the theme's colours, a fade) and is **not** the system's own: it has no iOS 26 glass and the system's animation, and says so. If one look on both phones is wanted, the same card can be used on Android (`research.md` R3, option F).
+- "Below the entire header" is read as: the menu's top edge is at or below the header's bottom border, with a small gap on iPhone. It is not read as a full-width sheet or a menu that pushes the page down.
+- The iPhone's iOS version was not reported, so what the system menu does on other versions is not known; it no longer matters for the iPhone, which no longer uses it.
 - This replaces feature 017's choice of `slide_from_right` for New listing (a slide of the whole width with no fade), which matches neither platform's rule.

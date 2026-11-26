@@ -1,6 +1,6 @@
 import Entypo from '@expo/vector-icons/Entypo';
 import { router, type Href } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
@@ -44,10 +44,15 @@ export function MenuIcon() {
 }
 
 /**
- * What the header shows for the menu on Android: `MenuIcon`, with a red dot at the corner
- * when a row has news. It is only a picture. Opening the menu is the platform menu's own tap
- * handling around it (`header-menu.android.tsx`), so it has no `onPress` of its own: a second
- * handler here would fight the menu's.
+ * The header's three dots on Android (feature 040): a button, `MenuIcon` with a red dot at
+ * the corner when a row has news, called "More" for a screen reader. A press asks the
+ * platform menu to open (`header-menu.android.tsx`).
+ *
+ * It used to be only a picture with no `onPress`, because it was the child of `MenuView`,
+ * which wraps its child in a `Pressable` of its own: the dots were the menu's anchor, so
+ * the menu opened at the dots' bottom edge, a few points above the header's. It is no longer
+ * the menu's child, so it can be the button, and the menu is anchored to a strip along the
+ * header's bottom edge instead.
  *
  * iOS does not use this but does use `MenuIcon`: there the control is SwiftUI's own `Menu`
  * with an invisible native label, and the icon is laid over it, never hosted inside it,
@@ -55,17 +60,17 @@ export function MenuIcon() {
  * and the dots move. The native label is the accessible element there, so the icon needs no
  * accessibility of its own (`header-menu.ios.tsx`).
  */
-export function MenuDots({ unread }: { unread: boolean }) {
+export function MenuDots({ unread, onPress }: { unread: boolean; onPress: () => void }) {
   const { t } = useTranslations();
   return (
-    <View
-      accessible
+    <Pressable
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={unread ? `${t.common.menu} •` : t.common.menu}
       style={styles.button}>
       <MenuIcon />
       {unread ? <MenuBadge /> : null}
-    </View>
+    </Pressable>
   );
 }
 
