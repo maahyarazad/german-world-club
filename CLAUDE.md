@@ -552,8 +552,11 @@ Five things that look optional and are not:
   `@expo/ui`: SwiftUI's `Menu` on iOS (`.ios.tsx`) and the drop-in `MenuView` on Android
   (`.android.tsx`), with `header-menu.tsx` the fallback that draws nothing — Marketplace has
   Messages, My listings and New listing, Threads has New post. Rows are data
-  (`HeaderMenuItem`); `MenuDots` is a plain view with no `onPress`, because both menus bring
-  their own tap handling and a second one would fight it. Draw no pop-up of our own.
+  (`HeaderMenuItem`). On iOS the menu's label is a native SF Symbol (`ellipsis`, turned 90
+  degrees), not our dots hosted in it with `RNHostView`: hosted, the menu opened over the dots
+  and the dots moved when tapped. On Android the trigger is `MenuDots`, Entypo's
+  `dots-three-vertical` from `@expo/vector-icons` (a plain view with no `onPress`, because
+  `MenuView` wraps it in its own `Pressable`). Draw no pop-up of our own.
   The Marketplace stack opens every pushed screen with the platform's own transition
   (`PUSH_ANIMATION` in its `_layout.tsx`: `default`, which on Android 13 and later is a short
   slide with a fade; only Android 12 and earlier gets `slide_from_right`, because their

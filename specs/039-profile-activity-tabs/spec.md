@@ -189,6 +189,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 3. **Given** a row with news, **Then** on iPhone it carries a small red dot beside its label, and on Android its label ends with a dot ("Messages •").
 4. **Given** the menu is open, **When** the member taps outside it (or uses the system back on Android), **Then** it closes and nothing opens.
 5. **Given** a screen reader, **Then** the dots are announced as a button named "More" (and with a dot when there is news) and each row by its label.
+6. **Given** the dots are tapped, **Then** they stay exactly where they are, with no shift, jump or resize while the menu opens, and the menu opens under them, not over them.
 
 ### Additional Requirements
 
@@ -205,6 +206,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - **FR-021**: Every screen pushed in the Marketplace stack MUST open with the platform's own push transition: the system default on iOS and on Android 13 and later, and a slide in from the right on Android 12 and earlier. No screen in the stack MAY choose its own.
 - **FR-022**: The drop-down MUST be the platform's own menu: SwiftUI's `Menu` on iOS and a Material drop-down on Android, both from `@expo/ui` (on Android its drop-in `MenuView`). The app MUST NOT draw a pop-up of its own for it.
 - **FR-023**: A screen MUST still hand the menu its rows as data (a key, a label, where it goes, whether it has news) and the menu MUST know nothing about the screen; there is one `HeaderMenu`, with one file per platform.
+- **FR-024**: The three dots MUST be static: they MUST NOT move, resize or change shape when tapped or while the menu opens, and the menu MUST open under them and MUST NOT cover them.
 
 ### Success Criteria
 
@@ -224,4 +226,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - The three dots are vertical on both platforms. "Rotate 90 degrees" is read as turning iOS's horizontal row into a column, as WhatsApp draws it, and not as an animation of the dots turning when the menu opens.
 - "The rule for the opening animation" is read as the transition of the screens the menu opens (the way Settings opens from WhatsApp's menu), not of the drop-down itself, which fades in.
 - Nothing is built for the transition: it is the platform's own through the stack's `animation` option, because a shared-axis transition of our own would need native code, and so a new build.
+- The dots are drawn by each platform's own icon source: on Android Entypo's `dots-three-vertical` from `@expo/vector-icons`, on iPhone the system's `ellipsis` symbol turned 90 degrees. Both are vertical dots in the theme's tint and differ slightly in drawing. iPhone does not use Entypo because the menu's label there must be drawn by SwiftUI, not a React Native view hosted inside it.
+- `@expo/vector-icons` is a new dependency of the app. It is JavaScript and a font file, and it loads the font through `expo-font`, which the app already has natively, so it adds no native module and needs no new build of its own.
+- The first phone test of the native menu found two faults on the iPhone build the author was using: the menu opened over the dots and the dots moved when tapped. Android was not reported and its menu is unchanged; if it shows the same, that is a separate fault with its own cause (see the plan).
 - This replaces feature 017's choice of `slide_from_right` for New listing (a slide of the whole width with no fade), which matches neither platform's rule.
