@@ -52,7 +52,19 @@ export function createMediaController(app: GwcApp, { storage, queue, maxBytes, m
       if (uploaded.file.truncated) throw tooLarge(streamLimit)
 
       // Steps 2-4: magic bytes, allowlist, pre-decode dimension bound.
-      const validated = await validateUpload(buffer, { maxBytes, maxPixels })
+      const validated = await validateUpload(buffer, { maxBytes, maxPixels }).catch((err) => {
+        // One line per refused type, so a client that starts sending something
+        // new (every iPhone photo, before the app converted them) shows up as a
+        // count and not as a mystery. The type and the size only: never the file
+        // name or anything about the member.
+        if (err instanceof MediaRejected && err.problem === PROBLEMS.UNSUPPORTED_MEDIA_TYPE) {
+          request.log.info(
+            { detectedType: err.extensions?.detectedType ?? null, bytes: buffer.length, principalKind: request.principal?.kind },
+            'upload refused: unsupported media type',
+          )
+        }
+        throw err
+      })
 
       if (merchant) {
         // At or above the limit is refused: "under 1 MB" and "under 5 MB".

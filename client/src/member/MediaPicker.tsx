@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
-import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
+import { ACCEPTED_MEDIA_TYPES, MEDIA_MAX_BYTES } from '@gwc/contracts/media'
 import { LISTING_MEDIA_MAX } from '@gwc/contracts/marketplace'
 import Button from '../components/ui/Button'
 import Field from '../components/ui/Field'
@@ -22,11 +22,8 @@ import { useTranslations } from '../i18n/index'
  * order shown, because the first one represents the listing in the index.
  */
 
-/** What the upload pipeline accepts (server/src/modules/media/validate.ts). */
-export const MEDIA_TYPES = Object.freeze([
-  'image/jpeg', 'image/png', 'image/webp', 'image/avif',
-  'video/mp4', 'video/webm', 'video/quicktime',
-])
+/** What the upload pipeline accepts: the one list in `@gwc/contracts/media`, shared with the server's validator. */
+export const MEDIA_TYPES = Object.freeze(Object.keys(ACCEPTED_MEDIA_TYPES))
 
 export type MediaStatus = 'pending' | 'uploading' | 'processing' | 'attached' | 'failed'
 

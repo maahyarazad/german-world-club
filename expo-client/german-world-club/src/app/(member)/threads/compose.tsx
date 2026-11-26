@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import { PROBLEMS } from '@gwc/contracts/errors';
@@ -14,7 +14,9 @@ import { ThemedText } from '@/components/themed-text';
 import { Button, FormScreen, Message, TextField } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTranslations } from '@/i18n';
-import { pickMedia, uploadReady, type Picked } from '@/lib/pick-media';
+import { UploadProgress } from '@/components/upload-progress';
+import { useMediaUpload } from '@/hooks/use-media-upload';
+import { pickMedia, type Picked } from '@/lib/pick-media';
 import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
 
 type Pending = Picked & { alt: string; assetId?: string };
@@ -37,8 +39,11 @@ export default function Compose() {
   const [media, setMedia] = useState<Pending[]>([]);
   const [quoted, setQuoted] = useState<ThreadPost | null>(null);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Each file goes up through the same path as every member upload, so the member
+  // sees the club's loader with one percentage for the whole batch (feature 037).
+  const upload = useMediaUpload('member');
+  const cancelled = useRef(false);
 
   useEffect(() => {
     if (quoteOfId) threadsApi.thread(quoteOfId).then((v) => setQuoted(v.post)).catch((e) => {
@@ -50,9 +55,10 @@ export default function Compose() {
   const add = async () => {
     const room = THREAD_MEDIA_MAX - media.length;
     if (room <= 0) return setError(format(t.threads.mediaTooMany, { max: THREAD_MEDIA_MAX }));
-    const { denied, items } = await pickMedia({ limit: room });
+    const { denied, items, unsupported } = await pickMedia({ limit: room });
     if (denied) return setError(t.threads.photoPermission);
-    setError(null);
+    // The accepted files are added either way; one that cannot be uploaded is named, not dropped silently.
+    setError(unsupported.length > 0 ? t.upload.unsupportedFormat : null);
     setMedia([...media, ...items.map((i) => ({ ...i, alt: '' }))]);
   };
 
@@ -61,11 +67,21 @@ export default function Compose() {
     if (media.some((m) => !m.alt.trim())) return setError(t.threads.mediaAltHint);
     setBusy(true);
     setError(null);
+    cancelled.current = false;
     try {
       const ready: Pending[] = [];
-      if (media.length > 0) setStatus(t.threads.uploading);
-      for (const item of media) {
-        ready.push({ ...item, assetId: item.assetId ?? await uploadReady(item, item.alt.trim()) });
+      for (const [index, item] of media.entries()) {
+        // Already uploaded on an earlier try: not sent twice.
+        if (item.assetId) { ready.push(item); continue; }
+        const asset = await upload.start(item, item.alt.trim(), { slot: [index, media.length] });
+        // A failure or a cancel posts nothing, and the text and the chosen
+        // media stay on screen for another try (FR-021). Files that did reach
+        // the server keep their id, so a retry does not send them again.
+        if (!asset) {
+          setMedia(media.map((m, i) => ready[i] ?? m));
+          return;
+        }
+        ready.push({ ...item, assetId: asset.id });
       }
       setMedia(ready);
       await threadsApi.create({
@@ -84,7 +100,6 @@ export default function Compose() {
       }
     } finally {
       setBusy(false);
-      setStatus(null);
     }
   };
 
@@ -133,7 +148,8 @@ export default function Compose() {
       {quoted ? <QuoteEmbed quoted={{ unavailable: false, post: { ...quoted, quoteOfId: null } }} /> : null}
 
       <Button label={t.threads.addMedia} variant="secondary" onPress={add} disabled={busy || media.length >= THREAD_MEDIA_MAX} />
-      {status ? <ThemedText type="small" themeColor="textSecondary">{status}</ThemedText> : null}
+      <UploadProgress variant="spinner" state={upload.state} label={t.threads.mediaLabel}
+        onCancel={() => { cancelled.current = true; upload.cancel(); }} onRetry={submit} />
       <Message text={error} />
       <Button label={t.threads.post} onPress={submit} loading={busy} disabled={body.trim().length === 0 && media.length === 0} />
     </FormScreen>

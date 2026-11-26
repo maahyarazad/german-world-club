@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, resetAuthTables } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
-import { poster, seedListing, resetMarketplace } from './helpers.ts'
+import { patchListing, poster, seedListing, resetMarketplace } from './helpers.ts'
 import type { GwcApp } from '../../src/app.ts'
 
 /**
@@ -35,7 +35,7 @@ describe.skipIf(!hasDatabase)('a member manages their own listings', () => {
   })
 
   const patch = (id: string, headers: Record<string, string>, body: unknown) =>
-    app.inject({ method: 'PATCH', url: `/marketplace/listings/${id}`, headers, payload: body as never })
+    patchListing(app, headers, id, body as Record<string, unknown>)
 
   const setState = (id: string, headers: Record<string, string>, state: string) =>
     app.inject({ method: 'POST', url: `/marketplace/listings/${id}/state`, headers, payload: { state } })

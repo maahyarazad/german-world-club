@@ -13,7 +13,7 @@ import {
 import { notifyAfterCommit } from '../messaging/application/converse.ts'
 import { getMarketplaceSummary } from './application/summary.ts'
 import {
-  editListing, transitionState, setExpiry, myListings,
+  editListing, transitionState, myListings, ownListing,
   ListingNotFoundError as ManageNotFoundError, InvalidTransitionError,
   DetailsInvalidError as ManageDetailsInvalidError,
 } from './application/manage.ts'
@@ -21,6 +21,7 @@ import {
   reportListing, ListingNotFoundError as ReportListingNotFoundError,
   AlreadyReportedError, ReasonRequiredError,
 } from './application/moderate.ts'
+import { ownerFlags } from './application/editable.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
 import type { CreateListingRequest } from '@gwc/contracts/marketplace'
@@ -202,34 +203,28 @@ export function createMarketplaceController(app: GwcApp) {
       const principal = request.principal!
       const { id } = request.params as { id: string }
       const body = request.body as Record<string, unknown>
-      const ownerId = String(principal.id)
 
       try {
-        let listing = await editListing(app, {
+        const listing = await editListing(app, {
           listingId: id,
-          ownerId,
+          ownerId: String(principal.id),
+          version: String(body.version),
+          published: body.published as boolean | undefined,
           title: body.title as string | undefined,
           body: body.body as string | undefined,
           category: body.category as never,
           details: body.details as never,
           features: body.features as string[] | undefined,
           contactMethod: body.contactMethod as string | undefined,
+          // The key goes in only when the request carried it, and `null` is
+          // kept as `null`: SENDING null clears the expiry (FR-030), leaving
+          // the key out leaves it alone, and `editListing` tells them apart
+          // with `'expiresAt' in input`.
+          ...('expiresAt' in body ? { expiresAt: body.expiresAt as string | null } : {}),
           signal: request.deadlineSignal,
         })
 
-        // `'expiresAt' in body`, not `body.expiresAt !== undefined`: the whole
-        // point of FR-030 is that SENDING `null` clears it, and the two checks
-        // disagree on exactly that value.
-        if ('expiresAt' in body) {
-          listing = await setExpiry(app, {
-            listingId: id,
-            ownerId,
-            expiresAt: body.expiresAt as string | null,
-            signal: request.deadlineSignal,
-          })
-        }
-
-        return reply.send(toListingResponse(listing))
+        return reply.send(toOwnerResponse(listing))
       } catch (err) {
         return manageErrorOrThrow(err, request, reply)
       }
@@ -256,7 +251,21 @@ export function createMarketplaceController(app: GwcApp) {
     mine: async (request: GwcRequest, reply: GwcReply) => {
       const principal = request.principal!
       const rows = await myListings(app, { ownerId: String(principal.id), signal: request.deadlineSignal })
-      return reply.send({ items: rows.map((r) => toListingResponse(r)) })
+      return reply.send({ items: rows.map((r) => toOwnerResponse(r)) })
+    },
+
+    /** The owner's whole listing in any state: what the edit form prefills from. */
+    mineOne: async (request: GwcRequest, reply: GwcReply) => {
+      const principal = request.principal!
+      const { id } = request.params as { id: string }
+      try {
+        const { row, features, media } = await ownListing(app, {
+          listingId: id, ownerId: String(principal.id), signal: request.deadlineSignal,
+        })
+        return reply.send({ ...toOwnerResponse(row, media), features })
+      } catch (err) {
+        return manageErrorOrThrow(err, request, reply)
+      }
     },
 
     // ---- Reporting (US4) -----------------------------------------------------
@@ -516,6 +525,21 @@ function manageErrorOrThrow(err: unknown, request: GwcRequest, reply: GwcReply) 
     })
   }
   throw err
+}
+
+/**
+ * A listing as its OWNER sees it: the usual shape plus the `version` to send
+ * back on the next edit and the flags that say what to offer (feature 037).
+ * The flags come from `ownerFlags` — one rule, decided on the server. Nothing
+ * here says who disabled a listing or why: the owner learns only `moderated`.
+ */
+function toOwnerResponse(row: Record<string, unknown>, media: MediaItem[] = []) {
+  return {
+    ...toListingResponse(row, media),
+    version: row.version,
+    stateChangedAt: row.state_changed_at,
+    ...ownerFlags(String(row.state)),
+  }
 }
 
 /** Columns named explicitly; never SELECT *. See contracts/marketplace-api.md. */

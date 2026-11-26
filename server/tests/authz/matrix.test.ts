@@ -96,6 +96,9 @@ const ROUTE_CLASSES = [
   // posture as the create route: any member (ownership is the 404 in the handler).
   { name: 'marketplace attach media', url: '/marketplace/listings/:id/media', probe: `/marketplace/listings/${randomUUID()}/media`, method: 'POST', audience: 'member' },
   { name: 'marketplace detach media', url: '/marketplace/listings/:id/media/:assetId', probe: `/marketplace/listings/${randomUUID()}/media/${randomUUID()}`, method: 'DELETE', audience: 'member' },
+  // Feature 037: the owner's whole listing in any state. Member audience; "yours"
+  // is the 404 in the handler, not a route declaration.
+  { name: 'marketplace read own listing', url: '/marketplace/mine/:id', probe: `/marketplace/mine/${randomUUID()}`, method: 'GET', audience: 'member' },
   { name: 'marketplace enquire', url: '/marketplace/listings/:id/inquire', probe: `/marketplace/listings/${randomUUID()}/inquire`, method: 'POST', audience: 'member' },
   // No `requires` on any of the three below: owning what you already posted is
   // not a second privilege, and a member whose posting flag was later revoked
@@ -114,6 +117,8 @@ const ROUTE_CLASSES = [
   // Gated on the EXISTING marketplace_moderation module — this feature adds no
   // permission, it fills a hole the matrix already has.
   { name: 'marketplace moderation reports', url: '/admin/marketplace/reports', method: 'GET', audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
+  // Feature 037: every member listing in every state. Read-only, on `read`.
+  { name: 'marketplace moderation listings', url: '/admin/marketplace/listings', method: 'GET', audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
   { name: 'marketplace moderation listing', url: '/admin/marketplace/listings/:id', probe: `/admin/marketplace/listings/${randomUUID()}`, method: 'GET', audience: 'staff', module: 'marketplace_moderation', flag: 'read' },
   { name: 'marketplace moderation hide', url: '/admin/marketplace/listings/:id/hide', probe: `/admin/marketplace/listings/${randomUUID()}/hide`, method: 'POST', audience: 'staff', module: 'marketplace_moderation', flag: 'status' },
   { name: 'marketplace moderation restore', url: '/admin/marketplace/listings/:id/restore', probe: `/admin/marketplace/listings/${randomUUID()}/restore`, method: 'POST', audience: 'staff', module: 'marketplace_moderation', flag: 'status' },

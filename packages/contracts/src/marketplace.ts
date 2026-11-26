@@ -9,6 +9,8 @@
  * `server/src/modules/marketplace/categories.ts`.
  */
 
+import type { MediaItem } from './media.ts'
+
 // ---------------------------------------------------------------------------
 // Enumerations the server branches on
 // ---------------------------------------------------------------------------
@@ -45,8 +47,26 @@ export type GeneralKind = (typeof GENERAL_KINDS)[number]
 export const REPORT_STATES = Object.freeze(['open', 'upheld', 'dismissed'] as const)
 export type ReportState = (typeof REPORT_STATES)[number]
 
-/** States a listing is visible in the member index in. */
+/**
+ * States a listing is visible in the member index in.
+ *
+ * A `draft` and a `hidden` (disabled by staff) listing are deliberately NOT
+ * here: every browse, detail, count and notification path filters on this, so
+ * "unpublished" and "disabled" are invisible with no second flag to forget
+ * (feature 037, research R1).
+ */
 export const VISIBLE_STATES = Object.freeze(['active'] as const)
+
+/**
+ * States an owner may edit (feature 037). Sold, filled and withdrawn are
+ * terminal — a new listing is posted instead — and `hidden` belongs to staff.
+ * The server decides with this and tells clients through `canEdit`; a client
+ * never re-derives it.
+ */
+export const EDITABLE_STATES = Object.freeze(['draft', 'active', 'expired'] as const)
+
+/** States staff may disable (feature 037, clarification of FR-011). */
+export const DISABLEABLE_STATES = Object.freeze(['draft', 'active'] as const)
 
 /**
  * Photos and/or videos on one listing. The authority is the
@@ -240,6 +260,8 @@ export type ListingMedia = {
   assetId: string
   kind: 'image' | 'video'
   position: number
+  /** The description the owner gave it; required at upload. */
+  alt?: string
   url: string
   posterUrl?: string
   width?: number
@@ -292,6 +314,105 @@ export type CreateListingRequest = {
   /** Omit or send null for unlimited. */
   expiresAt?: string | null
   termsVersion: string
+  /**
+   * Feature 037. Omitted means `true`: the listing is live as soon as it is
+   * saved, which is what every client did before this field existed. `false`
+   * saves a private draft.
+   */
+  publish?: boolean
+}
+
+/**
+ * Editing your own listing (feature 037). Every field is optional except
+ * `version`: PATCH changes what is sent. `version` is the one last read — a
+ * stale one is refused with 409 `conflict`, so two devices cannot silently
+ * overwrite each other.
+ */
+export type UpdateListingRequest = {
+  version: string
+  /** `true` publishes, `false` unpublishes (back to a draft), absent leaves the state alone. */
+  published?: boolean
+  title?: string
+  body?: string
+  category?: MarketplaceCategory
+  details?: ListingDetails
+  features?: readonly string[]
+  contactMethod?: ContactMethod
+  /** `null` clears it back to unlimited; absent leaves it untouched. */
+  expiresAt?: string | null
+}
+
+/** What the owner needs to draw the edit screen, decided by the server. */
+export type OwnerFlags = {
+  /** state is draft, active or expired. */
+  canEdit: boolean
+  /** state is draft or expired (an active listing is already published). */
+  canPublish: boolean
+  /** Staff disabled it. The owner is never told why or by whom. */
+  moderated: boolean
+}
+
+/** One of your own listings in the management list. */
+export type OwnListingSummary = OwnerFlags & {
+  id: string
+  category: MarketplaceCategory
+  mode: MarketplaceMode
+  title: string
+  state: MarketplaceState
+  version: string
+  createdAt: string
+  publishedAt?: string | null
+  expiresAt?: string | null
+  stateChangedAt: string
+}
+
+/**
+ * Your own listing in full, in any state. `GET /marketplace/mine/:id`.
+ *
+ * Its `media` is the server's `MediaItem` (variants and a poster), which is what
+ * every client already renders; the older `ListingMedia` above describes a flat
+ * `url` the server does not send.
+ */
+export type OwnListing = Omit<Listing, 'media'> & OwnerFlags & {
+  version: string
+  media: readonly MediaItem[]
+}
+
+// ---------------------------------------------------------------------------
+// Staff listing browser (feature 037)
+// ---------------------------------------------------------------------------
+
+export type StaffListingQuery = {
+  state?: MarketplaceState
+  category?: MarketplaceCategory
+  ownerId?: string
+  /** A case-insensitive piece of the title. */
+  q?: string
+  cursor?: string
+  /** Defaults to 25 and is bounded at 50 in the handler. */
+  limit?: number
+}
+
+/** One row of the staff page. Never a contact detail, never the body text. */
+export type StaffListingRow = {
+  id: string
+  title: string
+  category: MarketplaceCategory
+  mode: MarketplaceMode
+  state: MarketplaceState
+  /** For a disabled listing, the state it returns to. Null on legacy rows (means active). */
+  hiddenFromState: 'draft' | 'active' | null
+  owner: { id: string; displayName: string | null }
+  createdAt: string
+  publishedAt: string | null
+  expiresAt: string | null
+  stateChangedAt: string
+  openReports: number
+}
+
+export type StaffListingPage = {
+  items: readonly StaffListingRow[]
+  nextCursor: string | null
 }
 
 export type ListingQuery = {

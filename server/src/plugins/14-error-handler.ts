@@ -53,9 +53,28 @@ function detailFor(error, problem) {
   return error.safeDetail ?? error.message ?? problem.title
 }
 
+/** The members RFC 9457 defines, plus ours. An extension can add to the body, never replace one of these. */
+const STANDARD_MEMBERS = new Set(['type', 'title', 'status', 'detail', 'instance', 'requestId', 'errors'])
+
+/**
+ * Extension members (RFC 9457 §3.2): machine-readable facts a client can act on
+ * without parsing `detail`, which is English prose and never a contract.
+ *
+ * Opt-in and explicit: an error carries them as `extensions`, a plain object the
+ * raiser built from values it has already decided are safe to show (a detected
+ * media type, a list of accepted ones). The handler never copies anything else
+ * off an error, so an internal field cannot reach a response by accident.
+ */
+function extensionsFor(error: { extensions?: unknown } | null | undefined): Record<string, unknown> {
+  const raw = error?.extensions
+  if (!raw || typeof raw !== 'object') return {}
+  return Object.fromEntries(Object.entries(raw).filter(([key]) => !STANDARD_MEMBERS.has(key)))
+}
+
 export function buildProblem(error, request: FastifyRequest) {
   const problem = problemFor(error)
   const body = {
+    ...extensionsFor(error),
     type: problem.type,
     title: problem.title,
     status: problem.status,

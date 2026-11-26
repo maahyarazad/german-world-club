@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, resetAuthTables } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
-import { poster, seedListing, resetMarketplace, expireInThePast } from './helpers.ts'
+import { patchListing, poster, seedListing, resetMarketplace, expireInThePast } from './helpers.ts'
 import { createJobHandlers } from '../../src/ops/jobs.ts'
 import type { GwcApp } from '../../src/app.ts'
 
@@ -30,10 +30,7 @@ describe.skipIf(!hasDatabase)('optional expiry', () => {
   })
 
   const patchExpiry = (id: string, expiresAt: string | null) =>
-    app.inject({
-      method: 'PATCH', url: `/marketplace/listings/${id}`, headers: owner.headers,
-      payload: { expiresAt },
-    })
+    patchListing(app, owner.headers, id, { expiresAt })
 
   describe('a member setting their own expiry', () => {
     it('accepts a future date and stays active', async () => {
@@ -59,20 +56,14 @@ describe.skipIf(!hasDatabase)('optional expiry', () => {
       const expiresAt = new Date(Date.now() + 86_400_000).toISOString()
       const listing = await seedListing(app.pg, { ownerId: owner.id, expiresAt })
 
-      const response = await app.inject({
-        method: 'PATCH', url: `/marketplace/listings/${listing}`, headers: owner.headers,
-        payload: { title: 'Only the title changes' },
-      })
+      const response = await patchListing(app, owner.headers, listing, { title: 'Only the title changes' })
       expect(new Date(response.json().expiresAt).toISOString()).toBe(expiresAt)
     })
 
     it('refuses another member setting it', async () => {
       const stranger = await poster(app)
       const listing = await seedListing(app.pg, { ownerId: owner.id })
-      const response = await app.inject({
-        method: 'PATCH', url: `/marketplace/listings/${listing}`, headers: stranger.headers,
-        payload: { expiresAt: null },
-      })
+      const response = await patchListing(app, stranger.headers, listing, { expiresAt: null })
       expect(response.statusCode).toBe(404)
     })
   })

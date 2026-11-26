@@ -6,7 +6,6 @@ import type {
   MemberProfile, OrganisationProfile, OrganisationPublicProfile, ProfileLink, PublicMemberProfile,
   UpdateOrganisationProfileRequest, UpdateProfileRequest,
 } from '@gwc/contracts/profile';
-import type { Asset } from '@gwc/contracts/media';
 import type { MemberDevicesResponse } from '@gwc/contracts/devices';
 import type {
   EventDetail, EventList, EventRegistration, RegisterForEventRequest,
@@ -22,7 +21,8 @@ import type {
 import type { CreateStoreRequest, Store, StoreProfile, UpdateStoreRequest } from '@gwc/contracts/stores';
 import type { Redemption, RedemptionReport } from '@gwc/contracts/redemptions';
 import type {
-  CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, TermsResponse,
+  CategoriesResponse, CreateListingRequest, Listing, ListingPage, ListingQuery, OwnListing, OwnListingSummary,
+  TermsResponse, UpdateListingRequest,
 } from '@gwc/contracts/marketplace';
 
 import type { ReferralPage, ReferralSummary, XpEntryPage } from '@gwc/contracts/referrals';
@@ -110,22 +110,9 @@ export const profileApi = {
   organisationPublic: (slug: string) => api<OrganisationPublicProfile>(`/profile/organisations/${encodeURIComponent(slug)}`),
 };
 
-/**
- * Uploads (feature 010). A member uploads at /media; a merchant or partner
- * uploads its logo at /media/{kind} — the same pipeline, one route per
- * audience. `alt` goes before the file: the server reads the fields that
- * precede the file part.
- */
-export const mediaApi = {
-  upload: (file: { uri: string; name: string; type: string }, alt: string, route = '/media') => {
-    const form = new FormData();
-    form.append('alt', alt);
-    // React Native's FormData takes a { uri, name, type } descriptor for a file.
-    form.append('file', file as unknown as Blob);
-    return api<Asset>(route, { method: 'POST', body: form });
-  },
-  get: (id: string) => api<Asset>(`/media/${id}`),
-};
+// Uploads are not here: every one goes through `useMediaUpload` (feature 037), which
+// reports progress — a member at /media, a merchant or partner at /media/{kind}, the
+// same pipeline and one route per audience. `alt` goes before the file there.
 
 /**
  * A merchant's own store and offers (feature 035). "Mine" paths: the organisation
@@ -253,6 +240,16 @@ export const marketplaceApi = {
   /** After the listing exists: marketplace media attach to a listing, unlike a thread post's (feature 010). */
   attachMedia: (listingId: string, assetId: string) =>
     api<unknown>(`/marketplace/listings/${listingId}/media`, { method: 'POST', body: { assetId } }),
+  /** Your own listings in every state, each with the flags that say what to offer (feature 037). */
+  mine: () => api<{ items: OwnListingSummary[] }>('/marketplace/mine'),
+  /** One of your own listings in any state, in full: what the edit screen prefills from. */
+  mineOne: (id: string) => api<OwnListing>(`/marketplace/mine/${id}`),
+  /** Save an edit and the Publish choice in one request. `version` is the one last read; stale is 409 `conflict`. */
+  update: (id: string, body: UpdateListingRequest) =>
+    api<OwnListingSummary>(`/marketplace/listings/${id}`, { method: 'PATCH', body }),
+  /** Remove a photo already on the listing. Does not move its version. */
+  detachMedia: (listingId: string, assetId: string) =>
+    api<unknown>(`/marketplace/listings/${listingId}/media/${assetId}`, { method: 'DELETE' }),
 };
 
 /**

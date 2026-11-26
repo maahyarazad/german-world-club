@@ -121,10 +121,13 @@ export default function OfferEditor() {
 
   const addMedia = async () => {
     if (!offer) return;
-    const { denied, items } = await pickMedia({ limit: 1, videos: true, quality: 0.6 });
+    const { denied, items, unsupported } = await pickMedia({ limit: 1, videos: true, quality: 0.6 });
     if (denied) return setMessage({ text: t.merchant.limits.permission, tone: 'danger' });
     const [item] = items;
-    if (!item) return;
+    if (!item) {
+      if (unsupported.length > 0) setMessage({ text: t.upload.unsupportedFormat, tone: 'danger' });
+      return;
+    }
     const check = checkPicked(item);
     if (check !== 'ok') {
       return setMessage({ text: check === 'video-too-large' ? t.merchant.limits.videoTooLarge : t.merchant.limits.imageTooLarge, tone: 'danger' });

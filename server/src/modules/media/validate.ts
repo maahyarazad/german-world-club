@@ -1,5 +1,6 @@
 import { fileTypeFromBuffer } from 'file-type'
 import { PROBLEMS } from '@gwc/contracts/errors'
+import { ACCEPTED_MEDIA_TYPES } from '@gwc/contracts/media'
 
 /**
  * Upload validation, in the order media-pipeline.md §4 specifies (FR-052,
@@ -26,6 +27,9 @@ import { PROBLEMS } from '@gwc/contracts/errors'
 
 /** Refusals carry a problem so the route layer does not re-derive the mapping. */
 export class MediaRejected extends Error {
+  declare readonly problem: { type: string; title: string; status: number }
+  /** Safe-to-show facts for the problem body (RFC 9457 extension members). */
+  declare extensions?: Record<string, unknown>
   constructor(problem, detail, extra = {}) {
     super(detail)
     this.name = 'MediaRejected'
@@ -36,16 +40,12 @@ export class MediaRejected extends Error {
   }
 }
 
-/** Inspected from the bytes, never from what the client said (FR-052). */
-export const ALLOWED_MIME = Object.freeze({
-  'image/jpeg': 'image',
-  'image/png': 'image',
-  'image/webp': 'image',
-  'image/avif': 'image',
-  'video/mp4': 'video',
-  'video/webm': 'video',
-  'video/quicktime': 'video',
-})
+/**
+ * Inspected from the bytes, never from what the client said (FR-052). The list
+ * itself is `ACCEPTED_MEDIA_TYPES` in `@gwc/contracts/media`, so the clients'
+ * pickers and this validator cannot disagree about what is accepted.
+ */
+export const ALLOWED_MIME = ACCEPTED_MEDIA_TYPES
 
 /**
  * SVG is refused outright, and not as an oversight.
@@ -147,25 +147,32 @@ export async function validateUpload(buffer, { maxBytes, maxPixels, maxDimension
   }
 
   // ---- 2. magic bytes ----------------------------------------------------
+  // What a client needs to explain the refusal without parsing `detail`: the type
+  // the bytes turned out to be (null when they match nothing) and the types the
+  // club accepts. Data, not prose — the server emits no localised text.
+  const unsupported = (detail: string, detectedType: string | null) =>
+    new MediaRejected(PROBLEMS.UNSUPPORTED_MEDIA_TYPE, detail, {
+      extensions: { detectedType, acceptedTypes: Object.keys(ALLOWED_MIME) },
+    })
+
   if (looksLikeSvg(buffer)) {
-    throw new MediaRejected(PROBLEMS.UNSUPPORTED_MEDIA_TYPE, REFUSED_OUTRIGHT['image/svg+xml'])
+    throw unsupported(REFUSED_OUTRIGHT['image/svg+xml'], 'image/svg+xml')
   }
 
   const detected = await fileTypeFromBuffer(buffer)
   if (!detected) {
-    throw new MediaRejected(PROBLEMS.UNSUPPORTED_MEDIA_TYPE, 'The file type could not be determined from its contents.')
+    throw unsupported('The file type could not be determined from its contents.', null)
   }
 
   // ---- 3. allowlist ------------------------------------------------------
   if (REFUSED_OUTRIGHT[detected.mime]) {
-    throw new MediaRejected(PROBLEMS.UNSUPPORTED_MEDIA_TYPE, REFUSED_OUTRIGHT[detected.mime])
+    throw unsupported(REFUSED_OUTRIGHT[detected.mime], detected.mime)
   }
   const kind = ALLOWED_MIME[detected.mime]
   if (!kind) {
-    throw new MediaRejected(
-      PROBLEMS.UNSUPPORTED_MEDIA_TYPE,
-      `Files of type ${detected.mime} are not accepted.`,
-    )
+    // HEIC/HEIF land here: the server's image library cannot decode HEVC, so an
+    // iPhone photo must be converted on the phone (research R12).
+    throw unsupported(`Files of type ${detected.mime} are not accepted.`, detected.mime)
   }
 
   // ---- 4. declared dimensions, BEFORE decode -----------------------------

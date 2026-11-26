@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { get, post, ApiError } from '../lib/api'
+import { get, post, patch, del, ApiError } from '../lib/api'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace'
 import type {
-  CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse,
+  CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse, OwnListing,
 } from '@gwc/contracts/marketplace'
 import MediaPicker from './MediaPicker'
 import type { PendingMedia, MediaStatus } from './MediaPicker'
@@ -16,6 +16,7 @@ import Callout from '../components/ui/Callout'
 import Drawer from '../components/ui/Drawer'
 import StatusPill from '../components/ui/StatusPill'
 import ListingRequest from './ListingRequest'
+import MyListings from './MyListings'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
 import PageLoader from '../components/ui/PageLoader'
@@ -114,10 +115,16 @@ function DetailField({
   )
 }
 
-function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
+function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted, editId = null }: {
   categories: readonly CategoryDef[]
   vehicleFeatures: readonly VehicleFeature[]
   loadFailed: boolean
+  /**
+   * Feature 037: when set, this form edits that listing instead of creating
+   * one. The page mounts it with `key={editId}` so switching between listings
+   * never carries one listing's fields into another.
+   */
+  editId?: string | null
   /**
    * `complete` is false when the listing exists but some media did not
    * attach: the page keeps the drawer open then, because the retry lives in
@@ -142,8 +149,57 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   // retry attaches to it rather than creating a second listing.
   const [attachingTo, setAttachingTo] = useState<string | null>(null)
   const [termsFailed, setTermsFailed] = useState(false)
+  // Feature 037. A new listing starts published (the clarified default); an
+  // edit starts from the listing's own state and only sends `published` when
+  // the member changed it.
+  const [publish, setPublish] = useState(true)
+  const editing = editId !== null
+  type Existing = { version: string; state: string; canEdit: boolean; moderated: boolean; publishedAtLoad: boolean; expiresAtLoad: string }
+  const [existing, setExisting] = useState<Existing | null>(null)
+  const [existingMedia, setExistingMedia] = useState<OwnListing['media']>([])
+  // Flags that change behaviour, not stored refusals: a stale form offers a
+  // reload, and a form that cannot load shows the load-failed note.
+  const [stale, setStale] = useState(false)
+  const [editFailed, setEditFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    if (!editId) return
+    const controller = new AbortController()
+    setEditFailed(false)
+    get(`/marketplace/mine/${editId}`, { signal: controller.signal })
+      .then((body) => {
+        const l = body as OwnListing & { details: Record<string, unknown>; features: string[] }
+        setCategory(l.category)
+        setMode(l.mode)
+        setTitle(l.title)
+        setBody(l.body)
+        setContactMethod(l.contact?.method ?? 'platform_message')
+        const expires = l.expiresAt ? new Date(l.expiresAt).toISOString().slice(0, 10) : ''
+        setExpiresAt(expires)
+        // The database returns every column of the detail row, nulls included;
+        // a null is "not set", and sending it back would fail validation.
+        setDetails(Object.fromEntries(Object.entries(l.details ?? {}).filter(([, v]) => v !== null && v !== undefined)))
+        setFeatures(new Set(l.features ?? []))
+        setPublish(l.state === 'active')
+        setExistingMedia(l.media ?? [])
+        setStale(false)
+        setExisting({
+          version: l.version, state: l.state, canEdit: l.canEdit, moderated: l.moderated,
+          publishedAtLoad: l.state === 'active', expiresAtLoad: expires,
+        })
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return
+        console.error('ComposeListing.loadListing', err instanceof ApiError ? err.problem : err)
+        setEditFailed(true)
+      })
+    return () => controller.abort()
+  }, [editId, reloadKey])
+
+  useEffect(() => {
+    // Editing needs no terms: they were accepted when the listing was posted.
+    if (editing) return
     // Not swallowed. A terms fetch that failed silently left `terms` null, and
     // the button then looked enabled while `submit` returned without a word.
     void get('/marketplace/terms')
@@ -209,6 +265,7 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
   }
 
   const submit = async () => {
+    if (editing) return saveEdit()
     if (!terms) return
     // Alt text is required at ingest (§10.1). Refusing here, before the
     // listing exists, beats publishing it and then failing every upload.
@@ -227,6 +284,8 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
         contactMethod,
         expiresAt: expiresAt === '' ? null : new Date(expiresAt).toISOString(),
         termsVersion: terms.version,
+        // Unticked saves a private draft; ticked (the default) goes live.
+        publish,
       })) as { id: string }
       listingId = created.id
     } catch (err) {
@@ -258,6 +317,80 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
       setAttachingTo(null)
     }
     setBusy(false)
+  }
+
+  /**
+   * Save an edit (feature 037): one PATCH carries the fields, the expiry and
+   * the Publish choice, so they succeed or fail together. `version` is the one
+   * this form was loaded from; if the listing changed elsewhere the server says
+   * so (409) and the member is offered a reload rather than an overwrite.
+   */
+  const saveEdit = async () => {
+    if (!existing || !editId) return
+    if (media.some((m) => m.alt.trim().length === 0)) {
+      setError(t.memberMarketplace.mediaAltMissing)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const saved = (await patch(`/marketplace/listings/${editId}`, {
+        version: existing.version,
+        title, body, category, details,
+        ...(category === 'vehicle' ? { features: [...features] } : {}),
+        contactMethod,
+        // Only when the member changed it: re-sending an unchanged date would
+        // round it to midnight and make the form look edited when it was not.
+        ...(expiresAt !== existing.expiresAtLoad
+          ? { expiresAt: expiresAt === '' ? null : new Date(expiresAt).toISOString() }
+          : {}),
+        ...(publish !== existing.publishedAtLoad ? { published: publish } : {}),
+      })) as { version: string; state: string }
+      setExisting({ ...existing, version: saved.version, state: saved.state, publishedAtLoad: saved.state === 'active' })
+    } catch (err) {
+      console.error('ComposeListing.saveEdit', err instanceof ApiError ? err.problem : err)
+      if (err instanceof ApiError && err.problem?.type === PROBLEMS.CONFLICT.type) {
+        // Shown as well as logged: the member cannot proceed without knowing the
+        // form is out of date, and the reload is the way forward.
+        setStale(true)
+        setError(t.memberMarketplace.conflict)
+      } else if (err instanceof ApiError && err.problem?.type === PROBLEMS.MARKETPLACE_NOT_EDITABLE.type) {
+        setError(t.memberMarketplace.notEditable)
+      } else if (err instanceof ApiError && err.problem?.type === PROBLEMS.MARKETPLACE_MODE_NOT_ALLOWED.type) {
+        setError(t.memberMarketplace.jobOfferNote)
+      } else if (err instanceof ApiError && /expiresAt/.test(err.problem?.detail ?? '')) {
+        setError(t.memberMarketplace.expiryMustBeFuture)
+      }
+      setBusy(false)
+      return
+    }
+
+    // New photos go to the listing that now exists; the version does not move.
+    const failed = await attachAll(editId, media)
+    if (failed.length > 0) {
+      setMedia(failed)
+      setAttachingTo(editId)
+      setError(t.memberMarketplace.mediaFailed)
+      onPosted({ complete: false })
+    } else {
+      setMedia([])
+      onPosted({ complete: true })
+    }
+    setBusy(false)
+  }
+
+  /** Remove a photo already on the listing. It is its own request and does not move the version. */
+  const removeExisting = async (assetId: string) => {
+    if (!editId) return
+    setBusy(true)
+    try {
+      await del(`/marketplace/listings/${editId}/media/${assetId}`)
+      setExistingMedia((all) => all.filter((m) => m.assetId !== assetId))
+    } catch (err) {
+      console.error('ComposeListing.removeExisting', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const setStatus = (key: string, status: MediaStatus) =>
@@ -301,14 +434,31 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
 
   // Loaded AND equal. `undefined === undefined` made an unloaded terms record
   // read as accepted, which is how the button came to be enabled for nothing.
-  const termsAccepted = terms !== null && terms.acceptedVersion === terms.version
-  const ready = categories.length > 0 && terms !== null && category !== ''
+  const termsAccepted = editing || (terms !== null && terms.acceptedVersion === terms.version)
+  const ready = editing
+    ? existing !== null && existing.canEdit && category !== ''
+    : categories.length > 0 && terms !== null && category !== ''
+
+  // An edit form waits for the listing before showing any field: nothing
+  // renders as empty and then jumps to the saved values.
+  if (editing && editFailed) return <Callout variant="neutral" title={t.memberMarketplace.editLoadFailed} />
+  if (editing && existing === null) return <PageLoader size="md" className="min-h-0 py-6" />
 
   return (
     // No Card: the drawer carries the heading (composeTitle) and the frame.
     <div className="flex flex-col gap-4">
       {(loadFailed || termsFailed) && <Callout variant="neutral" title={t.memberMarketplace.loadFailed} />}
-      {error && <Callout variant="neutral" title={error} />}
+      {existing?.moderated && <Callout variant="neutral" title={t.memberMarketplace.publishDisabledByStaff} />}
+      {existing && !existing.canEdit && !existing.moderated && <Callout variant="neutral" title={t.memberMarketplace.notEditable} />}
+      {error && (
+        <Callout variant="neutral" title={error}>
+          {stale && (
+            <Button variant="secondary" className="mt-2" onClick={() => setReloadKey((k) => k + 1)}>
+              {t.memberMarketplace.reload}
+            </Button>
+          )}
+        </Callout>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -328,8 +478,9 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
           {t.memberMarketplace.mode}
           <select
             value={mode}
+            disabled={editing}
             onChange={(e) => setMode(e.target.value)}
-            className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text"
+            className="rounded-card border border-hairline bg-surface px-3 py-2.5 text-[13px] font-normal normal-case tracking-normal text-text disabled:opacity-60"
           >
             {allowedModes.map((m) => (
               <option key={m} value={m}>{t.memberMarketplace.modes[m as keyof typeof t.memberMarketplace.modes] ?? m}</option>
@@ -337,7 +488,8 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
           </select>
         </label>
       </div>
-      {onlyMode && <p className="-mt-2 text-[12px] text-text-muted">{t.memberMarketplace.jobOfferNote}</p>}
+      {onlyMode && !editing && <p className="-mt-2 text-[12px] text-text-muted">{t.memberMarketplace.jobOfferNote}</p>}
+      {editing && <p className="-mt-2 text-[12px] text-text-muted">{t.memberMarketplace.modeLocked}</p>}
 
       <Field label={t.memberMarketplace.titleField} value={title} onChange={(e) => setTitle(e.target.value)} />
       <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -374,7 +526,25 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
         </div>
       )}
 
-      <MediaPicker items={media} onChange={setMedia} onError={setError} disabled={busy} />
+      {editing && existingMedia.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+            {t.memberMarketplace.mediaCurrent}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {existingMedia.map((m) => (
+              <li key={m.assetId} className="flex items-center justify-between gap-3 rounded-card border border-hairline p-2">
+                <span className="text-[13px] text-text">{m.alt || m.kind}</span>
+                <Button variant="quiet" disabled={busy || !existing?.canEdit} onClick={() => removeExisting(m.assetId)}>
+                  {t.memberMarketplace.mediaRemoveCurrent}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <MediaPicker items={media} onChange={setMedia} onError={setError} disabled={busy || (editing && !existing?.canEdit)} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
@@ -397,6 +567,23 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
         />
       </div>
 
+      {/* The Publish checkbox (feature 037). It starts ticked on a new listing; on an
+          edit it shows the listing's own state. Display only: the server decides
+          whether publishing is allowed and refuses a disabled listing. */}
+      <label className="flex items-start gap-2 text-[13px] text-text">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={publish}
+          disabled={busy || (editing && (!existing || !existing.canEdit))}
+          onChange={(e) => setPublish(e.target.checked)}
+        />
+        <span>
+          <span className="font-semibold">{t.memberMarketplace.publish}</span>
+          <span className="block text-[12px] text-text-muted">{t.memberMarketplace.publishHint}</span>
+        </span>
+      </label>
+
       {!termsAccepted && terms && (
         <Callout variant="gold" title={t.memberMarketplace.termsRequired}>
           <Button variant="secondary" className="mt-2" loading={busy} onClick={acceptTerms}>
@@ -409,10 +596,10 @@ function ComposeListing({ categories, vehicleFeatures, loadFailed, onPosted }: {
         <Button
           variant="accent"
           loading={busy}
-          disabled={!ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10}
+          disabled={!ready || !termsAccepted || title.trim().length < 3 || body.trim().length < 10 || (stale && editing)}
           onClick={submit}
         >
-          {t.memberMarketplace.submit}
+          {editing ? t.memberMarketplace.saveChanges : publish ? t.memberMarketplace.submit : t.memberMarketplace.saveDraft}
         </Button>
         {attachingTo && media.some((m) => m.status === 'failed') && !busy && (
           <Button variant="secondary" className="ml-2" onClick={retryMedia}>
@@ -439,6 +626,12 @@ export function Marketplace() {
   // On the page, not in the form: a complete publish closes the drawer, and a
   // confirmation inside a closed drawer is one nobody sees.
   const [posted, setPosted] = useState(false)
+  // Feature 037: the member's own listings, and which one is open for editing.
+  // `editId` set means the drawer edits that listing; null means a new one.
+  const [view, setView] = useState<'browse' | 'mine'>('browse')
+  const [editId, setEditId] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [mineKey, setMineKey] = useState(0)
   const newListingButton = useRef<HTMLButtonElement>(null)
 
   // Whether the New listing button and its drawer render at all. Display
@@ -488,7 +681,7 @@ export function Marketplace() {
             variant="accent"
             aria-haspopup="dialog"
             aria-expanded={composeOpen}
-            onClick={() => { setPosted(false); setComposeOpen(true) }}
+            onClick={() => { setPosted(false); setSaved(false); setEditId(null); setComposeOpen(true) }}
           >
             {t.memberMarketplace.newListing}
           </Button>
@@ -496,32 +689,57 @@ export function Marketplace() {
       />
 
       {posted && <Callout variant="info" title={t.memberMarketplace.posted} />}
+      {saved && <Callout variant="info" title={t.memberMarketplace.saved} />}
+
+      {canPost && (
+        <div className="flex gap-2" role="group">
+          <Button variant={view === 'browse' ? 'secondary' : 'quiet'} aria-pressed={view === 'browse'} onClick={() => setView('browse')}>
+            {t.memberMarketplace.browseTab}
+          </Button>
+          <Button variant={view === 'mine' ? 'secondary' : 'quiet'} aria-pressed={view === 'mine'} onClick={() => setView('mine')}>
+            {t.memberMarketplace.myListings}
+          </Button>
+        </div>
+      )}
 
       {canPost && (
         <Drawer
           open={composeOpen}
           onClose={() => setComposeOpen(false)}
-          title={t.memberMarketplace.composeTitle}
+          title={editId ? t.memberMarketplace.editTitle : t.memberMarketplace.composeTitle}
           closeLabel={t.memberMarketplace.close}
           returnFocusTo={newListingButton}
         >
           <ComposeListing
+            // A new key per listing: switching from one edit to another, or to
+            // a new listing, must never carry fields from the previous one.
+            key={editId ?? 'new'}
+            editId={editId}
             categories={categories}
             vehicleFeatures={vehicleFeatures}
             loadFailed={categoriesFailed}
             onPosted={({ complete }) => {
-              // The listing exists either way, so the list reloads either way.
+              // The listing exists either way, so the lists reload either way.
               void loadListings()
+              setMineKey((k) => k + 1)
               if (complete) {
                 setComposeOpen(false)
-                setPosted(true)
+                if (editId) setSaved(true)
+                else setPosted(true)
               }
             }}
           />
         </Drawer>
       )}
 
-      <Card title={t.memberMarketplace.browseTitle}>
+      {view === 'mine' && canPost && (
+        <MyListings
+          refreshKey={mineKey}
+          onEdit={(id) => { setPosted(false); setSaved(false); setEditId(id); setComposeOpen(true) }}
+        />
+      )}
+
+      {view === 'browse' && <Card title={t.memberMarketplace.browseTitle}>
         <div className="mb-4 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
             {t.memberMarketplace.category}
@@ -580,7 +798,7 @@ export function Marketplace() {
             ))}
           </ul>
         )}
-      </Card>
+      </Card>}
     </div>
   )
 }

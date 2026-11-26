@@ -3,6 +3,8 @@ import { withTransaction, query } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { validateDetails, detailColumns, DETAIL_TABLE } from '../categories.ts'
 import { ListingModeNotAllowedError, modeAllowed } from './create.ts'
+import { mediaForListings } from './media.ts'
+import { assertEditable } from './editable.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 import type { MarketplaceCategory, ListingDetails } from '@gwc/contracts/marketplace'
@@ -25,6 +27,19 @@ import type { MarketplaceCategory, ListingDetails } from '@gwc/contracts/marketp
 
 /** States an owner may transition *into* from `active`. Terminal — see data-model.md §7. */
 const OWNER_TRANSITIONS = Object.freeze(['sold', 'filled', 'withdrawn'])
+
+const staleVersion = () =>
+  forbidden(PROBLEMS.CONFLICT, 'This listing was changed elsewhere. Reload it and try again.')
+
+/**
+ * A listing's version token (feature 037, research R5): `updated_at` formatted
+ * by the database to the microsecond. A JavaScript `Date` keeps only
+ * milliseconds, so two edits inside one millisecond would compare equal — the
+ * same reason feature 028 formats an admin account's version this way.
+ */
+export const LISTING_VERSION_SQL =
+  `to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`
+
 
 export class ListingNotFoundError extends Error {
   constructor() {
@@ -54,7 +69,7 @@ export class DetailsInvalidError extends Error {
 async function loadOwned(client: PoolClient, { listingId, ownerId }: { listingId: string; ownerId: string }) {
   const { rows } = await client.query(
     `SELECT id, owner_id, category, mode, title, body, state, contact_method,
-            expires_at, published_at, created_at
+            expires_at, published_at, created_at, ${LISTING_VERSION_SQL} AS version
        FROM marketplace_listings
       WHERE id = $1::uuid
       FOR UPDATE`,
@@ -70,17 +85,33 @@ async function loadOwned(client: PoolClient, { listingId, ownerId }: { listingId
 export type EditInput = {
   listingId: string
   ownerId: string
+  /** The `version` the caller last read; a different one means someone else got there first. */
+  version: string
+  /** `true` publishes, `false` unpublishes, absent leaves the state alone (feature 037). */
+  published?: boolean
   title?: string
   body?: string
   category?: MarketplaceCategory
   details?: ListingDetails
   features?: readonly string[]
   contactMethod?: string
+  /**
+   * `null` clears the expiry to unlimited. Present-and-undefined is NOT the
+   * same as absent, so the caller passes the key only when the request had it
+   * (`'expiresAt' in input` below) — FR-030 depends on telling those apart.
+   */
+  expiresAt?: string | null
   signal?: AbortSignal
 }
 
 /**
- * Edit a listing's own fields, and — if the category changes — its detail row.
+ * Edit a listing's own fields, its expiry and whether it is published — all in
+ * ONE transaction, so a save either changes everything the form sent or
+ * nothing, and the version moves once.
+ *
+ * Order of refusals, on purpose: not yours (404) → not editable (409) → stale
+ * (409). The owner of a listing staff just disabled must hear "disabled", not
+ * "reload", because reloading would not help.
  *
  * A category change deletes the old detail row and inserts a fresh one (T074).
  * Anything less would leave fields from the old category sitting in a table
@@ -90,9 +121,15 @@ export type EditInput = {
  */
 export async function editListing(app: GwcApp, input: EditInput) {
   const { listingId, ownerId, signal } = input
+  let stateFrom = ''
+  let stateTo = ''
 
-  return withTransaction(app.pg, async (client: PoolClient) => {
+  const result = await withTransaction(app.pg, async (client: PoolClient) => {
     const row = await loadOwned(client, { listingId, ownerId })
+    stateFrom = String(row.state)
+    assertEditable(stateFrom)
+    if (row.version !== input.version) throw staleVersion()
+
     const category = (input.category ?? row.category) as MarketplaceCategory
     const categoryChanged = input.category !== undefined && input.category !== row.category
 
@@ -111,6 +148,35 @@ export async function editListing(app: GwcApp, input: EditInput) {
       if (problems.length > 0) throw new DetailsInvalidError(problems)
     }
 
+    // ---- Expiry ------------------------------------------------------------
+    const expiryGiven = 'expiresAt' in input
+    let expiresAt: Date | null = row.expires_at ?? null
+    if (expiryGiven) {
+      if (input.expiresAt === null || input.expiresAt === undefined) expiresAt = null
+      else {
+        const parsed = new Date(input.expiresAt)
+        if (Number.isNaN(parsed.getTime())) throw new DetailsInvalidError([{ field: 'expiresAt', reason: 'is not a valid date' }])
+        expiresAt = parsed
+      }
+    }
+
+    // ---- Publication -------------------------------------------------------
+    // `published: true` makes a draft or an expired listing live. An active one
+    // is already; `hidden` never reaches here (assertEditable). `false` takes a
+    // live listing back to a private draft and leaves everything else alone —
+    // an expired listing is already off display, so unpublishing it is a no-op.
+    let nextState = stateFrom
+    if (input.published === true && (stateFrom === 'draft' || stateFrom === 'expired')) nextState = 'active'
+    if (input.published === false && stateFrom === 'active') nextState = 'draft'
+    stateTo = nextState
+
+    if (nextState === 'active' && stateFrom !== 'active' && expiresAt !== null && expiresAt.getTime() <= Date.now()) {
+      // A listing published with an expiry already behind it would be live for
+      // one tick of the expiry job. Refused, with the field named, so the form
+      // asks for a new date instead of publishing and expiring in one breath.
+      throw new DetailsInvalidError([{ field: 'expiresAt', reason: 'must be in the future to publish' }])
+    }
+
     const sets: string[] = []
     const params: unknown[] = [listingId]
     const set = (column: string, value: unknown) => {
@@ -122,15 +188,28 @@ export async function editListing(app: GwcApp, input: EditInput) {
     if (input.body !== undefined) set('body', input.body)
     if (input.contactMethod !== undefined) set('contact_method', input.contactMethod)
     if (categoryChanged) set('category', category)
+    if (expiryGiven) set('expires_at', expiresAt)
+    if (nextState !== stateFrom) {
+      set('state', nextState)
+      sets.push('state_changed_at = now()')
+      // A draft made unpublished from the start has no publication time yet; one
+      // that was live keeps its original, so "published on" does not move.
+      if (nextState === 'active') sets.push('published_at = COALESCE(published_at, now())')
+    }
 
-    if (sets.length > 0) {
+    const detailsChanged = categoryChanged || input.details !== undefined
+    const featuresChanged = category === 'vehicle' && input.features !== undefined
+
+    if (sets.length > 0 || detailsChanged || featuresChanged) {
+      // Any change moves the version, including one that only touched the
+      // detail rows or the features: another device's form is stale either way.
       await client.query(
-        `UPDATE marketplace_listings SET ${sets.join(', ')}, updated_at = now() WHERE id = $1::uuid`,
+        `UPDATE marketplace_listings SET ${[...sets, 'updated_at = now()'].join(', ')} WHERE id = $1::uuid`,
         params,
       )
     }
 
-    if (categoryChanged || input.details !== undefined) {
+    if (detailsChanged) {
       // DELETE then INSERT, not UPSERT: an UPSERT would keep whatever the old
       // row had for a column the new payload omits, which is precisely the
       // stale-field leak this task exists to close.
@@ -156,9 +235,9 @@ export async function editListing(app: GwcApp, input: EditInput) {
       }
     }
 
-    if (category === 'vehicle' && input.features !== undefined) {
+    if (featuresChanged) {
       await client.query('DELETE FROM marketplace_vehicle_features WHERE listing_id = $1::uuid', [listingId])
-      if (input.features.length > 0) {
+      if (input.features!.length > 0) {
         await client.query(
           `INSERT INTO marketplace_vehicle_features (listing_id, feature_id)
            SELECT $1, id FROM vehicle_features WHERE key = ANY($2::citext[]) AND retired_at IS NULL`,
@@ -169,12 +248,27 @@ export async function editListing(app: GwcApp, input: EditInput) {
 
     const { rows: after } = await client.query(
       `SELECT id, category, mode, title, body, state, contact_method,
-              created_at, published_at, expires_at
+              created_at, published_at, expires_at, state_changed_at,
+              ${LISTING_VERSION_SQL} AS version
          FROM marketplace_listings WHERE id = $1::uuid`,
       [listingId],
     )
     return after[0]!
   }, { signal })
+
+  // AFTER the commit, never inside it (see `transitionState`): an audit entry
+  // that became durable before a failed COMMIT would describe a change that
+  // never happened.
+  if (stateTo !== stateFrom) {
+    await app.audit({
+      action: 'marketplace_listing_state_changed',
+      actorId: ownerId, actorKind: 'member',
+      targetType: 'marketplace_listing', targetId: listingId,
+      detail: { statusFrom: stateFrom, statusTo: stateTo },
+    })
+  }
+
+  return result
 }
 
 /**
@@ -232,34 +326,6 @@ export async function transitionState(
   return result
 }
 
-/**
- * Set or clear an expiry on an owned listing.
- *
- * `null` is accepted explicitly and means unlimited — a first-class choice a
- * member may return to at any time (FR-030), not the absence of an answer.
- */
-export async function setExpiry(
-  app: GwcApp,
-  { listingId, ownerId, expiresAt, signal }:
-    { listingId: string; ownerId: string; expiresAt: string | null; signal?: AbortSignal },
-) {
-  return withTransaction(app.pg, async (client: PoolClient) => {
-    await loadOwned(client, { listingId, ownerId })
-    // The full row, not just the changed column: the controller folds this
-    // into the same PATCH response as editListing, and a caller who set title
-    // and cleared the expiry in one request should get one consistent listing
-    // back, not two different shapes depending on which fields they sent.
-    const { rows } = await client.query(
-      `UPDATE marketplace_listings SET expires_at = $2, updated_at = now()
-        WHERE id = $1::uuid
-        RETURNING id, category, mode, title, body, state, contact_method,
-                  created_at, published_at, expires_at`,
-      [listingId, expiresAt],
-    )
-    return rows[0]!
-  }, { signal })
-}
-
 /** `GET /marketplace/mine` — every state, because the owner must see hidden and withdrawn too. */
 export async function myListings(
   app: GwcApp,
@@ -268,7 +334,8 @@ export async function myListings(
   const { rows } = await query(
     app.pg,
     `SELECT id, category, mode, title, body, state, contact_method,
-            created_at, published_at, expires_at, state_changed_at
+            created_at, published_at, expires_at, state_changed_at,
+            ${LISTING_VERSION_SQL} AS version
        FROM marketplace_listings
       WHERE owner_id = $1::uuid
       ORDER BY state_changed_at DESC`,
@@ -276,4 +343,54 @@ export async function myListings(
     { signal },
   )
   return rows
+}
+
+/**
+ * `GET /marketplace/mine/:id` — the owner's whole listing, in ANY state.
+ *
+ * The public detail route is the visibility rule (active only) and must stay
+ * that simple, so the owner's read lives here instead of as a second branch
+ * there. Not yours and absent are one `ListingNotFoundError`.
+ */
+export async function ownListing(
+  app: GwcApp,
+  { listingId, ownerId, signal }: { listingId: string; ownerId: string; signal?: AbortSignal },
+) {
+  const { rows } = await query(
+    app.pg,
+    `SELECT id, owner_id, category, mode, title, body, state, contact_method,
+            created_at, published_at, expires_at, state_changed_at,
+            ${LISTING_VERSION_SQL} AS version
+       FROM marketplace_listings
+      WHERE id = $1::uuid AND owner_id = $2::uuid`,
+    [listingId, ownerId],
+    { signal },
+  )
+  const row = rows[0]
+  if (!row) throw new ListingNotFoundError()
+
+  const table = DETAIL_TABLE[row.category as MarketplaceCategory]
+  const { rows: details } = await query(
+    app.pg,
+    `SELECT to_jsonb(d.*) - 'listing_id' AS details FROM ${table} d WHERE d.listing_id = $1::uuid`,
+    [listingId],
+    { signal },
+  )
+  const { rows: features } = await query(
+    app.pg,
+    `SELECT vf.key
+       FROM marketplace_vehicle_features mvf
+       JOIN vehicle_features vf ON vf.id = mvf.feature_id
+      WHERE mvf.listing_id = $1::uuid
+      ORDER BY vf.key`,
+    [listingId],
+    { signal },
+  )
+  const media = await mediaForListings(app, [listingId], { signal })
+
+  return {
+    row: { ...row, details: details[0]?.details ?? {} },
+    features: features.map((f) => String(f.key)),
+    media: media.get(listingId) ?? [],
+  }
 }

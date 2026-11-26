@@ -164,6 +164,12 @@ export const PROBLEMS = {
   // what happened, and retrying changes nothing. Named for the general rule so
   // a later narrowing reuses it.
   MARKETPLACE_MODE_NOT_ALLOWED: { type: `${BASE}/marketplace/mode-not-allowed`, title: 'Mode not allowed for this category', status: 422 },
+  // The owner asked to change a listing that is no longer theirs to change:
+  // sold, filled, withdrawn, or disabled by staff (feature 037). 409 because
+  // the request is well formed and the listing exists; its *state* is what
+  // refuses. Only ever shown to the owner — anyone else gets the 404 an absent
+  // id gets, so this never confirms that a listing exists.
+  MARKETPLACE_NOT_EDITABLE: { type: `${BASE}/marketplace/not-editable`, title: 'This listing can no longer be edited', status: 409 },
 
   // --- Merchant stores and offers (feature 035) ------------------------------
   STORE_EXISTS: { type: `${BASE}/offers/store-exists`, title: 'This organisation already has a store', status: 409 },

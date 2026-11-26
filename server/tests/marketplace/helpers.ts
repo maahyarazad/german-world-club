@@ -1,4 +1,4 @@
-import { createMember, bearerFor } from '../helpers/auth.ts'
+import { createMember, createAdmin, bearerFor } from '../helpers/auth.ts'
 import type { Pool } from 'pg'
 import type { GwcApp } from '../../src/app.ts'
 
@@ -36,6 +36,13 @@ type ListingSeed = {
   state?: string
   expiresAt?: string | null
   details?: Record<string, unknown>
+  /**
+   * Feature 037: the state a `hidden` listing returns to. Leave it out for a
+   * legacy hidden row (NULL, which restore reads as `active`).
+   */
+  hiddenFromState?: 'draft' | 'active'
+  /** A `draft` is never inserted with a publication time unless asked. */
+  published?: boolean
 }
 
 /**
@@ -52,6 +59,7 @@ export async function seedListing(pool: Pool, seed: ListingSeed): Promise<string
   const {
     ownerId, category = 'general', mode = 'offer',
     title = `A ${category} ${mode}`, state = 'active', expiresAt = null, details = {},
+    hiddenFromState, published = state !== 'draft',
   } = seed
 
   const legacy = category === 'job' && mode === 'offer'
@@ -63,11 +71,12 @@ export async function seedListing(pool: Pool, seed: ListingSeed): Promise<string
     ;({ rows } = await client.query(
     `INSERT INTO marketplace_listings
        (owner_id, category, mode, title, body, state, terms_version,
-        published_at, expires_at, state_changed_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $8, now())
+        published_at, expires_at, state_changed_at, hidden_from_state)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, CASE WHEN $9::boolean THEN now() END, $8, now(), $10)
      RETURNING id`,
     [ownerId, category, mode, title,
-     'A body comfortably longer than the ten-character minimum.', state, TERMS, expiresAt],
+     'A body comfortably longer than the ten-character minimum.', state, TERMS, expiresAt,
+     published, hiddenFromState ?? null],
     ))
     await client.query('COMMIT')
   } catch (error) {
@@ -127,4 +136,42 @@ export async function expireInThePast(pool: Pool, listingId: string) {
 export async function resetMarketplace(pool: Pool) {
   await pool.query('TRUNCATE marketplace_listings, marketplace_terms_acceptances CASCADE')
   await pool.query(`DELETE FROM counters WHERE scope = 'marketplace.listings'`)
+}
+
+/**
+ * A staff member holding the given `marketplace_moderation` flags (feature 037).
+ * `true` grants all five. Mirrors how `moderation.test.ts` builds one, so the
+ * new suites do not each copy it.
+ */
+export async function staffWithModeration(
+  app: GwcApp,
+  flags: Partial<Record<'read' | 'write' | 'edit' | 'delete' | 'status', boolean>> | true,
+) {
+  const admin = await createAdmin(app.pg, { grants: { marketplace_moderation: flags } })
+  const headers = await bearerFor(app, { accountId: admin.id, accountKind: 'admin' })
+  return { id: String(admin.id), headers }
+}
+
+/** The listing as the owner reads it, with its `version` — what a PATCH must send back. */
+export async function ownVersion(app: GwcApp, headers: Record<string, string>, id: string): Promise<string> {
+  const response = await app.inject({ method: 'GET', url: `/marketplace/mine/${id}`, headers })
+  return String(response.json().version)
+}
+
+/**
+ * PATCH a listing the way a real client does: read its `version` first, send it
+ * back with the changes (feature 037 made it required). For a caller who cannot
+ * read the listing — a stranger, or an id that does not exist — the version is a
+ * placeholder, so the request still reaches the ownership check and a test can
+ * assert that a stranger and a missing id answer identically.
+ */
+export async function patchListing(
+  app: GwcApp, headers: Record<string, string>, id: string, body: Record<string, unknown>,
+) {
+  const probe = await app.inject({ method: 'GET', url: `/marketplace/mine/${id}`, headers })
+  const version = probe.statusCode === 200 ? String(probe.json().version) : 'not-readable'
+  return app.inject({
+    method: 'PATCH', url: `/marketplace/listings/${id}`, headers,
+    payload: { version, ...body } as never,
+  })
 }

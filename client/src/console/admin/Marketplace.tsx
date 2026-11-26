@@ -12,21 +12,25 @@ import Callout from '../../components/ui/Callout'
 import { useLocale, useTranslations } from '../../i18n/index'
 import { formatDateTime } from '../../lib/format'
 import PageLoader from '../../components/ui/PageLoader'
+import MarketplaceListings from './MarketplaceListings'
 
 /**
  * Staff moderation of the marketplace (US4, contracts/moderation-api.md).
  *
- * Reached from the report queue, deliberately — there is no separate listing
- * browser here. §8 frames moderation as a response to a complaint, not a
- * general editing surface, and the endpoints back that: `write`/`edit` do not
- * exist on this module (server/src/modules/marketplace/staff-routes.ts), so
- * there is nothing for a browser-and-edit screen to call.
+ * Two tabs. **Reports** is the queue a complaint arrives in. **All listings**
+ * (feature 037) is a browser over every member listing in every state, because
+ * staff must be able to find and stop a bad record without waiting for someone
+ * to report it. That reverses this file's earlier stance ("there is no separate
+ * listing browser here"), and the part of it that mattered is kept: the browser
+ * calls only `read`, `status` and `delete` routes. `write`/`edit` do not exist
+ * on this module (server/src/modules/marketplace/staff-routes.ts), so nothing
+ * on either tab can change what a member said.
  *
- * Every hide, restore, remove and resolve asks for a reason before sending —
- * FR-020's confirmation, and the same field the server refuses to act
- * without. There is no `danger` button variant in this system (Button.tsx);
- * a destructive action here is a secondary button behind that reason field,
- * never a red button inviting the click it warns about.
+ * Every hide/disable, restore/enable, remove and resolve asks for a reason
+ * before sending — FR-020's confirmation, and the same field the server refuses
+ * to act without. There is no `danger` button variant in this system
+ * (Button.tsx); a destructive action here is a secondary button behind that
+ * reason field, never a red button inviting the click it warns about.
  */
 
 type Report = {
@@ -154,9 +158,6 @@ function ModerationQueue() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={t.marketplaceModeration.title} subtitle={t.marketplaceModeration.subtitle} />
-
-
       <Card title={t.marketplaceModeration.queue}>
         {reports === null
           ? <PageLoader size="md" className="min-h-0 py-6" />
@@ -192,6 +193,25 @@ function ModerationQueue() {
   )
 }
 
+function MarketplaceTabs() {
+  const t = useTranslations()
+  const [tab, setTab] = useState<'reports' | 'listings'>('reports')
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title={t.marketplaceModeration.title} subtitle={t.marketplaceModeration.subtitle} />
+      <div className="flex gap-2" role="group">
+        <Button variant={tab === 'reports' ? 'secondary' : 'quiet'} aria-pressed={tab === 'reports'} onClick={() => setTab('reports')}>
+          {t.marketplaceModeration.tabReports}
+        </Button>
+        <Button variant={tab === 'listings' ? 'secondary' : 'quiet'} aria-pressed={tab === 'listings'} onClick={() => setTab('listings')}>
+          {t.marketplaceModeration.tabListings}
+        </Button>
+      </div>
+      {tab === 'reports' ? <ModerationQueue /> : <MarketplaceListings />}
+    </div>
+  )
+}
+
 export function Marketplace() {
   const t = useTranslations()
   return (
@@ -208,7 +228,7 @@ export function Marketplace() {
         </Callout>
       }
     >
-      <ModerationQueue />
+      <MarketplaceTabs />
     </RequireGrant>
   )
 }

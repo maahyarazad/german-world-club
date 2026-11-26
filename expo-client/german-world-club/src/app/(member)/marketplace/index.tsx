@@ -76,6 +76,12 @@ export default function Marketplace() {
             </ThemedText>
             {canPost ? (
               <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
+                onPress={() => router.push('/marketplace/mine')}>
+                {t.marketplace.myListings}
+              </ThemedText>
+            ) : null}
+            {canPost ? (
+              <ThemedText accessibilityRole="button" style={themed.colorTintWeight600}
                 onPress={() => router.push('/marketplace/new')}>
                 {t.marketplace.newListing}
               </ThemedText>

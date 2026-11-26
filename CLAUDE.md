@@ -234,6 +234,70 @@ last — bottom-bar slot. Five rules that look optional and are not:
   no listing id, title, photo, price or owner. They are separate rows in
   `seo/surfaces.ts` so adding the public one cannot relax the gated one.
 
+**Editing, publishing and disabling listings (feature 037,
+`specs/037-marketplace-listing-management/`).** "Published" is `active`,
+"unpublished" is `draft`, "disabled by staff" is `hidden` — no new state, so
+every read that filters `state = 'active'` already hides a draft and a disabled
+listing everywhere (browse, detail, `/marktplatz` counts, new requests). Six
+rules that look optional and are not:
+
+- **Every member may edit their own listings, with no permission flag.** The
+  gate is ownership, checked on the loaded row inside the transaction (404 for
+  anyone else, identical to an absent id). Editable states are `draft`,
+  `active`, `expired` (`EDITABLE_STATES`); sold, filled, withdrawn and hidden
+  answer 409 `marketplace/not-editable`, and photos follow the same rule.
+- **One PATCH carries the fields, the expiry and Publish** (`published`), in one
+  transaction. `version` (`updated_at` to the microsecond) is required, and a
+  stale one is 409 `conflict`. Attaching or removing a photo does **not** move it.
+  A new listing's `publish` defaults to `true`, so older app builds still go live.
+- **The server serialises responses through Zod, and drops any key the schema
+  does not declare.** `version`, `canEdit`, `canPublish`, `moderated`,
+  `hiddenFromState` and `openReports` exist on the wire only because the route
+  schemas list them; the tests read the HTTP body, not the handler's return.
+- **Disable is hide, from `draft` or `active` only, and Enable returns the
+  listing to where it was.** `hidden_from_state` remembers it; NULL (a row hidden
+  before the column existed) means `active`. A disabled draft comes back a draft
+  and is never published. The owner is told only `moderated: true` — never the
+  reason, who, or `hiddenFromState`; those stay in the audit log.
+- **The staff page (`GET /admin/marketplace/listings`) is read-only on `read`.**
+  Member listings only (merchant offers are other tables), no contact detail, no
+  body text, keyset paged on a microsecond cursor. It reverses the old "no
+  separate listing browser" stance, but staff still cannot change what a member
+  wrote: `write` and `edit` stay unused.
+- **A draft counts toward the 20-listing limit**, the same as a live one.
+
+**The app uploads through one path, and the server's upload budget includes the
+time the file takes to arrive.** The handler deadline starts when the request's
+headers arrive and a multipart body is read inside the handler, so
+`media-upload`'s deadline (25 s, under the 30 s `requestTimeout`) covers the whole
+upload. At 8 s a phone photo on a mobile uplink got a 503 before it finished
+arriving, and listing photos, avatars and Threads media "did not save"
+(`specs/037-marketplace-listing-management/research.md` R11;
+`tests/media/app-upload-shape.test.ts` sends one over a real socket). Merchants
+only escaped it because their photos are held to 1 MiB. In the app every upload
+is `useMediaUpload('member' | 'merchant' | 'partner')` over `uploadWithProgress`,
+shown with `UploadProgress` (`variant="spinner"` for the club loader and a
+percentage, covering a whole batch); never plain `fetch`, which reports no
+progress.
+
+**An iPhone's photo is HEIC, and the server will not decode it.** `sharp`'s
+bundled libheif has no HEVC decoder (it reads a HEIC's header and fails on the
+pixels), so a HEIC upload is refused `400 unsupported-media-type`. The fix is at
+the source: `pickMedia` asks the picker for `preferredAssetRepresentationMode:
+Compatible`, so iOS converts to JPEG on the phone. The native default is
+`current` (the type docs say `automatic`), which returns raw HEIC and ignores
+`quality`; every pick that is not a cropped one goes through that path. Do not
+remove the setting. A file still labelled HEIC is checked against its own bytes
+(`sniffImageType`, `@gwc/contracts/media`) before it is refused, because a
+converted photo can keep a `.heic` name. What the club accepts is one list,
+`ACCEPTED_MEDIA_TYPES`, shared by the server's validator and both clients; never
+copy it. The refusal carries `detectedType` and `acceptedTypes` as problem
+extension members (`error.extensions`, which cannot override a standard
+member), and the app turns it into `reason: 'unsupported-format'`: its own
+message, no Retry. Decoding HEIC on the server is a deliberate non-goal
+(patent and licence exposure, CPU on untrusted input); see
+`specs/037-marketplace-listing-management/research.md` R12 for when to revisit.
+
 **A message is persisted before anyone is told about it.** `converse.ts`
 commits first and notifies after, never inside the transaction, so a failed
 push cannot roll back a message the sender was told was accepted
@@ -673,7 +737,7 @@ registration step-3 contact change.
 
 ## Conventions
 
-- ES modules, Node 22, no TypeScript in the server.
+- ES modules, Node 22. The server is TypeScript (`.ts`, run by Node's type stripping, checked by `tsc --noEmit`).
 - Errors are RFC 9457 problem+json. Clients branch on `type`, never on `detail`.
 - Comments explain **why**, especially where the obvious implementation is
   wrong. If a line looks odd and the reason is not next to it, add the reason.

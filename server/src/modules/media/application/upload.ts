@@ -25,7 +25,7 @@ import type { StorageDriver } from '../storage.ts'
 
 /**
  * Images are synchronous: a 2 MB photograph through `sharp` is roughly
- * 200–600 ms for the whole variant set, which fits the 8 s budget. So the
+ * 200–600 ms for the whole variant set, which fits the `media-upload` budget. So the
  * upload response already carries every variant URL and the client never has
  * to poll (media-pipeline.md §5).
  */
