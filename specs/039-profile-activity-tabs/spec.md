@@ -190,6 +190,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 4. **Given** the menu is open, **When** the member taps outside it (or uses the system back on Android), **Then** it closes and nothing opens.
 5. **Given** a screen reader, **Then** the dots are announced as a button named "More" (and with a dot when there is news) and each row by its label.
 6. **Given** the dots are tapped, **Then** they stay exactly where they are, with no shift, jump or resize while the menu opens, and the menu opens under them, not over them.
+7. **Given** an iPhone, **Then** the dots are Entypo's `dots-three-vertical`, the same drawing as on Android, in the theme's tint; a tap anywhere in their 40 x 44 box, not only on the glyph, opens the menu; and the menu opens below them.
 
 ### Additional Requirements
 
@@ -207,6 +208,7 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - **FR-022**: The drop-down MUST be the platform's own menu: SwiftUI's `Menu` on iOS and a Material drop-down on Android, both from `@expo/ui` (on Android its drop-in `MenuView`). The app MUST NOT draw a pop-up of its own for it.
 - **FR-023**: A screen MUST still hand the menu its rows as data (a key, a label, where it goes, whether it has news) and the menu MUST know nothing about the screen; there is one `HeaderMenu`, with one file per platform.
 - **FR-024**: The three dots MUST be static: they MUST NOT move, resize or change shape when tapped or while the menu opens, and the menu MUST open under them and MUST NOT cover them.
+- **FR-025**: The dots MUST be the same Entypo `dots-three-vertical` icon on both platforms (one `MenuIcon`). On iPhone it MUST be a React Native view laid over the native menu's label, and MUST NOT be inside it: the label is an invisible native view (`opacity(0)`, never `hidden()`, which would stop it taking taps) framed to the whole 40 x 44 box, so the system anchors the menu to the dots' own box. The icon and the unread badge MUST take no touches, and the icon MUST be hidden from the screen reader so the dots are read once.
 
 ### Success Criteria
 
@@ -226,7 +228,8 @@ The three dots open the menu the phone itself uses: on iPhone SwiftUI's `Menu`, 
 - The three dots are vertical on both platforms. "Rotate 90 degrees" is read as turning iOS's horizontal row into a column, as WhatsApp draws it, and not as an animation of the dots turning when the menu opens.
 - "The rule for the opening animation" is read as the transition of the screens the menu opens (the way Settings opens from WhatsApp's menu), not of the drop-down itself, which fades in.
 - Nothing is built for the transition: it is the platform's own through the stack's `animation` option, because a shared-axis transition of our own would need native code, and so a new build.
-- The dots are drawn by each platform's own icon source: on Android Entypo's `dots-three-vertical` from `@expo/vector-icons`, on iPhone the system's `ellipsis` symbol turned 90 degrees. Both are vertical dots in the theme's tint and differ slightly in drawing. iPhone does not use Entypo because the menu's label there must be drawn by SwiftUI, not a React Native view hosted inside it.
+- The dots are one drawing on both platforms: Entypo's `dots-three-vertical` from `@expo/vector-icons`, in the theme's tint. (Until the sixth pass iPhone drew the system's `ellipsis` symbol turned 90 degrees, because the menu's label there must not be a React Native view hosted inside it; that is still true, and is why the iPhone's icon is laid over the menu and not put in its label. FR-025.)
+- Nothing in `@expo/ui` chooses which side of its label the iPhone's menu opens on. "Open below the dots" is therefore met by making the native label exactly the dots' box, with nothing hosted inside it, so that the system, which opens a menu on the side with room (below, for a header at the top), anchors to the right place. Whether it does is for a phone to show.
 - `@expo/vector-icons` is a new dependency of the app. It is JavaScript and a font file, and it loads the font through `expo-font`, which the app already has natively, so it adds no native module and needs no new build of its own.
-- The first phone test of the native menu found two faults on the iPhone build the author was using: the menu opened over the dots and the dots moved when tapped. Android was not reported and its menu is unchanged; if it shows the same, that is a separate fault with its own cause (see the plan).
+- The first phone test of the native menu found two faults on the iPhone build the author was using: the menu opened over the dots and the dots moved when tapped. Android was not reported and its menu is unchanged; if it shows the same, that is a separate fault with its own cause (see the plan). The request after that asked for Entypo on the iPhone too and for the menu to open below the dots. What is built for it is the option the plan had named and not tried, a transparent native `Menu` under the icon; whether an invisible label takes taps on a real phone, and whether the menu then opens below it, is untested until T045.
 - This replaces feature 017's choice of `slide_from_right` for New listing (a slide of the whole width with no fade), which matches neither platform's rule.

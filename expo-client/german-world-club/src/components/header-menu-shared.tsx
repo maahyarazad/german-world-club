@@ -34,18 +34,28 @@ Entypo.loadFont().catch((error) => console.error('MenuDots.loadFont', error));
 export const MENU_BUTTON = { width: 40, height: 44 };
 
 /**
- * What the header shows for the menu on Android: Entypo's vertical three dots, from
- * `@expo/vector-icons`, in the theme's tint, with a red dot at the corner when a row has
- * news. It is only a picture. Opening the menu is the platform menu's own tap handling
- * around it (`header-menu.android.tsx`), so it has no `onPress` of its own: a second
+ * The one drawing of the three dots, on both platforms: Entypo's vertical three dots, from
+ * `@expo/vector-icons`, in the theme's tint. It is only a picture, with no touch handling and
+ * no accessibility of its own: whatever it is laid over or wrapped by is the control.
+ */
+export function MenuIcon() {
+  const theme = useTheme();
+  return <Entypo name="dots-three-vertical" size={ICON_SIZE} color={theme.tint} />;
+}
+
+/**
+ * What the header shows for the menu on Android: `MenuIcon`, with a red dot at the corner
+ * when a row has news. It is only a picture. Opening the menu is the platform menu's own tap
+ * handling around it (`header-menu.android.tsx`), so it has no `onPress` of its own: a second
  * handler here would fight the menu's.
  *
- * iOS does not use it: there the label has to be drawn by SwiftUI itself, not a React
- * Native view hosted inside the menu, which is what made the menu open over the dots and
- * the dots move (`header-menu.ios.tsx`).
+ * iOS does not use this but does use `MenuIcon`: there the control is SwiftUI's own `Menu`
+ * with an invisible native label, and the icon is laid over it, never hosted inside it,
+ * because a React Native view hosted in the label is what made the menu open over the dots
+ * and the dots move. The native label is the accessible element there, so the icon needs no
+ * accessibility of its own (`header-menu.ios.tsx`).
  */
 export function MenuDots({ unread }: { unread: boolean }) {
-  const theme = useTheme();
   const { t } = useTranslations();
   return (
     <View
@@ -53,7 +63,7 @@ export function MenuDots({ unread }: { unread: boolean }) {
       accessibilityRole="button"
       accessibilityLabel={unread ? `${t.common.menu} •` : t.common.menu}
       style={styles.button}>
-      <Entypo name="dots-three-vertical" size={ICON_SIZE} color={theme.tint} />
+      <MenuIcon />
       {unread ? <MenuBadge /> : null}
     </View>
   );
