@@ -16,12 +16,16 @@ import { useTranslations } from '@/i18n';
  */
 export const HEADER_BAR_HEIGHT = Platform.select({ ios: 44, default: 56 });
 
-/** The logo is much shorter than the bar, so it never changes the bar's height. */
-const LOGO_HEIGHT = 28;
-// The emblem is 217 x 120 (`assets/gwc-logo-header.png`): the club's mark cropped from
-// `gwc-logo.png` without the lettering, which would be a smudge at this size, and with
-// its white background made transparent so it sits on the dark theme too.
-const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 217) / 120);
+/** The logo is shorter than the bar (44 at the least), so it never changes the bar's height. */
+const LOGO_HEIGHT = 34;
+// The emblem is 296 x 194 (`assets/gwc-logo-header.png`): the whole lockup, the mark, the
+// golden line and "GERMAN WORLD CLUB" under it, cropped from `assets/react-logo@3x.png` (the
+// club's logo under a template file name) at its own resolution. Its background is transparent,
+// and so are the insides of the two rings, so the header's colour shows through them: white on
+// the light header, dark on the dark one. The mark is 81% of the lockup's height, so 34 keeps it
+// about the 28 it was when the emblem was the mark alone; the lettering is small at this size,
+// as a logo's would be.
+const LOGO_WIDTH = Math.round((LOGO_HEIGHT * 296) / 194);
 const LOGO_GAP = Spacing.two;
 
 /**
@@ -93,7 +97,7 @@ export function AppHeader({ options, back, navigation }: NativeStackHeaderProps)
 }
 
 const styles = StyleSheet.create({
-  row: { height: HEADER_BAR_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.two },
+  row: { height: HEADER_BAR_HEIGHT, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three },
   // Equal columns either side of the emblem, so it is centred whatever the title is.
   left: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
   right: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
