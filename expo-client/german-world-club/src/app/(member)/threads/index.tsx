@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import { RefreshControl, View, StyleSheet } from 'react-native';
@@ -6,7 +6,7 @@ import { RefreshControl, View, StyleSheet } from 'react-native';
 import type { FeedItem, FeedScope } from '@gwc/contracts/threads';
 
 import { threadsApi } from '@/api/endpoints';
-import { HeaderMenu, type HeaderMenuItem } from '@/components/header-menu';
+import { HeaderIconButton } from '@/components/header-icon-button';
 import { PostCard } from '@/components/post-card';
 import { ThemedText } from '@/components/themed-text';
 import { Chip, Loading, styles as uiStyles } from '@/components/ui';
@@ -32,12 +32,17 @@ export default function Feed() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feed.reload]));
 
-  const menuItems: HeaderMenuItem[] = [{ key: 'compose', label: t.threads.compose, href: '/threads/compose' }];
-
   return (
     <View style={themed.flex1Clear}>
-      {/* New post is a row of the header's three dots (feature 039), like every tab's actions. */}
-      <Stack.Screen options={{ headerRight: () => <HeaderMenu items={menuItems} /> }} />
+      {/* New post is this screen's only header action, so it is a plain button and not a
+          one-row drop-down behind the three dots (Marketplace, with three, keeps the dots). */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <HeaderIconButton name="plus" label={t.threads.compose} onPress={() => router.push('/threads/compose')} />
+          ),
+        }}
+      />
       <View style={[uiStyles.row, styles.paddingThree]} accessibilityRole="radiogroup">
         <Chip label={t.threads.following} selected={scope === 'following'} onPress={() => setScope('following')} />
         <Chip label={t.threads.all} selected={scope === 'all'} onPress={() => setScope('all')} />
