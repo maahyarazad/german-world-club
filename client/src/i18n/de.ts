@@ -341,8 +341,8 @@ export const de = {
   console: {
     signOut: 'Abmelden',
     loading: 'Wird geladen …',
-    notAvailable: 'Noch nicht verfügbar',
-    notAvailableHint: 'Dieser Bereich ist für Ihre Rolle freigegeben, steht aber noch nicht bereit.',
+    notAvailable: 'In Entwicklung',
+    notAvailableHint: 'Dieser Bereich ist in Entwicklung.',
     noGrantsTitle: 'Keine Bereiche freigegeben',
     noGrantsBody:
       'Ihrem Konto ist derzeit kein Bereich zugewiesen. Wenden Sie sich an eine Administratorin oder einen Administrator, um Rechte zu erhalten.',
@@ -617,9 +617,7 @@ export const de = {
     home: 'Übersicht',
     role: 'Ihre Rolle',
     roles: { owner: 'Inhaber', manager: 'Manager', staff: 'Mitarbeiter' },
-    notBuiltHint:
-      'Sie sind für Ihre Organisation angemeldet. Die Funktionen des Portals sind noch nicht '
-      + 'freigeschaltet — Ihr GWC-Ansprechpartner informiert Sie, sobald sie bereitstehen.',
+    notBuiltHint: 'Dieses Portal ist in Entwicklung.',
   },
 
   portals: {
