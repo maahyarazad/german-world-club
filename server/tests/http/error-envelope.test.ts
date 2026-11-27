@@ -105,6 +105,13 @@ describe('real 404s (FR-017, §12.13)', () => {
     // Real content in the first response, not an empty shell.
     expect(r.body).toContain('Page not found')
     expect(r.body).toContain('noindex')
+    // In both languages, with the reference the person can quote (the design itself is
+    // error-page.test.ts).
+    expect(r.body).toContain('Diese Seite gibt es nicht')
+    expect(r.body).toContain(`<code>${r.headers['x-request-id']}</code>`)
+    // The path is user input and is never echoed; styles are by nonce, never an attribute.
+    expect(r.body).not.toContain('/nope')
+    expect(r.body).not.toMatch(/\sstyle="/)
   })
 
   it('passes a non-5xx status through with its own envelope', async () => {
