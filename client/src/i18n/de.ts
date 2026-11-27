@@ -452,7 +452,8 @@ export const de = {
   },
 
   merchantOffers: {
-    tabLabel: 'Angebote',
+    // "Angebote verwalten", not "Angebote": die Seitenleiste hat auch den Reiter zum Stöbern (`clubOffers`).
+    tabLabel: 'Angebote verwalten',
     title: 'Ihre Angebote',
     intro: 'Rabatte, Gratis-Zugaben und „Eins kaufen, eins gratis“ für Mitglieder. Veröffentlichte Angebote erscheinen sofort.',
     new: 'Neues Angebot',

@@ -457,7 +457,8 @@ export const en = {
   },
 
   merchantOffers: {
-    tabLabel: 'Offers',
+    // "Manage Offers", not "Offers": the sidebar also has a browse tab (`clubOffers`) with that name.
+    tabLabel: 'Manage Offers',
     title: 'Your offers',
     intro: 'Discounts, freebies and buy one get one for members. Published offers appear straight away.',
     new: 'New offer',
