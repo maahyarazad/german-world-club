@@ -4,6 +4,8 @@ import type { MediaItem } from '@gwc/contracts/media'
 import { useTranslations } from '../i18n/index'
 import { OfferPicture } from './OfferPicture'
 import { OFFER_FRAME_ATTR, OFFER_FRAME_STYLE } from './frame'
+import arrowLeft from './arrow-left-1-svgrepo-com.svg'
+import arrowRight from './arrow-right-1-svgrepo-com.svg'
 
 /**
  * An offer's images and videos, one 16:9 slide at a time (feature 042, US1).
@@ -160,18 +162,18 @@ export function OfferGallery({
               aria-label={t.clubOffers.gallery.previous}
               disabled={current === 0}
               onClick={() => goTo(current - 1)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-hairline bg-surface/90 px-3 py-1.5 text-[16px] text-navy disabled:opacity-40"
+              className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-text-on-dark/40 bg-ink/60 text-text-on-dark shadow-md enabled:hover:bg-ink/80 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
             >
-              ‹
+              <img src={arrowLeft} alt="" aria-hidden draggable={false} className="h-9 w-9 select-none" />
             </button>
             <button
               type="button"
               aria-label={t.clubOffers.gallery.next}
               disabled={current === total - 1}
               onClick={() => goTo(current + 1)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-hairline bg-surface/90 px-3 py-1.5 text-[16px] text-navy disabled:opacity-40"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-text-on-dark/40 bg-ink/60 text-text-on-dark shadow-md enabled:hover:bg-ink/80 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
             >
-              ›
+              <img src={arrowRight} alt="" aria-hidden draggable={false} className="h-9 w-9 select-none" />
             </button>
           </>
         )}
