@@ -35,13 +35,44 @@ export const de: Catalogue = {
     otpHint: 'Geben Sie den 4-stelligen Code aus der SMS ein.',
     approvalPending: 'Ihr Mitgliedsantrag wird noch geprüft. Sie erhalten eine E-Mail, sobald entschieden ist.',
     profileIncomplete: 'Ihre Registrierung wurde nicht abgeschlossen. Registrieren Sie sich erneut mit derselben E-Mail-Adresse und demselben Passwort, um fortzufahren.',
-    passwordResetRequired: 'Bitte setzen Sie Ihr Passwort auf der Website zurück, bevor Sie sich anmelden.',
+    passwordResetRequired: 'Bitte setzen Sie Ihr Passwort zurück, bevor Sie sich anmelden.',
     staffAccount: 'Mitarbeiterkonten können sich nicht in der App anmelden. Bitte verwenden Sie die Konsole auf der Website.',
     invalidCredentials: 'E-Mail-Adresse oder Passwort ist nicht korrekt.',
     accountLocked: 'Dieses Konto ist gesperrt. Bitte wenden Sie sich an den Club.',
     tooManyAttempts: 'Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
     networkError: 'Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
     genericError: 'Die Anmeldung hat nicht funktioniert. Bitte versuchen Sie es erneut.',
+  },
+  // Feature 043: Passwort in der App zurücksetzen, mit einem Code per SMS an die
+  // hinterlegte Nummer. Die Formulierungen sind bewusst unbedingt ("falls ein Konto
+  // passt"): der Server antwortet für jede Angabe gleich, also darf kein Bildschirm
+  // daraus eine Aussage machen, wer ein Konto hat.
+  passwordReset: {
+    forgotLink: 'Passwort vergessen?',
+    title: 'Passwort zurücksetzen',
+    requestHint: 'Wenn ein Konto zu dieser Angabe gehört und eine bestätigte Mobilnummer hat, senden wir einen sechsstelligen Code per SMS an diese Nummer. Händler-, Partner- und Mitarbeiterkonten setzen ihr Passwort auf der Website zurück.',
+    byEmail: 'E-Mail',
+    byMobile: 'Mobilnummer',
+    emailInvalid: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.',
+    submitRequest: 'Code anfordern',
+    codeTitle: 'Neues Passwort festlegen',
+    codeSubtitle: 'Falls ein Konto passt, ist ein sechsstelliger Code per SMS unterwegs. Er ist fünf Minuten gültig.',
+    codeLabel: 'Code aus der SMS',
+    newPassword: 'Neues Passwort',
+    repeatPassword: 'Neues Passwort wiederholen',
+    passwordHint: 'Mindestens 8 Zeichen.',
+    tooShort: 'Das Passwort muss mindestens 8 Zeichen lang sein.',
+    mismatch: 'Die beiden Passwörter stimmen nicht überein.',
+    submitConfirm: 'Passwort speichern',
+    resend: 'Neuen Code senden',
+    resendIn: 'Neuen Code senden (in {seconds} s)',
+    // ONE message for a wrong, expired, used-up or unknown code, on purpose: the server
+    // answers them all the same (research R17), because telling them apart would tell a
+    // stranger whether an account exists. Do not add per-case messages here.
+    invalidCode: 'Der Code ist ungültig oder abgelaufen. Fordern Sie bei Bedarf mit „Neuen Code senden“ einen neuen an.',
+    tooManyRequests: 'Zu viele Anfragen. Bitte warten Sie und versuchen Sie es später erneut.',
+    offline: 'Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
+    done: 'Passwort geändert. Alle Sitzungen wurden beendet. Bitte melden Sie sich an.',
   },
   register: {
     stepOf: 'Schritt {step} von 4',

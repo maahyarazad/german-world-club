@@ -34,13 +34,44 @@ export const en = {
     otpHint: 'Enter the 4-digit code we sent by SMS.',
     approvalPending: 'Your membership application is still being reviewed. We will email you as soon as it is decided.',
     profileIncomplete: 'Your registration was not finished. Register again with the same email and password to continue where you left off.',
-    passwordResetRequired: 'Please reset your password on the website before signing in.',
+    passwordResetRequired: 'Please reset your password before signing in.',
     staffAccount: 'Staff accounts cannot sign in to the app. Please use the staff console on the website.',
     invalidCredentials: 'The email or password is not correct.',
     accountLocked: 'This account is locked. Please contact the club.',
     tooManyAttempts: 'Too many attempts. Please wait a moment and try again.',
     networkError: 'Could not reach the server. Check your connection and try again.',
     genericError: 'Sign-in did not work. Please try again.',
+  },
+  // Feature 043: resetting a forgotten password in the app, by a code texted to the
+  // number on record. The wording is deliberately unconditional ("if an account
+  // matches"): the server answers the same for every identifier, so no screen may
+  // narrow that into a statement about who has an account.
+  passwordReset: {
+    forgotLink: 'Forgot password?',
+    title: 'Reset your password',
+    requestHint: 'If an account matches and has a verified mobile number, we text a six-digit code to that number. Merchant, partner and staff accounts reset their password on the website.',
+    byEmail: 'Email',
+    byMobile: 'Mobile number',
+    emailInvalid: 'Please enter a valid email address.',
+    submitRequest: 'Request code',
+    codeTitle: 'Choose a new password',
+    codeSubtitle: 'If an account matches, a six-digit code is on its way by text message. It is valid for five minutes.',
+    codeLabel: 'Code from the text message',
+    newPassword: 'New password',
+    repeatPassword: 'Repeat new password',
+    passwordHint: 'At least 8 characters.',
+    tooShort: 'The password must be at least 8 characters long.',
+    mismatch: 'The two passwords do not match.',
+    submitConfirm: 'Save password',
+    resend: 'Send a new code',
+    resendIn: 'Send a new code (in {seconds} s)',
+    // ONE message for a wrong, expired, used-up or unknown code, on purpose: the server
+    // answers them all the same (research R17), because telling them apart would tell a
+    // stranger whether an account exists. Do not add per-case messages here.
+    invalidCode: 'That code is not correct or has expired. If you need a new one, tap "Send a new code".',
+    tooManyRequests: 'Too many requests. Please wait and try again later.',
+    offline: 'Could not reach the server. Check your connection and try again.',
+    done: 'Password changed. All sessions were ended. Please sign in.',
   },
   register: {
     stepOf: 'Step {step} of 4',
