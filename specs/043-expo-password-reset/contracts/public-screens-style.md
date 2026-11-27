@@ -28,7 +28,7 @@ The requester's choice (research R14): the welcome screen's emblem, in the welco
 
 | Piece | Rule |
 |---|---|
-| File | `assets/splash-icon.png`, the emblem with a **transparent** background: the same file `app/(public)/index.tsx` draws |
+| File | the club's emblem with a **transparent** background (`assets/gwc-compact-icon.png` at the time of writing; it was `splash-icon.png`): **the same file `app/(public)/index.tsx` draws**, which the guard test enforces whatever the file is |
 | Card | a `View` with exactly the welcome screen's `logoCard`: `backgroundColor: 'transparent'`, `borderRadius: 16`, `padding: Spacing.three`, `alignItems: 'center'` |
 | Image | exactly the welcome screen's `logo`: `height: 220`, `aspectRatio: 844 / 578`, `resizeMode="contain"` |
 | Accessibility | one accessible element: the image with `accessibilityLabel={t.welcome.title}` (the club's name); the card is a plain `View`, so it is not a second stop |
