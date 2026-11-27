@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { Routes, Route, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 
 import type { Snapshot } from '../lib/capabilities'
 import { useCapabilities, STATUS, homeFor } from '../lib/capabilities'
@@ -61,6 +61,16 @@ import PageLoader from '../components/ui/PageLoader'
  */
 
 /** Sign-in, and the redirect to wherever this principal belongs. */
+/**
+ * The staff merchant-offer detail used to live at `angebote/:id`. The list moved to
+ * `angebote-entdecken` (feature 042) because `angebote` is the marketplace moderation
+ * page, so a link someone already pasted is sent to the new address.
+ */
+function StaffOfferRedirect() {
+  const { id = '' } = useParams()
+  return <Navigate to={`/konsole/admin/angebote-entdecken/${id}`} replace />
+}
+
 function SignInRoute() {
   const navigate = useNavigate()
   return (
@@ -205,8 +215,11 @@ export function ConsoleRoutes() {
             spec Q2); overseeing everybody's is the `referrals` module. */}
         <Route path="empfehlen" element={<Referrals basePath="/admin/referrals/me" />} />
         {/* Merchant offers (feature 035): staff browse and redeem as people, needing no grant. */}
-        <Route path="angebote" element={<ClubOffers kind="staff" />} />
-        <Route path="angebote/:id" element={<ClubOfferDetail kind="staff" />} />
+        {/* Its own address, like a merchant's and a partner's: `angebote` is marketplace moderation above,
+            and two siblings with one path meant this list could never be reached (feature 042). */}
+        <Route path="angebote-entdecken" element={<ClubOffers kind="staff" />} />
+        <Route path="angebote-entdecken/:id" element={<ClubOfferDetail kind="staff" />} />
+        <Route path="angebote/:id" element={<StaffOfferRedirect />} />
         <Route path="einloesungen" element={<ClubRedemptions kind="staff" />} />
         {/* Wraps itself in RequireGrant referrals/read, like Push.tsx. */}
         <Route path="empfehlungen" element={<AdminReferrals />} />

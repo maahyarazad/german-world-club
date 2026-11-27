@@ -5,13 +5,16 @@ import { RefreshControl, ScrollView, View, StyleSheet } from 'react-native';
 
 import { MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace';
 import type { Listing, MarketplaceCategory, MarketplaceMode } from '@gwc/contracts/marketplace';
+import { SEARCH_MIN_LENGTH } from '@gwc/contracts/search';
 
 import { ApiError } from '@/api/client';
 import { authApi, marketplaceApi, messagingApi } from '@/api/endpoints';
 import { HeaderMenu, type HeaderMenuItem } from '@/components/header-menu';
+import { SearchField } from '@/components/search-field';
 import { ThemedText } from '@/components/themed-text';
 import { Card, Chip, Loading, styles as uiStyles } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { usePaged } from '@/hooks/use-paged';
 import { useTranslations } from '@/i18n';
 import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
@@ -27,11 +30,17 @@ export default function Marketplace() {
   const [category, setCategory] = useState<MarketplaceCategory | ''>('');
   const [mode, setMode] = useState<MarketplaceMode | ''>('');
 
+  // The text search (feature 042): the box, and what is actually sent once the person pauses and has
+  // typed enough. `usePaged` restarts from the top when it changes and ignores a superseded answer.
+  const [text, setText] = useState('');
+  const typed = text.trim();
+  const q = useDebouncedValue(typed.length >= SEARCH_MIN_LENGTH ? typed : '');
+
   const fetchPage = useCallback(
-    (cursor: string | null) => marketplaceApi.list({ category: category || undefined, mode: mode || undefined, cursor }),
-    [category, mode],
+    (cursor: string | null) => marketplaceApi.list({ category: category || undefined, mode: mode || undefined, cursor, q: q || undefined }),
+    [category, mode, q],
   );
-  const listings = usePaged<Listing>(fetchPage, [category, mode]);
+  const listings = usePaged<Listing>(fetchPage, [category, mode, q]);
 
   // Whether to SHOW "New listing" — display only (Principle I). Every member
   // may post since feature 021; the server refuses anyone else whatever this
@@ -81,6 +90,12 @@ export default function Marketplace() {
           bottom-bar slots are full), My listings and New listing only for a member who may
           post. They are rows of a small menu now, not three text buttons. */}
       <Stack.Screen options={{ headerRight: () => <HeaderMenu items={menuItems} /> }} />
+      {/* Outside the loading swap below on purpose: that swap unmounts the list on every reload, and a box
+          inside it would unmount with it, losing focus and closing the keyboard on every keystroke. */}
+      <View style={styles.searchBox}>
+        <SearchField value={text} onChangeText={setText} label={t.marketplace.search.label}
+          placeholder={t.marketplace.search.placeholder} clearLabel={t.marketplace.search.clear} />
+      </View>
       {/* Horizontal: five category chips do not fit a phone's width. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.flexGrow0}
         contentContainerStyle={[uiStyles.row, styles.scrollViewContentContainerPaddingHorizontalThree2]}
@@ -118,10 +133,13 @@ export default function Marketplace() {
           )}
           onEndReached={listings.loadMore}
           onEndReachedThreshold={0.5}
+          // A listing must take the first tap while the keyboard is up, and dragging the list closes it.
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={<RefreshControl refreshing={listings.refreshing} onRefresh={() => listings.reload(true)} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>
-              {t.marketplace.empty}
+              {q ? t.marketplace.search.noResults : t.marketplace.empty}
             </ThemedText>
           }
         />
@@ -132,6 +150,7 @@ export default function Marketplace() {
 
 const styles = StyleSheet.create({
   flexGrow0: { flexGrow: 0 },
+  searchBox: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
   scrollViewContentContainerPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
   paddingThree: { padding: Spacing.three },
   flashListContentContainerPaddingHorizontalThree2: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },

@@ -24,6 +24,7 @@
     "./threads": "./src/threads.ts",
     "./countries": "./src/countries.ts",
     "./offers": "./src/offers.ts",
+    "./search": "./src/search.ts",
     "./server-faults": "./src/server-faults.ts",
     "./request-id": "./src/request-id.ts",
     "./dial-codes": "./src/dial-codes.ts",

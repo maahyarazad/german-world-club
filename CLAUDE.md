@@ -779,6 +779,50 @@ without knowing why: the web sign-in refusal (translated from the problem
 `type` by `describeProblem`), and `email-in-use` / `mobile-in-use` on the
 registration step-3 contact change.
 
+**Offer media, the fallback image and search (feature 042,
+`specs/042-offer-media-and-search/`).** Six things that look optional and are not:
+
+- **"The picture an offer leads with" is `LEAD_OFFER_ASSET`, in
+  `offers/application/offer.ts`: the first item whose asset is `ready`.** The list
+  card, the detail's `media[0]` and a redemption's thumbnail all use it. It used to be
+  written three times as "position 0, whatever its state" while the detail dropped
+  unready assets, so a first video still processing showed no card picture and a
+  different first picture on the detail. A second copy is how that comes back
+  (`tests/offers/lead-media.test.ts`).
+- **The API never substitutes a stand-in for a missing picture.** `thumbnail: null`
+  and `media: []` mean "no usable media" and the *clients* draw the club's fallback
+  (`offer-fallback.webp`: bundled in `client/src/assets/` and the app's `assets/`,
+  byte-identical, `tests/assets/fallback-parity.test.ts`) in the 16:9 frame from
+  `OFFER_MEDIA_ASPECT`. A server-side fake item would break "success never carries
+  fallback content" and would stop a merchant's editor seeing that they have no photo.
+  A picture that fails to load gets the fallback too (`OfferPicture`, both clients).
+- **`OfferGallery` (app) measures its own container with `onLayout`; it never
+  subtracts an inset from the window width.** That was the bug: `MediaCarousel` assumed
+  one padding and `FormScreen` used another. `MediaCarousel` is Threads', quote embeds',
+  listing detail's and the store gallery's, with each file's own ratio, and is not to be
+  changed for offers; they share only `MediaSlide` (poster until tapped, muted, one player
+  per slide).
+- **Choosing the main media is `PUT /merchant/offers/:id/main-media` and
+  `PUT /admin/offers/:id/main-media`, one function, `setMainMedia`.** It moves one
+  existing file to the front under the offer's row lock, never "replace the whole set"
+  (a stale tab would drop files), and is a no-op, unaudited, when it already leads. The
+  staff door declares `merchant_offers.edit` and the handler narrows it to a super admin
+  (the dashboard figures' pattern). **`audit_log.actor_kind` is the `account_kind` enum:
+  a staff account is `'admin'`, never `'staff'`.**
+- **The staff merchant-offers list is at `/konsole/admin/angebote-entdecken`.**
+  `/konsole/admin/angebote` is marketplace moderation; with both on one path the router
+  takes the first and the offers list was unreachable.
+- **`q` is a text search, ANDed on after visibility and never in place of it.** Bounds
+  are `@gwc/contracts/search`; matching is `pg_trgm` partial GIN indexes and `ILIKE`
+  (`server/src/db/text-search.ts`), case-insensitive, inside a word, every word required,
+  accents not folded, recency order and the same cursors. **`q` must stay in the
+  marketplace controller's `RESERVED` set**, or it is read as a category filter and
+  answers 400. The text is masked in the server's request log (`maskSearchQuery`) and the
+  app's (`redactQuery`): a person can type a name or a phone number. The worst case is a
+  two-character term matching nothing, a sequential scan, about 71 ms at 50,000 listings
+  and linear (`bench:search`, research R11). The app's search box lives *outside* the
+  `loading ? <Loading/> : <FlashList/>` swap, or it unmounts on every keystroke.
+
 ## Conventions
 
 - ES modules, Node 22. The server is TypeScript (`.ts`, run by Node's type stripping, checked by `tsc --noEmit`).

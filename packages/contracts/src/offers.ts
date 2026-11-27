@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { mediaItemSchema } from './media.ts'
+import { searchQuerySchema } from './search.ts'
 
 /**
  * A merchant offer as a member sees it (feature 011, research R11).
@@ -26,6 +27,19 @@ export const NEW_OFFER_KINDS = Object.freeze(['percentage', 'fixed_amount', 'fre
 /** An offer carries at most this many images and videos. */
 export const MAX_OFFER_MEDIA = 10
 
+/**
+ * The frame every picture of a merchant offer is shown in, on every client
+ * (feature 042). One definition so the web and the app cannot drift: both derive
+ * their frame from it (CSS `aspect-ratio`, React Native `aspectRatio`).
+ *
+ * Where an offer has no usable media, the server says so with `thumbnail: null`
+ * (lists) or `media: []` (detail) and the clients draw the club's bundled
+ * fallback image in this same frame. The API never substitutes content for a
+ * missing picture (Principle III), so an editor can still tell that an offer has
+ * none.
+ */
+export const OFFER_MEDIA_ASPECT = Object.freeze({ width: 16, height: 9 } as const)
+
 export const memberOfferSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
@@ -49,7 +63,10 @@ export const memberOfferSchema = z.object({
     nameDe: z.string(),
     nameEn: z.string(),
   }),
-  /** The offer's images and videos in order, derivatives only. */
+  /**
+   * The offer's ready images and videos in order, derivatives only. The first is
+   * the main one. `[]` means no usable media: the client shows the fallback.
+   */
   media: z.array(mediaItemSchema),
   merchant: z.object({
     displayName: z.string(),
@@ -147,6 +164,18 @@ export const setOfferMediaRequestSchema = z.object({
 
 export const setOfferOrderRequestSchema = z.object({ ids: z.array(z.string().uuid()).max(500) })
 
+/**
+ * Choose which of an offer's existing images or videos is the main one (feature 042).
+ * The asset must already be on the offer: this moves a file to the front and never
+ * attaches, removes or reorders anything else.
+ */
+export const setMainMediaRequestSchema = z.object({ assetId: z.string().uuid() })
+
+/** The offer's ready media in order after the change; `media[0]` is the main one. */
+export const offerMediaSchema = z.object({ media: z.array(mediaItemSchema) })
+export type SetMainMediaRequest = z.infer<typeof setMainMediaRequestSchema>
+export type OfferMedia = z.infer<typeof offerMediaSchema>
+
 export const OFFER_STATES = Object.freeze(['draft', 'pending', 'published', 'rejected', 'withdrawn'] as const)
 
 /** An offer as its own merchant sees it, in any state. */
@@ -187,7 +216,11 @@ export const offerListItemSchema = z.object({
   categoryId: z.string().uuid(),
   /** True when no unit remains: shown as sold out, and redemption is refused. */
   soldOut: z.boolean(),
-  /** A derivative of the lead image (a video's poster), or null. Never an original. */
+  /**
+   * A derivative of the lead image (a video's poster), or null. Never an original.
+   * The lead is the first *ready* item of the offer's media, the same one the
+   * detail's `media[0]` is. `null` means no usable media: the client shows the fallback.
+   */
   thumbnail: mediaItemSchema.nullable(),
   merchant: z.object({ displayName: z.string(), slug: z.string(), logo: mediaItemSchema.nullable() }),
 })
@@ -200,6 +233,11 @@ export const offerListSchema = z.object({
 export const offerListQuerySchema = z.object({
   categoryId: z.string().uuid().optional(),
   cursor: z.string().optional(),
+  /**
+   * A text search in the offers' titles and descriptions (feature 042): case-insensitive, on
+   * part of a word, every word required. Empty means none. See `@gwc/contracts/search`.
+   */
+  q: searchQuerySchema,
 })
 
 export const browseCategorySchema = z.object({

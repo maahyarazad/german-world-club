@@ -280,6 +280,7 @@ const ROUTE_CLASSES = [
   { name: 'merchant offer order', url: '/merchant/offers/order', method: 'PUT', audience: 'merchant' },
   { name: 'merchant offer edit', url: '/merchant/offers/:id', probe: `/merchant/offers/${randomUUID()}`, method: 'PATCH', audience: 'merchant' },
   { name: 'merchant offer media', url: '/merchant/offers/:id/media', probe: `/merchant/offers/${randomUUID()}/media`, method: 'PUT', audience: 'merchant' },
+  { name: 'merchant offer main media', url: '/merchant/offers/:id/main-media', probe: `/merchant/offers/${randomUUID()}/main-media`, method: 'PUT', audience: 'merchant' },
   { name: 'merchant offer publish', url: '/merchant/offers/:id/publish', probe: `/merchant/offers/${randomUUID()}/publish`, method: 'POST', audience: 'merchant' },
   { name: 'merchant offer withdraw', url: '/merchant/offers/:id/withdraw', probe: `/merchant/offers/${randomUUID()}/withdraw`, method: 'POST', audience: 'merchant' },
   { name: 'merchant offer categories', url: '/merchant/categories', method: 'GET', audience: 'merchant' },
@@ -317,6 +318,8 @@ const ROUTE_CLASSES = [
   { name: 'offer categories (staff)', url: '/admin/offer-categories', method: 'GET', audience: 'staff', module: 'merchant_offers', flag: 'read' },
   { name: 'offer category add (staff)', url: '/admin/offer-categories', method: 'POST', audience: 'staff', module: 'merchant_offers', flag: 'write' },
   { name: 'offer category edit (staff)', url: '/admin/offer-categories/:id', probe: `/admin/offer-categories/${randomUUID()}`, method: 'PATCH', audience: 'staff', module: 'merchant_offers', flag: 'edit' },
+  // Feature 042: the posture is the module grant; the handler narrows it to a super admin (the dashboard-figures precedent). No anyStaff exemption.
+  { name: 'offer main media (staff)', url: '/admin/offers/:id/main-media', probe: `/admin/offers/${randomUUID()}/main-media`, method: 'PUT', audience: 'staff', module: 'merchant_offers', flag: 'edit' },
   { name: 'merchant organisation', url: '/merchant/organisation', method: 'GET', audience: 'merchant' },
   { name: 'merchant organisation by id', url: '/merchant/organisations/:id', probe: `/merchant/organisations/${randomUUID()}`, method: 'GET', audience: 'merchant' },
   { name: 'partner organisation', url: '/partner/organisation', method: 'GET', audience: 'partner' },

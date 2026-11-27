@@ -448,6 +448,12 @@ export const de: Catalogue = {
     allCategories: 'Alle Kategorien',
     allModes: 'Alle Arten',
     empty: 'Keine Anzeigen gefunden.',
+    search: {
+      label: 'Suche in Anzeigen',
+      placeholder: 'Nach Titel oder Beschreibung suchen',
+      clear: 'Suche löschen',
+      noResults: 'Keine Anzeigen passen zu Ihrer Suche.',
+    },
     loadFailed: 'Das Formular konnte nicht geladen werden. Bitte versuchen Sie es erneut.',
     categories: {
       vehicle: 'Fahrzeug',
@@ -645,6 +651,14 @@ export const de: Catalogue = {
     intro: 'Vorteile unserer Club Merchants.',
     allCategories: 'Alle',
     empty: 'Zurzeit gibt es hier keine Angebote.',
+    fallbackAlt: 'Platzhalterbild: Dieses Angebot hat noch kein Foto',
+    gallery: { position: 'Bild {n} von {total}', play: 'Video abspielen' },
+    search: {
+      label: 'Suche in Angeboten',
+      placeholder: 'Nach Titel oder Beschreibung suchen',
+      clear: 'Suche löschen',
+      noResults: 'Keine Angebote passen zu Ihrer Suche.',
+    },
     soldOut: 'Ausverkauft',
     validUntil: 'Gültig bis {date}',
     perPerson: 'Pro Person einlösbar: {count}',
