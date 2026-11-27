@@ -1,11 +1,12 @@
 import { z } from 'zod'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { REDACT_PATHS, loggerOptions, maskSearchQuery } from '../../src/plugins/01-logging.ts'
 import { buildApp } from '../../src/app.ts'
 import { loadEnv } from '../../src/config/env.ts'
 import { sanitizeDetail } from '../../src/ops/audit.ts'
 import { hasDatabase } from '../helpers/db.ts'
-import { resetAuthTables } from '../helpers/auth.ts'
+import { createMember, resetAuthTables } from '../helpers/auth.ts'
+import { buildOnboardingApp, nextAddress, uniqueMobile } from '../onboarding/helpers.ts'
 import { createFixtureContentSource } from '../../src/modules/public/content.ts'
 import { dispatchDue } from '../../src/modules/push/application/dispatch.ts'
 import { createLoggingTransport } from '../../src/modules/push/providers.ts'
@@ -211,3 +212,81 @@ describe('search text in the request log (FR-025)', () => {
     expect(maskSearchQuery('')).toBe('')
   })
 })
+
+/**
+ * Feature 043: a password reset by SMS code handles the four most sensitive strings the platform
+ * sees at once: an email address, a phone number, a one-time code and a new password. None of them
+ * may reach a log line, on the happy path or on the ones most likely to log something: a wrong
+ * code (a 401) and a text the provider could not send (which logs the provider's answer).
+ *
+ * Run through the REAL routes with a real member, not a probe route, so it tests what the
+ * routes and the error handler actually write. The positive control is that the requests were
+ * logged at all: a test that captured nothing would pass for the wrong reason.
+ */
+describe.skipIf(!hasDatabase)('a password reset by code logs none of what it handles (feature 043)', () => {
+  it('writes no email, number, code or password to the log, on success, on a wrong code, and on a send failure', async () => {
+    const lines: string[] = []
+    const env = { ...loadEnv(), LOG_LEVEL: 'info' }
+    const { app, sms, smsControl } = await buildOnboardingApp({
+      // `loadEnv()` is wider than the option's type (the existing tests in this file have the same cast problem).
+      env: env as never,
+      logger: {
+        level: 'info',
+        redact: { paths: [...REDACT_PATHS], censor: '[redacted]' },
+        stream: { write: (line: string) => { lines.push(line) } },
+      },
+    })
+    try {
+      await resetAuthTables(app.pg)
+      const mobile = uniqueMobile()
+      const email = `zz-secret-email-${Date.now()}@test.invalid`
+      const password = 'Zz-Correct-Horse-9-secret'
+      await createMember(app.pg, { email, mobile, mobileVerified: true })
+      const ask = (payload: Record<string, unknown>) => app.inject({
+        method: 'POST', url: '/auth/password-reset/code', payload: { ...payload, deviceId: 'device-log-test' }, remoteAddress: nextAddress(),
+      })
+      const confirm = (payload: Record<string, unknown>) => app.inject({
+        method: 'POST', url: '/auth/password-reset/code/confirm', payload: { ...payload, deviceId: 'device-log-test' }, remoteAddress: nextAddress(),
+      })
+
+      // A text the provider cannot send: logs the provider's answer, masked, and the detached failure.
+      smsControl.failure = Object.assign(new Error('provider down'), { statusCode: 503, data: { errors: { origin: 'unregistered' } } })
+      expect((await ask({ email })).statusCode).toBe(202)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      smsControl.failure = null
+      sms.length = 0
+
+      // The real thing: by number, then a wrong code (a 401), then the right code and a password.
+      const asked = await ask({ mobile })
+      expect(asked.statusCode).toBe(202)
+      await vi.waitFor(() => expect(sms).toHaveLength(1))
+      const code = sms[0]!.code
+      const challengeId = asked.json().challengeId as string
+      const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0')
+      expect((await confirm({ challengeId, code: wrong, password })).statusCode).toBe(401)
+      expect((await confirm({ challengeId, code, password })).statusCode).toBe(200)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      const output = lines.join('\n')
+      // The positive control: both routes were logged, with their outcome.
+      expect(output).toContain('/auth/password-reset/code')
+      expect(output).toContain('/auth/password-reset/code/confirm')
+      expect(output).toMatch(/"statusCode":202/)
+      expect(output).toMatch(/"statusCode":401/)
+
+      // And none of what they handled. The number is looked for with and without its `+`, and by
+      // its last six digits, which is more than the mask the logs use for a destination keeps.
+      expect(output).not.toContain(email)
+      expect(output).not.toContain(mobile)
+      expect(output).not.toContain(mobile.slice(1))
+      expect(output).not.toContain(mobile.slice(-6))
+      expect(output).not.toContain(password)
+      expect(output).not.toContain(`"${code}"`)
+      expect(output).not.toContain(`:${code}`)
+      expect(output).not.toContain(wrong)
+    } finally {
+      await app.close()
+    }
+  })
+})
+

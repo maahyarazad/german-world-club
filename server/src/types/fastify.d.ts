@@ -241,8 +241,15 @@ declare module 'fastify' {
     /**
      * The per-account key the OTP send limiter buckets on.
      * Set by the auth routes before the limiter runs; absent elsewhere.
+     * For a password-reset ask (feature 043) it is the member's number, or the identifier
+     * itself when nobody matches, so the limit applies identically to both.
      */
     otpPhoneKey?: string
+    /**
+     * Who a password-reset ask was about (feature 043), resolved in the route's `preHandler`
+     * before the per-number limiter runs. Set only on `POST /auth/password-reset/code`.
+     */
+    resetContext?: import('../modules/auth/application/request-password-reset-code.ts').ResetContext
   }
 }
 

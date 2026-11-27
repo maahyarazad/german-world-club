@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { buildAuthApp, createMember, resetAuthTables } from '../helpers/auth.ts'
 import { hasDatabase } from '../helpers/db.ts'
 import {
-  issueChallenge, verifyChallenge, generateCode, hashCode, maskPhone,
+  issueChallenge, verifyChallenge, generateCode, hashCode, maskPhone, digitsForPurpose,
   OTP_OUTCOME, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS,
 } from '../../src/modules/auth/otp.ts'
 import type { GwcApp } from '../../src/app.ts'
@@ -144,3 +144,28 @@ describe.skipIf(!hasDatabase)('the challenge (FR-012)', () => {
     expect(Buffer.from(rows[0].code_hash).equals(hashCode(code, challengeId))).toBe(true)
   })
 })
+
+/**
+ * Feature 043: a reset code is six digits where every other code here is four, and a
+ * RESEND has to carry the right length for the challenge it replaces. `resendOtp`
+ * used to issue every fresh code with the default four digits; for a six-digit reset
+ * that is a code the reset screen refuses, every time. One function now says how
+ * long a purpose's code is, and both the first send and the resend ask it.
+ */
+describe('how long a code is, by purpose', () => {
+  it('is six digits for a password reset', () => {
+    expect(digitsForPurpose('password_reset')).toBe(6)
+  })
+
+  // The counter-assertion: the other purposes are exactly what they were.
+  it('is four digits for every other purpose, and for one it has never heard of', () => {
+    for (const purpose of ['login', 'device_approval', 'mobile_verification', 'email_verification', 'something-new']) {
+      expect(digitsForPurpose(purpose), purpose).toBe(4)
+    }
+  })
+
+  it('agrees with the code generator: a reset-length code is six digits, zero-padded', () => {
+    for (let i = 0; i < 200; i += 1) expect(generateCode(digitsForPurpose('password_reset'))).toMatch(/^\d{6}$/)
+  })
+})
+

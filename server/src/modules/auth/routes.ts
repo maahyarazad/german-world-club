@@ -7,6 +7,9 @@ import {
   meResponseSchema,
   csrfTokenResponseSchema,
 } from '@gwc/contracts/auth'
+import {
+  passwordResetCodeRequestSchema, passwordResetCodeAcceptedSchema, passwordResetCodeConfirmSchema,
+} from '@gwc/contracts/password-reset'
 import { sessionResponseSchema } from '@gwc/contracts/capabilities'
 import { z } from 'zod'
 
@@ -42,6 +45,16 @@ export default fp(
     const limitOtpSend = app.rateLimit({
       ...app.bucket('otp-send'),
       keyGenerator: (request: FastifyRequest) => `otp-send:${request.otpPhoneKey ?? request.ip}`,
+    })
+
+    // Feature 043: how many reset codes one NUMBER may be sent in an hour. Independent of
+    // the per-address bucket the route spends at onRequest, for the reason on
+    // `limitSignInAccount` above. Keyed on the resolved number (or the identifier itself
+    // when nobody matches), which the route's preHandler puts in `otpPhoneKey`, so the
+    // limit is the same for a real account and a made-up one.
+    const limitPasswordResetSms = app.rateLimitIndependent({
+      ...app.bucket('password-reset-sms'),
+      keyGenerator: (request: FastifyRequest) => `password-reset-sms:${request.otpPhoneKey ?? request.ip}`,
     })
 
     const publicAuth = (bucket, budget = 'auth') => ({
@@ -248,6 +261,33 @@ export default fp(
         schema: { body: passwordResetRequestSchema, response: { 202: passwordResetAcceptedSchema } },
       },
       controller.requestPasswordReset,
+    )
+
+    // Feature 043: reset from the app with a code texted to the number on record. Public,
+    // like the emailed-link pair: the person has forgotten their password. The answer is
+    // the same for every identifier (application/request-password-reset-code.ts says why).
+    app.post(
+      '/auth/password-reset/code',
+      {
+        // Texts a code: the SMS route class, as register and resend use.
+        ...publicAuth('password-reset-ip', 'otp-send'),
+        preHandler: [controller.loadPasswordResetPreHandler, limitPasswordResetSms],
+        schema: { body: passwordResetCodeRequestSchema, response: { 202: passwordResetCodeAcceptedSchema } },
+      },
+      controller.requestPasswordResetCode,
+    )
+
+    // The code and the new password in one request. The existing `otp-verify` bucket is keyed on
+    // the challenge id (60 per 10 minutes), the same for a real challenge and a made-up one, and
+    // the body is validated before the code is looked at, so a password that is too short spends
+    // no guess at it.
+    app.post(
+      '/auth/password-reset/code/confirm',
+      {
+        ...publicAuth('otp-verify'),
+        schema: { body: passwordResetCodeConfirmSchema, response: { 200: z.object({ reset: z.literal(true) }) } },
+      },
+      controller.confirmPasswordResetCode,
     )
 
     app.post(

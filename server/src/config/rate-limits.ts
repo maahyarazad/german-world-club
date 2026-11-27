@@ -43,6 +43,16 @@ export const BUCKETS = Object.freeze({
   // mail, and each code is a fresh set of guesses at a verified address.
   'email-code-send': { dimension: 'account', max: 5, timeWindow: '1 hour', skipOnError: false, why: 'Email code flooding and guess renewal' },
   'password-reset': { dimension: 'account', max: 3, timeWindow: '1 hour', skipOnError: false, why: 'Reset-mail flooding' },
+  // Feature 043, resetting by an SMS code. Two buckets, and the pair is the point.
+  // `-sms` is keyed on the RESOLVED phone number (the member's, whatever identifier was
+  // typed), so asking by email, asking by number and resending all draw on one hourly
+  // budget; it bounds both the SMS cost and the number of fresh guesses at one account
+  // (each code is a new set of five). For an identifier that matches nobody the key is
+  // the identifier itself, so a non-existent one is refused after three asks exactly as
+  // a real one is: the limit must not say who has an account. `-ip` stops one address
+  // spraying many identifiers, each of which would otherwise have a budget of its own.
+  'password-reset-sms': { dimension: 'phone', max: 3, timeWindow: '1 hour', skipOnError: false, why: 'Each reset code is an SMS and a fresh set of guesses at an account' },
+  'password-reset-ip': { dimension: 'ip', max: 20, timeWindow: '1 hour', skipOnError: false, why: 'One address must not spray many identifiers' },
   refresh: { dimension: 'session', max: 60, timeWindow: '1 hour', skipOnError: false, why: 'Rotation abuse' },
 
   'member-api': { dimension: 'account', max: 600, timeWindow: '1 minute', skipOnError: true, why: 'Normal member traffic' },

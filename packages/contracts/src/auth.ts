@@ -190,6 +190,13 @@ export const REFRESH_TTL_DAYS = Object.freeze({ web: 30, mobile: 90 })
 export const OTP_TTL_SECONDS = 300
 export const OTP_MAX_ATTEMPTS = 5
 export const OTP_RESEND_COOLDOWN_SECONDS = 60
+/**
+ * Six digits where sign-in uses four (feature 043, resetting a password by an SMS code): a sign-in
+ * code is only half of a login (the password came first), while a reset code is the whole proof, so it
+ * carries the guessing odds of the five tries it allows (1 in 200,000 rather than 1 in 2,000).
+ * The request and confirm schemas live in `./password-reset.ts`, which is separate on purpose.
+ */
+export const PASSWORD_RESET_CODE_LENGTH = 6
 export const PASSWORD_RESET_TTL_SECONDS = 3600
 
 /** Cookie names, shared so a client and the server cannot disagree. */

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { OTP_RESEND_COOLDOWN_SECONDS } from '@gwc/contracts/auth'
 import { query } from '../../../db/query.ts'
-import { issueChallenge, loadChallenge } from '../otp.ts'
+import { digitsForPurpose, issueChallenge, loadChallenge } from '../otp.ts'
 import type { GwcApp } from '../../../app.ts'
 
 /**
@@ -13,6 +13,14 @@ import type { GwcApp } from '../../../app.ts'
 export async function loadOtpResendContext(app: GwcApp, challengeId, signal) {
   const challenge = await loadChallenge(app.pg, challengeId, { signal })
   if (!challenge) return { challenge: null, phoneKey: null }
+  // A password-reset challenge is not resendable, and must look like it does not exist at all
+  // (feature 043, research R17). The id of one is handed to an unauthenticated caller, and for
+  // an identifier that matches nobody it is a random uuid; if a real one were resent (or refused
+  // as "too soon" inside the cooldown) while a made-up one answered as unknown, one request would
+  // tell a stranger whether an identifier has an account. Returning here, BEFORE the members
+  // lookup below, also means the same work is done as for an unknown id. To get another code the
+  // app asks again at /auth/password-reset/code, which is limited to three an hour per number.
+  if (challenge.purpose === 'password_reset') return { challenge: null, phoneKey: null }
   const { rows } = await query(app.pg, 'SELECT mobile FROM members WHERE id = $1', [challenge.account_id], { signal })
   return { challenge, phoneKey: rows[0]?.mobile ?? challenge.account_id }
 }
@@ -37,6 +45,9 @@ export async function resendOtp(app: GwcApp, { challenge, phoneKey, signal }) {
     accountKind: challenge.account_kind,
     deviceId: challenge.device_id,
     purpose: challenge.purpose,
+    // The length belongs to the purpose: a code issued with the default four digits for a purpose
+    // that expects more is a code its own screen refuses every time.
+    digits: digitsForPurpose(challenge.purpose),
     signal,
   })
   await app.sendOtp({ mobile: phoneKey, code: fresh.code, route: 'auth.otp.resend', accountId: challenge.account_id })

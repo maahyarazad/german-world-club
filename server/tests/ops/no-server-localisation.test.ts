@@ -61,11 +61,30 @@ describe('no API response varies with Accept-Language', () => {
     ['a staff-gated route', { method: 'GET', url: '/admin/openapi.json' }],
     ['a not-found', { method: 'GET', url: '/gibt-es-nicht', headers: { accept: 'application/json' } }],
     ['a validation failure', { method: 'POST', url: '/auth/password-reset/confirm', payload: { token: 'x', password: 'short' } }],
+    // Feature 043: the reset-by-code routes. Their refusals are the ones a person actually reads in
+    // the app, which translates them from the problem `type`; the server sends English and only English.
+    ['a reset-code request that does not validate', { method: 'POST', url: '/auth/password-reset/code', payload: { email: 'not-an-email', deviceId: 'device-l10n' } }],
+    ['a reset-code request with an impossible number', { method: 'POST', url: '/auth/password-reset/code', payload: { mobile: '+49971585831595', deviceId: 'device-l10n' } }],
+    ['a reset-code refusal', { method: 'POST', url: '/auth/password-reset/code/confirm', payload: { challengeId: '8f14e45f-ceea-4e67-9c5a-0a1b2c3d4e5f', code: '123456', deviceId: 'device-l10n', password: 'long-enough-to-validate' } }],
   ])('%s is byte-identical', async (_name, options) => {
     const { german, english } = await bothWays(options)
 
     expect(english.statusCode).toBe(german.statusCode)
     expect(stable(english)).toBe(stable(german))
+  })
+
+  // The accepted answer carries a fresh random challenge id by design (it is how a non-matching
+  // identifier is made to look like a match), so it is compared with that one value normalised.
+  it('a reset-code request that is accepted is the same in both languages', async () => {
+    const { german, english } = await bothWays({
+      method: 'POST', url: '/auth/password-reset/code', payload: { email: 'nobody@test.invalid', deviceId: 'device-l10n' },
+    })
+    const normalised = (response: { body: string }) => stable(response).replace(/"challengeId":"[0-9a-f-]{36}"/, '"challengeId":"<uuid>"')
+
+    expect(german.statusCode).toBe(202)
+    expect(english.statusCode).toBe(202)
+    expect(normalised(english)).toBe(normalised(german))
+    expect(normalised(german)).toContain('<uuid>')
   })
 
   it('never sets Vary: Accept-Language on an API response', async () => {

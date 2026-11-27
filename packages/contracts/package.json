@@ -8,6 +8,7 @@
     "./errors": "./src/errors.ts",
     "./permissions": "./src/permissions.ts",
     "./auth": "./src/auth.ts",
+    "./password-reset": "./src/password-reset.ts",
     "./devices": "./src/devices.ts",
     "./admin": "./src/admin.ts",
     "./mobile": "./src/mobile.ts",

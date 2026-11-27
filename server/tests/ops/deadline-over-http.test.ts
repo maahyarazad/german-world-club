@@ -79,6 +79,12 @@ describe('a request body that finishes arriving is not a cancelled request', () 
     ['sign-in', '/auth/sign-in', { email: 'nobody@test.invalid', password: 'irrelevant-but-long' }],
     ['password reset request', '/auth/password-reset/request', { email: 'nobody@test.invalid' }],
     ['password reset confirm', '/auth/password-reset/confirm', { token: 'x'.repeat(64), password: 'irrelevant-but-long' }],
+    // Feature 043. The ask is an SMS route (the `otp-send` class) and the confirm hashes a password;
+    // each must reach its handler over a real socket rather than being cut off before it decides.
+    ['password reset code request', '/auth/password-reset/code', { email: 'nobody@test.invalid', deviceId: 'device-deadline' }],
+    ['password reset code confirm', '/auth/password-reset/code/confirm', {
+      challengeId: '8f14e45f-ceea-4e67-9c5a-0a1b2c3d4e5f', code: '123456', deviceId: 'device-deadline', password: 'irrelevant-but-long',
+    }],
     ['refresh', '/auth/refresh', {}],
   ])('POST %s reaches its handler instead of timing out', async (_name, path, body) => {
     const response = await post(path, body)
