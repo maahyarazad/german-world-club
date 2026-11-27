@@ -46,12 +46,23 @@ export const Colors = {
 } as const;
 
 /**
- * The wash laid over the backdrop image (`AppBackground`). The art is one mid-grey in
- * both schemes, so without it the theme's dark text (light scheme) would sit at about
- * 3:1 on it. Lower the alpha to show more of the image.
+ * The wash laid over the backdrop image (`AppBackground`), measured against the art
+ * (feature 043, specs/043-expo-password-reset/research.md R13; contrast is WCAG, 4.5:1 is
+ * the minimum for text).
+ *
+ * The two schemes have different art, so they get different treatment:
+ *  - light: cream (#FFF5E6) with fine gold lines. Body text is already 16.6:1 on it and
+ *    secondary text 5.5:1, so NO wash. (The old white veil, written for grey art, would only
+ *    bleach the gold lines.) Written `transparent`, never an empty string, which is not a colour.
+ *  - dark: slate (#60646C) with yellow lines. Body text is 5.1:1 and secondary text only 2.4:1
+ *    with no wash; the 0.5 black wash below makes them 11.0:1 and 5.2:1.
+ *
+ * Do not lower the dark alpha below about 0.45 to show more of the art: secondary text falls
+ * under 4.5:1 (it is 4.1:1 at 0.35). If you want it lighter, recolour `textSecondary` for the
+ * dark theme first, and change client/tests/assets/expo-backdrop.test.ts with it.
  */
 export const BackdropScrim = {
-  light: 'rgba(255, 255, 255, 0.72)',
+  light: 'transparent',
   dark: 'rgba(0, 0, 0, 0.5)',
 } as const;
 

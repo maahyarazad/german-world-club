@@ -11,6 +11,9 @@ export default function PublicLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ title: t.signIn.title }} />
       <Stack.Screen name="sign-in-code" options={{ title: t.signIn.otpTitle }} />
+      {/* Feature 043: forgot password. Both are reachable signed out; the second is only ever opened by the first. */}
+      <Stack.Screen name="forgot-password" options={{ title: t.passwordReset.title }} />
+      <Stack.Screen name="reset-password" options={{ title: t.passwordReset.codeTitle }} />
       <Stack.Screen name="register" options={step(1)} />
       <Stack.Screen name="country" options={step(2)} />
       {/* No way back from here: the application exists once the code was sent. */}

@@ -1,7 +1,8 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
-import { Button, FormScreen, Message, TextField } from '@/components/ui';
+import { AuthScreen } from '@/components/auth-screen';
+import { Button, Message, TextField } from '@/components/ui';
 import { useTranslations } from '@/i18n';
 import { useSession } from '@/session/session';
 import { ApiError } from '@/api/client';
@@ -13,7 +14,11 @@ export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  // `notice=password-reset` is how the reset screen hands the person back here (feature 043):
+  // their password was just changed and every session ended, so they sign in with the new one.
+  // Cleared on the next attempt, like the other notices.
+  const { notice: arrivedWith } = useLocalSearchParams<{ notice?: string }>();
+  const [notice, setNotice] = useState<string | null>(arrivedWith === 'password-reset' ? t.passwordReset.done : null);
   // A refusal the person can act on (wrong password, no connection…), shown
   // in place of the outcome notices above; both are cleared on the next attempt.
   const [failure, setFailure] = useState<string | null>(null);
@@ -60,8 +65,25 @@ export default function SignIn() {
     }
   };
 
+  // Feature 043: the club's logo on top and the buttons laid out like the welcome screen's, from
+  // the layout the forgot-password and reset-password screens share (`AuthScreen`). The fields and
+  // messages are its children; the buttons are its `actions`, the main one first.
   return (
-    <FormScreen vCentered>
+    <AuthScreen
+      actions={
+        <>
+          <Button
+            label={t.signIn.submit}
+            onPress={submit}
+            loading={busy}
+            disabled={!email || password.length < 8}
+            variant="primary"
+          />
+          {/* Also what the person who is told to reset their password (the notice above) reaches
+              for, so it is always shown. */}
+          <Button label={t.passwordReset.forgotLink} onPress={() => router.push('/forgot-password')} variant="secondary" />
+        </>
+      }>
       <TextField
         label={t.signIn.email}
         value={email}
@@ -82,7 +104,6 @@ export default function SignIn() {
       />
       <Message text={failure} />
       <Message text={notice} tone="info" />
-      <Button label={t.signIn.submit} onPress={submit} loading={busy} disabled={!email || password.length < 8} />
-    </FormScreen>
+    </AuthScreen>
   );
 }

@@ -1,5 +1,8 @@
 import type { MeResponse, SignInRequest, SignInResponse, TokenPairResponse, ResendOtpResponse } from '@gwc/contracts/auth';
 import type {
+  PasswordResetCodeRequest, PasswordResetCodeAccepted, PasswordResetCodeConfirm,
+} from '@gwc/contracts/password-reset';
+import type {
   EmailCodeSent, OnboardingStatus, RegisterRequest, RegisterResponse, VerifyMobileResponse, ChangeContactRequest } from '@gwc/contracts/onboarding';
 import type { ProfilingStatus, ProfilingPatchRequest, CitySlot, CitiesResponse } from '@gwc/contracts/profiling';
 import type {
@@ -50,6 +53,17 @@ export const authApi = {
     api<TokenPairResponse>('/auth/verify-otp', { method: 'POST', body, anonymous: true }),
   resendOtp: (challengeId: string) =>
     api<ResendOtpResponse>('/auth/otp/resend', { method: 'POST', body: { challengeId }, anonymous: true }),
+  /**
+   * Forgot password (feature 043): ask for a code texted to the number on record.
+   * The answer is the same for every identifier, including one that matches nobody,
+   * so the app must treat it as "a code may be on its way" and never as "found".
+   * `anonymous`: there is no session to attach, and there must not be one.
+   */
+  requestPasswordResetCode: (body: PasswordResetCodeRequest) =>
+    api<PasswordResetCodeAccepted>('/auth/password-reset/code', { method: 'POST', body, anonymous: true }),
+  /** The code and the new password in one request; success ends every session and signs nobody in. */
+  confirmPasswordResetCode: (body: PasswordResetCodeConfirm) =>
+    api<{ reset: true }>('/auth/password-reset/code/confirm', { method: 'POST', body, anonymous: true }),
   signOut: () => api<void>('/auth/sign-out', { method: 'POST' }),
   /** Only to revoke a staff session the app just refused; see session.tsx. */
   staffSignOut: () => api<void>('/auth/staff/sign-out', { method: 'POST' }),
