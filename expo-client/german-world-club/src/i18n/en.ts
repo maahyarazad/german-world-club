@@ -447,6 +447,12 @@ export const en = {
     allCategories: 'All categories',
     allModes: 'All modes',
     empty: 'No listings found.',
+    search: {
+      label: 'Search listings',
+      placeholder: 'Search by title or description',
+      clear: 'Clear search',
+      noResults: 'No listings match your search.',
+    },
     loadFailed: 'The form could not be loaded. Please try again.',
     categories: {
       vehicle: 'Vehicle',
@@ -644,6 +650,14 @@ export const en = {
     intro: 'Benefits from our Club Merchants.',
     allCategories: 'All',
     empty: 'There are no offers here right now.',
+    fallbackAlt: 'Placeholder image: this offer has no photo yet',
+    gallery: { position: 'Image {n} of {total}', play: 'Play video' },
+    search: {
+      label: 'Search offers',
+      placeholder: 'Search by title or description',
+      clear: 'Clear search',
+      noResults: 'No offers match your search.',
+    },
     soldOut: 'Sold out',
     validUntil: 'Valid until {date}',
     perPerson: 'Redeemable per person: {count}',

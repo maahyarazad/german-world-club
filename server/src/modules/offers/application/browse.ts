@@ -1,7 +1,8 @@
 import type { OfferListItem, BrowseCategory } from '@gwc/contracts/offers'
 import { query } from '../../../db/query.ts'
+import { searchPredicates } from '../../../db/text-search.ts'
 import { loadMediaItems } from '../../media/application/media-items.ts'
-import { VISIBLE_OFFER, OFFER_JOINS } from './offer.ts'
+import { VISIBLE_OFFER, OFFER_JOINS, LEAD_OFFER_ASSET } from './offer.ts'
 import type { GwcApp } from '../../../app.ts'
 
 /**
@@ -15,6 +16,10 @@ import type { GwcApp } from '../../../app.ts'
  *
  * Lists carry the lead image as a derivative (a video's poster) and never an
  * original.
+ *
+ * `q` (feature 042) narrows the list to offers whose title or description contain every
+ * typed word. Its predicates are ANDed on AFTER `VISIBLE_OFFER`, never in place of it, so a
+ * search can only ever narrow what a requester may see. Order and cursor are unchanged.
  */
 
 const PAGE = 20
@@ -33,22 +38,25 @@ const decode = (raw: string | undefined): Cursor | null => {
 
 export async function listVisibleOffers(
   app: GwcApp,
-  { categoryId, cursor, signal }: { categoryId?: string; cursor?: string; signal?: AbortSignal },
+  { categoryId, cursor, q, signal }: { categoryId?: string; cursor?: string; q?: string; signal?: AbortSignal },
 ) {
   const after = decode(cursor)
+  const params: unknown[] = [categoryId ?? null, after?.at ?? null, after?.id ?? null]
+  const search = searchPredicates(q, ['o.title', 'o.description'], params).map((p) => `AND ${p}`).join('\n        ')
   const { rows } = await query(
     app.pg,
     `SELECT o.id, o.title, o.benefit_kind, o.benefit_value, o.currency, o.valid_until, o.category_id,
             o.remaining, o.published_at, op.display_name, org.slug, op.logo_asset_id,
-            (SELECT m.asset_id FROM offer_media m WHERE m.offer_id = o.id ORDER BY m.position LIMIT 1) AS lead_asset_id
+            ${LEAD_OFFER_ASSET} AS lead_asset_id
        FROM offers o
        ${OFFER_JOINS}
       WHERE ${VISIBLE_OFFER}
         AND ($1::uuid IS NULL OR o.category_id = $1)
         AND ($2::timestamptz IS NULL OR (o.published_at, o.id) < ($2::timestamptz, $3::uuid))
+        ${search}
       ORDER BY o.published_at DESC, o.id DESC
       LIMIT ${PAGE + 1}`,
-    [categoryId ?? null, after?.at ?? null, after?.id ?? null],
+    params,
     { signal },
   )
 

@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import type { MemberOffer } from '@gwc/contracts/offers'
+import type { MediaItem } from '@gwc/contracts/media'
 import type { Redemption } from '@gwc/contracts/redemptions'
 import { ApiError } from '../lib/api'
 import { formatDate, formatMoney } from '../lib/format'
 import { useLocale, useTranslations } from '../i18n/index'
+import { useCapabilities } from '../lib/capabilities'
 import PageHeader from '../components/ui/PageHeader'
 import PageLoader from '../components/ui/PageLoader'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Callout from '../components/ui/Callout'
 import { FormMessage } from '../components/ui/Field'
-import MediaGrid from '../member/threads/MediaGrid'
-import { clubOffersApi } from './api'
+import OfferGallery from './OfferGallery'
+import { clubOffersApi, setOfferMainMediaAsStaff } from './api'
 import type { OffersKind } from './api'
 import { benefitText } from './benefit'
 
@@ -40,6 +42,11 @@ export function OfferDetail({ kind }: { kind: OffersKind }) {
   const [refusal, setRefusal] = useState<string | null>(null)
   const requestId = useRef(crypto.randomUUID())
   const sending = useRef(false)
+  // A super admin may choose which existing file leads (feature 042). Whether to SHOW the control
+  // is display only (Principle I): the server refuses anyone else. Hooks above the loader returns.
+  const { snapshot } = useCapabilities()
+  const canChooseMain = kind === 'staff' && snapshot?.isSuperadmin === true
+  const [choosing, setChoosing] = useState(false)
 
   useEffect(() => {
     void api.detail(id).then(setOffer).catch((err) => {
@@ -47,6 +54,20 @@ export function OfferDetail({ kind }: { kind: OffersKind }) {
       setOffer(null)
     })
   }, [api, id])
+
+  const makeMain = async (item: MediaItem) => {
+    if (!offer) return
+    setChoosing(true)
+    try {
+      const result = await setOfferMainMediaAsStaff(offer.id, item.assetId)
+      // The server answers the new order; the gallery returns to its first slide when the first file changes.
+      setOffer((current) => (current ? { ...current, media: result.media } : current))
+    } catch (err) {
+      console.error('OfferDetail.makeMain', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setChoosing(false)
+    }
+  }
 
   const redeem = async () => {
     // A ref, not `busy`: two presses in one frame would both see `busy === false`.
@@ -93,7 +114,15 @@ export function OfferDetail({ kind }: { kind: OffersKind }) {
       <PageHeader title={offer.title} subtitle={`${offer.merchant.displayName} · ${name}`}
         actions={<Link to=".." relative="path" className="text-[13px] text-navy">← {t.clubOffers.back}</Link>} />
 
-      <MediaGrid media={offer.media} />
+      <OfferGallery
+        media={offer.media}
+        renderAction={canChooseMain ? (item, index) => (
+          // The first file already leads: there is nothing to choose on its slide.
+          <Button variant="quiet" disabled={choosing || index === 0} onClick={() => void makeMain(item)}>
+            {t.clubOffers.makeMain}
+          </Button>
+        ) : undefined}
+      />
 
       <Card>
         <p className="mb-1 text-[18px] font-semibold text-navy">{benefitText(t, offer.benefit, offer.currency, locale)}</p>

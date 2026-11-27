@@ -1,7 +1,7 @@
 import {
   listOwnOffers, createOffer, updateOffer, publishOffer, withdrawOffer, setOfferOrder,
 } from './application/merchant-offers.ts'
-import { setOfferMedia } from './application/offer-media.ts'
+import { setOfferMedia, setMainMedia } from './application/offer-media.ts'
 import { listChoosableCategories } from '../offer-categories/application/categories.ts'
 import type { GwcReply, GwcRequest } from '../../types/handlers.ts'
 import type { GwcApp } from '../../app.ts'
@@ -33,6 +33,12 @@ export function createMerchantOfferController(app: GwcApp) {
       reply.send(await setOfferMedia(app, {
         organisationId: org(request), actor: actor(request), offerId: offerId(request),
         assetIds: (request.body as { assetIds: string[] }).assetIds,
+      })),
+
+    setMainMedia: async (request: GwcRequest, reply: GwcReply) =>
+      reply.send(await setMainMedia(app, {
+        scope: { organisationId: org(request) }, actor: actor(request), offerId: offerId(request),
+        assetId: (request.body as { assetId: string }).assetId,
       })),
 
     publish: async (request: GwcRequest, reply: GwcReply) =>

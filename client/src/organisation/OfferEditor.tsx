@@ -16,7 +16,7 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Field, { FormMessage } from '../components/ui/Field'
 import UploadProgress from '../components/ui/UploadProgress'
-import { smallestUrl } from '../member/threads/MediaGrid'
+import { OfferPicture } from '../offers/OfferPicture'
 import { merchantApi } from './api'
 
 type Form = {
@@ -165,6 +165,25 @@ export function OfferEditor() {
     void merchantApi.deleteFile(item.assetId).catch(() => undefined)
   }
 
+  /**
+   * Choose which existing file leads (feature 042). The server moves it to the front and
+   * answers the new order, which is what is shown: this page decides nothing about it.
+   * Not `setMedia`: that replaces the whole set from this page's copy, which could drop a
+   * file added from another tab.
+   */
+  const makeMain = async (item: MediaItem) => {
+    if (!offer) return
+    setBusy(true)
+    try {
+      const result = await merchantApi.setMainMedia(offer.id, item.assetId)
+      setOffer((current) => (current ? { ...current, media: result.media } : current))
+    } catch (err) {
+      console.error('OfferEditor.makeMain', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading || !categories) return <PageLoader />
 
   const categoryName = (c: OfferCategory) => (locale === 'en' ? c.nameEn : c.nameDe)
@@ -245,11 +264,23 @@ export function OfferEditor() {
         ) : (
           <>
             <p className="mb-3 text-[13px] text-text-muted">{fill(t.merchantOffers.mediaHint, { max: MAX_OFFER_MEDIA })}</p>
+            {/* The server's `media: []` means none; the club's fallback is for members, so it is not drawn here as if it were a file. */}
+            {offer.media.length === 0 && <p className="mb-3 text-[13px] text-text-muted">{t.merchantOffers.mediaNone}</p>}
             <ul className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-              {offer.media.map((item) => (
+              {offer.media.map((item, index) => (
                 <li key={item.assetId} className="flex flex-col gap-1.5">
-                  <img src={smallestUrl(item, 160) || item.posterUrl || ''} width={item.width} height={item.height} alt={item.alt}
-                    className="aspect-[4/3] w-full rounded-card object-cover" />
+                  <div className="relative">
+                    <OfferPicture item={item} maxWidth={160} />
+                    {/* The first one leads: it is the card's picture and the detail's first slide. */}
+                    {index === 0 && (
+                      <span className="absolute left-1.5 top-1.5 rounded-card bg-navy px-2 py-0.5 text-[11px] font-semibold text-text-on-dark">
+                        {t.merchantOffers.mainBadge}
+                      </span>
+                    )}
+                  </div>
+                  {index > 0 && (
+                    <Button variant="quiet" disabled={busy} onClick={() => void makeMain(item)}>{t.merchantOffers.makeMain}</Button>
+                  )}
                   <Button variant="quiet" disabled={busy} onClick={() => void removeMedia(item)}>{t.merchantOffers.mediaRemove}</Button>
                 </li>
               ))}

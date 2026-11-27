@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { REDACT_PATHS, loggerOptions } from '../../src/plugins/01-logging.ts'
+import { REDACT_PATHS, loggerOptions, maskSearchQuery } from '../../src/plugins/01-logging.ts'
 import { buildApp } from '../../src/app.ts'
 import { loadEnv } from '../../src/config/env.ts'
 import { sanitizeDetail } from '../../src/ops/audit.ts'
@@ -150,5 +150,64 @@ describe.skipIf(!hasDatabase)('push dispatch logs no token (FR-029)', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+/**
+ * Feature 042, FR-025, research R15: the typed text of a search is private.
+ *
+ * The request serializer logs `req.url`, query string included, so a person who
+ * searches for a name, an email address or a phone number would have it written
+ * to every request log line. The value of `q` is masked centrally, in the
+ * serializer, so it holds for routes not yet written. Every other parameter is
+ * still logged: a mask that ate the whole query string would hide the
+ * category a failing request used.
+ */
+describe('search text in the request log (FR-025)', () => {
+  it('captures a real request without the typed text, and still logs the other parameters', async () => {
+    const lines: string[] = []
+    const env = { ...loadEnv(), LOG_LEVEL: 'info' as const }
+    // The real serializers, in the production shape (no file transport) so the lines can be captured.
+    const options = loggerOptions({ ...loadEnv(), LOG_LEVEL: 'info' as const, isProduction: true })
+    const app = await buildApp({ env, logger: { ...(options as object), stream: { write: (s: string) => lines.push(s) } } as never })
+    app.get('/probe-search', {
+      config: { auth: { audience: 'public' } },
+      schema: { response: { 200: z.object({ ok: z.boolean() }) } },
+    }, async () => ({ ok: true }))
+    await app.ready()
+
+    await app.inject({ method: 'GET', url: '/probe-search?q=zzprivate%20needle&categoryId=abc' })
+    await app.close()
+
+    const output = lines.join('\n')
+    expect(output).toContain('/probe-search')
+    expect(output).not.toContain('zzprivate')
+    expect(output).not.toContain('needle')
+    expect(output).toContain('q=[redacted]')
+    // Counter-assertion: the rest of the query string is still there.
+    expect(output).toContain('categoryId=abc')
+  })
+
+  it.each([
+    ['/member/offers?q=zzprivate&categoryId=abc', '/member/offers?q=[redacted]&categoryId=abc'],
+    ['/marketplace/listings?mode=offer&q=x%20y', '/marketplace/listings?mode=offer&q=[redacted]'],
+    ['/member/offers?q=', '/member/offers?q=[redacted]'],
+    ['/member/offers?q=a&q=b', '/member/offers?q=[redacted]&q=[redacted]'],
+  ])('masks the value of q: %s', (url, expected) => {
+    expect(maskSearchQuery(url)).toBe(expected)
+  })
+
+  it.each([
+    '/member/offers',
+    '/member/offers?categoryId=abc&cursor=xyz',
+    '/member/offers?query=zzprivate&qq=zzprivate',
+    '/auth/refresh',
+  ])('leaves a URL with no q alone: %s', (url) => {
+    expect(maskSearchQuery(url)).toBe(url)
+  })
+
+  it('copes with something that is not a URL', () => {
+    expect(maskSearchQuery(undefined as never)).toBeUndefined()
+    expect(maskSearchQuery('')).toBe('')
   })
 })

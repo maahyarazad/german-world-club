@@ -178,6 +178,8 @@ export const PROBLEMS = {
   STORE_INACTIVE: { type: `${BASE}/offers/store-inactive`, title: 'The store is deactivated', status: 409 },
   OFFER_CATEGORY_REQUIRED: { type: `${BASE}/offers/category-required`, title: 'Choose a category for the offer', status: 422 },
   OFFER_MEDIA_LIMIT: { type: `${BASE}/offers/media-limit`, title: 'Too many media items', status: 422 },
+  // Choosing a main item that is not one of the offer's own (feature 042). 422: the request is well formed, the offer refuses it.
+  OFFER_MEDIA_NOT_ATTACHED: { type: `${BASE}/offers/media-not-attached`, title: 'That file is not part of this offer', status: 422 },
   // 409: retrying changes nothing until the stock changes.
   OFFER_SOLD_OUT: { type: `${BASE}/offers/sold-out`, title: 'No units of this offer remain', status: 409 },
   PER_PERSON_LIMIT_REACHED: { type: `${BASE}/offers/per-person-limit-reached`, title: 'Already redeemed the most this offer allows', status: 409 },

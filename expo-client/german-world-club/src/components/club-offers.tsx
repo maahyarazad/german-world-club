@@ -7,14 +7,19 @@ import { RefreshControl, ScrollView, View, StyleSheet } from 'react-native';
 
 import type { BenefitKind, BrowseCategory, MemberOffer, OfferListItem } from '@gwc/contracts/offers';
 import type { Redemption } from '@gwc/contracts/redemptions';
+import { SEARCH_MIN_LENGTH } from '@gwc/contracts/search';
 import type { StoreProfile } from '@gwc/contracts/stores';
 
 import { ApiError } from '@/api/client';
 import { clubOffersApi, type ClubOffersKind } from '@/api/endpoints';
-import { imageUrl, MediaCarousel, WideImage } from '@/components/media-carousel';
+import { imageUrl, MediaCarousel } from '@/components/media-carousel';
+import { OfferGallery } from '@/components/offer-gallery';
+import { OfferPicture } from '@/components/offer-picture';
+import { SearchField } from '@/components/search-field';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Chip, FormScreen, Loading, Message } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { usePaged } from '@/hooks/use-paged';
 import { useTranslations } from '@/i18n';
 import { useThemedStyles, type AppTheme } from '@/hooks/use-themed-styles';
@@ -48,13 +53,18 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
   const [api] = useState(() => clubOffersApi(kind));
   const [categories, setCategories] = useState<BrowseCategory[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  // The text search (feature 042): the box, and what is actually sent once the person pauses and has
+  // typed enough. `usePaged` restarts from the top when it changes and ignores a superseded answer.
+  const [text, setText] = useState('');
+  const typed = text.trim();
+  const q = useDebouncedValue(typed.length >= SEARCH_MIN_LENGTH ? typed : '');
 
   useEffect(() => {
     api.categories().then((r) => setCategories(r.items), (e) => console.error('ClubOffersList.categories', e instanceof ApiError ? e.problem : e));
   }, [api]);
 
-  const fetchPage = useCallback((cursor: string | null) => api.list(categoryId, cursor), [api, categoryId]);
-  const list = usePaged<OfferListItem>(fetchPage, [categoryId]);
+  const fetchPage = useCallback((cursor: string | null) => api.list(categoryId, cursor, q), [api, categoryId, q]);
+  const list = usePaged<OfferListItem>(fetchPage, [categoryId, q]);
 
   return (
     <FlashList
@@ -62,10 +72,16 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
       data={list.items}
       keyExtractor={(o) => o.id}
       onEndReached={list.loadMore}
+      // A category chip must take the first tap while the keyboard is up, and dragging the list closes it.
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={() => list.reload(true)} />}
       ListHeaderComponent={
         <View style={styles.gapTwoPaddingThree}>
           <ThemedText themeColor="textSecondary">{t.clubOffers.intro}</ThemedText>
+          {/* In the header, as a stable element: the list reloads under it and the box must stay mounted. */}
+          <SearchField value={text} onChangeText={setText} label={t.clubOffers.search.label}
+            placeholder={t.clubOffers.search.placeholder} clearLabel={t.clubOffers.search.clear} />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gapTwo}>
             <Chip label={t.clubOffers.allCategories} selected={categoryId === null} onPress={() => setCategoryId(null)} />
             {categories.map((c) => (
@@ -77,14 +93,17 @@ export function ClubOffersList({ kind, detailPath, redemptionsPath }: { kind: Cl
       }
       ListEmptyComponent={
         // The loader while the page has not heard back; the empty message only once it has.
-        list.loading ? <Loading /> : <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>{t.clubOffers.empty}</ThemedText>
+        list.loading ? <Loading /> : (
+          <ThemedText themeColor="textSecondary" style={styles.paddingFourTextCenter}>
+            {q ? t.clubOffers.search.noResults : t.clubOffers.empty}
+          </ThemedText>
+        )
       }
       renderItem={({ item }) => (
         <View style={styles.viewPaddingHorizontalThree2}>
           <Card onPress={() => router.push({ pathname: detailPath as never, params: { id: item.id } })}>
-            {item.thumbnail ? (
-              <WideImage item={item.thumbnail} />
-            ) : null}
+            {/* 16:9, and the club's fallback when the offer has no usable media (feature 042). */}
+            <OfferPicture item={item.thumbnail} recyclingKey={item.id} />
             <ThemedText type="smallBold">{item.title}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">{item.merchant.displayName}</ThemedText>
             <ThemedText>{benefit(item.benefit, item.currency)}</ThemedText>
@@ -154,7 +173,8 @@ export function ClubOfferDetail({ kind, id, storePath }: { kind: ClubOffersKind;
   const money = (cents: number | null) => (cents === null ? null : formatMoney(cents, offer.currency));
   return (
     <FormScreen title={offer.title} subtitle={offer.merchant.displayName}>
-      {offer.media.length > 0 ? <MediaCarousel media={offer.media} /> : null}
+      {/* As wide as the cards below it, 16:9, swipeable; the club's fallback when the offer has no media (feature 042). */}
+      <OfferGallery media={offer.media} />
       <Card>
         <ThemedText type="subtitle">{benefit(offer.benefit, offer.currency)}</ThemedText>
         {offer.regularPriceCents !== null ? <ThemedText themeColor="textSecondary">{money(offer.regularPriceCents)}</ThemedText> : null}

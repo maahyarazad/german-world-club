@@ -421,6 +421,11 @@ export type ListingQuery = {
   cursor?: string
   /** Coerced, defaulted to 20 and bounded at 50 IN THE HANDLER, not only here. */
   limit?: number
+  /**
+   * A text search in the listings' titles and descriptions (feature 042): 2 to 80 characters, at
+   * most 6 words, case-insensitive, on part of a word, every word required. Empty means none.
+   */
+  q?: string
   [filter: string]: unknown
 }
 

@@ -1,5 +1,6 @@
 import { CATEGORY_DEFS } from '@gwc/contracts/marketplace'
 import { query } from '../../../db/query.ts'
+import { searchPredicates } from '../../../db/text-search.ts'
 import type { GwcApp } from '../../../app.ts'
 import type { MarketplaceCategory } from '@gwc/contracts/marketplace'
 
@@ -41,6 +42,11 @@ export type BrowseFilters = {
   cursor?: { createdAt: string; id: string } | null
   /** Category-specific filters, validated against the field definitions. */
   detail?: Record<string, string>
+  /**
+   * A text search in the title and the body (feature 042), already bounded by the route schema.
+   * ANDed on after the visibility predicates below; it can only narrow what a member may see.
+   */
+  q?: string
   signal?: AbortSignal
 }
 
@@ -99,7 +105,7 @@ function detailPredicates(
 }
 
 export async function browseListings(app: GwcApp, filters: BrowseFilters) {
-  const { category, mode, limit, cursor, detail = {}, signal } = filters
+  const { category, mode, limit, cursor, detail = {}, q, signal } = filters
 
   if (!category && Object.keys(detail).length > 0) {
     // A category-specific filter with no category names no table to apply it
@@ -123,6 +129,10 @@ export async function browseListings(app: GwcApp, filters: BrowseFilters) {
   // Exactly one detail table when a category is named, none when it is not.
   const join = category ? `JOIN ${DETAIL_TABLE[category]} d ON d.listing_id = l.id` : ''
   if (category) where.push(...detailPredicates(category, detail, params))
+
+  // Every typed word must be in the title or the body. Pushed after `state = 'active'` and the active
+  // owner, as an AND: a search cannot bring back a draft, a hidden listing or a locked member's listing.
+  where.push(...searchPredicates(q, ['l.title', 'l.body'], params))
 
   const detailColumns = category
     ? `, to_jsonb(d.*) - 'listing_id' AS details`

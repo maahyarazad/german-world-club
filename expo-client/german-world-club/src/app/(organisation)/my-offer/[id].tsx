@@ -8,7 +8,7 @@ import type { CreateOfferRequest, MerchantOffer, OfferCategory } from '@gwc/cont
 import { ApiError } from '@/api/client';
 import { merchantApi } from '@/api/endpoints';
 import { DatePartsField } from '@/components/date-parts-field';
-import { WideImage } from '@/components/media-carousel';
+import { OfferPicture } from '@/components/offer-picture';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Chip, FormScreen, Loading, Message, TextField } from '@/components/ui';
 import { UploadProgress } from '@/components/upload-progress';
@@ -182,7 +182,7 @@ export default function OfferEditor() {
           <ThemedText type="small" themeColor="textSecondary">{format(t.merchant.offers.mediaHint, { max: MAX_OFFER_MEDIA })}</ThemedText>
           {offer.media.map((item) => (
             <View key={item.assetId} style={styles.gapOne}>
-              <WideImage item={item} />
+              <OfferPicture item={item} />
               <Button label={t.merchant.galleryRemove} variant="secondary" disabled={busy} onPress={() => {
                 void setMedia(offer.media.filter((m) => m.assetId !== item.assetId).map((m) => m.assetId))
                   .then(() => merchantApi.deleteFile(item.assetId).catch(() => undefined));
