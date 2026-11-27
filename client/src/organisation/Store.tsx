@@ -4,6 +4,7 @@ import type { MediaItem } from '@gwc/contracts/media'
 import type { Store } from '@gwc/contracts/stores'
 import { ApiError } from '../lib/api'
 import { fill } from '../lib/format'
+import { useReveal } from '../lib/useReveal'
 import { checkCoverFile, checkMerchantFile, MERCHANT_MEDIA_TYPES, MERCHANT_IMAGE_TYPES } from '../lib/media-limits'
 import type { CoverCheck, FileCheck } from '../lib/media-limits'
 import { useMediaUpload } from '../lib/use-media-upload'
@@ -35,6 +36,9 @@ export function StorePage() {
   const [store, setStore] = useState<Store | null | undefined>(undefined)
   const [form, setForm] = useState({ description: '', openingHours: '' })
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  // Every save on this page (cover, gallery, details) answers in the message below, far above
+  // the buttons: bring it into view (feature 041). Above the loader's early return, like every hook.
+  const messageRef = useReveal<HTMLDivElement>(message)
   const [busy, setBusy] = useState(false)
   const cover = useMediaUpload('merchant')
   const gallery = useMediaUpload('merchant')
@@ -138,7 +142,7 @@ export function StorePage() {
       {!store.active && (
         <Callout variant="gold" title={t.merchantStore.deactivatedTitle}>{t.merchantStore.deactivatedBody}</Callout>
       )}
-      {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone={message.tone}>{message.text}</FormMessage>}
 
       <Card title={t.merchantStore.cover}>
         {store.cover ? (

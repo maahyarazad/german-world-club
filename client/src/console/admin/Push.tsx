@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from '../../i18n/index'
 import PageLoader from '../../components/ui/PageLoader'
 import AsyncButton from '../../components/ui/AsyncButton'
 import { useAction } from '../../lib/useAction'
+import { useReveal } from '../../lib/useReveal'
 
 /**
  * The console's Push section (feature 011, US3, research R14), on the
@@ -153,6 +154,9 @@ function Compose({ onQueued }: { onQueued: () => void }) {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<PushAudience | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // The notice sits above the send button but the form above it can be long: bring it into view
+  // (feature 041). `send` clears it when a request starts, so each queued message is a change.
+  const noticeRef = useReveal<HTMLDivElement>(notice)
 
   const set = (key: keyof Draft) => (e: { target: { value: string } }) =>
     setDraft((d) => ({ ...d, [key]: e.target.value }))
@@ -257,7 +261,7 @@ function Compose({ onQueued }: { onQueued: () => void }) {
         )}
       </div>
 
-      {notice && <Callout variant="neutral" title={notice}>{t.pushAdmin.queuedHint}</Callout>}
+      {notice && <Callout ref={noticeRef} variant="neutral" title={notice}>{t.pushAdmin.queuedHint}</Callout>}
 
       {confirm ? (
         <div role="alertdialog" aria-label={t.pushAdmin.confirmTitle} className="flex flex-col gap-2 rounded-md border border-hairline p-3">

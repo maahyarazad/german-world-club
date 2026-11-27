@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import type { MerchantOffer } from '@gwc/contracts/offers'
 import { ApiError } from '../lib/api'
 import { formatDate } from '../lib/format'
+import { useReveal } from '../lib/useReveal'
 import { useLocale, useTranslations } from '../i18n/index'
 import PageHeader from '../components/ui/PageHeader'
 import PageLoader from '../components/ui/PageLoader'
@@ -32,6 +33,10 @@ export function OffersPage() {
   const [offers, setOffers] = useState<MerchantOffer[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  // A refusal here (publishing needs a public name and an active store) is shown at the top of a
+  // list the merchant may have scrolled down: bring it into view (feature 041). `act` clears it
+  // when a request starts, so the same refusal twice is still a change. Above the loader's return.
+  const messageRef = useReveal<HTMLDivElement>(message)
 
   useEffect(() => {
     void merchantApi.offers().then((r) => setOffers(r.items)).catch((err) => {
@@ -64,7 +69,7 @@ export function OffersPage() {
         subtitle={t.merchantOffers.intro}
         actions={<Link to="neu" className="rounded-card bg-accent px-4 py-2 text-[13px] font-semibold text-ink">{t.merchantOffers.new}</Link>}
       />
-      {message && <FormMessage tone="danger">{message}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone="danger">{message}</FormMessage>}
 
       {offers.length === 0 ? (
         <Card><p className="text-[14px] text-text-muted">{t.merchantOffers.empty}</p></Card>

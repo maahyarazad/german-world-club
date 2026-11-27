@@ -6,8 +6,13 @@
  * `emphatic` is the ink variant: white text on #171B20. It is reserved for a
  * statement the design document itself emphasises, because a page where
  * everything is emphatic emphasises nothing.
+ *
+ * A page that shows one as the outcome of a save (Marketplace's "Posted", the
+ * push page's "queued") gives it the ref `useReveal` returns (feature 041), so
+ * the page moves to it when it appears. `scroll-my-6` only sets the gap that
+ * move leaves at the window's edge; it changes nothing you can see.
  */
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 const VARIANTS = {
   gold: 'bg-tint-gold border-l-accent text-text',
@@ -23,13 +28,16 @@ export type CalloutProps = {
   title?: ReactNode
   children?: ReactNode
   className?: string
+  /** React 19 passes `ref` as a prop (as `Button` does); it reaches the root `div`. */
+  ref?: Ref<HTMLDivElement>
 }
 
-export function Callout({ variant = 'neutral', title, children, className = '' }: CalloutProps) {
+export function Callout({ variant = 'neutral', title, children, className = '', ref }: CalloutProps) {
   const emphatic = variant === 'emphatic'
   return (
     <div
-      className={`rounded-card border-l-4 px-5 py-4 ${VARIANTS[variant] ?? VARIANTS.neutral} ${className}`}
+      ref={ref}
+      className={`scroll-my-6 rounded-card border-l-4 px-5 py-4 ${VARIANTS[variant] ?? VARIANTS.neutral} ${className}`}
     >
       {title && <h3 className="text-[17px] font-semibold leading-tight">{title}</h3>}
       {children && (
