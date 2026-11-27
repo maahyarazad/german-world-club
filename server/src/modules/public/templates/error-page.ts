@@ -191,7 +191,7 @@ export function errorPage({ status, title, requestId, nonce }: ErrorPageInput): 
 
   <footer>
     <div class="wrap">
-      <strong>GERMAN WORLD CLUB</strong>
+      <strong>German World Club</strong>
       <span><a href="/impressum">Impressum</a> · <a href="/datenschutz">Datenschutz</a></span>
     </div>
   </footer>
