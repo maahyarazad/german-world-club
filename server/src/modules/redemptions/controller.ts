@@ -28,8 +28,8 @@ export function createClubOffersController(app: GwcApp) {
 
   return {
     list: async (request: GwcRequest, reply: GwcReply) => {
-      const { categoryId, cursor } = (request.query ?? {}) as { categoryId?: string; cursor?: string }
-      return reply.send(await listVisibleOffers(app, { categoryId, cursor, signal: request.deadlineSignal }))
+      const { categoryId, cursor, q } = (request.query ?? {}) as { categoryId?: string; cursor?: string; q?: string }
+      return reply.send(await listVisibleOffers(app, { categoryId, cursor, q, signal: request.deadlineSignal }))
     },
 
     categories: async (request: GwcRequest, reply: GwcReply) =>

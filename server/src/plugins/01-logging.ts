@@ -42,6 +42,24 @@ export const REDACT_PATHS = Object.freeze([
 ])
 
 /**
+ * The request URL with the typed text of a search hidden (feature 042, research R15).
+ *
+ * The `req` serializer logs the URL with its query string, so a person who searches for a
+ * name, an email address or a phone number would have it written to every request log line.
+ * `REDACT_PATHS` cannot help: it protects keys, not the inside of a string. So the value of
+ * `q` is masked here, centrally, and holds for routes not yet written. Every other parameter
+ * is kept: a mask that ate the whole query string would hide the category a failing request used.
+ *
+ * Exact name only (`q`, not `query` or `qq`).
+ */
+export function maskSearchQuery(url: string): string {
+  if (typeof url !== 'string') return url
+  const at = url.indexOf('?')
+  if (at < 0) return url
+  return `${url.slice(0, at)}?${url.slice(at + 1).replace(/(^|&)q=[^&]*/g, '$1q=[redacted]')}`
+}
+
+/**
  * Fastify 5.12 deprecates the top-level `disableRequestLogging` /
  * `requestIdLogLabel` options in favour of a LogController. Note that despite
  * the TypeScript signature naming a class, the runtime requires an *instance*.
@@ -60,7 +78,7 @@ export function loggerOptions(env) {
     // Serializers keep whole objects (which may carry PII) out of log lines;
     // only the named fields are emitted.
     serializers: {
-      req: (req) => ({ method: req.method, url: req.url, routeUrl: req.routeOptions?.url }),
+      req: (req) => ({ method: req.method, url: maskSearchQuery(req.url), routeUrl: req.routeOptions?.url }),
       res: (res) => ({ statusCode: res.statusCode }),
     },
     ...(env.isProduction ? {} : { transport: { target: 'pino/file', options: { destination: 1 } } }),

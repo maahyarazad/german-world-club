@@ -98,6 +98,7 @@ export function createMarketplaceController(app: GwcApp) {
           limit,
           cursor,
           detail,
+          q: q.q,
           signal: request.deadlineSignal,
         })
 
@@ -446,7 +447,9 @@ export function decodeCursor(raw: string): { createdAt: string; id: string } {
 }
 
 /** Query keys that are not category-specific filters. */
-const RESERVED = new Set(['category', 'mode', 'limit', 'cursor'])
+// `q` (feature 042) is the text search, not a category-specific filter: left out of this set it would be
+// read as a filter on a field the category does not have and answer 400 "'q' is not a filter".
+const RESERVED = new Set(['category', 'mode', 'limit', 'cursor', 'q'])
 
 /**
  * T066 — resolve the stored contact *preference* into what a reader may act on.

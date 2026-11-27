@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   MARKETPLACE_CATEGORIES, MARKETPLACE_MODES, CONTACT_METHODS,
 } from '@gwc/contracts/marketplace'
+import { searchQuerySchema } from '@gwc/contracts/search'
 import { createMarketplaceController } from './controller.ts'
 import type { GwcApp } from '../../app.ts'
 
@@ -148,6 +149,9 @@ export default fp(
             mode: z.enum(MARKETPLACE_MODES).optional(),
             cursor: z.string().optional(),
             limit: z.unknown().optional(),
+            // The text search (feature 042): bounded here so one character, 81 characters or seven
+            // words is a 400, like every other bad query. Named, so the `.loose()` below does not pass it as a filter.
+            q: searchQuerySchema,
           }).loose(),
           response: {
             200: z.object({

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { get, post, patch, del, ApiError } from '../lib/api'
 import { PROBLEMS } from '@gwc/contracts/errors'
 import { CONTACT_METHODS, MARKETPLACE_CATEGORIES, MARKETPLACE_MODES } from '@gwc/contracts/marketplace'
+import { SEARCH_MIN_LENGTH } from '@gwc/contracts/search'
 import type {
   CategoryDef, FieldDef, VehicleFeature, Listing, ListingPage, TermsResponse, OwnListing,
 } from '@gwc/contracts/marketplace'
@@ -20,6 +21,8 @@ import MyListings from './MyListings'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
 import { useReveal } from '../lib/useReveal'
+import { useDebouncedValue } from '../lib/useDebouncedValue'
+import SearchField from '../components/ui/SearchField'
 import PageLoader from '../components/ui/PageLoader'
 
 /**
@@ -621,7 +624,18 @@ export function Marketplace() {
   const [vehicleFeatures, setVehicleFeatures] = useState<readonly VehicleFeature[]>([])
   const [category, setCategory] = useState<string>('')
   const [mode, setMode] = useState<string>('')
-  const [listings, setListings] = useState<Listing[] | null>(null)
+  // The text search (feature 042): the box, and what is actually sent once the person pauses and has typed
+  // enough. Each answer is stored with the category, mode and search it answers and shown only while that is
+  // still what is asked for, so the loader shows until the right answer arrives and an old answer that lands
+  // late cannot replace a newer one.
+  const [text, setText] = useState('')
+  const typed = text.trim()
+  const q = useDebouncedValue(typed.length >= SEARCH_MIN_LENGTH ? typed : '')
+  const key = `${category}|${mode}|${q}`
+  const [result, setResult] = useState<{ key: string; items: Listing[]; nextCursor: string | null } | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const listings = result?.key === key ? result.items : null
+  const nextCursor = result?.key === key ? result.nextCursor : null
   const [categoriesFailed, setCategoriesFailed] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   // On the page, not in the form: a complete publish closes the drawer, and a
@@ -658,18 +672,43 @@ export function Marketplace() {
     })
   }, [])
 
-  const loadListings = useCallback(async (signal?: AbortSignal) => {
+  /** The list's address for what is asked for now; `cursor` continues a page. */
+  const listUrl = useCallback((cursor?: string) => {
     const params = new URLSearchParams()
     if (category) params.set('category', category)
     if (mode) params.set('mode', mode)
+    if (q) params.set('q', q)
+    if (cursor) params.set('cursor', cursor)
     const qs = params.toString()
+    return `/marketplace/listings${qs ? `?${qs}` : ''}`
+  }, [category, mode, q])
+
+  const loadListings = useCallback(async (signal?: AbortSignal) => {
     try {
-      const page = (await get(`/marketplace/listings${qs ? `?${qs}` : ''}`, { signal })) as ListingPage
-      setListings([...page.items])
+      const page = (await get(listUrl(), { signal })) as ListingPage
+      if (signal?.aborted) return
+      setResult({ key, items: [...page.items], nextCursor: page.nextCursor })
     } catch (err) {
+      if (signal?.aborted) return
       console.error('Marketplace.loadListings', err instanceof ApiError ? err.problem : err)
     }
-  }, [category, mode])
+  }, [listUrl, key])
+
+  /** The next page of the same search, appended. The page used to ignore the cursor, so only the first page was reachable. */
+  const loadMore = async () => {
+    if (!nextCursor) return
+    setLoadingMore(true)
+    try {
+      const page = (await get(listUrl(nextCursor))) as ListingPage
+      setResult((current) => (current?.key === key
+        ? { key, items: [...current.items, ...page.items], nextCursor: page.nextCursor }
+        : current))
+    } catch (err) {
+      console.error('Marketplace.loadMore', err instanceof ApiError ? err.problem : err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -747,6 +786,15 @@ export function Marketplace() {
       )}
 
       {view === 'browse' && <Card title={t.memberMarketplace.browseTitle}>
+        <div className="mb-4">
+          <SearchField
+            value={text}
+            onChange={setText}
+            label={t.memberMarketplace.search.label}
+            placeholder={t.memberMarketplace.search.placeholder}
+            clearLabel={t.memberMarketplace.search.clear}
+          />
+        </div>
         <div className="mb-4 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
             {t.memberMarketplace.category}
@@ -776,7 +824,7 @@ export function Marketplace() {
 
 
         {listings === null ? <PageLoader size="md" className="min-h-0 py-6" /> : listings.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-text-muted">{t.memberMarketplace.empty}</p>
+          <p className="py-6 text-center text-[13px] text-text-muted">{q ? t.memberMarketplace.search.noResults : t.memberMarketplace.empty}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {listings.map((listing) => (
@@ -804,6 +852,11 @@ export function Marketplace() {
               </li>
             ))}
           </ul>
+        )}
+        {nextCursor && (
+          <div className="mt-4">
+            <Button variant="secondary" loading={loadingMore} onClick={() => void loadMore()}>{t.memberMarketplace.loadMore}</Button>
+          </div>
         )}
       </Card>}
     </div>

@@ -42,6 +42,28 @@ export const OFFER_JOINS = `
   JOIN stores st ON st.id = o.store_id`
 
 /**
+ * **`LEAD_OFFER_ASSET` is the single rule for "the picture an offer leads with"**
+ * (feature 042, research R7): the first item of its media, by position, whose
+ * asset is `ready`.
+ *
+ * The list card, the detail's first item and a redemption's thumbnail all use it,
+ * so they cannot disagree. Before it existed three queries each wrote the shorter
+ * form (`ORDER BY position LIMIT 1`) and took the first row whatever the asset's
+ * state, while the detail dropped assets that were not ready: a merchant whose
+ * first video was still processing saw no picture on the card and a different one
+ * first on the detail. A second copy is how that happens again.
+ *
+ * **Scope contract.** Refers to `o` (offers).
+ */
+export const LEAD_OFFER_ASSET = `(
+  SELECT m.asset_id
+    FROM offer_media m
+    JOIN assets a ON a.id = m.asset_id AND a.state = 'ready'
+   WHERE m.offer_id = o.id
+   ORDER BY m.position
+   LIMIT 1)`
+
+/**
  * One offer as a member sees it, or the standard 404.
  *
  * A draft, a withdrawn offer, one not yet valid and one that no longer exists

@@ -152,8 +152,9 @@ export const clubOffersApi = (kind: ClubOffersKind) => {
     return entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
   };
   return {
-    list: (categoryId?: string | null, cursor?: string | null) =>
-      api<{ items: OfferListItem[]; nextCursor: string | null }>(`${prefix}${q({ categoryId, cursor })}`),
+    /** `search` is a text search in titles and descriptions (feature 042), sent only when it has something in it. */
+    list: (categoryId?: string | null, cursor?: string | null, search?: string | null) =>
+      api<{ items: OfferListItem[]; nextCursor: string | null }>(`${prefix}${q({ categoryId, cursor, q: search })}`),
     categories: () => api<{ items: BrowseCategory[] }>(`${prefix}/categories`),
     detail: (id: string) => api<MemberOffer>(`${prefix}/${id}`),
     /** The store behind an offer, by the slug on the offer's merchant block. */
@@ -231,8 +232,9 @@ export const marketplaceApi = {
   listing: (id: string) => api<Listing>(`/marketplace/listings/${id}`),
   /** The compose form's fields come from here, never from a list in the app (008, Principle I). */
   categories: () => api<CategoriesResponse>('/marketplace/categories'),
-  list: ({ category, mode, cursor }: Pick<ListingQuery, 'category' | 'mode'> & { cursor?: string | null }) =>
-    api<ListingPage>(`/marketplace/listings${q({ category, mode, cursor })}`),
+  /** `q` is a text search in titles and descriptions (feature 042); it is `search` here only because `q` is the query-string helper. */
+  list: ({ category, mode, cursor, q: search }: Pick<ListingQuery, 'category' | 'mode' | 'q'> & { cursor?: string | null }) =>
+    api<ListingPage>(`/marketplace/listings${q({ category, mode, cursor, q: search })}`),
   terms: () => api<TermsResponse>('/marketplace/terms'),
   acceptTerms: () => api<TermsResponse>('/marketplace/terms/accept', { method: 'POST' }),
   /** Any member may post (feature 021); a job offer is refused 422 `marketplace/mode-not-allowed`. */

@@ -79,6 +79,7 @@ import storeRoutes from './modules/stores/routes.ts'
 import clubOfferRoutes from './modules/redemptions/routes.ts'
 import redemptionReportRoutes from './modules/redemptions/report-routes.ts'
 import storeStaffRoutes from './modules/stores/staff-routes.ts'
+import offerStaffRoutes from './modules/offers/staff-routes.ts'
 import offerCategoryStaffRoutes from './modules/offer-categories/staff-routes.ts'
 import threadRoutes from './modules/threads/routes.ts'
 import threadStaffRoutes from './modules/threads/staff-routes.ts'
@@ -385,6 +386,7 @@ export async function buildApp({
   await app.register(clubOfferRoutes)
   await app.register(redemptionReportRoutes)
   await app.register(storeStaffRoutes)
+  await app.register(offerStaffRoutes)
   await app.register(offerCategoryStaffRoutes)
   await app.register(storeRoutes)
   await app.register(merchantOfferRoutes)

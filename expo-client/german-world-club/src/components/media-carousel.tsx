@@ -30,10 +30,17 @@ export function imageUrl(item: MediaItem, width: number) {
   return mediaUrl(pick?.url ?? item.posterUrl ?? '');
 }
 
-function VideoItem({ item, width, height }: { item: MediaItem; width: number; height: number }) {
+function VideoItem({ item, width, height, active = true }: { item: MediaItem; width: number; height: number; active?: boolean }) {
   const { t } = useTranslations();
   const sized = useMemo(() => makeSized(width, height), [width, height]);
   const [playing, setPlaying] = useState(false);
+  // A slide that is no longer the visible one stops its video, and does not resume by itself
+  // when it is swiped back to (feature 042). Adjusted while rendering rather than in an effect.
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
+    if (!active) setPlaying(false);
+  }
   const source = item.variants.find((v) => v.variant === 'video');
   const player = useVideoPlayer(playing && source ? mediaUrl(source.url) : null, (p) => {
     p.muted = true;
@@ -53,10 +60,16 @@ function VideoItem({ item, width, height }: { item: MediaItem; width: number; he
   );
 }
 
-function Item({ item, width, height }: { item: MediaItem; width: number; height: number }) {
+/**
+ * One photo or video at a given size. Exported for the offer gallery
+ * (`offer-gallery.tsx`), so poster-until-tapped, muted playback and the recycled-cell key
+ * have one implementation. `active` (default true) is false for a slide that is not the
+ * visible one, which stops a playing video.
+ */
+export function MediaSlide({ item, width, height, active = true }: { item: MediaItem; width: number; height: number; active?: boolean }) {
   const sized = useMemo(() => makeSized(width, height), [width, height]);
   // key: a recycled carousel cell must not keep the previous video playing.
-  if (item.kind === 'video') return <VideoItem key={item.assetId} item={item} width={width} height={height} />;
+  if (item.kind === 'video') return <VideoItem key={item.assetId} item={item} width={width} height={height} active={active} />;
   return (
     <Image
       source={imageUrl(item, width * 2)}
@@ -77,7 +90,7 @@ export function MediaCarousel({ media, inset = Spacing.three * 2 }: { media: rea
   if (media.length === 1) {
     const item = media[0]!;
     const height = Math.min(full * (item.height / item.width), 480);
-    return <View style={themed.bgBackgroundElementRadius12}><Item item={item} width={full} height={height} /></View>;
+    return <View style={themed.bgBackgroundElementRadius12}><MediaSlide item={item} width={full} height={height} /></View>;
   }
   return <Strip media={media} cell={Math.round(full * 0.72)} />;
 }
@@ -97,7 +110,7 @@ function Strip({ media, cell }: { media: readonly MediaItem[]; cell: number }) {
         snapToInterval={cell + Spacing.one}
         decelerationRate="fast"
         ItemSeparatorComponent={() => <View style={styles.widthOne} />}
-        renderItem={({ item }) => <Item item={item} width={cell} height={height} />}
+        renderItem={({ item }) => <MediaSlide item={item} width={cell} height={height} />}
       />
     </View>
   );

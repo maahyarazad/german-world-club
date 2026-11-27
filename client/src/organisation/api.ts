@@ -1,6 +1,6 @@
 import type { Store, CreateStoreRequest, UpdateStoreRequest } from '@gwc/contracts/stores'
 import type {
-  MerchantOffer, CreateOfferRequest, UpdateOfferRequest, OfferCategory,
+  MerchantOffer, CreateOfferRequest, UpdateOfferRequest, OfferCategory, OfferMedia,
 } from '@gwc/contracts/offers'
 import { get, post, patch, put, del } from '../lib/api'
 
@@ -23,6 +23,8 @@ export const merchantApi = {
   createOffer: (body: CreateOfferRequest) => post('/merchant/offers', body) as Promise<MerchantOffer>,
   updateOffer: (id: string, body: UpdateOfferRequest) => patch(`/merchant/offers/${id}`, body) as Promise<MerchantOffer>,
   setOfferMedia: (id: string, assetIds: string[]) => put(`/merchant/offers/${id}/media`, { assetIds }) as Promise<MerchantOffer>,
+  /** Which existing file leads (feature 042). Moved to the front on the server; answers the new order. */
+  setMainMedia: (id: string, assetId: string) => put(`/merchant/offers/${id}/main-media`, { assetId }) as Promise<OfferMedia>,
   publish: (id: string) => post(`/merchant/offers/${id}/publish`) as Promise<MerchantOffer>,
   withdraw: (id: string) => post(`/merchant/offers/${id}/withdraw`) as Promise<MerchantOffer>,
   categories: () => get('/merchant/categories') as Promise<{ items: OfferCategory[] }>,

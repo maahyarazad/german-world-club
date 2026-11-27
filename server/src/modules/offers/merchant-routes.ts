@@ -2,7 +2,7 @@ import fp from 'fastify-plugin'
 import { z } from 'zod'
 import {
   createOfferRequestSchema, updateOfferRequestSchema, setOfferMediaRequestSchema, setOfferOrderRequestSchema,
-  merchantOfferSchema, merchantOfferListSchema, offerCategoryListSchema,
+  merchantOfferSchema, merchantOfferListSchema, offerCategoryListSchema, setMainMediaRequestSchema, offerMediaSchema,
 } from '@gwc/contracts/offers'
 import { createMerchantOfferController } from './merchant-controller.ts'
 import type { GwcApp } from '../../app.ts'
@@ -14,6 +14,7 @@ import type { GwcApp } from '../../app.ts'
  *   POST /merchant/offers                   a draft (a category is required)
  *   PATCH /merchant/offers/:id              edit; a stale `version` is 409
  *   PUT  /merchant/offers/:id/media         the images and videos, at most 10, replaced as a whole
+ *   PUT  /merchant/offers/:id/main-media    which existing file leads (feature 042): moved to the front, atomically
  *   POST /merchant/offers/:id/publish       draft or withdrawn -> published; no approval step
  *   POST /merchant/offers/:id/withdraw      published -> withdrawn
  *   PUT  /merchant/offers/order             the merchant's display order
@@ -54,6 +55,13 @@ export default fp(
       config: write, onRequest: app.guard,
       schema: { params: idParam, body: setOfferMediaRequestSchema, response: { 200: merchantOfferSchema } },
     }, controller.setMedia)
+
+    // One file moved to the front under the offer's row lock, rather than the whole set
+    // replaced from the client's copy, which a stale tab could use to drop files.
+    app.put('/merchant/offers/:id/main-media', {
+      config: write, onRequest: app.guard,
+      schema: { params: idParam, body: setMainMediaRequestSchema, response: { 200: offerMediaSchema } },
+    }, controller.setMainMedia)
 
     app.post('/merchant/offers/:id/publish', {
       config: write, onRequest: app.guard, schema: { params: idParam, response: { 200: merchantOfferSchema } },

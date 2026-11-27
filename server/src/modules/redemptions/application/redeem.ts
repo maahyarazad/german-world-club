@@ -4,7 +4,7 @@ import type { RedeemerKind, Redemption } from '@gwc/contracts/redemptions'
 import { withTransaction } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { loadMediaItems } from '../../media/application/media-items.ts'
-import { VISIBLE_OFFER, OFFER_JOINS } from '../../offers/application/offer.ts'
+import { VISIBLE_OFFER, OFFER_JOINS, LEAD_OFFER_ASSET } from '../../offers/application/offer.ts'
 import type { GwcApp } from '../../../app.ts'
 
 type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> }
@@ -48,7 +48,7 @@ const REPLAY_SQL = `
 async function view(db: Queryable, row: { id: unknown; reference: unknown; redeemed_at: unknown; offer_id: unknown }): Promise<Redemption> {
   const { rows } = await db.query(
     `SELECT o.id, o.title, op.display_name,
-            (SELECT m.asset_id FROM offer_media m WHERE m.offer_id = o.id ORDER BY m.position LIMIT 1) AS lead_asset_id
+            ${LEAD_OFFER_ASSET} AS lead_asset_id
        FROM offers o
        LEFT JOIN organisation_profiles op ON op.organisation_id = o.organisation_id
       WHERE o.id = $1`,

@@ -15,6 +15,19 @@ import { API_URL } from '@/config';
  * and the reason the server never localises its errors.
  */
 
+/**
+ * The request path with the typed text of a search hidden, for the console log (feature 042).
+ *
+ * Release builds log too, and a search can be a name, an email address or a phone number, so the
+ * value of `q` is masked wherever a path is printed. Every other parameter is kept. Exact name
+ * only (`q`, not `query` or `qq`). The same rule as the server's request log.
+ */
+export function redactQuery(path: string): string {
+  const at = path.indexOf('?');
+  if (at < 0) return path;
+  return `${path.slice(0, at)}?${path.slice(at + 1).replace(/(^|&)q=[^&]*/g, '$1q=[redacted]')}`;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly problem: ProblemResponse | null;
@@ -106,7 +119,7 @@ export async function api<T>(path: string, { method = 'GET', body, anonymous = f
     const tokens = anonymous ? null : auth?.current();
     if (tokens) headers.authorization = `Bearer ${tokens.accessToken}`;
     console.log(`API_URL: ${API_URL}`);
-    console.log(`path: ${path}`);
+    console.log(`path: ${redactQuery(path)}`);
     return fetch(`${API_URL}${path}`, {
       method,
       headers,
@@ -128,7 +141,7 @@ export async function api<T>(path: string, { method = 'GET', body, anonymous = f
 
   // One line per request; the id is the key the console's Fehlerprotokoll
   // looks a 500 up by. Never headers or bodies.
-  console.log(`api ${method} ${path}`, response.status, `${Date.now() - started}ms`, response.headers.get('x-request-id'));
+  console.log(`api ${method} ${redactQuery(path)}`, response.status, `${Date.now() - started}ms`, response.headers.get('x-request-id'));
   if (response.status === 204) return undefined as T;
   const text = await response.text();
   const parsed = text ? safeJson(text) : null;
@@ -202,7 +215,7 @@ export async function uploadWithProgress<T>(
   if (response.status === 401 && auth?.current()) {
     if (await refresh()) response = await send();
   }
-  console.log(`api POST ${path}`, response.status, `${Date.now() - started}ms`, response.requestId);
+  console.log(`api POST ${redactQuery(path)}`, response.status, `${Date.now() - started}ms`, response.requestId);
   const parsed = response.text ? safeJson(response.text) : null;
   if (response.status < 200 || response.status >= 300) {
     throw new ApiError(response.status, (parsed as ProblemResponse | null) ?? null);

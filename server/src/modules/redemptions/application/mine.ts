@@ -1,6 +1,7 @@
 import type { Redemption } from '@gwc/contracts/redemptions'
 import { query } from '../../../db/query.ts'
 import { loadMediaItems } from '../../media/application/media-items.ts'
+import { LEAD_OFFER_ASSET } from '../../offers/application/offer.ts'
 import type { Redeemer } from './redeem.ts'
 import type { GwcApp } from '../../../app.ts'
 
@@ -37,7 +38,7 @@ export async function listOwnRedemptions(
   const { rows } = await query(
     app.pg,
     `SELECT r.id, r.reference, r.redeemed_at, o.id AS offer_id, o.title, op.display_name,
-            (SELECT m.asset_id FROM offer_media m WHERE m.offer_id = o.id ORDER BY m.position LIMIT 1) AS lead_asset_id
+            ${LEAD_OFFER_ASSET} AS lead_asset_id
        FROM redemptions r
        JOIN offers o ON o.id = r.offer_id
        LEFT JOIN organisation_profiles op ON op.organisation_id = o.organisation_id
