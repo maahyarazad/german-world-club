@@ -55,12 +55,14 @@ describe('the shared layout', () => {
   /** The body of an `actions: { ... }` style entry, with whitespace normalised. */
   const actionsStyle = (source: string) => /\bactions:\s*\{([^}]*)\}/.exec(source)?.[1]?.replace(/\s+/g, ' ').trim()
 
-  // The requester chose the transparent emblem the welcome screen draws (research R14), so the logo
-  // is the same file in the same card on every screen a person meets before signing in.
+  // The requester chose to draw what the welcome screen draws (research R14), so the logo is the
+  // same file in the same card on every screen a person meets before signing in. Which file it is
+  // can change (it has been splash-icon.png and gwc-compact-icon.png); that they match cannot.
   it('draws the club logo, the same file the welcome screen draws', () => {
-    const logo = (source: string) => /require\(\s*'[^']*\/(splash-icon\.png)'\s*\)/.exec(source)?.[1]
-    expect(logo(layout), 'AuthScreen no longer draws splash-icon.png').toBe('splash-icon.png')
-    expect(logo(welcome)).toBe(logo(layout))
+    const logo = (source: string) => /<Image[^>]*?source=\{require\(\s*'[^']*\/([^'/]+\.png)'\s*\)\}/s.exec(source)?.[1]
+    expect(logo(layout), 'AuthScreen draws no logo image').toBeDefined()
+    expect(logo(welcome), 'the welcome screen draws no logo image: update this test').toBeDefined()
+    expect(logo(layout)).toBe(logo(welcome))
   })
 
   /** The body of a named style entry, with whitespace normalised. */
@@ -85,8 +87,9 @@ describe('the shared layout', () => {
   })
 
   it('would notice a logo that drifted in size or card', () => {
-    expect(style(layout.replace('height: 220', 'height: 180'), 'logo')).not.toBe(style(welcome, 'logo'))
-    expect(style(layout.replace('padding: Spacing.three', 'padding: Spacing.two'), 'logoCard')).not.toBe(style(welcome, 'logoCard'))
+    // Drifted by editing whatever the current values are, so this does not depend on them.
+    expect(style(layout.replace(/(\blogo:\s*\{[^}]*height:\s*)\d+/, '$1999'), 'logo')).not.toBe(style(welcome, 'logo'))
+    expect(style(layout.replace(/(\blogoCard:\s*\{[^}]*borderRadius:\s*)\d+/, '$1999'), 'logoCard')).not.toBe(style(welcome, 'logoCard'))
   })
 
   // The counter-assertion: the comparison is not vacuous, because a layout whose `actions` differ would fail it.

@@ -43,7 +43,7 @@ export function AuthScreen({ title, subtitle, children, actions }: {
               name), and the card is not a second stop. */}
           <View style={styles.logoCard}>
             <Image
-              source={require('../../assets/splash-icon.png')}
+              source={require('../../assets/gwc-compact-icon.png')}
               accessibilityLabel={t.welcome.title}
               resizeMode="contain"
               style={styles.logo}
@@ -77,14 +77,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   // EXACTLY the welcome screen's `logoCard` and `logo` (app/(public)/index.tsx), so the club's
-  // emblem is the same here as on the first screen. `splash-icon.png` is the emblem with a
-  // transparent background, so it needs no card behind it on the cream or the slate backdrop
-  // (`gwc-logo.png`, the opaque-white version, would have needed a white one). A test compares
-  // the two screens' logo styles (client/tests/assets/expo-auth-screens.test.ts).
-  logoCard: { backgroundColor: 'transparent', borderRadius: 16, padding: Spacing.three, alignItems: 'center' },
-  // The image is 844x578 inside a square canvas; the aspect ratio keeps it undistorted at any
-  // width, and a fixed height keeps it from growing on a tablet.
-  logo: { height: 220, aspectRatio: 844 / 578 },
+  // emblem is the same here as on the first screen. `gwc-compact-icon.png` has a transparent
+  // background, so it needs no card behind it on the light or the dark backdrop (`gwc-logo.png`,
+  // the opaque-white version, would have needed a white one). A test compares the two screens'
+  // logo file and styles (client/tests/assets/expo-auth-screens.test.ts).
+  logoCard: { backgroundColor: 'transparent', borderRadius: 16, alignItems: 'center' },
+  // The aspect ratio keeps the image undistorted at any width, and a fixed height keeps it from
+  // growing on a tablet.
+  logo: { height: 130, aspectRatio: 844 / 578 },
   title: { fontSize: 30, lineHeight: 36 },
   // EXACTLY the welcome screen's `actions` (app/(public)/index.tsx): the buttons look
   // the same here because they are laid out the same. A test compares the two

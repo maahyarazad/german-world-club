@@ -41,13 +41,6 @@ describe('the phone-sized backdrops', () => {
     expect(pngWidth(file), `${name} is wider than a phone needs`).toBeLessThanOrEqual(MAX_WIDTH)
     expect(statSync(file).size, `${name} is larger than 1.5 MB`).toBeLessThanOrEqual(MAX_BYTES)
   })
-
-  it('exist alongside the supplied originals, which are source art and are not shipped', () => {
-    // The originals are 4875 px wide: this is what the copies were made from, so it must hold.
-    for (const original of ['main-bg-light-01.png', 'main-bg-dark-01.png']) {
-      expect(pngWidth(join(ASSETS, original))).toBeGreaterThan(MAX_WIDTH)
-    }
-  })
 })
 
 describe('what AppBackground draws', () => {

@@ -26,7 +26,7 @@ export default function Welcome() {
             The screen shows the club's backdrop (AppBackground), like every other. */}
         <View style={styles.logoCard}>
           <Image
-            source={require('../../../assets/splash-icon.png')}
+            source={require('../../../assets/gwc-compact-icon.png')}
             accessibilityLabel={t.welcome.title}
             resizeMode="contain"
             style={styles.logo}
@@ -49,9 +49,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, padding: Spacing.four, justifyContent: 'space-between' },
   language: { alignItems: 'flex-end' },
   hero: { gap: Spacing.three, maxWidth: MaxContentWidth },
-  logoCard: { backgroundColor: 'transparent', borderRadius: 16, padding: Spacing.three, alignItems: 'center' },
+  logoCard: { backgroundColor: 'transparent', borderRadius: 16, alignItems: 'center' },
   // The image is 844x578; the aspect ratio keeps it undistorted at any width.
-  logo: { height: 220, aspectRatio: 844 / 578 },
+  logo: { height: 130, aspectRatio: 844 / 578 },
   rule: { width: 56, height: 4, borderRadius: 2 },
   actions: { gap: Spacing.three, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
 });

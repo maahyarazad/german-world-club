@@ -874,12 +874,12 @@ that look optional and are not:
 
 **The app's public screens share one look (feature 043, US4 and US5).** The backdrop is two
 **phone-sized** copies (`main-bg-light-phone.png`, `main-bg-dark-phone.png`, 1170 px) chosen by
-`useColorScheme()` in `AppBackground`; the supplied 4875 x 10550 originals (`*-01.png`, `main_bg.png`) are
-source art and are never `require`d, because decoding one costs about 205 MB on a phone. The wash
+`useColorScheme()` in `AppBackground`; the full-size originals (`main_bg.png`, and the supplied 4875 x 10550 `*-01.png` art, which was removed from the
+working tree after the copies were made) are never `require`d, because decoding one costs about 205 MB on a phone. The wash
 (`BackdropScrim`) is `transparent` by day and a 0.5 black one by night, **measured** against the art
 (research R13): do not lower the dark alpha below about 0.45, and never write `''` for "none". Sign-in,
 forgot-password and reset-password are built on `AuthScreen` (`components/auth-screen.tsx`): the club's logo
-in the welcome screen's own card (the same transparent `splash-icon.png`), the fields as children and the buttons as `actions`,
+in the welcome screen's own card (the same transparent emblem file, currently `gwc-compact-icon.png`), the fields as children and the buttons as `actions`,
 laid out with exactly the welcome screen's values and only as the standard `Button` / `AsyncButton`.
 `client/tests/assets/expo-backdrop.test.ts` and `expo-auth-screens.test.ts` read the app's source and fail the
 build for an original, a bad wash, a hand-made button, or an `actions` or logo style that drifts from the welcome
