@@ -823,6 +823,68 @@ registration step-3 contact change.
   and linear (`bench:search`, research R11). The app's search box lives *outside* the
   `loading ? <Loading/> : <FlashList/>` swap, or it unmounts on every keystroke.
 
+**Resetting a password in the app, by a code texted to the number on record (feature 043,
+`specs/043-expo-password-reset/`).** `POST /auth/password-reset/code` asks and `…/code/confirm`
+completes; the emailed link on the web is unchanged and shares only the finish logic. Seven rules
+that look optional and are not:
+
+- **A reset code has its own purpose, `password_reset`, and opens nothing else.** The one database
+  change is migration `050`, which widens `otp_challenges_purpose_check`. Reusing `login`,
+  `device_approval` or `mobile_verification` would need no migration and would let a reset code sign
+  someone in without a password (those endpoints open a session for a valid code), and keeping the code
+  in `password_reset_tokens` would give it no attempt ceiling. The code is six digits
+  (`PASSWORD_RESET_CODE_LENGTH`); `digitsForPurpose` says how long any purpose's code is and the resend
+  asks it, because a code issued with the default four for a purpose that expects more is refused by its
+  own screen every time.
+- **The challenge id the ask returns is where account existence leaks, and three places close it.** The
+  ask answers `202 { requested, challengeId, cooldownSeconds }` for every identifier, with a random uuid
+  for one that matches nobody, so any endpoint that treats a real challenge differently from an unknown
+  one is an oracle (research R17). `/code/confirm` answers EVERY failure (wrong, expired, spent,
+  exhausted, another device, unknown, member locked since) with the one `401 invalid-otp`, never `410` or
+  `429 attempts-exceeded`; `verifyChallenge` makes a reset challenge invisible to a caller that does not
+  redeem resets (answered `invalid`, not counted, not consumed), which covers `/auth/verify-otp` and both
+  onboarding redeemers; and `/auth/otp/resend` answers a reset challenge like an unknown id. The app
+  shows one message for a bad code and "asks again" by repeating the ask, which is why the code screen
+  keeps the identifier. `tests/auth/password-reset-chain.test.ts` walks a real and a made-up id through
+  all of it side by side; do not add a per-case message or status without changing that test first.
+- **The text is sent after the reply, never awaited.** A send takes hundreds of milliseconds and only
+  happens for a real member, so awaiting it would make the response time the oracle the body avoided. A
+  refusal or provider failure is logged without the number, the code or the error text
+  (`PASSWORD_RESET_SMS_NOT_SENT`) and shown to nobody. Measured and recorded in research R5: the remaining
+  difference is about 1.3 ms of database work, which the limit makes unusable.
+- **The limit is keyed on the resolved number, and identical for a real account and a made-up one.**
+  `password-reset-sms` (3 an hour) buckets on the member's number, or on the identifier itself when nobody
+  matches, through `rateLimitIndependent` (the route already spends the per-address `password-reset-ip`
+  bucket at `onRequest`). Asking by email, by number and asking again share one budget. The 60-second
+  wait is the app's, not the server's: a server cooldown would need state an unknown identifier does not
+  have. The price is that someone who knows a member's email can use up that member's three codes for an
+  hour, the same property `sign-in-account` already has.
+- **One live code per member, serialised by a row lock.** `request-password-reset-code.ts` locks the
+  member row, retires any unspent `password_reset` challenge, then issues, so two simultaneous asks leave
+  one live code. The member is re-read under the lock, because they may have been locked since the
+  `preHandler` looked.
+- **The code is verified before the password is hashed, and the password is validated before the code.**
+  A wrong code costs the server no argon2, and a password that is too short is a `400` that spends no
+  guess. The password changes only for the member the CHALLENGE names, and only while they are `active` or
+  `inactive`. `finish-password-reset.ts` is the one place that sets the password, reactivates an inactive
+  member and ends every session (`applyNewPassword`, `endAllSessions`), shared with the emailed link so the
+  two cannot drift (`tests/auth/password-reset-link.test.ts` pins the link's behaviour).
+- **A failing `mobile` field is `422 invalid-mobile`, not `400`** (the platform's rule since feature 031,
+  the same answer registration gives). It says nothing about accounts, so it is safe on this route.
+
+**The app's public screens share one look (feature 043, US4 and US5).** The backdrop is two
+**phone-sized** copies (`main-bg-light-phone.png`, `main-bg-dark-phone.png`, 1170 px) chosen by
+`useColorScheme()` in `AppBackground`; the supplied 4875 x 10550 originals (`*-01.png`, `main_bg.png`) are
+source art and are never `require`d, because decoding one costs about 205 MB on a phone. The wash
+(`BackdropScrim`) is `transparent` by day and a 0.5 black one by night, **measured** against the art
+(research R13): do not lower the dark alpha below about 0.45, and never write `''` for "none". Sign-in,
+forgot-password and reset-password are built on `AuthScreen` (`components/auth-screen.tsx`): the club's logo
+in the welcome screen's own card (the same transparent `splash-icon.png`), the fields as children and the buttons as `actions`,
+laid out with exactly the welcome screen's values and only as the standard `Button` / `AsyncButton`.
+`client/tests/assets/expo-backdrop.test.ts` and `expo-auth-screens.test.ts` read the app's source and fail the
+build for an original, a bad wash, a hand-made button, or an `actions` or logo style that drifts from the welcome
+screen's (the Expo app has no test runner of its own).
+
 ## Conventions
 
 - ES modules, Node 22. The server is TypeScript (`.ts`, run by Node's type stripping, checked by `tsc --noEmit`).
