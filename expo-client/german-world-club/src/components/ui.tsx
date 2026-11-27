@@ -97,7 +97,7 @@ export function Button({
             </Text>
             {loading && (
                 <View style={[StyleSheet.absoluteFill, styles.spinnerOverlay]}>
-                    <Spinner size="xs" color={foreground} />
+                    <Spinner size="sm" color={foreground} />
                 </View>
             )}
         </Pressable>
