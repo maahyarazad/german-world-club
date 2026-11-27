@@ -19,6 +19,7 @@ import ListingRequest from './ListingRequest'
 import MyListings from './MyListings'
 import { useLocale, useTranslations } from '../i18n/index'
 import { formatDate } from '../lib/format'
+import { useReveal } from '../lib/useReveal'
 import PageLoader from '../components/ui/PageLoader'
 
 /**
@@ -633,6 +634,12 @@ export function Marketplace() {
   const [saved, setSaved] = useState(false)
   const [mineKey, setMineKey] = useState(0)
   const newListingButton = useRef<HTMLButtonElement>(null)
+  // The outcome shown below is far above a list the member has scrolled down,
+  // and the drawer that made it has just closed: bring it into view (feature
+  // 041). Both flags are reset when the drawer opens, so each success is a
+  // false-to-true change; only one of the two callouts is ever on screen, so
+  // one ref serves both.
+  const outcomeRef = useReveal<HTMLDivElement>(posted || saved)
 
   // Whether the New listing button and its drawer render at all. Display
   // only (Principle I): every member may post since feature 021, and the
@@ -688,8 +695,8 @@ export function Marketplace() {
         ) : undefined}
       />
 
-      {posted && <Callout variant="info" title={t.memberMarketplace.posted} />}
-      {saved && <Callout variant="info" title={t.memberMarketplace.saved} />}
+      {posted && <Callout ref={outcomeRef} variant="info" title={t.memberMarketplace.posted} />}
+      {saved && <Callout ref={outcomeRef} variant="info" title={t.memberMarketplace.saved} />}
 
       {canPost && (
         <div className="flex gap-2" role="group">

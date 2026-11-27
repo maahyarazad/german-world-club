@@ -346,8 +346,8 @@ export const en = {
   console: {
     signOut: 'Sign out',
     loading: 'Loading …',
-    notAvailable: 'Not available yet',
-    notAvailableHint: 'This area is granted to your role but is not ready yet.',
+    notAvailable: 'Under development',
+    notAvailableHint: 'This area is under development.',
     noGrantsTitle: 'No areas granted',
     noGrantsBody:
       'No area is currently assigned to your account. Contact an administrator to be granted permissions.',
@@ -622,9 +622,7 @@ export const en = {
     home: 'Overview',
     role: 'Your role',
     roles: { owner: 'Owner', manager: 'Manager', staff: 'Staff' },
-    notBuiltHint:
-      'You are signed in to your organisation. The tools in this portal are not built yet — '
-      + 'your GWC contact will let you know when they are.',
+    notBuiltHint: 'This portal is under development.',
   },
 
   portals: {

@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button'
 import Field, { FormMessage } from '../../components/ui/Field'
 import StatusPill from '../../components/ui/StatusPill'
 import { useAction } from '../../lib/useAction'
+import { useReveal } from '../../lib/useReveal'
 
 /**
  * Staff management of offer categories (feature 035, US4): every category with
@@ -41,6 +42,10 @@ function Categories() {
   const [edits, setEdits] = useState<Record<string, { nameDe: string; nameEn: string }>>({})
   const [draft, setDraft] = useState({ slug: '', nameDe: '', nameEn: '' })
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  // Unlike the other pages this one does not clear its message between saves, so a second save
+  // shows the same words on the same element: `useReveal` takes the message object, which is new
+  // every time (feature 041). Above the loader's early return, like every hook.
+  const messageRef = useReveal<HTMLDivElement>(message)
 
   const adopt = (list: OfferCategory[]) => {
     setItems(list)
@@ -90,7 +95,7 @@ function Categories() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t.adminCategories.title} subtitle={t.adminCategories.subtitle} />
-      {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone={message.tone}>{message.text}</FormMessage>}
 
       <Card>
         <ul className="flex flex-col divide-y divide-hairline">

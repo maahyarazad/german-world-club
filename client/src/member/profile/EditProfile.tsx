@@ -6,6 +6,7 @@ import { MEDIA_MAX_BYTES } from '@gwc/contracts/media'
 import { get, patch, put, upload, ApiError } from '../../lib/api'
 import type { UploadProgress } from '../../lib/api'
 import { fill, formatDate, formatPercent } from '../../lib/format'
+import { useReveal } from '../../lib/useReveal'
 import PageHeader from '../../components/ui/PageHeader'
 import Button from '../../components/ui/Button'
 import Field, { FormMessage } from '../../components/ui/Field'
@@ -38,6 +39,9 @@ export function EditProfile() {
   // (feature 021, Story 6).
   const [progress, setProgress] = useState<UploadProgress | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
+  // A save is pressed far below the message at the top: bring it into view
+  // (feature 041). Above the loader's early return, like every hook.
+  const messageRef = useReveal<HTMLDivElement>(message)
 
   const adopt = (p: MemberProfile) => {
     setProfile(p); setBio(p.bio ?? ''); setCity(p.city ?? ''); setLinks(p.links)
@@ -93,7 +97,7 @@ export function EditProfile() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader title={t.memberProfile.editTitle} actions={<Link to="/konsole/mitglied/profil" className="text-[13px] text-navy">← {t.memberThreads.back}</Link>} />
-      {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone={message.tone}>{message.text}</FormMessage>}
 
       <Card title={t.memberProfile.avatar}>
         <div className="flex items-center gap-4">

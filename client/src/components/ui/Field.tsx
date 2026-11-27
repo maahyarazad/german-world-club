@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import type { InputHTMLAttributes, ReactNode, Ref } from 'react'
 
 /**
  * A labelled input.
@@ -61,6 +61,11 @@ export function Field({ label, type = 'text', error, hint, ...rest }: FieldProps
  * `role="alert"` so it reaches assistive technology when it appears — a
  * sign-in failure that is only visible is a sign-in failure some people never
  * learn about.
+ *
+ * A page that shows one after a save gives it the ref `useReveal` returns
+ * (feature 041), so the page moves to it when it appears. `scroll-my-6` only
+ * sets the gap that move leaves at the window's edge; it changes nothing you
+ * can see.
  */
 const FORM_MESSAGE_TONES = {
   danger: 'bg-tint-danger text-tint-danger-fg',
@@ -76,11 +81,17 @@ export type FormMessageProps = {
   title?: ReactNode
   children?: ReactNode
   actions?: ReactNode
+  /** React 19 passes `ref` as a prop (as `Button` does); it reaches the root `div`. */
+  ref?: Ref<HTMLDivElement>
 }
 
-export function FormMessage({ tone = 'danger', title, children, actions }: FormMessageProps) {
+export function FormMessage({ tone = 'danger', title, children, actions, ref }: FormMessageProps) {
   return (
-    <div role="alert" className={`rounded-card px-3 py-2.5 text-[13px] ${FORM_MESSAGE_TONES[tone] ?? FORM_MESSAGE_TONES.danger}`}>
+    <div
+      ref={ref}
+      role="alert"
+      className={`scroll-my-6 rounded-card px-3 py-2.5 text-[13px] ${FORM_MESSAGE_TONES[tone] ?? FORM_MESSAGE_TONES.danger}`}
+    >
       {title && <strong className="font-semibold">{title}</strong>}
       {children && <div className={title ? 'mt-0.5' : ''}>{children}</div>}
       {actions && <div className="mt-2 flex flex-wrap gap-2">{actions}</div>}

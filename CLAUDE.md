@@ -797,3 +797,31 @@ registration step-3 contact change.
   object; the only exception is an `Animated` value, with a disable comment
   giving the reason. In a file that imports `styles` from `@/components/ui`, the
   local sheet is `styles` and the import is `uiStyles`.
+- A web page's outcome message is brought into view (feature 041,
+  `specs/041-scroll-to-form-message/`): the `FormMessage` or `Callout` a page shows after a
+  save sits at the top of the page, and a person who pressed Save at the bottom of a long form
+  never saw it. `useReveal(message)` (`client/src/lib/useReveal.ts`) returns a ref that goes on
+  the message element, and calls `scrollIntoView({ block: 'nearest' })` on it one animation
+  frame after the value changes to something truthy: `nearest` does nothing when the message is
+  already fully in view, it eases unless the person asked for reduced motion, and it never moves
+  focus (`FormMessage` is `role="alert"`, so it is announced anyway). Four rules that look
+  optional and are not. **Give it the page's own message value, which must change on every
+  outcome**: a new object per `setMessage({...})`, or a flag that is reset before the next
+  success. It keys on the value and not on the message mounting, because Offer categories keeps
+  its message on screen between two saves and a second save with the same words mounts nothing.
+  **Call it above any early `return <PageLoader />`**, like every hook. **Give the ref to the
+  message itself**, never a wrapper `div`, which would change the page's `gap-6` spacing;
+  `FormMessage` and `Callout` take `ref` as a prop (React 19) and carry `scroll-my-6` for the gap
+  at the window's edge. **It runs one frame late on purpose**: in Marketplace the same commit
+  closes the drawer, which then returns focus to the New listing button, and that scrolls the
+  page too; a layout effect would be overtaken. The hook reveals whatever the page puts in the
+  slot, so a refusal shown there (a stale edit, a taken slug) is revealed like a success;
+  `message?.tone === 'success' ? message : null` limits it. jsdom has no `scrollIntoView` or
+  `matchMedia`, so both are called defensively and tests use `installScrollSpy`
+  (`client/tests/helpers/scroll-spy.ts`). `client/tests/outcome-reveal-guard.test.ts` fails the
+  build for a file that shows a success-toned message and never calls the hook, and for a hook
+  whose ref reaches no element; it cannot see a `Callout`-only outcome, so a new page like
+  Marketplace's or Push's goes on its list of pages by hand. Not covered, on purpose: forms that
+  confirm nothing on screen today (staff moderation, applicant decisions, referral changes, the
+  store switch, and the **handle change** on Edit profile) and in-place confirmations that
+  replace the control the person just pressed.

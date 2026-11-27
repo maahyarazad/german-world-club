@@ -4,6 +4,7 @@ import { get, patch, ApiError } from '../lib/api'
 import { useMediaUpload } from '../lib/use-media-upload'
 import { checkMerchantFile } from '../lib/media-limits'
 import { fill } from '../lib/format'
+import { useReveal } from '../lib/useReveal'
 import PageHeader from '../components/ui/PageHeader'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -27,6 +28,9 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
   const [profile, setProfile] = useState<OrganisationProfile | null>(null)
   const [form, setForm] = useState({ displayName: '', about: '', website: '', city: '' })
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  // A save is pressed far below this message: bring it into view (feature 041). Above the
+  // loader's early return, like every hook.
+  const messageRef = useReveal<HTMLDivElement>(message)
   const [busy, setBusy] = useState(false)
   const logoInput = useRef<HTMLInputElement>(null)
   // Feature 035: the logo shows progress while it goes up and while the server works.
@@ -79,7 +83,7 @@ export function OrganisationProfilePage({ kind }: { kind: 'merchant' | 'partner'
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={t.organisationProfile.title} subtitle={t.organisationProfile.intro} />
-      {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone={message.tone}>{message.text}</FormMessage>}
 
       <Card title={t.organisationProfile.account}>
         <p className="text-[14px] text-text">{profile.displayName ?? profile.email}</p>

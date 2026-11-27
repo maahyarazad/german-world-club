@@ -5,6 +5,7 @@ import type { MerchantOffer, OfferCategory, CreateOfferRequest } from '@gwc/cont
 import type { MediaItem } from '@gwc/contracts/media'
 import { ApiError } from '../lib/api'
 import { fill } from '../lib/format'
+import { useReveal } from '../lib/useReveal'
 import { checkMerchantFile, MERCHANT_MEDIA_TYPES } from '../lib/media-limits'
 import type { FileCheck } from '../lib/media-limits'
 import { useMediaUpload } from '../lib/use-media-upload'
@@ -69,6 +70,9 @@ export function OfferEditor() {
   const [loading, setLoading] = useState(!creating)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  // A save is pressed far below this message: bring it into view (feature 041). Creating an
+  // offer navigates away and sets none. Above the loader's early return, like every hook.
+  const messageRef = useReveal<HTMLDivElement>(message)
   const upload = useMediaUpload('merchant')
   const input = useRef<HTMLInputElement>(null)
 
@@ -173,7 +177,7 @@ export function OfferEditor() {
         title={creating ? t.merchantOffers.editorNew : t.merchantOffers.editorEdit}
         actions={<Link to={creating ? '..' : '..'} relative="path" className="text-[13px] text-navy">← {t.merchantOffers.back}</Link>}
       />
-      {message && <FormMessage tone={message.tone}>{message.text}</FormMessage>}
+      {message && <FormMessage ref={messageRef} tone={message.tone}>{message.text}</FormMessage>}
 
       <Card>
         <div className="flex flex-col gap-4">
