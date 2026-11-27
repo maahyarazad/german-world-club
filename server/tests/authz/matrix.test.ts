@@ -49,6 +49,9 @@ const ROUTE_CLASSES = [
   { name: 'refresh', url: '/auth/refresh', method: 'POST', audience: 'public' },
   { name: 'reset request', url: '/auth/password-reset/request', method: 'POST', audience: 'public' },
   { name: 'reset confirm', url: '/auth/password-reset/confirm', method: 'POST', audience: 'public' },
+  // Feature 043: reset by an SMS code, from the app. Public like the emailed-link pair above: the person has forgotten their password.
+  { name: 'password reset code request', url: '/auth/password-reset/code', method: 'POST', audience: 'public' },
+  { name: 'password reset code confirm', url: '/auth/password-reset/code/confirm', method: 'POST', audience: 'public' },
   // Public deliberately: the console needs a token after a page reload, before
   // it knows whether it is signed in. The token is worthless without the secret
   // cookie the same response sets, and a cross-site page can send that cookie

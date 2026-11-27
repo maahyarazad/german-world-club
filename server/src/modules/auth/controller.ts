@@ -7,6 +7,10 @@ import { loadOtpResendContext, resendOtp } from './application/resend-otp.ts'
 import { refresh } from './application/refresh.ts'
 import { signOut } from './application/sign-out.ts'
 import { requestPasswordReset } from './application/request-password-reset.ts'
+import { resolveResetContext, requestPasswordResetCode } from './application/request-password-reset-code.ts'
+import { confirmPasswordResetCode } from './application/confirm-password-reset-code.ts'
+import type { ResetContext } from './application/request-password-reset-code.ts'
+import type { PasswordResetCodeConfirm, PasswordResetCodeRequest } from '@gwc/contracts/password-reset'
 import { confirmPasswordReset } from './application/confirm-password-reset.ts'
 import { loadMe } from './application/me.ts'
 import { loadSession } from './application/session.ts'
@@ -14,6 +18,21 @@ import { setAuthCookies, clearAuthCookies, setBrowserCookie } from './cookies.ts
 import { readOrIssueBrowserId } from './browser-id.ts'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import type { GwcApp } from '../../app.ts'
+
+/** What the password-reset-by-code handlers read from the request (feature 043). */
+type PasswordResetRequestShape = {
+  /** `unknown`, as the route's request has it; narrowed where it is read, because the schema has validated it. */
+  body: unknown
+  deadlineSignal: AbortSignal
+  resetContext?: ResetContext
+  otpPhoneKey?: string
+}
+type PasswordResetReplyShape = {
+  /** True once something has already answered (the deadline guard may have). */
+  sent: boolean
+  code(statusCode: number): { send(payload: unknown): unknown }
+  send(payload: unknown): unknown
+}
 
 /** Gated and credential responses are never cached — by a browser or a proxy. */
 const NO_STORE = 'private, no-store'
@@ -162,6 +181,43 @@ export function createAuthController(app: GwcApp) {
     requestPasswordReset: async (request: FastifyRequest, reply: FastifyReply) => {
       const result = await requestPasswordReset(app, { email: request.body.email, signal: request.deadlineSignal })
       return reply.code(202).send(result)
+    },
+
+    /**
+     * `preHandler` for POST /auth/password-reset/code (feature 043): resolves the member
+     * and the limiter's key BEFORE the per-number limiter runs, the same pattern as
+     * `loadOtpResendPreHandler`. The key is the member's number, which is not in the body.
+     */
+    // Typed by the shape each handler actually reads, not by `FastifyRequest` (whose default
+    // generics do not match this app's HTTP/2 server, which is why every other registration in
+    // routes.ts carries a type error): a structural parameter is assignable to the route's own
+    // request type, so a new route adds none.
+    loadPasswordResetPreHandler: async (request: PasswordResetRequestShape) => {
+      const body = request.body as PasswordResetCodeRequest
+      const context = await resolveResetContext(
+        app, 'email' in body ? { email: body.email } : { mobile: body.mobile }, request.deadlineSignal,
+      )
+      request.resetContext = context
+      request.otpPhoneKey = context.phoneKey
+    },
+
+    requestPasswordResetCode: async (request: PasswordResetRequestShape, reply: PasswordResetReplyShape) => {
+      const result = await requestPasswordResetCode(app, {
+        context: request.resetContext!,
+        deviceId: (request.body as PasswordResetCodeRequest).deviceId,
+      })
+      // The deadline guard may already have answered; a second answer is an error, not a response.
+      if (reply.sent) return reply
+      return reply.code(202).send(result)
+    },
+
+    /** Complete a reset with the texted code and a new password (feature 043); see the application function. */
+    confirmPasswordResetCode: async (request: { body: unknown; id: string }, reply: PasswordResetReplyShape) => {
+      const result = await confirmPasswordResetCode(app, {
+        ...(request.body as PasswordResetCodeConfirm),
+        requestId: request.id,
+      })
+      return reply.send(result)
     },
 
     confirmPasswordReset: async (request: FastifyRequest, reply: FastifyReply) => {

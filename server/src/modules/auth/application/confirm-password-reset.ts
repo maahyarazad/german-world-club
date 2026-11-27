@@ -3,7 +3,7 @@ import { withTransaction } from '../../../db/query.ts'
 import { forbidden } from '../../../authz/require-permission.ts'
 import { hashRefreshToken } from '../tokens.ts'
 import { hashPassword } from '../passwords.ts'
-import { revokeAllSessions } from '../sessions.ts'
+import { applyNewPassword, endAllSessions } from './finish-password-reset.ts'
 import type { PoolClient } from 'pg'
 import type { GwcApp } from '../../../app.ts'
 
@@ -23,18 +23,12 @@ export async function confirmPasswordReset(app: GwcApp, { token: presentedToken,
 
     await client.query('UPDATE password_reset_tokens SET consumed_at = now() WHERE id = $1', [record.id])
 
-    if (record.account_kind === 'member') {
-      // §3.2: a completed reset also reactivates an inactive member.
-      await client.query(
-        `UPDATE members
-            SET password_hash = $2, password_reset_required = false,
-                status = CASE WHEN status = 'inactive' THEN 'active'::member_status ELSE status END
-          WHERE id = $1`,
-        [record.account_id, newHash],
-      )
-    } else {
-      await client.query('UPDATE admin_users SET password_hash = $2 WHERE id = $1', [record.account_id, newHash])
-    }
+    // The change itself is shared with the reset-by-code flow (finish-password-reset.ts).
+    // No status filter: a link in a locked member's mailbox changes the password and
+    // leaves them locked, exactly as before.
+    await applyNewPassword(client, {
+      accountId: record.account_id, accountKind: record.account_kind, passwordHash: newHash,
+    })
     return record
   })
 
@@ -44,15 +38,9 @@ export async function confirmPasswordReset(app: GwcApp, { token: presentedToken,
   // help someone who has forgotten their password.
   if (!result) throw forbidden(PROBLEMS.INVALID_RESET_TOKEN, 'That reset link is not valid or has expired.')
 
-  // Revoking every session is the POINT of a reset: the likely reason for one
-  // is that the old credential is compromised.
-  const revoked = await revokeAllSessions(app.pg, result.account_id, result.account_kind, 'password_reset')
-  for (const sid of revoked) await app.denylist.add(sid)
-
-  await app.audit({
-    action: 'session_revoked', outcome: 'allowed', requestId,
-    actorId: result.account_id, actorKind: result.account_kind,
-    detail: { reason: 'password_reset', count: revoked.length },
+  // Ending every session is the POINT of a reset (finish-password-reset.ts says why).
+  await endAllSessions(app, {
+    accountId: result.account_id, accountKind: result.account_kind, requestId, via: 'link',
   })
 
   return { reset: true }

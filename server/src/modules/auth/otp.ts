@@ -1,6 +1,6 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import { query, withTransaction } from '../../db/query.ts'
-import { OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS } from '@gwc/contracts/auth'
+import { OTP_TTL_SECONDS, OTP_MAX_ATTEMPTS, PASSWORD_RESET_CODE_LENGTH } from '@gwc/contracts/auth'
 import type { Pool, PoolClient } from 'pg'
 
 /**
@@ -33,6 +33,20 @@ export const WEB_DEVICE = 'web'
 export const generateCode = (digits = 4) => String(randomInt(0, 10 ** digits)).padStart(digits, '0')
 
 /**
+ * How many digits a code for this purpose has (feature 043): six for a password
+ * reset, four for everything else.
+ *
+ * Asked by BOTH the first send and a resend. `resendOtp` once issued every fresh code
+ * with the default four digits, which for a reset is a code the six-digit screen
+ * refuses every time, and nothing at the type level would have said so. A purpose
+ * this function has not heard of gets four, what a code here has always been, so a
+ * new purpose is never silently longer. (The email-verification path passes its own
+ * length explicitly and does not ask.)
+ */
+export const digitsForPurpose = (purpose: string): number =>
+  purpose === 'password_reset' ? PASSWORD_RESET_CODE_LENGTH : 4
+
+/**
  * Hashed with the challenge id as a salt, so two challenges sharing a code do
  * not share a digest — otherwise a database read would let one challenge's
  * digest be matched against another's.
@@ -51,7 +65,7 @@ export type IssueChallengeInput = {
   accountId: string
   accountKind: string
   deviceId: string
-  purpose?: 'login' | 'device_approval' | 'mobile_verification' | 'email_verification'
+  purpose?: 'login' | 'device_approval' | 'mobile_verification' | 'email_verification' | 'password_reset'
   digits?: number
   ttlSeconds?: number
   now?: Date
@@ -118,6 +132,21 @@ export async function verifyChallenge(pool: Pool, {
     )
     if (rows.length === 0) return { outcome: OTP_OUTCOME.INVALID }
     const challenge = rows[0]
+
+    // A password-reset challenge is INVISIBLE to a caller that does not redeem resets
+    // (feature 043, research R17): answered exactly as if the id never existed, and left
+    // untouched (not counted as a try, not consumed, whatever its state).
+    //
+    // The id of a reset challenge is handed to an unauthenticated caller, and for an
+    // identifier that matches nobody it is a random uuid. If sign-in or onboarding treated
+    // a real one differently from an unknown one (counting tries on it, so that the fifth
+    // answers "too many attempts" and later ones "expired", while a made-up id says
+    // "invalid" for ever), five requests would tell a stranger whether an identifier has an
+    // account. The other purposes keep counting a mismatch as a try, as before: their ids
+    // only exist after a password or an application, so they are not an oracle.
+    if (challenge.purpose === 'password_reset' && purposes && !purposes.includes('password_reset')) {
+      return { outcome: OTP_OUTCOME.INVALID }
+    }
 
     if (challenge.consumed_at !== null) return { outcome: OTP_OUTCOME.EXPIRED }
     if (new Date(challenge.expires_at) <= now) return { outcome: OTP_OUTCOME.EXPIRED }
